@@ -673,7 +673,7 @@ async function fetchRates(){
   if(CUR.code === 'GBP') CUR.rate = _rates.GBP;
   if(CUR.code === 'EUR') CUR.rate = _rates.EUR;
 }
-fetchRates();
+// fetchRates() called inside bootApp() after login — removed top-level call that caused CORS crash on page load
 
 // ── Currency locale metadata ─────────────────────────────────────────────────
 const CUR_LOCALE = {
