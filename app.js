@@ -2330,7 +2330,7 @@ const STRIPE_PK = 'pk_live_51TIU2aDJ710ezCR6Y4mNk05q3LXt9UaEUAWLK9Y6QKiQnL06YK3n
 // Plan prices in USD (cents) for Stripe checkout
 const SUB_PLAN_USD = {
   Free:              { monthly: 0,    yearly: 0     },
-  Premium:           { monthly: 8900, yearly: 89000 },
+  Premium:           { monthly: 1800, yearly: 18000  }, // $18/mo | $180/yr (save 17%)
   'Trial (30 Days)': { monthly: 0,    yearly: 0     },
 };
 
@@ -2400,7 +2400,7 @@ function _subExpiryBanner(){
     +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:13px;color:var(--ink)">'+msg+'</div>'
       +(CUR.code==='USD'
-        ? '<div style="font-size:11px;color:var(--text2);margin-top:2px">Amount due: <strong style="font-family:var(--mono);color:var(--ink)">$'+(((SUB_PLAN_USD[BIZ.plan||'Free']||SUB_PLAN_USD.Free)[(BIZ.billingCycle==='yearly'?'yearly':'monthly')])/100).toFixed(2)+' USD</strong> · Secure card payment via Stripe</div>'
+      ? '<div style="font-size:11px;color:var(--text2);margin-top:2px">Amount due: <strong style="font-family:var(--mono);color:var(--ink)">$'+((SUB_PLAN_USD.Premium[(BIZ.billingCycle||'monthly')==='yearly'?'yearly':'monthly']/100).toFixed(2))+' USD</strong> &middot; Secure card payment via Stripe</div>'
         : '<div style="font-size:11px;color:var(--text2);margin-top:2px">Amount due: <strong style="font-family:var(--mono);color:var(--ink)">'+amt.toLocaleString()+' XAF</strong> · Payment via Mobile Money (MTN or Orange)</div>'
       )
     +'</div>'
@@ -2528,13 +2528,13 @@ async function _pgConfirmPlan(){
 }
 
 // Returns true if business uses USD (routes to Stripe instead of CamPay)
-function _isUSD(){ return CUR.code==='USD'; }
+function _isUSD(){ return CUR.code==='USD' || (BIZ.country||'').toLowerCase().includes('united states') || BIZ.country==='US'; }
 
 // Stripe payment flow for USD businesses
 async function mSubPayNowStripe(){
-  var isTrial3=(BIZ.plan||''  ).toLowerCase().includes('trial')||(BIZ.plan||'')=='Free Trial';
-  var plan=isTrial3?'Free':(BIZ.plan||'Free');
-  var planKey=plan==='Pro'?'Professional':plan;
+  var _rawPlan=(BIZ.plan||'').toLowerCase();
+  var plan='Premium'; // Stripe checkout is always upgrading to Premium
+  var planKey='Premium';
   var cycle=BIZ.billingCycle==='yearly'?'yearly':'monthly';
   var expiry=BIZ.subExpires||BIZ.trialEnd||'';
   var base=expiry&&expiry>=localDateStr()?expiry:localDateStr();
@@ -2590,8 +2590,8 @@ function mSubPayNow(){
   if(_isUSD()){ mSubPayNowStripe(); return; }
   const d      = _subDaysLeft();
   const isTrial2 = (BIZ.plan||'').toLowerCase().includes('trial')||(BIZ.plan||'')==='Free Trial';
-  const plan   = isTrial2 ? 'Free' : (BIZ.plan || 'Free');
-  const amt    = isTrial2 ? 4900 : _subAmtXAF();
+  const plan   = 'Premium'; // CamPay payment = upgrading to Premium
+  const amt    = _subAmtXAF() || 8900; // XAF: 8,900/mo for Premium
   const expiry = BIZ.subExpires || BIZ.trialEnd || '';
   const phone  = BIZ.subPhone || BIZ.whatsapp || BIZ.phone || '';
 
@@ -2645,10 +2645,10 @@ function mChangePlan(){
   const currentExpiry = BIZ.subExpires || BIZ.trialEnd || '';
   const isTrial       = currentPlan.toLowerCase().includes('trial');
 
+  var _isUsdCtx = _isUSD();
   const plans = [
-    { id:'Free',         name:'Free',         xaf:0,     desc:'Essential tools to get started',          emoji:'🌱' },
-    { id:'Premium',      name:'Premium',       xaf:8900,  desc:'Full power to run and grow your business',emoji:'🚀' },
-    
+    { id:'Free',    name:'Free',    price:0,       desc:'Essential tools to get started',           emoji:'\uD83C\uDF31' },
+    { id:'Premium', name:'Premium', price:_isUsdCtx?18:8900, desc:'Full power to run and grow your business', emoji:'\uD83D\uDE80' },
   ];
 
   const planCards = plans.map(function(p){
@@ -2666,7 +2666,7 @@ function mChangePlan(){
           +'<strong style="color:var(--ink)">'+p.name+'</strong>'
           +(isCurrent ? '<span style="font-size:10px;background:var(--a);color:#fff;padding:1px 7px;border-radius:8px;margin-left:4px">Current</span>' : '')
         +'</div>'
-        +'<strong style="font-family:var(--mono);color:var(--g)">'+p.xaf.toLocaleString()+' XAF/mo</strong>'
+        +'<strong style="font-family:var(--mono);color:var(--g)">'+(_isUsdCtx?('$'+p.price):p.price.toLocaleString()+' XAF')+'</strong>'
       +'</div>'
       +'<div style="font-size:11px;color:var(--text2)">'+p.desc+'</div>'
       +'</div>';
@@ -2700,33 +2700,25 @@ function mChangePlan(){
    <button class="btn btn-p" id="cp-confirm-btn" disabled onclick="(function(){
      var sel = document.getElementById('cp-selected').value;
      if(!sel){ toast('Please select a plan','error'); return; }
-     if(sel === '${_esc(currentPlan)}' || (sel==='Professional' && '${_esc(currentPlan)}'==='Pro')){
+     if(sel === '${_esc(currentPlan)}'){
        toast('You are already on this plan','info'); return;
      }
-     // Apply plan change immediately — no SA approval needed
-     var newAmt = {'Free':0,'Premium':8900}[sel] || 0;
-     if(_sb){
-       _sb.from('businesses').update({
-         plan: sel,
-         pending_plan: null,
-         pending_plan_from: null,
-       }).eq('id', SESSION.bizId).then(function(r){
-         if(r.error){ toast('Could not update plan: '+r.error.message,'error'); return; }
-         BIZ.plan = sel;
-         BIZ.pendingPlan = null;
-         BIZ.pendingPlanFrom = null;
-         addAudit('Plan changed by business — SA notified', SESSION.bizId+' — changed to '+sel+' (was: ${_esc(currentPlan)})');
-         closeModal();
-         toast('✅ Plan updated to '+sel+'! Active immediately.','success');
-         nav('settings');
-       });
+     closeModal();
+     if(sel==='Free'){
+       // Downgrade to Free -- no payment needed
+       if(_sb){
+         _sb.from('businesses').update({plan:'free'}).eq('id',SESSION.bizId).then(function(r){
+           if(r.error){ toast('Could not update: '+r.error.message,'error'); return; }
+           BIZ.plan='free';
+           toast('\u2705 Switched to Free plan.','success');
+           nav('settings');
+         });
+       } else { BIZ.plan='free'; toast('\u2705 Switched to Free plan.','success'); }
      } else {
-       BIZ.plan = sel;
-       addAudit('Plan changed (demo)', SESSION.bizId+' — '+sel);
-       closeModal();
-       toast('✅ Plan updated to '+sel+'!','success');
+       // Upgrade to Premium -- route to payment (Stripe for USD, CamPay for XAF)
+       setTimeout(function(){ mSubPayNow(); }, 200);
      }
-   })()">✅ Confirm Plan Change</button>`);
+   })()">&#x2705; Confirm</button>`);
 }
 
 function _subDetectCarrier(raw){
@@ -14107,8 +14099,10 @@ function doLogin(){
     window._stripeSuccess=null;
     if(_ss.bizId===SESSION.bizId){
       BIZ.subExpires=_ss.expiry;
+      BIZ.plan='Premium'; // Stripe payment = Premium plan
+      window._trialReadOnly=false; window._trialHardBlock=false;
       setTimeout(function(){
-        toast('\u2705 Payment confirmed! Subscription active until '+_ss.expiry,'success');
+        toast('\u2705 Premium activated! Your subscription is active until '+_ss.expiry,'success');
         _track('Trial Converted',{plan:BIZ.plan||'Starter',method:'stripe'});
         nav('dashboard');
       },800);
@@ -14867,7 +14861,7 @@ function showSignup(){
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Country *</label>'
           +'<select id="su-country" onchange="_suCountryChanged()" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box">'+countryOpts+'</select>'
-        +'</div>'
+        +'<div id="su-currency-hint" style="font-size:10px;color:#94a3b8;margin-top:3px;min-height:14px"></div></div>'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Language *</label>'
           +'<select id="su-lang" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'">'
@@ -14928,6 +14922,11 @@ function _suCountryChanged(){
   if(langEl){
     const frCountries = ['CM','TD','GA','CG','CF','FR'];
     langEl.value = frCountries.includes(code) ? 'fr' : 'en';
+  // Show currency hint based on country
+  var curCode = c.currency || 'XAF';
+  var curHint = document.getElementById('su-currency-hint');
+  var curMap = {USD:'$ USD \u2014 Payment via Stripe card',XAF:'Frs XAF \u2014 Payment via Mobile Money',NGN:'\u20a6 NGN \u2014 Payment via Mobile Money',GBP:'\u00a3 GBP \u2014 Payment via Stripe card',EUR:'\u20ac EUR \u2014 Payment via Stripe card'};
+  if(curHint) curHint.textContent = curMap[curCode] || (curCode + ' \u2014 Payment via Mobile Money');
   }
 }
 
@@ -16791,10 +16790,10 @@ ${(function(){
   var planColor = planColors[plan] || '#5b7fff';
 
   // ── How to Pay card — currency-aware (USD→Stripe, XAF/NGN→Mobile Money) ──
-  var _usdPk    = plan === 'Pro' ? 'Professional' : plan;
-  var _usdPrObj = SUB_PLAN_USD[_usdPk] || SUB_PLAN_USD.Free;
+  var _usdPrObj = SUB_PLAN_USD['Premium'] || {monthly:1800,yearly:18000};
   var _usdCyc   = BIZ.billingCycle === 'yearly' ? 'yearly' : 'monthly';
   var _usdAmt   = '$' + (_usdPrObj[_usdCyc] / 100).toFixed(2) + ' USD';
+  var _isUsdBiz = CUR.code === 'USD' || _isUSD();
   var _isUsdBiz = CUR.code === 'USD';
 
   var _htpStep = function(n, title, desc, color) {

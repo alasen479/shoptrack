@@ -15,15 +15,16 @@
 const https = require('https');
 
 // ── Plan prices in USD cents (Stripe uses smallest currency unit) ──
-// 8,900 XAF ≈ $14/mo | 89,000 XAF ≈ $144/yr
+// Premium: $18/mo (monthly) | $180/yr (annual, save 17%)
+// XAF equivalent: ~11,000 XAF/mo at market rate
 const PLAN_USD_CENTS = {
-  Premium:      { monthly: 1400,  yearly: 14400 },   // $14/mo  | $144/yr (8,900 XAF/mo)
+  Premium:      { monthly: 1800,  yearly: 18000 },   // $18/mo | $180/yr (save 17%)
   Free:         { monthly: 0,     yearly: 0     },   // free plan
-  // Legacy aliases
-  Starter:      { monthly: 1400,  yearly: 14400 },
-  Professional: { monthly: 1400,  yearly: 14400 },
-  Pro:          { monthly: 1400,  yearly: 14400 },
-  Enterprise:   { monthly: 1400,  yearly: 14400 },
+  // Legacy aliases — all map to Premium pricing
+  Starter:      { monthly: 1800,  yearly: 18000 },
+  Professional: { monthly: 1800,  yearly: 18000 },
+  Pro:          { monthly: 1800,  yearly: 18000 },
+  Enterprise:   { monthly: 1800,  yearly: 18000 },
 };
 
 const PLAN_LABELS = {
@@ -95,7 +96,7 @@ exports.handler = async (event) => {
   }
 
   const cycle     = billingCycle === 'yearly' ? 'yearly' : 'monthly';
-  const planKey   = plan === 'Pro' || plan === 'Starter' || plan === 'Professional' || plan === 'Enterprise' ? 'Premium' : plan;
+  const planKey   = (plan === 'Free' || plan === 'free') ? 'Free' : 'Premium'; // all paid plans → Premium
   const prices    = PLAN_USD_CENTS[planKey] || PLAN_USD_CENTS.Starter;
   const amtCents  = prices[cycle];
   const label     = PLAN_LABELS[planKey] || 'ShopTrack';
