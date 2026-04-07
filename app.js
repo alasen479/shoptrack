@@ -1408,26 +1408,185 @@ let _navUserTriggered = false; // true only on explicit user clicks, not bootApp
 const BIZ_ONLY_PAGES   = new Set(['dashboard','inventory','sales','rentals','purchases','customers','vendors','expenses','accounting','reports','catalog','ai-studio','auditlog','settings','appointments','services']);
 
 // Pages that require a plan to have been chosen before entry
+// ═══════════════════════════════════════════════════════════════
+// PLAN ENFORCEMENT ENGINE
+// Plans: 'free', 'premium', 'trial' (trial = full premium for 30d)
+// After trial expires → auto-downgrade to 'free' with limits applied
+// ═══════════════════════════════════════════════════════════════
+
+const FREE_LIMITS = {
+  inv:     30,   // max inventory items
+  cust:    30,   // max customers
+  vendors: 10,   // max vendors
+  invoices:30,   // max invoices/month (sales)
+  staff:   1,    // max staff users
+};
+
+// Canonical plan resolution — always call this, never read BIZ.plan raw
+function _activePlan(){
+  if(SESSION.isSuperAdmin) return 'premium';
+  if(SESSION.bizId==='BIZ-001'||SESSION.bizId==='BIZ-107') return 'premium';
+  var raw = (BIZ.plan||'').toLowerCase().trim();
+
+  // Trial: check if still active
+  var trialEnd = BIZ.trialEnd || BIZ.subExpires;
+  var isTrial = raw.includes('trial') || raw==='trial';
+  if(isTrial && trialEnd){
+    var today = new Date(); today.setHours(0,0,0,0);
+    var expiry = new Date(trialEnd+'T00:00:00');
+    if(today <= expiry) return 'trial';
+    // Trial expired → treat as free
+    return 'free';
+  }
+  if(isTrial && !trialEnd) return 'trial'; // no end date = active trial
+
+  if(raw==='premium'||raw==='pro'||raw==='enterprise'||raw==='professional') return 'premium';
+  if(raw==='free'||raw==='starter'||raw==='free trial') return 'free';
+  if(raw==='active') return 'premium'; // legacy
+  return 'free'; // unknown → free
+}
+
+function _isPremium(){  return _activePlan()==='premium'; }
+function _isTrialActive(){ return _activePlan()==='trial'; }
+function _isFreePlan(){  return _activePlan()==='free'; }
+
+// Days left in trial (negative = expired)
+function _trialDaysLeft(){
+  var end = BIZ.trialEnd || BIZ.subExpires;
+  if(!end) return null;
+  var today = new Date(); today.setHours(0,0,0,0);
+  var expiry = new Date(end+'T00:00:00');
+  return Math.ceil((expiry - today) / (1000*60*60*24));
+}
+
+// Check if an action is blocked on free plan and show paywall if so
+function _freePlanBlocked(actionLabel, checkType){
+  if(SESSION.isSuperAdmin) return false;
+  if(SESSION.bizId==='BIZ-001'||SESSION.bizId==='BIZ-107') return false;
+  var plan = _activePlan();
+  if(plan==='premium'||plan==='trial') return false; // trial has full access
+
+  // Free plan limits
+  var blocked = false;
+  var reason = '';
+  if(checkType==='inv' && D.inv.length >= FREE_LIMITS.inv){
+    blocked = true;
+    reason = 'Free plan is limited to '+FREE_LIMITS.inv+' products. Upgrade to Premium for unlimited inventory.';
+  } else if(checkType==='cust' && D.cust.length >= FREE_LIMITS.cust){
+    blocked = true;
+    reason = 'Free plan is limited to '+FREE_LIMITS.cust+' customers. Upgrade to Premium for unlimited customers.';
+  } else if(checkType==='vendor' && D.vendors.length >= FREE_LIMITS.vendors){
+    blocked = true;
+    reason = 'Free plan is limited to '+FREE_LIMITS.vendors+' vendors. Upgrade to Premium for unlimited vendors.';
+  }
+  if(blocked){
+    modal('🔒 Upgrade Required',
+      '<div style="text-align:center;padding:8px 0 16px">'
+      +'<div style="font-size:36px;margin-bottom:10px">🚀</div>'
+      +'<div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:8px">Upgrade to Premium</div>'
+      +'<div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6">'+reason+'</div>'
+      +'<div style="background:var(--bg3);border-radius:var(--r10);padding:14px;margin-bottom:20px;text-align:left">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Premium includes</div>'
+      +'<div style="font-size:12px;color:var(--ink);display:flex;flex-direction:column;gap:5px">'
+      +'<span>✅ Unlimited products, customers, vendors</span>'
+      +'<span>✅ All reports & analytics</span>'
+      +'<span>✅ WhatsApp notifications</span>'
+      +'<span>✅ Custom branding & no watermark</span>'
+      +'<span>✅ AI Studio assistant</span>'
+      +'</div></div></div>',
+      '<button class="btn btn-s" onclick="closeModal()">Maybe Later</button>'
+      +'<button class="btn btn-p" onclick="closeModal();_showSubscriptionSettings()">🚀 Upgrade — 8,900 XAF/mo</button>'
+    );
+    return true;
+  }
+  return false;
+}
+
+// Combined check: trial hard block OR free plan limit
+function _planWriteBlocked(actionLabel, checkType){
+  if(SESSION.isSuperAdmin) return false;
+  if(SESSION.bizId==='BIZ-001'||SESSION.bizId==='BIZ-107') return false;
+  // Legacy trial hard block
+  if(window._trialHardBlock){
+    _showTrialPaywall(-8, true);
+    toast((actionLabel||'This action')+' is paused — please upgrade to continue','error');
+    return true;
+  }
+  if(window._trialReadOnly){
+    _showTrialPaywall(-1, false);
+    return true;
+  }
+  // Free plan limit check
+  if(checkType) return _freePlanBlocked(actionLabel, checkType);
+  return false;
+}
+
+// Dashboard trial countdown widget (injected at top of dashboard)
+function _renderTrialCountdown(){
+  var existing = document.getElementById('trial-countdown-widget');
+  if(existing) existing.remove();
+
+  var plan = _activePlan();
+  var daysLeft = _trialDaysLeft();
+  if(plan !== 'trial' || daysLeft === null) return;
+
+  var widget = document.createElement('div');
+  widget.id = 'trial-countdown-widget';
+
+  var pct = Math.max(0, Math.round((daysLeft / 30) * 100));
+  var urgency = daysLeft <= 5 ? 'var(--r)' : daysLeft <= 10 ? 'var(--y)' : 'var(--a)';
+  var urgencyBg = daysLeft <= 5 ? 'rgba(220,38,38,.07)' : daysLeft <= 10 ? 'rgba(245,158,11,.07)' : 'rgba(99,102,241,.07)';
+  var urgencyBorder = daysLeft <= 5 ? 'rgba(220,38,38,.2)' : daysLeft <= 10 ? 'rgba(245,158,11,.2)' : 'rgba(99,102,241,.2)';
+
+  widget.style.cssText = 'background:'+urgencyBg+';border:1px solid '+urgencyBorder+';border-radius:var(--r10);padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap';
+  widget.innerHTML =
+    '<div style="font-size:22px">🎁</div>'
+    +'<div style="flex:1;min-width:180px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px">'
+        +(daysLeft > 0
+          ? 'Free Trial — <span style="color:'+urgency+';font-family:var(--mono)">' + daysLeft + ' day' + (daysLeft!==1?'s':'') + ' remaining</span>'
+          : 'Free Trial — <span style="color:var(--r)">Expired</span>'
+        )
+      +'</div>'
+      +'<div style="background:var(--bg3);border-radius:4px;height:5px;overflow:hidden;max-width:280px">'
+        +'<div style="height:100%;width:'+pct+'%;background:'+urgency+';border-radius:4px;transition:width .4s"></div>'
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--text2);margin-top:3px">Full Premium access until '+(BIZ.trialEnd||BIZ.subExpires||'')+'</div>'
+    +'</div>'
+    +'<button class="btn btn-p btn-sm" onclick="_showSubscriptionSettings()" style="white-space:nowrap;flex-shrink:0">🚀 Upgrade — 8,900 Frs/mo</button>'
+    +'<button onclick="this.parentNode.remove()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:0 4px;line-height:1;flex-shrink:0">×</button>';
+
+  // Inject after setup score bar or at top of page content
+  var page = document.getElementById('page');
+  if(!page) return;
+  var setupBar = page.querySelector('#setup-score-bar');
+  if(setupBar) setupBar.after(widget);
+  else page.insertBefore(widget, page.firstChild);
+}
+
+function _showSubscriptionSettings(){
+  nav('settings');
+  setTimeout(function(){
+    var subTab = document.querySelector('#settingsTabs .stab[onclick*="tab-subscription"]');
+    if(subTab) switchSettingsTab(subTab,'tab-subscription');
+  },200);
+}
+
 const PLAN_GATE_PAGES = new Set([
   'dashboard','inventory','sales','rentals','purchases','customers',
   'vendors','expenses','accounting','reports','catalog','ai-studio',
   'auditlog','appointments','services'
 ]);
 
-// Returns true when the business has an active paid/trial plan set
+// Returns true when the business has any plan (free, trial, or premium)
 function _hasPlan(){
   if(SESSION.isSuperAdmin) return true;
-  // Demo businesses always pass
   if(SESSION.bizId==='BIZ-001'||SESSION.bizId==='BIZ-107') return true;
-  // If BIZ data is still loading (name empty), don't gate — wait for DB
-  if(!BIZ.name && SESSION.bizId) return true;
-  const p = (BIZ.plan||'').toLowerCase().trim();
-  // Empty plan = SA provisioned but hasn't set plan yet → allow access
-  if(!p) return true;
-  // Accept all known plan names including trial variants
-  return p==='starter'||p==='pro'||p==='professional'||p==='enterprise'
-      || p==='free trial'||p==='trial (30 days)'||p.includes('trial')
-      || p==='active'; // legacy status-as-plan
+  if(!BIZ.name && SESSION.bizId) return true; // still loading
+  var p=(BIZ.plan||'').toLowerCase().trim();
+  if(!p) return true; // unprovisioned, don't gate
+  // All plans grant access — free plan has feature limits but not page gates
+  return p!=='suspended'&&p!=='cancelled'&&p!=='blocked';
 }
 
 // Public nav — called from UI elements (sidebar, buttons)
@@ -2110,21 +2269,24 @@ function _subExpiryBanner(){
 // ── mSubPayNow — business owner self-service subscription payment ─
 // ── Plan selection modal (shown to new users before they can enter data) ─────
 function _showPlanSelectionModal(){
+  var _curPlan=_activePlan();
   const plans = [
     {
-      id:'Starter', emoji:'\ud83c\udf31', color:'#2dd4a0', colorRgb:'45,212,160',
+      id:'Free', emoji:'\uD83C\uDF31', color:'#2dd4a0', colorRgb:'45,212,160',
       xaf:0, yearly:0, badge:null,
-      desc:'Essential tools for small businesses',
-      features:['Inventory management','Sales & receipts','Basic expense tracking',
-                 '200 customers · 100 products','1 business location','Email support']
+      desc:'Essential tools to get started',
+      features:['Dashboard & KPI overview','Up to '+FREE_LIMITS.inv+' products','Up to '+FREE_LIMITS.cust+' customers',
+                 'Up to '+FREE_LIMITS.vendors+' vendors','Unlimited sales recording','Unlimited expense tracking',
+                 'Invoices & receipts (with watermark)','Basic reports']
     },
     {
-      id:'Pro', emoji:'\ud83d\ude80', color:'#5b7fff', colorRgb:'91,127,255',
-      xaf:8900, yearly:89000, badge:'Most Popular',
-      desc:'Full suite for growing businesses',
-      features:['Everything in Starter','Unlimited customers & products',
-                 'Up to 5 locations','AI Studio assistant',
-                 'Rentals & online bookings','Priority 24 h support']
+      id:'Premium', emoji:'\uD83D\uDE80', color:'#5b7fff', colorRgb:'91,127,255',
+      xaf:8900, yearly:89000, badge:_curPlan==='trial'?null:'Most Popular',
+      desc:'Full power to run and grow your business',
+      features:['Unlimited inventory & customers','Unlimited vendors & purchases',
+                 'All reports — PDF & CSV export','WhatsApp automation','AI Studio assistant',
+                 'Custom branding — no watermark','Appointments & rental management',
+                 'Up to 5 users','Priority support']
     },
   ];
 
@@ -2166,20 +2328,20 @@ function _showPlanSelectionModal(){
 
   modal('\ud83d\ude80 Choose Your Plan',
     '<div style="text-align:center;margin-bottom:18px">'
-      +'<div style="font-size:15px;font-weight:700;color:var(--ink)">Start your 30-day free trial</div>'
-      +'<div style="font-size:12px;color:var(--text2);margin-top:4px">No payment needed now &mdash; billed after your trial ends. Cancel anytime.</div>'
+      +'<div style="font-size:15px;font-weight:700;color:var(--ink)">Choose Your Plan</div>'
+      +'<div style="font-size:12px;color:var(--text2);margin-top:4px">Free plan is always available. Premium at 8,900 Frs/month &mdash; cancel anytime.</div>'
     +'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px">'+cards+'</div>'
     +enterprise
     +'<input type="hidden" id="pg-selected-plan" value=""/>',
     '<button class="btn btn-s" onclick="closeModal()">Decide Later</button>'
-    +'<button class="btn btn-p" id="pg-confirm-btn" disabled onclick="_pgConfirmPlan()">\u25b6 Start Free Trial</button>'
+    +'<button class="btn btn-p" id="pg-confirm-btn" disabled onclick="_pgConfirmPlan()">\u25b6 Confirm Plan</button>'
   );
 }
 
 function _pgSelectPlan(planId){
-  var colors = {Free:'45,212,160', Premium:'91,127,255'};
-  var borders = {Free:'#2dd4a0', Premium:'#5b7fff'};
+  var colors = {Free:'45,212,160', Premium:'91,127,255', Starter:'45,212,160', Pro:'91,127,255'};
+  var borders = {Free:'#2dd4a0', Premium:'#5b7fff', Starter:'#2dd4a0', Pro:'#5b7fff'};
   document.querySelectorAll('[id^="pgc-"]').forEach(function(c){
     c.style.border='2px solid var(--border2)';
     c.style.background='var(--bg3)';
@@ -2198,6 +2360,9 @@ function _pgSelectPlan(planId){
 async function _pgConfirmPlan(){
   var planId = (document.getElementById('pg-selected-plan')||{}).value||'';
   if(!planId){ toast('Please select a plan first','error'); return; }
+  // Normalize plan IDs
+  if(planId==='Starter'||planId==='starter') planId='Free';
+  if(planId==='Pro'||planId==='pro') planId='Premium';
   var btn = document.getElementById('pg-confirm-btn');
   if(btn){ btn.textContent='Saving\u2026'; btn.disabled=true; }
   try{
@@ -2534,6 +2699,8 @@ function _subPaymentConfirmed(newExpiry, amtXAF){
 
 function pgDash(){
   const k=refreshLiveKpis();
+  // Render trial countdown after next tick so DOM is ready
+  setTimeout(_renderTrialCountdown, 100);
   const DC=_getDashConfig();
   return `
 <div class="ph">
@@ -3545,7 +3712,7 @@ function _previewNewItemPhotos(input){
 }
 
 function _saveNewItem(){
-  if(_trialWriteBlocked('Adding a product')) return;
+  if(_planWriteBlocked('Adding a product','inv')) return;
   if(D.inv.length===0) _track('First Product Added');
   var name = document.getElementById('ai-name').value.trim();
   if(!name){ toast('Product name is required','error'); return; }
@@ -6685,7 +6852,7 @@ function mAddCustomer(_returnSelectId){
   <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="ac-notes" placeholder="Any notes about this customer…" style="min-height:55px"></textarea></div>`,
   `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
    <button class="btn btn-p" onclick="
-    if(_trialWriteBlocked('Adding a customer')) return;
+    if(_planWriteBlocked('Adding a customer','cust')) return;
     if(!SESSION.isSuperAdmin && _getPlanTier()==='starter' && D.cust.length>=200){ _showUpsell('customers'); closeModal(); return; }
     var name=document.getElementById('ac-name').value.trim();
     if(!name){toast('Customer name is required','error');return;}
@@ -7390,7 +7557,7 @@ async function mAddVendor(_returnSelectId){
   <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="av-notes" placeholder="Credit terms, minimum orders, lead time…" style="min-height:55px"></textarea></div>`,
   `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
    <button class="btn btn-p" onclick="
-    if(_trialWriteBlocked('Adding a vendor')) return;
+    if(_planWriteBlocked('Adding a vendor','vendor')) return;
     var name=document.getElementById('av-name').value.trim();
     if(!name){toast('Vendor name is required','error');return;}
     var nid='V-'+String((D.vendors.reduce(function(m,v){var n=parseInt((v.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0))+1).padStart(3,'0');
@@ -15013,6 +15180,7 @@ async function _confirmVerifyToken(){
         ['sb-user-name','sb-user-role','sb-user-avatar'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent='';});
         if(typeof updateSidebarForRole==='function') updateSidebarForRole();
         setTimeout(_checkOnboarding, 1200);
+        setTimeout(_checkPlanExpiry, 1500);
 
       } catch(autoLoginErr){
         console.error('[auto-login] error:', autoLoginErr);
@@ -20715,7 +20883,14 @@ function _checkPlanExpiry(){
   if(SESSION.isSuperAdmin) return;
   if(!SESSION.bizId) return;
   if(SESSION.bizId==='BIZ-001'||SESSION.bizId==='BIZ-107') return;
-  var expiryStr = BIZ.subExpires
+  // Auto-downgrade expired trials to free plan
+  var plan = _activePlan();
+  if(plan==='free' && (BIZ.plan||'').toLowerCase().includes('trial')){
+    // Trial expired — quietly update local plan to 'free'
+    BIZ.plan = 'free';
+    if(_sb&&SESSION.bizId) _sb.from('businesses').update({plan:'free'}).eq('id',SESSION.bizId).then(function(){});
+  }
+  var expiryStr = BIZ.trialEnd || BIZ.subExpires
     || ((D.adminBiz.find(function(b){ return b.id===SESSION.bizId; })||{}).trialEnd)
     || null;
   if(!expiryStr) return;
@@ -20861,15 +21036,8 @@ function _pwProceed(){
 
 // ── Write-guard — call at top of any save function ─────────────
 // Returns true if the write is blocked (caller should return immediately)
-function _trialWriteBlocked(actionLabel){
-  if(SESSION.isSuperAdmin) return false;
-  if(SESSION.bizId==='BIZ-001'||SESSION.bizId==='BIZ-107') return false;
-  if(window._trialHardBlock || window._trialReadOnly){
-    _showTrialPaywall(-8, !!window._trialHardBlock);
-    toast((actionLabel||'This action')+' is paused \u2014 please upgrade to continue recording','error');
-    return true;
-  }
-  return false;
+function _trialWriteBlocked(actionLabel, checkType){
+  return _planWriteBlocked(actionLabel, checkType);
 }
 
 // ── Record vendor payment (AP) ───────────────────────────────────────────
