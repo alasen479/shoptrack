@@ -5589,14 +5589,7 @@ function deletePurchase(id){
     var btn=document.getElementById('confirm-del-po-btn');
     if(btn) btn.onclick=function(){
       var _p=D.purchases.find(function(x){return x.id===mid;}); if(!_p) return;
-      // ── Reverse vendor AP if PO was not yet paid ──────────────
-      if(_p.st!=='Paid'&&_p.st!=='Received'){
-        var _v=D.vendors.find(function(v){return v.name===_p.vendor||v.id===_p.vendorId;});
-        if(_v&&_v.bal>0){
-          _v.bal=Math.max(0,(_v.bal||0)-(_p.total||0));
-          _dbSaveVendor(_v);
-        }
-      }
+      // Remove PO then let _reconcileVendorTotals recompute v.bal cleanly
       D.purchases=D.purchases.filter(function(x){return x.id!==mid;});
       _dbDelPurchase(mid); refreshLiveKpis();
       addAudit('PO deleted',mid+' — '+_p.vendor+' — '+fmt(_p.total));
@@ -6413,7 +6406,7 @@ function savePO(){
   });
   var invId=(poLines.find(function(r){return r.invId&&r.invId!=='__custom__';})||{invId:''}).invId;
   var qty=totalQty;
-  if(vendorObj){vendorObj.orders=(vendorObj.orders||0)+1;vendorObj.total=(vendorObj.total||0)+total;if(poSt!=='Paid')vendorObj.bal=(vendorObj.bal||0)+total;}
+  if(vendorObj){vendorObj.orders=(vendorObj.orders||0)+1;vendorObj.total=(vendorObj.total||0)+total;} // v.bal recomputed by _reconcileVendorTotals in refreshLiveKpis
   D.purchases.unshift({id:newId,vendor,vendorId,items,qty,dt:document.getElementById('po-dt').value,delivery:document.getElementById('po-delivery').value,sub,freight,duties,taxes,other,total,invId,lines:poLines,st:poSt,method:document.getElementById('po-method').value,notes:document.getElementById('po-notes').value,docs:[]});
   _dbSavePurchase(D.purchases[0]);
   refreshLiveKpis();
@@ -7125,7 +7118,7 @@ function pgVendors(){const _ui=_L();
   const totalAP   = D.vendors.reduce((a,v)=>a+(v.bal||0), 0);
   const withBal   = D.vendors.filter(v=>v.bal>0).length;
   const ytdYear   = new Date().getFullYear().toString();
-  const ytdSpend  = D.purchases.filter(p=>p.dt&&p.dt.slice(0,4)===ytdYear).reduce((a,p)=>a+(p.total||0),0);
+  const ytdSpend  = D.purchases.filter(p=>p.dt&&p.dt.slice(0,4)===ytdYear&&(p.st==='Paid'||p.st==='Received')).reduce((a,p)=>a+(p.total||0),0);
   const topVendor = D.vendors.filter(v=>(v.total||0)>0).sort((a,b)=>(b.total||0)-(a.total||0))[0];
 
   const rows = D.vendors.map(function(v){
@@ -7759,7 +7752,10 @@ function pgAccounting(){const _ui=_L();
     D.rentals.filter(r=>inRange(r.start,rng)&&(r.st==='Returned'||r.st==='Checked Out'||r.st==='Overdue')).forEach(r=>lines.push({dt:r.start,type:'Rental',cls:'bx-c',ref:r.id,desc:r.cust+' — '+r.item,dr:null,cr:r.fee}));
     (D.appointments||[]).filter(a=>a.st==='Completed'&&(a.totalAmt||0)>0&&inRange(a.date,rng)).forEach(a=>lines.push({dt:a.date,type:'Service',cls:'bx-p',ref:a.id,desc:(a.custName||'Client')+' — '+(a.serviceName||'Service'),dr:null,cr:a.totalAmt}));
     D.exp.filter(e=>inRange(e.dt,rng)&&e.cat!=='Vendor Payment').forEach(e=>lines.push({dt:e.dt,type:'Expense',cls:'bx-r',ref:e.id,desc:e.cat+' — '+(e.payee||''),dr:e.amt,cr:null}));
-    D.purchases.filter(p=>p.st==='Paid'&&inRange(p.dt,rng)).forEach(p=>lines.push({dt:p.dt,type:'Purchase',cls:'bx-y',ref:p.id,desc:p.vendor+' — '+p.items,dr:p.total,cr:null}));
+    // Paid/Received purchases appear as cash outflows in the ledger
+    D.purchases.filter(p=>(p.st==='Paid'||p.st==='Received')&&inRange(p.dt,rng)).forEach(p=>lines.push({dt:p.dt,type:'Purchase',cls:'bx-y',ref:p.id,desc:p.vendor+' — '+p.items,dr:p.total,cr:null}));
+    // Pending/Partial POs appear as AP liabilities (credit — money owed but not yet paid)
+    D.purchases.filter(p=>(p.st==='Pending'||p.st==='Partial'||p.st==='Unpaid')&&inRange(p.dt,rng)).forEach(p=>lines.push({dt:p.dt,type:'PO (AP)',cls:'bx-o',ref:p.id,desc:'[AP] '+p.vendor+' — '+p.items,dr:null,cr:null,ap:p.total}));
     lines.sort((a,b)=>b.dt.localeCompare(a.dt));
     if(!lines.length) return '<div style="color:var(--text2);font-size:13px;padding:24px;text-align:center">No transactions in '+rng.label+'</div>';
     const totDr=lines.reduce((a,l)=>a+(l.dr||0),0);
@@ -7767,9 +7763,10 @@ function pgAccounting(){const _ui=_L();
     return '<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Description</th><th>Debit (Out)</th><th>Credit (In)</th></tr></thead>'
       +'<tbody id="ledger-body">'
       +lines.map(function(l){
+        var _apBadge = l.ap!=null ? ' <span style="font-size:10px;background:var(--y-dim);color:var(--y);padding:1px 5px;border-radius:4px">AP " + fmt(l.ap) + "</span>' : '';
         return '<tr data-type="'+l.type.toLowerCase()+'"><td>'+l.dt+'</td><td>'+bx(l.type,l.cls)+'</td><td>'+mono(l.ref,'a')+'</td>'
-          +'<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(l.desc)+'</td>'
-          +'<td>'+(l.dr!=null?mono(fmt(l.dr),'r'):'<span style="color:var(--text2)">—</span>')+'</td>'
+          +'<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(l.desc)+_apBadge+'</td>'
+          +'<td>'+(l.dr!=null?mono(fmt(l.dr),'r'):l.ap!=null?'<span style="color:var(--y);font-size:11px">pending</span>':'<span style="color:var(--text2)">—</span>')+'</td>'
           +'<td>'+(l.cr!=null?mono(fmt(l.cr),'g'):'<span style="color:var(--text2)">—</span>')+'</td></tr>';
       }).join('')
       +'<tr style="border-top:2px solid var(--border);font-weight:700"><td colspan="4" style="padding:8px 0;color:var(--text2);font-size:11px">'+lines.length+' entries — '+rng.label+'</td>'
@@ -8184,15 +8181,17 @@ function rptProfit(){
 }
 
 function rptRentals(){
-  const rows=D.rentals.map(r=>`<tr>
+  const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
+  const _rents=D.rentals.filter(r=>inRange(r.start,_rng));
+  const rows=_rents.map(r=>`<tr>
     <td>${mono(r.id)}</td><td><strong style="color:var(--ink)">${r.cust}</strong></td>
     <td style="font-size:12px">${r.item}</td>
     <td>${r.start}</td><td>${r.due}</td>
     <td>${mono(fmt(r.fee),'g')}</td><td>${mono(fmt(r.dep))}</td>
     <td>${badge(r.st)}</td>
   </tr>`).join('');
-  const totalFees=D.rentals.reduce((a,r)=>a+r.fee,0);
-  const totalDep=D.rentals.reduce((a,r)=>a+r.dep,0);
+  const totalFees=_rents.reduce((a,r)=>a+r.fee,0);
+  const totalDep=_rents.reduce((a,r)=>a+r.dep,0);
   modal('📊 Rentals Report',`
   <div class="kpi-grid" style="margin-bottom:14px">
     <div class="kpi g"><div class="kpi-lbl">Total Fees</div><div class="kpi-val g">${fmtKpi(totalFees)}</div></div>
@@ -8380,7 +8379,7 @@ function rptCash(){
   const paidPurch = D.purchases.filter(p=>p.st==='Paid'&&inRange(p.dt,range)).reduce((a,p)=>a+(p.total||0),0);
   const salePaid  = D.sales.filter(s=>inRange(s.dt,range)).reduce((a,s)=>a+(s.paid||0),0);
   const rentPaid  = D.rentals.filter(r=>(r.st==='Returned'||r.st==='Checked Out'||r.st==='Overdue')&&inRange(r.start,range)).reduce((a,r)=>a+(r.paid||r.fee||0),0);
-  const payroll   = D.exp.filter(e=>inRange(e.dt,range)&&e.cat==='Salaries').reduce((a,e)=>a+e.amt,0);
+  const payroll   = D.exp.filter(e=>inRange(e.dt,range)&&(e.cat==='Salaries'||e.cat==='Salaries & Wages'||e.cat==='Payroll')).reduce((a,e)=>a+e.amt,0);
   const otherExp  = D.exp.filter(e=>inRange(e.dt,range)&&e.cat!=='Salaries'&&e.cat!=='Vendor Payment').reduce((a,e)=>a+e.amt,0);
   // Deposits held are a liability, not revenue — show separately
   const depHeld   = D.rentals.filter(r=>inRange(r.start,range)&&(r.st==='Checked Out'||r.st==='Reserved'||r.st==='Overdue')).reduce((a,r)=>a+(r.dep||0),0);
@@ -8449,11 +8448,13 @@ function rptMonthly(){
 }
 
 function rptExpBreak(){
+  const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
+  const _expPeriod=D.exp.filter(e=>inRange(e.dt,_rng));
   const cats={};
-  D.exp.forEach(e=>{cats[e.cat]=(cats[e.cat]||0)+e.amt;});
+  _expPeriod.forEach(e=>{cats[e.cat]=(cats[e.cat]||0)+e.amt;});
   const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
-  const total=D.exp.reduce((a,e)=>a+e.amt,0);
-  modal('📊 Expense Breakdown',`
+  const total=_expPeriod.reduce((a,e)=>a+e.amt,0);
+  modal('📊 Expense Breakdown — '+(PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label,`
   <div class="kpi-grid" style="margin-bottom:14px">
     <div class="kpi r"><div class="kpi-lbl">Total Expenses</div><div class="kpi-val r">${fmtKpi(total)}</div></div>
     <div class="kpi"><div class="kpi-lbl">Categories</div><div class="kpi-val">${Object.keys(cats).length}</div></div>
@@ -8466,7 +8467,17 @@ function rptExpBreak(){
 
 function rptAR(){
   const today = localDateStr();
-  const ar    = D.cust.filter(c=>c.bal>0).sort((a,b)=>b.bal-a.bal);
+  // Compute AR live from sales (never trust stale c.bal)
+  const _arLive={};
+  D.sales.forEach(function(s){
+    const cid=s.custId||s.cust; if(!cid) return;
+    _arLive[cid]=(_arLive[cid]||0)+((s.total||s.amt||0)-(s.paid||0));
+  });
+  // Build debtor list with live balances
+  const ar = D.cust.map(function(c){
+    const liveBal=(_arLive[c.id]||_arLive[c.name]||0);
+    return {...c, bal:liveBal};
+  }).filter(c=>c.bal>0.01).sort((a,b)=>b.bal-a.bal);
   const total = ar.reduce((a,c)=>a+c.bal,0);
 
   // Age each debtor by their oldest unpaid sale
@@ -8511,7 +8522,18 @@ function rptAR(){
 
 function rptAP(){
   const today = localDateStr();
-  const ap    = D.vendors.filter(v=>v.bal>0).sort((a,b)=>b.bal-a.bal);
+  // Compute AP live from unpaid purchases (never trust stale v.bal)
+  const _apLive={};
+  D.purchases.forEach(function(p){
+    if(p.st==='Paid'||p.st==='Received') return;
+    const vid=p.vendorId||p.vendor; if(!vid) return;
+    _apLive[vid]=(_apLive[vid]||0)+(p.total||0);
+  });
+  // Build creditor list with live balances
+  const ap = D.vendors.map(function(v){
+    const liveBal=(_apLive[v.id]||_apLive[v.name]||0);
+    return {...v, bal:liveBal};
+  }).filter(v=>v.bal>0.01).sort((a,b)=>b.bal-a.bal);
   const total = ap.reduce((a,v)=>a+v.bal,0);
 
   function apAgeDays(v){
@@ -8613,11 +8635,27 @@ function _renderCustStmt(custId){
 }
 
 function rptVendorPurch(){
-  modal('📊 Vendor Purchases Report',`
+  const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
+  const _pos=D.purchases.filter(p=>inRange(p.dt,_rng)).sort((a,b)=>b.dt.localeCompare(a.dt));
+  const _total=_pos.reduce((a,p)=>a+(p.total||0),0);
+  const _paid=_pos.filter(p=>p.st==='Paid'||p.st==='Received').reduce((a,p)=>a+(p.total||0),0);
+  const _pending=_pos.filter(p=>p.st!=='Paid'&&p.st!=='Received').reduce((a,p)=>a+(p.total||0),0);
+  // Vendor summary
+  const _vmap={};
+  _pos.forEach(p=>{_vmap[p.vendor]=(_vmap[p.vendor]||0)+(p.total||0);});
+  const _vsorted=Object.entries(_vmap).sort((a,b)=>b[1]-a[1]);
+  modal('📊 Vendor Purchases — '+_rng.label,`
+  <div class="kpi-grid" style="margin-bottom:12px">
+    <div class="kpi b"><div class="kpi-lbl">Total Ordered</div><div class="kpi-val b">${fmtKpi(_total)}</div></div>
+    <div class="kpi g"><div class="kpi-lbl">Paid / Received</div><div class="kpi-val g">${fmtKpi(_paid)}</div></div>
+    <div class="kpi y"><div class="kpi-lbl">Outstanding (AP)</div><div class="kpi-val y">${fmtKpi(_pending)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">PO Count</div><div class="kpi-val">${_pos.length}</div></div>
+  </div>
+  ${_vsorted.length>1?`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Spend by Vendor</div>${_vsorted.map(([v,amt])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px"><span>${_esc(v)}</span><span style="font-family:var(--mono);color:var(--b)">${fmt(amt)}</span></div>`).join('')}</div>`:''}
   <div class="tbl-wrap"><table><thead><tr><th>PO</th><th>Date</th><th>Vendor</th><th>Items</th><th>Subtotal</th><th>Freight</th><th>Total</th><th>Status</th></tr></thead><tbody>
-  ${D.purchases.map(p=>`<tr><td>${mono(p.id)}</td><td>${p.dt}</td><td style="font-size:12px;color:var(--ink)">${p.vendor}</td><td style="font-size:11px">${p.items}</td><td>${mono(fmt(p.sub))}</td><td>${mono(fmt(p.freight))}</td><td>${mono(fmt(p.total),'b')}</td><td>${badge(p.st)}</td></tr>`).join('')}
+  ${_pos.map(p=>`<tr><td>${mono(p.id)}</td><td>${p.dt}</td><td style="font-size:12px;color:var(--ink)">${p.vendor}</td><td style="font-size:11px">${p.items}</td><td>${mono(fmt(p.sub||0))}</td><td>${mono(fmt(p.freight||0))}</td><td>${mono(fmt(p.total),'b')}</td><td>${badge(p.st)}</td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptVendorPurchPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptVendorPurchPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Vendor Purchases')">⬇ CSV</button>`,'lg');
 }
 
 function rptPayHist(){
@@ -8643,17 +8681,25 @@ function rptPayHist(){
 }
 
 function rptExpFull(){
-  modal('📊 Full Expense Report',`
+  const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
+  const _expP=D.exp.filter(e=>inRange(e.dt,_rng)).sort((a,b)=>b.dt.localeCompare(a.dt));
+  const _expTotal=_expP.reduce((a,e)=>a+e.amt,0);
+  modal('📊 Full Expense Report — '+_rng.label,`
+  <div class="kpi-grid" style="margin-bottom:12px">
+    <div class="kpi r"><div class="kpi-lbl">Total Expenses</div><div class="kpi-val r">${fmtKpi(_expTotal)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Transactions</div><div class="kpi-val">${_expP.length}</div></div>
+  </div>
   <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Date</th><th>Category</th><th>Payee</th><th>Amount</th><th>Type</th><th>Method</th></tr></thead><tbody>
-  ${D.exp.map(e=>`<tr><td>${mono(e.id)}</td><td>${e.dt}</td><td>${e.cat}</td><td style="font-size:12px">${e.payee}</td><td>${mono(fmt(e.amt),'r')}</td><td>${bx(e.type,'bx-n')}</td><td style="font-size:11px;color:var(--text2)">${e.method}</td></tr>`).join('')}
-  <tr style="border-top:2px solid var(--border2)"><td colspan="4"><strong>Total Expenses</strong></td><td>${mono(fmt(D.exp.reduce((a,e)=>a+e.amt,0)),'r')}</td><td colspan="2"></td></tr>
+  ${_expP.map(e=>`<tr><td>${mono(e.id)}</td><td>${e.dt}</td><td>${e.cat}</td><td style="font-size:12px">${e.payee}</td><td>${mono(fmt(e.amt),'r')}</td><td>${bx(e.type,'bx-n')}</td><td style="font-size:11px;color:var(--text2)">${e.method}</td></tr>`).join('')}
+  <tr style="border-top:2px solid var(--border2)"><td colspan="4"><strong>Total</strong></td><td>${mono(fmt(_expTotal),'r')}</td><td colspan="2"></td></tr>
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptExpFullPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Full Expense Report')">⬇ Export CSV</button>`);
 }
 
 function rptExpCat(){rptExpBreak();}
 function rptRepairs(){
-  const rep=D.exp.filter(e=>e.cat==='Repairs'||e.cat==='Cleaning');
+  const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
+  const rep=D.exp.filter(e=>inRange(e.dt,_rng)&&(e.cat==='Repairs'||e.cat==='Repairs & Maintenance'||e.cat==='Cleaning'||e.cat==='Maintenance'));
   modal('📊 Repairs & Maintenance',`
   <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Payee</th><th>Amount</th><th>Method</th></tr></thead><tbody>
   ${rep.map(e=>`<tr><td>${e.dt}</td><td>${e.payee}</td><td>${mono(fmt(e.amt),'r')}</td><td>${e.method}</td></tr>`).join('')}
@@ -12723,9 +12769,17 @@ function _dbToVendor(r){ return {
   docs:r.docs||[]
 }; }
 function _dbToPurchase(r){ return {
-  id:r.id, dt:r.date, vendor:r.vendor, items:r.items,
-  sub:r.subtotal, freight:r.freight, duties:r.duties,
-  total:r.total, st:r.status, notes:r.notes, docs:r.docs||[]
+  id:r.id, dt:r.date, vendor:r.vendor,
+  vendorId:r.vendor_id||'',
+  items:r.items, qty:r.qty||1,
+  sub:r.subtotal||0, freight:r.freight||0,
+  duties:r.duties||0, taxes:r.taxes||0, other:r.other||0,
+  total:r.total||0,
+  invId:r.inv_id||'',
+  delivery:r.delivery_date||'',
+  method:r.method||'Cash',
+  lines:r.lines?(typeof r.lines==='string'?JSON.parse(r.lines):r.lines):[],
+  st:r.status||'Pending', notes:r.notes||'', docs:r.docs||[]
 }; }
 function _dbToAudit(r){ return {
   id:r.id, ts:r.timestamp, action:r.action, detail:r.detail,
@@ -12814,8 +12868,15 @@ function _vendorToDB(v, bizId){ return {
 }; }
 function _purchaseToDB(p, bizId){ return {
   id:p.id, biz_id:bizId, date:p.dt, vendor:p.vendor,
-  items:p.items, subtotal:p.sub||0, freight:p.freight||0,
-  duties:p.duties||0, total:p.total||0,
+  vendor_id:p.vendorId||'',
+  items:p.items, qty:p.qty||1,
+  subtotal:p.sub||0, freight:p.freight||0,
+  duties:p.duties||0, taxes:p.taxes||0, other:p.other||0,
+  total:p.total||0,
+  inv_id:p.invId||'',
+  delivery_date:p.delivery||'',
+  method:p.method||'',
+  lines:p.lines?JSON.stringify(p.lines):null,
   status:p.st||'Pending', notes:p.notes||'', docs:p.docs||[]
 }; }
 
@@ -19868,9 +19929,8 @@ function mViewPurchase(id){
           }
         });
       }
-      // Also clear vendor AP
-      var vo=D.vendors.find(function(v){return v.name===p.vendor||v.id===p.vendorId;});
-      if(vo){ vo.bal=Math.max(0,(vo.bal||0)-(p.total||0)); _dbSaveVendor(vo); }
+      // refreshLiveKpis calls _reconcileVendorTotals which recomputes v.bal from purchases
+      // No direct v.bal mutation needed — reconcile handles it correctly
       _dbSavePurchase(p); refreshLiveKpis();
       addAudit('PO received',p.id+' — '+(p.vendor||''));
       // Build restock summary
@@ -19886,10 +19946,7 @@ function mViewPurchase(id){
     var paidBtn=document.getElementById('po-paid-btn');
     if(paidBtn) paidBtn.onclick=function(){
       var oldSt=p.st; p.st='Paid';
-      var vo=D.vendors.find(function(v){return v.name===p.vendor||v.id===p.vendorId;});
-      if(vo&&(oldSt==='Pending'||oldSt==='Partial'||oldSt==='Unpaid')){
-        vo.bal=Math.max(0,(vo.bal||0)-(p.total||0)); _dbSaveVendor(vo);
-      }
+      // refreshLiveKpis calls _reconcileVendorTotals which recomputes v.bal from purchases
       _dbSavePurchase(p); refreshLiveKpis();
       addAudit('PO paid',p.id+' — '+(p.vendor||''));
       closeModal(); toast('PO marked as paid ✓','success'); nav('purchases');
