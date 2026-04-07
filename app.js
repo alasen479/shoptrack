@@ -13951,27 +13951,14 @@ function _newVendorBtnHTML(prefix){
 // ── SELF-SERVICE SIGNUP ───────────────────────────────────────────────────
 // Country dial codes — expand as ShopTrack grows
 const COUNTRY_DIAL = {
-  'CM': { name:'Cameroon',          dial:'+237', flag:'🇨🇲', placeholder:'+237 6XX XXX XXX',    currency:'XAF' },
-  'NG': { name:'Nigeria',           dial:'+234', flag:'🇳🇬', placeholder:'+234 80X XXX XXXX',   currency:'NGN' },
-  'GH': { name:'Ghana',             dial:'+233', flag:'🇬🇭', placeholder:'+233 2X XXX XXXX',    currency:'GHS' },
-  'CI': { name:"Côte d'Ivoire",     dial:'+225', flag:'🇨🇮', placeholder:'+225 07 XX XX XX XX', currency:'XOF' },
-  'SN': { name:'Senegal',           dial:'+221', flag:'🇸🇳', placeholder:'+221 7X XXX XXXX',    currency:'XOF' },
-  'KE': { name:'Kenya',             dial:'+254', flag:'🇰🇪', placeholder:'+254 7XX XXX XXX',    currency:'KES' },
-  'ZA': { name:'South Africa',      dial:'+27',  flag:'🇿🇦', placeholder:'+27 8X XXX XXXX',     currency:'ZAR' },
-  'US': { name:'United States',     dial:'+1',   flag:'🇺🇸', placeholder:'+1 (555) 000-0000',   currency:'USD' },
-  'GB': { name:'United Kingdom',    dial:'+44',  flag:'🇬🇧', placeholder:'+44 7XXX XXXXXX',     currency:'GBP' },
-  'FR': { name:'France',            dial:'+33',  flag:'🇫🇷', placeholder:'+33 6X XX XX XX XX',  currency:'EUR' },
-  'DE': { name:'Germany',           dial:'+49',  flag:'🇩🇪', placeholder:'+49 15X XXXXXXXX',    currency:'EUR' },
-  'CA': { name:'Canada',            dial:'+1',   flag:'🇨🇦', placeholder:'+1 (555) 000-0000',   currency:'USD' },
-  'ML': { name:'Mali',              dial:'+223', flag:'🇲🇱', placeholder:'+223 7X XX XX XX',    currency:'XOF' },
-  'BJ': { name:'Benin',             dial:'+229', flag:'🇧🇯', placeholder:'+229 XX XX XX XX',    currency:'XOF' },
-  'TG': { name:'Togo',              dial:'+228', flag:'🇹🇬', placeholder:'+228 XX XX XX XX',    currency:'XOF' },
-  'CD': { name:'DR Congo',          dial:'+243', flag:'🇨🇩', placeholder:'+243 8XX XXX XXX',    currency:'USD' },
-  'ET': { name:'Ethiopia',          dial:'+251', flag:'🇪🇹', placeholder:'+251 9X XXX XXXX',    currency:'ETB' },
-  'TZ': { name:'Tanzania',          dial:'+255', flag:'🇹🇿', placeholder:'+255 7XX XXX XXX',    currency:'TZS' },
-  'RW': { name:'Rwanda',            dial:'+250', flag:'🇷🇼', placeholder:'+250 7XX XXX XXX',    currency:'RWF' },
-  'UG': { name:'Uganda',            dial:'+256', flag:'🇺🇬', placeholder:'+256 7XX XXX XXX',    currency:'UGX' },
-  'OTHER': { name:'Other',          dial:'+',    flag:'🌍', placeholder:'+XX XXXX XXXX',        currency:'USD' },
+  'CM': { name:'Cameroon',              dial:'+237', flag:'🇨🇲', placeholder:'+237 6XX XXX XXX',   currency:'XAF' },
+  'NG': { name:'Nigeria',               dial:'+234', flag:'🇳🇬', placeholder:'+234 80X XXX XXXX',  currency:'NGN' },
+  'US': { name:'United States',         dial:'+1',   flag:'🇺🇸', placeholder:'+1 (555) 000-0000',  currency:'USD' },
+  'FR': { name:'France',                dial:'+33',  flag:'🇫🇷', placeholder:'+33 6X XX XX XX XX', currency:'EUR' },
+  'TD': { name:'Chad',                  dial:'+235', flag:'🇹🇩', placeholder:'+235 6X XX XX XX',   currency:'XAF' },
+  'GA': { name:'Gabon',                 dial:'+241', flag:'🇬🇦', placeholder:'+241 06 XX XX XX',   currency:'XAF' },
+  'CG': { name:'Congo (Brazzaville)',   dial:'+242', flag:'🇨🇬', placeholder:'+242 06 XXX XXXX',   currency:'XAF' },
+  'CF': { name:'Central African Rep.',  dial:'+236', flag:'🇨🇫', placeholder:'+236 7X XX XX XX',   currency:'XAF' },
 };
 
 // ── Searchable business type dropdown ────────────────────────
@@ -14250,9 +14237,18 @@ function showSignup(){
           +'</div>'
         +'</div>'
       +'</div>'
-      +'<div style="margin-bottom:9px">'
-        +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Country *</label>'
-        +'<select id="su-country" onchange="_suCountryChanged()" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box">'+countryOpts+'</select>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">'
+        +'<div>'
+          +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Country *</label>'
+          +'<select id="su-country" onchange="_suCountryChanged()" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box">'+countryOpts+'</select>'
+        +'</div>'
+        +'<div>'
+          +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Language *</label>'
+          +'<select id="su-lang" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'">'
+            +'<option value="en">🇬🇧 English</option>'
+            +'<option value="fr">🇫🇷 Français</option>'
+          +'</select>'
+        +'</div>'
       +'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">'
         +'<div>'
@@ -14301,6 +14297,12 @@ function _suCountryChanged(){
   const phone = document.getElementById('su-phone');
   if(badge) badge.textContent = c.flag + ' ' + c.dial;
   if(phone) { phone.placeholder = c.placeholder.replace(c.dial+' ',''); phone.value = ''; phone.focus(); }
+  // Auto-select language based on country
+  const langEl = document.getElementById('su-lang');
+  if(langEl){
+    const frCountries = ['CM','TD','GA','CG','CF','FR'];
+    langEl.value = frCountries.includes(code) ? 'fr' : 'en';
+  }
 }
 
 async function _submitSignup(){
@@ -14309,6 +14311,7 @@ async function _submitSignup(){
   const email      = document.getElementById('su-email')?.value?.trim().toLowerCase();
   const countryCode= document.getElementById('su-country')?.value || 'CM';
   const countryData= COUNTRY_DIAL[countryCode] || COUNTRY_DIAL['CM'];
+  const selectedLang = document.getElementById('su-lang')?.value || ((['CM','TD','GA','CG','CF','FR'].includes(countryCode)) ? 'fr' : 'en');
   const rawPhone   = document.getElementById('su-phone')?.value?.trim() || '';
   const phone      = rawPhone.startsWith('+') ? rawPhone : countryData.dial + ' ' + rawPhone;
   const pwd        = document.getElementById('su-pwd')?.value || '';
@@ -14422,7 +14425,7 @@ function _showEmailVerifyScreen(email, firstName, emailSent, userId, bizId, pwd,
   // Store state in a secure closure variable — never in the DOM
   // lang: French for Francophone countries, English for all others
   const _frCountries = ['CM','CI','SN','FR','ML','BJ','TG','CD','RW'];
-  const _pendingLang = (()=>{ try{ const su=document.getElementById('su-country'); return _frCountries.includes(su?.value)?'fr':'en'; }catch(_){ return 'en'; } })();
+  const _pendingLang = document.getElementById('su-lang')?.value || selectedLang || 'en';
   _pendingVerify = { email, userId, bizId, pwd, firstName, lang: _pendingLang, signupPayload: signupPayload||null };
 
   const loginEl = document.getElementById('login-screen');
