@@ -6486,9 +6486,22 @@ async function _dbSaveCategories(bizId){
 // ── Login via Supabase ────────────────────────────────────────
 async function _dbLogin(email, password){
   if(!_sb) return null;
-  const {data, error} = await _sb.from('platform_users')
-    .select('*').eq('email', email).single();
-  if(error || !data) return null;
+  let data, error;
+  try {
+    const res = await _sb.from('platform_users')
+      .select('*').eq('email', email).single();
+    data = res.data; error = res.error;
+  } catch(e) {
+    // Network failure / CORS block — signal unreachable, don't burn attempts
+    return 'UNREACHABLE';
+  }
+  // Supabase CORS or network error comes back as an error object, not a thrown exception
+  if(error){
+    // PGRST116 = row not found (valid "user doesn't exist"), anything else = connectivity issue
+    if(error.code && error.code !== 'PGRST116') return 'UNREACHABLE';
+    return null; // user genuinely not found
+  }
+  if(!data) return null;
   if(data.password_hash !== password) return null;
   return data;
 }
@@ -6757,7 +6770,16 @@ function doLogin(){
 
     let cred = null;
 
-    if(dbUser){
+    if(dbUser === 'UNREACHABLE'){
+      // Supabase is blocked / offline — fall back to AUTH_STORE only
+      const stored = AUTH_STORE[email];
+      if(!stored || stored.password !== pass){
+        // Not a demo/admin account either — show connectivity warning (don't burn attempts)
+        showLoginError('⚠ Cannot reach the server. Check your internet connection and try again. If this persists, contact support.');
+        return;
+      }
+      cred = { ...stored, password: stored.password };
+    } else if(dbUser){
       // Found in DB
       cred = {
         userId: dbUser.id, level: dbUser.level,
