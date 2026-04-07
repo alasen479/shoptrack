@@ -17367,7 +17367,7 @@ function renderPlansTab(){
       // Feature sections
       + sections
       // CTA
-      + '<button style="width:100%;padding:11px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;font-family:var(--display);letter-spacing:-.2px;'+ctaStyle+'" onclick="mSetDefaultPlan(\\"'+plan.id+'\\")">Set as Default Plan</button>'
+      + '<button style="width:100%;padding:11px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;font-family:var(--display);letter-spacing:-.2px;'+ctaStyle+'" data-pid="'+plan.id+'" onclick="mSetDefaultPlan(this.dataset.pid)">Set as Default Plan</button>'
     + '</div>';
   }).join('');
 
