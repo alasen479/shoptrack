@@ -2029,17 +2029,17 @@ const STRIPE_PK = 'pk_live_51TIU2aDJ710ezCR6Y4mNk05q3LXt9UaEUAWLK9Y6QKiQnL06YK3n
 
 // Plan prices in USD (cents) for Stripe checkout
 const SUB_PLAN_USD = {
-  Starter:      { monthly: 800,  yearly: 8000  },
-  Professional: { monthly: 1900, yearly: 19000 },
+  Free:          { monthly: 0,    yearly: 0     },
+  Premium:       { monthly: 8900, yearly: 89000 },
   Pro:          { monthly: 1900, yearly: 19000 },
   Enterprise:   { monthly: 5700, yearly: 57000 },
 };
 
 const SUB_PLAN_XAF = {
-  'Starter':      { monthly: 4900,  yearly: 49000  },
-  'Pro':          { monthly: 11900, yearly: 119000 },
-  'Professional': { monthly: 11900, yearly: 119000 },
-  'Enterprise':   { monthly: 34900, yearly: 349000 },
+  'Free':          { monthly: 0,     yearly: 0      },
+  'Premium':       { monthly: 8900,  yearly: 89000  },
+  
+  
   'Demo Test':    { monthly: 10,    yearly: 10     }, // CamPay demo only — max 25 XAF
   'Trial (30 Days)': { monthly: 0,  yearly: 0      },
 };
@@ -2052,7 +2052,7 @@ function _subDaysLeft(){
 }
 
 function _subAmtXAF(){
-  const p = SUB_PLAN_XAF[BIZ.plan||'Starter'] || SUB_PLAN_XAF['Starter'];
+  const p = SUB_PLAN_XAF[BIZ.plan||'Free'] || SUB_PLAN_XAF['Free'];
   return (BIZ.billingCycle||'monthly') === 'yearly' ? p.yearly : p.monthly;
 }
 
@@ -2065,7 +2065,7 @@ function _subExpiryBanner(){
   if(d > 5) return '';
 
   const amt    = _subAmtXAF();
-  const plan   = BIZ.plan || 'Starter';
+  const plan   = BIZ.plan || 'Free';
   const expiry = BIZ.subExpires || '';
   const isFree = amt === 0;
 
@@ -2113,14 +2113,14 @@ function _showPlanSelectionModal(){
   const plans = [
     {
       id:'Starter', emoji:'\ud83c\udf31', color:'#2dd4a0', colorRgb:'45,212,160',
-      xaf:4900, yearly:49000, badge:null,
+      xaf:0, yearly:0, badge:null,
       desc:'Essential tools for small businesses',
       features:['Inventory management','Sales & receipts','Basic expense tracking',
                  '200 customers · 100 products','1 business location','Email support']
     },
     {
       id:'Pro', emoji:'\ud83d\ude80', color:'#5b7fff', colorRgb:'91,127,255',
-      xaf:11900, yearly:119000, badge:'Most Popular',
+      xaf:8900, yearly:89000, badge:'Most Popular',
       desc:'Full suite for growing businesses',
       features:['Everything in Starter','Unlimited customers & products',
                  'Up to 5 locations','AI Studio assistant',
@@ -2178,8 +2178,8 @@ function _showPlanSelectionModal(){
 }
 
 function _pgSelectPlan(planId){
-  var colors = {Starter:'45,212,160', Pro:'91,127,255'};
-  var borders = {Starter:'#2dd4a0', Pro:'#5b7fff'};
+  var colors = {Free:'45,212,160', Premium:'91,127,255'};
+  var borders = {Free:'#2dd4a0', Premium:'#5b7fff'};
   document.querySelectorAll('[id^="pgc-"]').forEach(function(c){
     c.style.border='2px solid var(--border2)';
     c.style.background='var(--bg3)';
@@ -2222,7 +2222,7 @@ function _isUSD(){ return CUR.code==='USD'; }
 // Stripe payment flow for USD businesses
 async function mSubPayNowStripe(){
   var isTrial3=(BIZ.plan||''  ).toLowerCase().includes('trial')||(BIZ.plan||'')=='Free Trial';
-  var plan=isTrial3?'Starter':(BIZ.plan||'Starter');
+  var plan=isTrial3?'Free':(BIZ.plan||'Free');
   var planKey=plan==='Pro'?'Professional':plan;
   var cycle=BIZ.billingCycle==='yearly'?'yearly':'monthly';
   var expiry=BIZ.subExpires||BIZ.trialEnd||'';
@@ -2279,7 +2279,7 @@ function mSubPayNow(){
   if(_isUSD()){ mSubPayNowStripe(); return; }
   const d      = _subDaysLeft();
   const isTrial2 = (BIZ.plan||'').toLowerCase().includes('trial')||(BIZ.plan||'')==='Free Trial';
-  const plan   = isTrial2 ? 'Starter' : (BIZ.plan || 'Starter');
+  const plan   = isTrial2 ? 'Free' : (BIZ.plan || 'Free');
   const amt    = isTrial2 ? 4900 : _subAmtXAF();
   const expiry = BIZ.subExpires || BIZ.trialEnd || '';
   const phone  = BIZ.subPhone || BIZ.whatsapp || BIZ.phone || '';
@@ -2330,18 +2330,18 @@ function mSubPayNow(){
 // The new plan takes effect from that expiry date onward.
 // The new plan's first payment is due on the current expiry date.
 function mChangePlan(){
-  const currentPlan   = BIZ.plan || 'Starter';
+  const currentPlan   = BIZ.plan || 'Free';
   const currentExpiry = BIZ.subExpires || BIZ.trialEnd || '';
   const isTrial       = currentPlan.toLowerCase().includes('trial');
 
   const plans = [
-    { id:'Starter',      name:'Starter',      xaf:4900,  desc:'Essential tools for small businesses',    emoji:'🌱' },
-    { id:'Professional', name:'Professional',  xaf:11900, desc:'Full suite for growing businesses',       emoji:'🚀' },
-    { id:'Enterprise',   name:'Enterprise',    xaf:34900, desc:'Unlimited power for large operations',    emoji:'🏢' },
+    { id:'Free',         name:'Free',         xaf:0,     desc:'Essential tools to get started',          emoji:'🌱' },
+    { id:'Premium',      name:'Premium',       xaf:8900,  desc:'Full power to run and grow your business',emoji:'🚀' },
+    
   ];
 
   const planCards = plans.map(function(p){
-    const isCurrent = p.id === currentPlan || (p.id === 'Professional' && currentPlan === 'Pro');
+    const isCurrent = p.id === currentPlan;
     return '<div onclick="(function(el){'
       +'document.querySelectorAll(\'.cp-card\').forEach(function(c){c.style.border=\'1px solid var(--border2)\';c.style.background=\'var(--bg3)\';});'
       +'el.style.border=\'2px solid var(--a)\';el.style.background=\'rgba(99,102,241,.08)\';'
@@ -2393,7 +2393,7 @@ function mChangePlan(){
        toast('You are already on this plan','info'); return;
      }
      // Apply plan change immediately — no SA approval needed
-     var newAmt = {'Starter':4900,'Professional': 11900,'Enterprise':34900}[sel] || 0;
+     var newAmt = {'Free':0,'Premium':8900}[sel] || 0;
      if(_sb){
        _sb.from('businesses').update({
          plan: sel,
@@ -10454,7 +10454,7 @@ function mProvision(){
       <div id="prov-phone-preview" style="font-size:10px;color:var(--text2);margin-top:3px"></div>
     </div>
     <div class="fg"><label class="fl">Plan</label>
-      <select class="fs" id="prov-plan"><option>Trial (30 Days)</option><option>Starter</option><option selected>Professional</option><option>Enterprise</option></select>
+      <select class="fs" id="prov-plan"><option selected>Trial (30 Days)</option><option>Free</option><option>Premium</option></select>
     </div>
   </div>
 
@@ -10500,7 +10500,7 @@ function doProvision(){
   const email   = (document.getElementById('prov-email')?.value  || '').toLowerCase().trim();
   const name    = (document.getElementById('prov-name')?.value   || '').trim();
   const owner   = (document.getElementById('prov-owner')?.value  || '').trim();
-  const plan    = document.getElementById('prov-plan')?.value    || 'Professional';
+  const plan    = document.getElementById('prov-plan')?.value    || 'Trial (30 Days)';
   const type    = document.getElementById('prov-type')?.value    || 'General Retail';
   const country = (document.getElementById('prov-country')?.value || '').trim();
   const phone   = (document.getElementById('prov-phone')?.value  || '').trim();
@@ -11355,10 +11355,10 @@ function pgAdminAnalytics(){
 
 // Plan prices in XAF
 const BILLING_PLANS = {
-  'Starter':     { monthly: 4900,  yearly: 49000  },
-  'Pro':         { monthly: 11900, yearly: 119000 },
-  'Professional':{ monthly: 11900, yearly: 119000 },
-  'Enterprise':  { monthly: 34900, yearly: 349000 },
+  'Free':         { monthly: 0,     yearly: 0      },
+  'Premium':      { monthly: 8900,  yearly: 89000  },
+  
+  
   'Demo Test':    { monthly: 10,  yearly: 10 },  // CamPay demo — max 25 XAF
   'Trial (30 Days)': { monthly: 0, yearly: 0 },
 };
@@ -13085,133 +13085,96 @@ let SA_PROFILE = {
 // Subscription plans definition
 const SUBSCRIPTION_PLANS = [
   {
-    id:'starter', name:'Starter', emoji:'🌱',
-    tagline:'Launch your business with everything essential',
-    monthlyXAF:4900, yearlyXAF:49000,
+    id:'free', name:'Free', emoji:'🌱',
+    tagline:'Essential tools to get your business started',
+    monthlyXAF:0, yearlyXAF:0,
     color:'#2dd4a0', colorDim:'rgba(45,212,160,.12)', badge:null,
     highlight: false,
-    limits:{staff:'3 staff', customers:'200 customers', products:'100 products', storage:'500 MB storage'},
+    limits:{staff:'1 user', customers:'30 customers', products:'30 products', invoices:'30/month'},
     sections:[
       { title:'Core Features', items:[
-        {label:'Dashboard & KPI overview',       inc:true},
-        {label:'Inventory management',           inc:true},
-        {label:'Sales recording & receipts',     inc:true},
-        {label:'Basic expense tracking',         inc:true},
-        {label:'Customer database (200 max)',    inc:true},
-        {label:'1 business location',            inc:true},
+        {label:'Dashboard & KPI overview',              inc:true},
+        {label:'Inventory management (30 products)',    inc:true},
+        {label:'Unlimited sales recording',             inc:true},
+        {label:'Unlimited expense tracking',            inc:true},
+        {label:'Unlimited purchases',                   inc:true},
+        {label:'Customer database (30 max)',            inc:true},
+        {label:'Vendor database (10 max)',              inc:true},
+      ]},
+      { title:'Documents & Branding', items:[
+        {label:'Invoices & receipts (30/month)',        inc:true},
+        {label:'ShopTrack watermark on documents',      inc:true},
+        {label:'Product catalog (with watermark)',      inc:true},
+        {label:'Custom business branding',              inc:false},
+        {label:'No watermark',                          inc:false},
       ]},
       { title:'Advanced Tools', items:[
-        {label:'Rental management',              inc:false},
-        {label:'Purchase orders & vendors',      inc:false},
-        {label:'Document generator (invoices)',  inc:false},
-        {label:'AI Studio assistant',            inc:false},
-        {label:'Data export (Excel / CSV)',      inc:false},
-        {label:'Multi-currency support',         inc:false},
-      ]},
-      { title:'Support', items:[
-        {label:'Email support (48h response)',   inc:true},
-        {label:'Help documentation',             inc:true},
-        {label:'Priority support',               inc:false},
-        {label:'Dedicated account manager',      inc:false},
+        {label:'WhatsApp — share documents only',       inc:true},
+        {label:'Monthly inventory & sales reports PDF', inc:true},
+        {label:'Appointments & bookings',               inc:false},
+        {label:'Rental management',                     inc:false},
+        {label:'AI Studio assistant',                   inc:false},
+        {label:'Real-time & accounting reports',        inc:false},
+        {label:'PDF & CSV export',                      inc:false},
       ]},
     ],
   },
   {
-    id:'pro', name:'Pro', emoji:'🚀',
-    tagline:'Everything you need to run and grow your business',
-    monthlyXAF:11900, yearlyXAF:119000,
+    id:'premium', name:'Premium', emoji:'🚀',
+    tagline:'Full power to run and grow your business',
+    monthlyXAF:8900, yearlyXAF:89000,
     color:'#5b7fff', colorDim:'rgba(91,127,255,.12)', badge:'Most Popular',
     highlight: true,
-    limits:{staff:'10 staff', customers:'2,000 customers', products:'1,000 products', storage:'5 GB storage'},
+    limits:{staff:'Up to 5 users', customers:'Unlimited', products:'Unlimited', invoices:'Unlimited'},
     sections:[
       { title:'Core Features', items:[
-        {label:'Dashboard & KPI overview',       inc:true},
-        {label:'Inventory management',           inc:true},
-        {label:'Sales recording & receipts',     inc:true},
-        {label:'Full expense tracking',          inc:true},
-        {label:'Customer database (2,000 max)',  inc:true},
-        {label:'Multiple business locations',    inc:true},
+        {label:'Dashboard & KPI overview',              inc:true},
+        {label:'Unlimited inventory (products)',         inc:true},
+        {label:'Unlimited sales recording',             inc:true},
+        {label:'Unlimited expense tracking',            inc:true},
+        {label:'Unlimited purchases',                   inc:true},
+        {label:'Unlimited customers',                   inc:true},
+        {label:'Unlimited vendors',                     inc:true},
+      ]},
+      { title:'Documents & Branding', items:[
+        {label:'Unlimited invoices & receipts',         inc:true},
+        {label:'No watermark',                          inc:true},
+        {label:'Custom business branding',              inc:true},
+        {label:'Branded product catalog',               inc:true},
       ]},
       { title:'Advanced Tools', items:[
-        {label:'Rental management',              inc:true},
-        {label:'Purchase orders & vendors',      inc:true},
-        {label:'Document generator (invoices)',  inc:true},
-        {label:'AI Studio assistant',            inc:true},
-        {label:'Data export (Excel / CSV)',      inc:true},
-        {label:'Multi-currency (5 currencies)',  inc:true},
-      ]},
-      { title:'Support', items:[
-        {label:'Priority email support (24h)',   inc:true},
-        {label:'Help documentation',             inc:true},
-        {label:'Live chat support',              inc:true},
-        {label:'Dedicated account manager',      inc:false},
+        {label:'WhatsApp — documents + full automation',inc:true},
+        {label:'Appointments & bookings (multi-staff)', inc:true},
+        {label:'Rental management',                     inc:true},
+        {label:'AI Studio assistant',                   inc:true},
+        {label:'Real-time + accounting & mgmt reports', inc:true},
+        {label:'PDF & CSV export',                      inc:true},
       ]},
     ],
   },
   {
     id:'trial', name:'Free Trial', emoji:'🎁',
-    tagline:'30 days free — no credit card required',
+    tagline:'30 days full Premium access — no card required',
     monthlyXAF:0, yearlyXAF:0,
-    color:'#f59e0b', colorDim:'rgba(245,158,11,.12)', badge:'30-Day Free',
+    color:'#f59e0b', colorDim:'rgba(245,158,11,.12)', badge:'30-Day Free Trial',
     highlight: false,
     trialDays: 30,
-    limits:{staff:'3 staff', customers:'50 customers', products:'30 products', storage:'100 MB storage'},
+    limits:{staff:'Up to 5 users', customers:'Unlimited', products:'Unlimited', invoices:'Unlimited'},
     sections:[
-      { title:'Included in Trial', items:[
-        {label:'Full Pro feature access',        inc:true},
-        {label:'Dashboard & KPI overview',       inc:true},
-        {label:'Inventory management',           inc:true},
-        {label:'Sales recording & receipts',     inc:true},
-        {label:'Rental management',              inc:true},
-        {label:'Document generator (invoices)',  inc:true},
-        {label:'AI Studio assistant',            inc:true},
-        {label:'Data export (Excel / CSV)',      inc:true},
-      ]},
-      { title:'Trial Limits', items:[
-        {label:'Up to 30 inventory items',       inc:true},
-        {label:'Up to 50 customers',             inc:true},
-        {label:'Up to 3 staff accounts',         inc:true},
-        {label:'100 MB photo storage',           inc:true},
-        {label:'No payment required to start',   inc:true},
-        {label:'Convert to paid plan anytime',   inc:true},
+      { title:'Full Premium Access During Trial', items:[
+        {label:'All Premium features included',         inc:true},
+        {label:'Unlimited inventory & sales',           inc:true},
+        {label:'Appointments & rental management',      inc:true},
+        {label:'AI Studio assistant',                   inc:true},
+        {label:'Custom branding — no watermark',        inc:true},
+        {label:'Full WhatsApp automation',              inc:true},
+        {label:'All reports — PDF & CSV export',        inc:true},
       ]},
       { title:'After Trial Ends', items:[
-        {label:'Data retained for 30 days',      inc:true},
-        {label:'Export all your data',           inc:true},
-        {label:'Instant plan upgrade available', inc:true},
-        {label:'Continued access (paid plan)',   inc:false},
-      ]},
-    ],
-  },
-  {
-    id:'enterprise', name:'Enterprise', emoji:'💎',
-    tagline:'Unlimited scale with white-glove service',
-    monthlyXAF:34900, yearlyXAF:349000,
-    color:'#9f7aea', colorDim:'rgba(159,122,234,.12)', badge:'Best Value',
-    highlight: false,
-    limits:{staff:'Unlimited staff', customers:'Unlimited customers', products:'Unlimited products', storage:'50 GB storage'},
-    sections:[
-      { title:'Core Features', items:[
-        {label:'Dashboard & KPI overview',       inc:true},
-        {label:'Inventory management',           inc:true},
-        {label:'Sales recording & receipts',     inc:true},
-        {label:'Full expense tracking',          inc:true},
-        {label:'Unlimited customers',            inc:true},
-        {label:'Unlimited locations',            inc:true},
-      ]},
-      { title:'Advanced Tools', items:[
-        {label:'Rental management',              inc:true},
-        {label:'Purchase orders & vendors',      inc:true},
-        {label:'Document generator + branding',  inc:true},
-        {label:'AI Studio + custom prompts',     inc:true},
-        {label:'Data export (Excel / CSV / PDF)',inc:true},
-        {label:'All currencies + custom FX',     inc:true},
-      ]},
-      { title:'Support', items:[
-        {label:'Priority phone & chat support',  inc:true},
-        {label:'Help documentation',             inc:true},
-        {label:'Dedicated account manager',      inc:true},
-        {label:'Custom onboarding & training',   inc:true},
+        {label:'Continue free on Free plan',            inc:true},
+        {label:'Upgrade to Premium anytime',            inc:true},
+        {label:'Data always retained',                  inc:true},
+        {label:'No credit card required to start',      inc:true},
       ]},
     ],
   },
