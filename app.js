@@ -680,6 +680,7 @@ let BIZ = {
   invoiceNote: 'Thank you for your business! Payment due within 7 days.',
   taxRate: 0,
   contractEnabled: true,
+  costCats: [],
   bookingNote: 'Thank you for booking with us!',
   contractTemplate: `RENTAL AGREEMENT
 
@@ -3112,13 +3113,28 @@ function mItemTab(el,tabId){
 // COST BREAKDOWN ENGINE
 // Shared by both Inventory (Add/Edit) and Services (New/Edit)
 // ============================================================
-const _COST_CATS = [
-  { id:'purchase',  label:'Purchase / Acquisition',  icon:'🏭', placeholder:'e.g. Wholesale price, supplier invoice' },
-  { id:'materials', label:'Raw Materials',            icon:'🧱', placeholder:'e.g. Fabric, packaging, components' },
-  { id:'labor',     label:'Labor / Production',       icon:'👷', placeholder:'e.g. Tailoring, assembly, finishing' },
-  { id:'transport', label:'Transportation',           icon:'🚚', placeholder:'e.g. Freight, delivery, import duties' },
-  { id:'other',     label:'Other Costs',              icon:'📎', placeholder:'e.g. Storage, insurance, overhead' },
+const _COST_CATS_DEFAULT = [
+  { id:'purchase',   label:'Purchase / Acquisition', icon:'🏭', placeholder:'e.g. Supplier invoice, wholesale price' },
+  { id:'import',     label:'Import & Customs',        icon:'🛃', placeholder:'e.g. Duties, customs fees, tariffs' },
+  { id:'materials',  label:'Raw Materials',           icon:'🧱', placeholder:'e.g. Fabric, components, packaging' },
+  { id:'labor',      label:'Labor / Production',      icon:'👷', placeholder:'e.g. Tailoring, assembly, manufacturing' },
+  { id:'finishing',  label:'Finishing & Quality',     icon:'✨', placeholder:'e.g. Cleaning, pressing, QC' },
+  { id:'transport',  label:'Transport & Freight',     icon:'🚚', placeholder:'e.g. Shipping, delivery, courier' },
+  { id:'storage',    label:'Storage & Warehousing',   icon:'🏪', placeholder:'e.g. Warehouse rent, storage fees' },
+  { id:'renovation', label:'Renovation & Repairs',    icon:'🔨', placeholder:'e.g. Plumbing, electrical, painting' },
+  { id:'furnishing', label:'Furnishing & Fittings',   icon:'🛋', placeholder:'e.g. Furniture, appliances, fixtures' },
+  { id:'legal',      label:'Legal & Registration',    icon:'⚖️', placeholder:'e.g. Title fees, notary, legal fees' },
+  { id:'svcpro',     label:'Service / Professional',  icon:'🛠', placeholder:'e.g. Consultant, photographer' },
+  { id:'marketing',  label:'Marketing & Promotion',   icon:'📣', placeholder:'e.g. Photography, listing, ads' },
+  { id:'insurance',  label:'Insurance & Risk',        icon:'🛡', placeholder:'e.g. Product insurance, transit cover' },
+  { id:'finance',    label:'Finance & Interest',      icon:'💳', placeholder:'e.g. Loan interest, bank charges' },
+  { id:'other',      label:'Other Costs',             icon:'📎', placeholder:'e.g. Miscellaneous, unclassified' },
 ];
+function _getCostCats(){
+  var custom=(typeof BIZ!=='undefined'&&BIZ&&Array.isArray(BIZ.costCats))?BIZ.costCats:[];
+  return _COST_CATS_DEFAULT.concat(custom);
+}
+var _COST_CATS=_COST_CATS_DEFAULT;
 
 // Render the collapsible cost breakdown panel
 // prefix = 'ci' (inventory) | 'cs' (service)
@@ -3128,7 +3144,7 @@ function _costBreakdownHTML(prefix, existingLines){
   var hasLines = lines.length > 0;
   var totalFromLines = lines.reduce(function(s,l){ return s + ((parseFloat(l.qty)||1)*(parseFloat(l.unitCost)||0)); }, 0);
 
-  var catOpts = _COST_CATS.map(function(c){
+  var cats=_getCostCats(); var catOpts=cats.map(function(c){
     return '<option value="'+c.id+'">'+c.icon+' '+c.label+'</option>';
   }).join('');
 
@@ -3176,12 +3192,13 @@ function _costBreakdownHTML(prefix, existingLines){
 
       // Add buttons row
       +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">'
-        +_COST_CATS.map(function(c){
+        +_getCostCats().map(function(c){
           return '<button type="button" class="btn btn-s btn-xs" style="font-size:11px;gap:4px" onclick="_cbAddLine(\''+prefix+'\',\''+c.id+'\')">'
             +'<span>'+c.icon+'</span>'
             +'<span>+ '+c.label+'</span>'
             +'</button>';
         }).join('')
+        +'<button type="button" class="btn btn-p btn-xs" style="font-size:11px" onclick="_cbAddCustomCat(\''+prefix+'\')">+ New Category</button>'
       +'</div>'
 
       // Total row
@@ -3205,7 +3222,7 @@ function _costLineRowHTML(prefix, idx, line, catOpts){
 
   return '<div class="cb-row" data-idx="'+idx+'" style="display:grid;grid-template-columns:170px 1fr 70px 80px 90px 30px;gap:6px;align-items:center;margin-bottom:6px">'
     +'<select class="fs cb-cat" style="font-size:12px;padding:6px 8px;height:34px" onchange="_cbRecalc(\''+prefix+'\')">'
-    +_COST_CATS.map(function(c){ return '<option value="'+c.id+'"'+(c.id===cat?' selected':'')+'>'+c.icon+' '+c.label+'</option>'; }).join('')
+    +_getCostCats().map(function(c){ return '<option value="'+c.id+'"'+(c.id===cat?' selected':'')+'>'+c.icon+' '+c.label+'</option>'; }).join('')
     +'</select>'
     +'<input class="fi cb-desc" type="text" placeholder="Description…" value="'+desc+'" style="font-size:12px;height:34px;padding:6px 8px"/>'
     +'<input class="fi cb-unit" type="text" placeholder="pcs / m / kg…" value="'+unit+'" style="font-size:12px;height:34px;padding:6px 8px"/>'
@@ -3213,6 +3230,96 @@ function _costLineRowHTML(prefix, idx, line, catOpts){
     +'<input class="fi cb-uc" type="number" placeholder="0.00" value="'+uc+'" min="0" step="any" style="font-size:12px;height:34px;padding:6px 8px;text-align:right" oninput="_cbRecalc(\''+prefix+'\')" />'
     +'<button type="button" onclick="_cbRemoveLine(this,\''+prefix+'\')" style="width:28px;height:28px;background:var(--r-dim);border:none;border-radius:6px;color:var(--r);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="Remove">✕</button>'
     +'</div>';
+}
+
+function _cbAddCustomCat(prefix){
+  window._pendingCbPfx=prefix;
+  modal('+ New Cost Category',
+    '<div class="fg"><label class="fl">Category Name *</label>'
+    +'<input class="fi" id="cbc-name" placeholder="e.g. Land Survey, Import Bond, Staging Fee"/></div>'
+    +'<div class="fg" style="display:flex;gap:8px">'
+    +'<div style="flex:0 0 70px"><label class="fl">Icon</label>'
+    +'<input class="fi" id="cbc-icon" placeholder="📋" maxlength="4" style="font-size:18px;text-align:center"/></div>'
+    +'<div style="flex:1"><label class="fl">Hint (optional)</label>'
+    +'<input class="fi" id="cbc-hint" placeholder="e.g. Enter fee amount"/></div></div>',
+    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    +'<button class="btn btn-p" onclick="window._cbSaveCustomCat()">Add Category</button>');
+  setTimeout(function(){var e=document.getElementById('cbc-name');if(e)e.focus();},80);
+}
+window._cbSaveCustomCat=function(){
+  var prefix=window._pendingCbPfx||'';
+  var name=((document.getElementById('cbc-name')||{}).value||'').trim();
+  var icon=((document.getElementById('cbc-icon')||{}).value||'').trim()||'\uD83D\uDCCB';
+  var hint=((document.getElementById('cbc-hint')||{}).value||'').trim();
+  if(!name){toast('Enter a category name','error');return;}
+  var id=name.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/__+/g,'_').slice(0,30);
+  if(_getCostCats().some(function(c){return c.id===id||c.label.toLowerCase()===name.toLowerCase();})){
+    toast('Category already exists','error');return;
+  }
+  if(!BIZ.costCats)BIZ.costCats=[];
+  BIZ.costCats.push({id:id,label:name,icon:icon,placeholder:hint||'Enter amount\u2026',custom:true});
+  _dbSaveBizProfile(SESSION.bizId);
+  closeModal();
+  setTimeout(function(){
+    var body=document.getElementById(prefix+'-cb-body');
+    if(!body)return;
+    var btnRow=body.querySelector('div[style*="flex-wrap"]');
+    if(btnRow){
+      var pf=prefix;
+      btnRow.innerHTML=_getCostCats().map(function(c){
+        return '<button type="button" class="btn btn-s btn-xs" style="font-size:11px"'
+          +' onclick="_cbAddLine(\''+pf+'\',\''+c.id+'\')">'+c.icon+' + '+c.label+'</button>';
+      }).join('')
+      +'<button type="button" class="btn btn-p btn-xs" style="font-size:11px"'
+      +' onclick="_cbAddCustomCat(\''+pf+'\')">\u2795 New Category</button>';
+    }
+    _cbAddLine(prefix,id);
+  },100);
+  toast('"'+name+'" added as cost category','success');
+  addAudit('Cost category added',name);
+};
+function _renderCostCatPills(){
+  var cats=BIZ.costCats||[];
+  var html='<div id="cost-cats-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">';
+  if(!cats.length){
+    html+='<span style="font-size:11px;color:var(--text3)">None yet</span>';
+  }else{
+    cats.forEach(function(c,i){
+      html+='<div style="display:inline-flex;align-items:center;gap:6px;background:var(--a-dim);border:1px solid rgba(99,102,241,.25);border-radius:20px;padding:5px 10px 5px 13px">'
+        +'<span>'+c.icon+'</span>'
+        +'<span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c.label)+'</span>'
+        +'<button type="button" onclick="_delCustomCostCat('+i+')"'
+        +' style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px">\u2715</button>'
+        +'</div>';
+    });
+  }
+  html+='</div>';
+  var el=document.getElementById('cost-cats-list');if(el)el.outerHTML=html;
+}
+function _addCustomCostCatSettings(){
+  var icon=((document.getElementById('settings-new-costcat-icon')||{}).value||'').trim()||'\uD83D\uDCCB';
+  var name=((document.getElementById('settings-new-costcat-inp')||{}).value||'').trim();
+  if(!name){toast('Enter a category name','error');return;}
+  var id=name.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/__+/g,'_').slice(0,30);
+  if(!BIZ.costCats)BIZ.costCats=[];
+  if(BIZ.costCats.some(function(c){return c.label.toLowerCase()===name.toLowerCase();})||
+     _COST_CATS_DEFAULT.some(function(c){return c.label.toLowerCase()===name.toLowerCase();})){
+    toast('Category already exists','error');return;
+  }
+  BIZ.costCats.push({id:id,label:name,icon:icon,placeholder:'Enter '+name.toLowerCase()+' amount\u2026',custom:true});
+  _dbSaveBizProfile(SESSION.bizId);
+  var inp=document.getElementById('settings-new-costcat-inp');if(inp)inp.value='';
+  var ico=document.getElementById('settings-new-costcat-icon');if(ico)ico.value='';
+  _renderCostCatPills();
+  toast('"'+name+'" added \u2713','success');
+}
+function _delCustomCostCat(idx){
+  if(!BIZ.costCats||idx<0||idx>=BIZ.costCats.length)return;
+  var name=BIZ.costCats[idx].label;
+  BIZ.costCats.splice(idx,1);
+  _dbSaveBizProfile(SESSION.bizId);
+  _renderCostCatPills();
+  toast('"'+name+'" removed','success');
 }
 
 function _cbToggle(prefix){
@@ -7868,7 +7975,7 @@ function pgAccounting(){const _ui=_L();
     ${D.cust.filter(c=>c.bal>0).length>5?`<div style="font-size:11px;color:var(--text2);padding-top:6px;text-align:center">${D.cust.filter(c=>c.bal>0).length-5} more — <button class="btn btn-g btn-xs" onclick="mARDetail()">View All</button></div>`:''}
     <div style="display:flex;justify-content:space-between;padding-top:8px;font-weight:600;font-size:13px">
       <span>Total AR</span>
-      <span style="font-family:var(--mono);color:var(--y)">${fmt(k.ar)}</span>
+      <span id="acct-ar-val" style="font-family:var(--mono);color:var(--y)">${fmtKpi(k.ar)}</span>
     </div>
   </div>
 
@@ -12606,6 +12713,7 @@ async function _dbLoadBizProfile(bizId){
     BIZ.bookingsEnabled = data.bookings_enabled!==false;
     BIZ.country         = data.country||'Cameroon';
     BIZ.language        = data.language||'en';
+    try{BIZ.costCats=data.cost_cats?(typeof data.cost_cats==='string'?JSON.parse(data.cost_cats):data.cost_cats)||[]:[];}catch(_e){BIZ.costCats=[];}
     // Subscription fields — needed for dashboard banner and Pay Now flow
     BIZ.plan            = data.plan||'';
     BIZ.subExpires      = data.sub_expires||data.trial_end||null;
@@ -12704,7 +12812,8 @@ async function _dbSaveBizProfile(bizId){
       language:BIZ.language||'en',
       currency:CUR.code||'XAF',
     }).eq('id',bizId); }catch(_te){}
-    // Notification prefs — always sync with DB
+    try{await _sb.from('businesses').update({cost_cats:BIZ.costCats&&BIZ.costCats.length?JSON.stringify(BIZ.costCats):null}).eq('id',bizId);}catch(_cc){}
+    // Notification prefs
     try{ await _sb.from('businesses').update({
       notif_prefs: JSON.stringify(NOTIF_PREFS)
     }).eq('id',bizId); }catch(_np){}
@@ -16563,7 +16672,34 @@ ${tabDocsHtml}
       <input class="fi" id="settings-new-expcat-inp" placeholder="New expense category…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addExpCatSettings();}"/>
       <button class="btn btn-g btn-sm" onclick="_addExpCatSettings()">+ Add</button>
     </div>
+
+  <div style="padding-top:16px;border-top:1px solid var(--border)">
+    <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px">📊 Cost Breakdown Categories</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Used in the inventory cost breakdown panel. Add custom categories for your business type — e.g. Land Survey, Import Bond, Staging Fee, Site Clearance.</div>
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Built-in (15)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">
+      ${_COST_CATS_DEFAULT.map(function(c){return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:3px 9px;font-size:11px;color:var(--text2)"><span>'+c.icon+'</span><span>'+c.label+'</span></span>';}).join('')}
+    </div>
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Your Custom Categories</div>
+    <div id="cost-cats-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+      ${(function(){
+        var cats=BIZ.costCats||[];
+        if(!cats.length) return '<span style="font-size:11px;color:var(--text3)">None yet — add one below or from the Cost Breakdown panel when adding inventory</span>';
+        return cats.map(function(c,i){
+          return '<div style="display:inline-flex;align-items:center;gap:6px;background:var(--a-dim);border:1px solid rgba(99,102,241,.25);border-radius:20px;padding:5px 10px 5px 13px">'
+            +'<span>'+c.icon+'</span><span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c.label)+'</span>'
+            +'<button type="button" onclick="_delCustomCostCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1">&times;</button>'
+            +'</div>';
+        }).join('');
+      })()}
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;max-width:520px">
+      <input class="fi" id="settings-new-costcat-icon" placeholder="📋" style="width:52px;font-size:18px;text-align:center"/>
+      <input class="fi" id="settings-new-costcat-inp" placeholder="New cost category name…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addCustomCostCatSettings();}"/>
+      <button class="btn btn-p btn-sm" onclick="_addCustomCostCatSettings()">+ Add</button>
+    </div>
   </div>
+
 </div>
 </div>
 
@@ -19001,8 +19137,8 @@ function setAcctPeriod(el, period){
   rows.forEach(row=>{
     const el2=document.getElementById(row.id);
     if(el2){
-      if(row.pct!==undefined && row.v===null) el2.textContent=row.pct+'%';
-      else el2.textContent=fmt(row.v);
+      if(row.pct!==undefined&&row.v===null){el2.textContent=row.pct+'%';}
+      else{el2.innerHTML=fmtKpi(row.v);}
     }
   });
 
@@ -19056,8 +19192,6 @@ function setReportPeriod(el, period){
      <button class="btn btn-p" onclick="applyCustomReportRange()">Apply Range</button>`);
     return;
   }
-  _applyReportPeriod(period, PERIOD_RANGES[period]);
-  // _applyReportPeriod handles KPI update + chart rebuild
   _applyReportPeriod(period, PERIOD_RANGES[period]||PERIOD_RANGES.month);
 }
 
