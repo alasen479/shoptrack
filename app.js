@@ -3318,13 +3318,27 @@ function _cbReadLines(prefix){
   return lines;
 }
 
+// ── Sync categories from Supabase into D.xCats — merges DB + local defaults ──
+// Always call before opening any form that uses categories
+async function _syncCatsFromDB(){
+  if(!_sb || !SESSION.bizId || SESSION.isSuperAdmin) return;
+  try {
+    var res = await _sb.from('categories').select('name,type').eq('biz_id', SESSION.bizId);
+    if(!res.data || !res.data.length) return;
+    // Merge: DB is authoritative — keep DB list, preserving order
+    var inv  = res.data.filter(function(r){return r.type==='inv';}).map(function(r){return r.name;});
+    var exp  = res.data.filter(function(r){return r.type==='exp';}).map(function(r){return r.name;});
+    var svc  = res.data.filter(function(r){return r.type==='svc';}).map(function(r){return r.name;});
+    var vend = res.data.filter(function(r){return r.type==='vendor';}).map(function(r){return r.name;});
+    if(inv.length)  D.invCats    = inv;
+    if(exp.length)  D.expCats    = exp;
+    if(svc.length)  D.svcCats    = svc;
+    if(vend.length) D.vendorCats = vend;
+  } catch(e) { console.warn('[_syncCatsFromDB]', e.message); }
+}
+
 async function mAddItem(_returnSelectId){
-  if(D.invCats.length === 0 && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
-    try{
-      var _cats=await _sb.from('categories').select('name').eq('biz_id',SESSION.bizId).eq('type','inv');
-      if(_cats.data && _cats.data.length) D.invCats=_cats.data.map(function(r){return r.name;});
-    }catch(_e){}
-  }
+  await _syncCatsFromDB(); // always get latest user-created categories
   modal('Add Inventory Item',`
   <div class="fg-2">
     <div class="fg"><label class="fl">Product Name *</label><input class="fi" id="ai-name" placeholder="e.g. Lace Mermaid Bridal Gown"/></div>
@@ -3502,12 +3516,7 @@ function _ciCostManual(){
 
 
 async function mEditItem(id){
-  if(D.invCats.length === 0 && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
-    try{
-      var _ec=await _sb.from('categories').select('name').eq('biz_id',SESSION.bizId).eq('type','inv');
-      if(_ec.data && _ec.data.length) D.invCats=_ec.data.map(function(r){return r.name;});
-    }catch(_e){}
-  }
+  await _syncCatsFromDB(); // always get latest user-created categories
   if(!can('edit_inventory')) { toast('⛔ Edit Inventory — permission denied','error'); return; }
   const it=D.inv.find(i=>i.id===id);if(!it)return;
   const showCost = canAccess('inventory_cost');
@@ -7246,6 +7255,7 @@ function filterVendTable(){
 }
 
 async function mAddVendor(_returnSelectId){
+  await _syncCatsFromDB();
   if(D.vendorCats.length <= 4 && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
     try{
       var _vc=await _sb.from('categories').select('name').eq('biz_id',SESSION.bizId).eq('type','vendor');
@@ -7309,7 +7319,8 @@ async function mAddVendor(_returnSelectId){
     if(document.getElementById('av-cat-wrap')) _mkSearchSelect('av-cat-wrap',vc.map(function(c){return{val:c,label:c};}),cur||vc[0],function(v){var h=document.getElementById('av-cat');if(h)h.value=v;},'Vendor category…');
   },60);
 }
-function mEditVendor(id){
+async function mEditVendor(id){
+  await _syncCatsFromDB();
   if(!requireRight('edit_vendors','Edit Vendor')) return;
   var v = D.vendors.find(function(x){ return x.id===id; });
   if(!v) return;
@@ -7621,12 +7632,7 @@ function pgExp(){const _ui=_L();
 
 
 async function mAddExp(){
-  if(D.expCats.length === 0 && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
-    try{
-      var _ec = await _sb.from('categories').select('*').eq('biz_id',SESSION.bizId).eq('type','exp');
-      if(_ec.data && _ec.data.length) D.expCats = _ec.data.map(function(r){return r.name;});
-    }catch(_e){}
-  }
+  await _syncCatsFromDB(); // always get latest user-created categories
   const uid='exp-docs-'+Date.now();
   const today=localDateStr();
   const catOpts = D.expCats.map(c=>`<option>${_esc(c)}</option>`).join('');
@@ -15734,8 +15740,10 @@ function _toggleNotifPref(key, el){
 }
 function pgSettings(){
   if(SESSION.isSuperAdmin) return pgSettingsSA();
+  // Kick off background sync — re-renders category pills when done
+  _syncCatsFromDB().then(function(){ _renderInvCatPills(); _renderExpCatPills(); _renderSvcCatPills(); }).catch(function(){});
   // Ensure svcCats is always an array before template renders
-  if(!D.svcCats||!Array.isArray(D.svcCats)) D.svcCats=['Consultation','Design & Planning','Installation','Finishing','Sourcing','Maintenance','Training','Other'];
+  if(!D.svcCats||!Array.isArray(D.svcCats)) D.svcCats=['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
 
   // Build categories tab content with string concat (avoids nested template literal issues)
   var invCatPills = D.invCats.map(function(c,i){
@@ -16848,6 +16856,7 @@ function switchSettingsTab(el, tabId){
   if(tabId==='tab-contract') _initContractTab();
   if(tabId==='tab-import')   _renderImportGateBanner();
   if(tabId==='tab-subscription') _loadReferralCount();
+  if(tabId==='tab-categories') _syncCatsFromDB().then(function(){ _renderInvCatPills(); _renderExpCatPills(); _renderSvcCatPills(); });
 }
 
 
@@ -19816,7 +19825,8 @@ function genPODoc(id){
 // ============================================================
 // EXPENSE EDIT MODAL
 // ============================================================
-function mEditExp(id){
+async function mEditExp(id){
+  await _syncCatsFromDB();
   if(!can('edit_expenses')){ toast('\u26d4 Edit Expenses — permission denied for your role','error'); return; }
   const e=D.exp.find(x=>x.id===id);if(!e)return;
   // Use dynamic D.expCats so custom categories are always available
@@ -21646,7 +21656,8 @@ function mAddService(){ mNewService(); }
 function mEditService(id){ mEditSvc(id); }
 
 
-function mNewService(){
+async function mNewService(){
+  await _syncCatsFromDB();
   const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId).map(u=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="${u.id}" style="accent-color:var(--a)"/> ${u.name}</label>`).join('');
   const ptOpts=_PRICE_TYPES.map(pt=>`<option value="${pt.value}">${pt.label}</option>`).join('');
   if(!D.svcCats||!D.svcCats.length) D.svcCats=['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
@@ -21700,7 +21711,8 @@ function mNewService(){
     }, 'Service category…');
   }, 80);
 }
-function mEditSvc(id){
+async function mEditSvc(id){
+  await _syncCatsFromDB();
   const s=D.services.find(x=>x.id===id); if(!s) return;
   const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId).map(u=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="${u.id}" ${(s.staffIds||[]).includes(u.id)?'checked':''} style="accent-color:var(--a)"/> ${u.name}</label>`).join('');
   const pt=s.priceType||'flat';
