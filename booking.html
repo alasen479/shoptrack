@@ -2,419 +2,754 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta name="theme-color" content="#4361ee"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="theme-color" content="#6366f1"/>
 <title>Book an Appointment</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  :root{
-    --a:#4361ee;--g:#059669;--r:#dc2626;--y:#d97706;
-    --bg:#f1f5f9;--bg2:#ffffff;--ink:#0f172a;--text:#1e293b;--text2:#475569;
-    --border:#e2e8f0;--border2:#cbd5e1;--r8:8px;--r12:12px;--r16:16px;
-    --font:'Plus Jakarta Sans',sans-serif;
-  }
-  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
-  .wrap{max-width:520px;margin:0 auto;padding:20px 16px 60px}
-  .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r16);padding:20px;margin-bottom:14px}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:var(--r8);font-family:var(--font);font-weight:600;cursor:pointer;transition:all .15s}
-  .btn-p{background:var(--a);color:#fff;padding:12px 22px;font-size:14px;width:100%}
-  .btn-p:hover{filter:brightness(1.08)}
-  .btn-p:disabled{opacity:.5;cursor:not-allowed}
-  .btn-s{background:var(--bg);color:var(--text);border:1px solid var(--border2);padding:10px 18px;font-size:13px}
-  .svc-card{border:2px solid var(--border);border-radius:var(--r12);padding:14px 16px;cursor:pointer;transition:all .15s;margin-bottom:10px;display:flex;align-items:center;gap:12px}
-  .svc-card:hover{border-color:var(--a);background:rgba(67,97,238,.03)}
-  .svc-card.sel{border-color:var(--a);background:rgba(67,97,238,.06)}
-  .svc-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
-  .day-btn{border:1.5px solid var(--border);border-radius:var(--r8);padding:9px 8px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;transition:all .13s;background:var(--bg2)}
-  .day-btn:hover{border-color:var(--a)}
-  .day-btn.sel{border-color:var(--a);background:var(--a);color:#fff}
-  .day-btn.today{border-color:var(--a)}
-  .time-btn{border:1.5px solid var(--border);border-radius:var(--r8);padding:9px 12px;cursor:pointer;font-size:13px;font-weight:600;text-align:center;transition:all .13s;background:var(--bg2)}
-  .time-btn:hover{border-color:var(--a)}
-  .time-btn.sel{border-color:var(--a);background:var(--a);color:#fff}
-  .fi{width:100%;border:1.5px solid var(--border2);border-radius:var(--r8);padding:10px 12px;font-size:13px;font-family:var(--font);outline:none;background:var(--bg2);color:var(--ink)}
-  .fi:focus{border-color:var(--a)}
-  .fl{display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:5px}
-  .fg{margin-bottom:14px}
-  .alrt{border-radius:var(--r8);padding:11px 14px;font-size:13px;margin-bottom:14px}
-  .alrt-g{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
-  .alrt-r{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
-  .step{display:none}.step.on{display:block}
-  .progress-bar{height:4px;background:var(--border);border-radius:2px;margin-bottom:20px;overflow:hidden}
-  .progress-fill{height:100%;background:var(--a);border-radius:2px;transition:width .3s}
-  .spinner{display:inline-block;width:20px;height:20px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .biz-logo{width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,var(--a),#7c3aed);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin:0 auto 12px}
-  .confirm-detail{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)}
-  .confirm-detail:last-child{border-bottom:none}
-  .confirm-icon{width:32px;height:32px;background:rgba(67,97,238,.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
-  .confirm-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
-  .confirm-value{font-size:13px;font-weight:600;color:var(--ink)}
-  @media(max-width:480px){.wrap{padding:16px 12px 80px}.day-grid{grid-template-columns:repeat(4,1fr)!important}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --a:#6366f1;--a2:#8b5cf6;--g:#059669;--r:#dc2626;--y:#d97706;--o:#ea580c;
+  --bg:#f8fafc;--bg2:#ffffff;--ink:#0f172a;--text:#1e293b;--text2:#475569;--text3:#94a3b8;
+  --border:#e2e8f0;--border2:#cbd5e1;
+  --r6:6px;--r8:8px;--r10:10px;--r12:12px;--r16:16px;--r20:20px;--r99:999px;
+  --shadow:0 4px 24px rgba(0,0,0,.08);--shadow2:0 8px 40px rgba(0,0,0,.12);
+  --font:'Plus Jakarta Sans',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── Layout ── */
+.page{max-width:540px;margin:0 auto;padding:0 0 80px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r16);overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+
+/* ── Hero header ── */
+.hero{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%);padding:36px 24px 32px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");opacity:.4}
+.hero-logo{width:72px;height:72px;border-radius:18px;background:rgba(255,255,255,.2);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px;font-weight:900;color:#fff;border:2px solid rgba(255,255,255,.3);position:relative;overflow:hidden}
+.hero-logo img{width:100%;height:100%;object-fit:cover;border-radius:16px}
+.hero-name{font-size:24px;font-weight:900;color:#fff;margin-bottom:4px;letter-spacing:-.3px;position:relative}
+.hero-tagline{font-size:13px;color:rgba(255,255,255,.75);position:relative}
+
+/* ── Progress ── */
+.progress-wrap{padding:0 20px;margin:16px 0 8px}
+.progress-track{height:4px;background:var(--border);border-radius:var(--r99);overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--a),var(--a2));border-radius:var(--r99);transition:width .4s ease}
+.step-labels{display:flex;justify-content:space-between;margin-top:6px}
+.step-lbl{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;transition:color .3s}
+.step-lbl.on{color:var(--a)}
+
+/* ── Steps ── */
+.step{display:none;padding:0 16px 8px}
+.step.on{display:block}
+.step-title{font-size:18px;font-weight:800;color:var(--ink);margin-bottom:4px}
+.step-sub{font-size:13px;color:var(--text2);margin-bottom:16px}
+
+/* ── Service cards ── */
+.svc-card{background:var(--bg2);border:2px solid var(--border);border-radius:var(--r12);padding:14px;cursor:pointer;transition:all .15s;margin-bottom:10px;display:flex;align-items:center;gap:12px;user-select:none}
+.svc-card:hover{border-color:var(--a);transform:translateY(-1px);box-shadow:0 4px 16px rgba(99,102,241,.12)}
+.svc-card.sel{border-color:var(--a);background:rgba(99,102,241,.04);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.svc-photo{width:60px;height:60px;border-radius:var(--r10);overflow:hidden;flex-shrink:0;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:24px}
+.svc-photo img{width:100%;height:100%;object-fit:cover}
+.svc-info{flex:1;min-width:0}
+.svc-name{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:2px}
+.svc-dur{font-size:12px;color:var(--text2)}
+.svc-desc{font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.svc-price{font-size:15px;font-weight:800;flex-shrink:0;text-align:right}
+.svc-check{width:22px;height:22px;border-radius:var(--r99);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;font-size:12px}
+.svc-card.sel .svc-check{background:var(--a);border-color:var(--a);color:#fff}
+
+/* ── Calendar ── */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-month{font-size:14px;font-weight:700;color:var(--ink)}
+.cal-nav{width:34px;height:34px;border:1.5px solid var(--border);border-radius:var(--r8);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2);transition:all .15s}
+.cal-nav:hover{border-color:var(--a);color:var(--a)}
+.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+.day-label{text-align:center;font-size:10px;font-weight:700;color:var(--text3);padding:4px 0;text-transform:uppercase;letter-spacing:.3px}
+.day-btn{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:var(--r8);font-size:13px;font-weight:600;cursor:pointer;transition:all .12s;position:relative;border:1.5px solid transparent}
+.day-btn:hover:not(.past):not(.empty){background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.2)}
+.day-btn.today{border-color:var(--a);color:var(--a)}
+.day-btn.sel{background:var(--a);color:#fff;border-color:var(--a)}
+.day-btn.past{opacity:.3;cursor:not-allowed}
+.day-btn.empty{cursor:default}
+
+/* ── Time slots ── */
+.time-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px}
+.time-btn{padding:9px 4px;border:1.5px solid var(--border);border-radius:var(--r8);text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);transition:all .12s;background:var(--bg2)}
+.time-btn:hover{border-color:var(--a);color:var(--a);background:rgba(99,102,241,.04)}
+.time-btn.sel{background:var(--a);color:#fff;border-color:var(--a)}
+.no-slots{text-align:center;padding:20px;color:var(--text3);font-size:13px}
+
+/* ── Form ── */
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.fi{width:100%;border:1.5px solid var(--border2);border-radius:var(--r8);padding:11px 14px;font-size:14px;font-family:var(--font);outline:none;background:var(--bg2);color:var(--ink);transition:border-color .15s}
+.fi:focus{border-color:var(--a)}
+.fi::placeholder{color:var(--text3)}
+textarea.fi{resize:vertical;min-height:70px}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:var(--r10);font-family:var(--font);font-weight:700;cursor:pointer;transition:all .15s;font-size:14px;padding:12px 20px}
+.btn-p{background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;width:100%;padding:14px;font-size:15px;box-shadow:0 4px 16px rgba(99,102,241,.3)}
+.btn-p:hover{filter:brightness(1.07);transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,.35)}
+.btn-p:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.btn-s{background:var(--bg2);color:var(--text2);border:1.5px solid var(--border2);padding:11px 18px}
+.btn-s:hover{border-color:var(--a);color:var(--a)}
+.btn-wa{background:#25d366;color:#fff;width:100%;padding:14px;font-size:15px;box-shadow:0 4px 16px rgba(37,211,102,.3);margin-bottom:10px}
+.btn-wa:hover{filter:brightness(1.07)}
+
+/* ── Summary card ── */
+.summary-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.summary-row:last-child{border-bottom:none}
+.summary-icon{width:36px;height:36px;border-radius:var(--r8);background:rgba(99,102,241,.1);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.summary-lbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.summary-val{font-size:14px;font-weight:700;color:var(--ink)}
+
+/* ── Success ── */
+.success-wrap{text-align:center;padding:32px 20px}
+.success-icon{font-size:64px;margin-bottom:16px;animation:pop .4s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.success-title{font-size:22px;font-weight:900;color:var(--ink);margin-bottom:8px}
+.success-sub{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.6}
+.badge{display:inline-flex;align-items:center;gap:5px;background:rgba(5,150,105,.1);color:var(--g);border:1px solid rgba(5,150,105,.2);border-radius:var(--r99);padding:5px 12px;font-size:12px;font-weight:700;margin-bottom:20px}
+
+/* ── Error state ── */
+.error-state{text-align:center;padding:48px 24px}
+.error-icon{font-size:48px;margin-bottom:14px}
+.error-title{font-size:17px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.error-msg{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:20px}
+
+/* ── Loading ── */
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid rgba(99,102,241,.2);border-top-color:var(--a);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;gap:14px}
+.loading-state p{font-size:13px;color:var(--text2);font-weight:500}
+
+/* ── Footer ── */
+.booking-footer{text-align:center;padding:20px 16px 24px;border-top:1px solid var(--border)}
+.booking-footer-powered{font-size:11px;color:var(--text3);margin-bottom:6px}
+.booking-footer-powered a{color:var(--a);text-decoration:none;font-weight:600}
+.booking-footer-cta{display:inline-block;margin-top:4px;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:8px 18px;border-radius:20px;text-decoration:none;transition:opacity .15s}
+.booking-footer-cta:hover{opacity:.88}
+
+/* ── Mobile ── */
+@media(max-width:480px){
+  .hero{padding:28px 20px 24px}
+  .step{padding:0 12px 8px}
+  .time-grid{grid-template-columns:repeat(3,1fr)}
+  .page{padding-bottom:60px}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <!-- Header -->
-  <div id="biz-header" style="text-align:center;padding:24px 0 8px">
-    <div class="biz-logo" id="biz-logo-el">📅</div>
-    <div style="font-size:22px;font-weight:800;color:var(--ink)" id="biz-name-el">Loading…</div>
-    <div style="font-size:13px;color:var(--text2);margin-top:3px" id="biz-tagline-el"></div>
+<div class="page">
+
+  <!-- ── HERO HEADER ── -->
+  <div class="hero">
+    <div class="hero-logo" id="biz-logo">ST</div>
+    <div class="hero-name" id="biz-name">Loading…</div>
+    <div class="hero-tagline" id="biz-tagline">Online Booking</div>
   </div>
 
-  <!-- Progress -->
-  <div class="progress-bar"><div class="progress-fill" id="progress" style="width:25%"></div></div>
-
-  <!-- Error state -->
-  <div id="error-state" style="display:none">
-    <div class="card" style="text-align:center;padding:32px">
-      <div style="font-size:40px;margin-bottom:12px">😕</div>
-      <div style="font-size:16px;font-weight:700;color:var(--ink);margin-bottom:6px" id="error-msg">Something went wrong</div>
-      <div style="font-size:13px;color:var(--text2)">Please contact the business directly to book.</div>
+  <!-- ── PROGRESS BAR ── -->
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:25%"></div></div>
+    <div class="step-labels">
+      <span class="step-lbl on" id="lbl-1">Service</span>
+      <span class="step-lbl" id="lbl-2">Date &amp; Time</span>
+      <span class="step-lbl" id="lbl-3">Your Details</span>
+      <span class="step-lbl" id="lbl-4">Confirmed</span>
     </div>
   </div>
 
-  <!-- STEP 1: Select Service -->
-  <div class="step on" id="step1">
-    <div style="font-size:17px;font-weight:800;color:var(--ink);margin-bottom:4px">Choose a Service</div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Select what you'd like to book</div>
-    <div id="svc-list"><div style="text-align:center;padding:32px;color:var(--text2)"><div class="spinner" style="border-color:rgba(67,97,238,.3);border-top-color:var(--a)"></div></div></div>
+  <!-- ── STEP 1: CHOOSE SERVICE ── -->
+  <div class="step on" id="step-1">
+    <div class="step-title">Choose a Service</div>
+    <div class="step-sub">Select what you'd like to book</div>
+    <div id="svc-list"><div class="loading-state"><div class="spinner"></div><p>Loading services…</p></div></div>
+    <button class="btn btn-p" id="btn-step1" onclick="goStep(2)" disabled style="margin-top:8px;opacity:.4">Continue →</button>
   </div>
 
-  <!-- STEP 2: Select Date & Time -->
-  <div class="step" id="step2">
-    <button class="btn btn-s" style="margin-bottom:16px" onclick="goStep(1)">← Back</button>
-    <div style="font-size:17px;font-weight:800;color:var(--ink);margin-bottom:4px">Pick a Date & Time</div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Choose when you'd like to come in</div>
-    <div class="card" style="margin-bottom:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <button class="btn btn-s" style="padding:6px 12px;font-size:13px" onclick="shiftWeek(-1)">‹</button>
-        <div style="font-size:13px;font-weight:700;color:var(--ink)" id="week-label"></div>
-        <button class="btn btn-s" style="padding:6px 12px;font-size:13px" onclick="shiftWeek(1)">›</button>
+  <!-- ── STEP 2: DATE & TIME ── -->
+  <div class="step" id="step-2">
+    <button class="btn btn-s" style="margin-bottom:14px;padding:8px 14px;font-size:13px" onclick="goStep(1)">← Back</button>
+    <div class="step-title">Pick a Date &amp; Time</div>
+    <div class="step-sub">Choose when you'd like to come in</div>
+    <div class="card" style="padding:16px">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="shiftMonth(-1)">‹</button>
+        <span class="cal-month" id="cal-month-label"></span>
+        <button class="cal-nav" onclick="shiftMonth(1)">›</button>
       </div>
-      <div id="day-grid" class="day-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:16px"></div>
-      <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Available Times</div>
-      <div id="time-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div>
+      <div class="day-grid" id="day-labels"></div>
+      <div class="day-grid" id="cal-grid"></div>
+      <div id="time-slots"><div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Select a date to see available times</div></div>
     </div>
-    <button class="btn btn-p" id="step2-next" onclick="goStep(3)" disabled style="opacity:.4">Continue →</button>
+    <button class="btn btn-p" id="btn-step2" onclick="goStep(3)" disabled style="opacity:.4">Continue →</button>
   </div>
 
-  <!-- STEP 3: Your Details -->
-  <div class="step" id="step3">
-    <button class="btn btn-s" style="margin-bottom:16px" onclick="goStep(2)">← Back</button>
-    <div style="font-size:17px;font-weight:800;color:var(--ink);margin-bottom:4px">Your Details</div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:16px">So we know who's coming in</div>
+  <!-- ── STEP 3: YOUR DETAILS ── -->
+  <div class="step" id="step-3">
+    <button class="btn btn-s" style="margin-bottom:14px;padding:8px 14px;font-size:13px" onclick="goStep(2)">← Back</button>
+    <div class="step-title">Your Details</div>
+    <div class="step-sub">So we can confirm your appointment</div>
+    <!-- Booking summary -->
+    <div class="card" id="booking-summary" style="padding:14px 16px;margin-bottom:14px"></div>
+    <div class="card" style="padding:16px">
+      <div class="fg">
+        <label class="fl">Full Name *</label>
+        <input class="fi" id="inp-name" placeholder="Your full name" autocomplete="name"/>
+      </div>
+      <div class="fg">
+        <label class="fl">Phone / WhatsApp *</label>
+        <input class="fi" id="inp-phone" type="tel" placeholder="+237 6XX XXX XXX" autocomplete="tel"/>
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <label class="fl">Notes (optional)</label>
+        <textarea class="fi" id="inp-notes" placeholder="Any special requests or information…"></textarea>
+      </div>
+    </div>
+    <div id="form-error" style="display:none;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.25);border-radius:var(--r8);padding:10px 14px;font-size:13px;color:var(--r);margin:10px 0"></div>
+    <button class="btn btn-p" id="btn-confirm" onclick="confirmBooking()" style="margin-top:10px">📅 Confirm Booking</button>
+  </div>
+
+  <!-- ── STEP 4: CONFIRMED ── -->
+  <div class="step" id="step-4">
     <div class="card">
-      <div class="fg"><label class="fl">Full Name *</label><input class="fi" id="inp-name" placeholder="Your full name"/></div>
-      <div class="fg"><label class="fl">Phone Number *</label><input class="fi" id="inp-phone" type="tel" placeholder="+237 6XX XXX XXX"/></div>
-      <div class="fg"><label class="fl">Notes (optional)</label><textarea class="fi" id="inp-notes" rows="2" placeholder="Any special requests…" style="resize:vertical"></textarea></div>
+      <div class="success-wrap">
+        <div class="success-icon">🎉</div>
+        <div class="success-title">Booking Confirmed!</div>
+        <div class="badge">✓ Appointment Received</div>
+        <div class="success-sub" id="success-sub">Your appointment has been booked successfully.</div>
+        <div id="success-details" style="text-align:left;margin-bottom:20px"></div>
+        <button class="btn btn-wa" onclick="sendWhatsApp()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
+          Send Confirmation via WhatsApp
+        </button>
+        <button class="btn btn-s" style="width:100%" onclick="resetBooking()">Book Another Appointment</button>
+      </div>
     </div>
-    <button class="btn btn-p" id="confirm-btn" onclick="confirmBooking()">📅 Confirm Booking</button>
   </div>
 
-  <!-- STEP 4: Confirmed -->
-  <div class="step" id="step4">
-    <div class="card" style="text-align:center;padding:28px 20px">
-      <div style="font-size:48px;margin-bottom:12px">🎉</div>
-      <div style="font-size:20px;font-weight:800;color:var(--ink);margin-bottom:6px">Booking Confirmed!</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:20px" id="confirm-sub">Your appointment has been booked.</div>
-      <div id="confirm-details" style="text-align:left;margin-bottom:20px"></div>
-      <div class="alrt alrt-g" id="confirm-msg" style="margin-bottom:16px;text-align:left"></div>
-      <button class="btn btn-p" id="wa-confirm-btn" onclick="sendWAConfirm()" style="margin-bottom:10px">💬 Save to WhatsApp</button>
-      <button class="btn btn-s" style="width:100%" onclick="resetBooking()">Book Another Appointment</button>
+  <!-- ── ERROR STATE ── -->
+  <div id="error-state" style="display:none;padding:16px">
+    <div class="card">
+      <div class="error-state">
+        <div class="error-icon">😕</div>
+        <div class="error-title" id="error-title">Something went wrong</div>
+        <div class="error-msg" id="error-msg">Please contact the business directly to book an appointment.</div>
+        <button class="btn btn-s" onclick="location.reload()">Try Again</button>
+      </div>
     </div>
+  </div>
+
+  <div class="booking-footer">
+    <div class="booking-footer-powered">Powered by <a href="https://shoptrack.org" target="_blank">ShopTrack</a> &mdash; Business Management Platform</div>
+    <a href="https://shoptrack.org/?utm_source=booking_page&utm_medium=footer&utm_campaign=organic" target="_blank" class="booking-footer-cta">&#x1F4CA; Free 30-day trial &rarr; shoptrack.org</a>
   </div>
 </div>
 
 <script>
-const SUPABASE_URL = 'https://kjuxnigeexoynmvdzeyl.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqdXhuaWdlZXhveW5tdmR6ZXlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODQyNzMsImV4cCI6MjA4OTc2MDI3M30.bQ_KBLcKTgI5qko9m0Rxjt8KLXl89Ow7jS1CH_csbHY';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ── Config ──────────────────────────────────────────────────
+const SB_URL = 'https://kjuxnigeexoynmvdzeyl.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqdXhuaWdlZXhveW5tdmR6ZXlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODQyNzMsImV4cCI6MjA4OTc2MDI3M30.bQ_KBLcKTgI5qko9m0Rxjt8KLXl89Ow7jS1CH_csbHY';
+const sb = supabase.createClient(SB_URL, SB_KEY);
 
-// ── State ─────────────────────────────────────────────────────
-let BIZ_ID = '', BIZ_DATA = {}, SERVICES = [], APPTS = [];
-let selSvc = null, selDate = null, selTime = null;
-let weekOffset = 0;
+// Currency rates matching app.js
+const RATES = {XAF:615,XOF:615,NGN:1620,GBP:0.79,EUR:0.92,USD:1,GHS:12,KES:130,ZAR:19,ETB:57,TZS:2500,RWF:1300,UGX:3700};
+const SYMS  = {XAF:'Frs',XOF:'Frs',USD:'$',EUR:'€',GBP:'£',NGN:'₦',GHS:'₵',KES:'KSh',ZAR:'R',ETB:'Br',TZS:'TSh',RWF:'RF',UGX:'USh'};
 
-// ── Helpers ───────────────────────────────────────────────────
-function fmt(n){ return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
-function timeLabel(t){ if(!t) return ''; const [h,m]=t.split(':').map(Number); return ((h%12)||12)+':'+(m<10?'0':'')+m+(h>=12?' PM':' AM'); }
-function addMins(t,mins){ const [h,m]=t.split(':').map(Number); const tot=h*60+m+mins; return String(Math.floor(tot/60)%24).padStart(2,'0')+':'+String(tot%60).padStart(2,'0'); }
-function isoDate(d){ return d.toISOString().slice(0,10); }
-function todayStr(){ return isoDate(new Date()); }
-function newId(){ return 'APT-'+Date.now().toString(36).toUpperCase(); }
+// ── State ────────────────────────────────────────────────────
+let BIZ = {}, SERVICES = [], APPTS = [];
+let selSvc = null, selDate = null, selTime = null, selTimeEnd = null;
+let calYear, calMonth;
 
-// ── Init ──────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function fmt(n){ return Number(n).toLocaleString(); }
+function fmtPrice(rawPrice){
+  // rawPrice is stored as price/rate in Supabase (base currency)
+  // Multiply by rate to get display currency amount
+  if(!rawPrice || rawPrice <= 0) return 'Free';
+  const cur  = BIZ.currency || 'XAF';
+  const rate = RATES[cur] || 615;
+  const sym  = SYMS[cur]  || 'Frs';
+  const amt  = Math.round(rawPrice * rate);
+  return (cur==='XAF'||cur==='XOF') ? fmt(amt)+' '+sym : sym+fmt(amt);
+}
+function timeLabel(t){
+  if(!t) return '';
+  const [h,m] = t.split(':').map(Number);
+  return ((h%12)||12)+':'+(m<10?'0':'')+m+(h>=12?' PM':' AM');
+}
+function addMins(t, mins){
+  const [h,m] = t.split(':').map(Number);
+  const tot = h*60+m+mins;
+  return String(Math.floor(tot/60)%24).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');
+}
+function isoDate(d){ return d.getFullYear ? d.toISOString().slice(0,10) : d.toISOString().slice(0,10); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Init ─────────────────────────────────────────────────────
 async function init(){
-  const params = new URLSearchParams(window.location.search);
-  BIZ_ID = params.get('biz') || '';
-  if(!BIZ_ID){ showError('No business specified.'); return; }
+  const params = new URLSearchParams(location.search);
+  const bizId  = params.get('biz') || '';
+  if(!bizId){ return showError('No business specified.','Please use the booking link provided by the business.'); }
+
+  // Init calendar to current month
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
 
   try{
-    // Load business
-    const { data: biz, error: bizErr } = await sb.from('businesses').select('*').eq('id', BIZ_ID).single();
-    if(bizErr || !biz){ showError('Business not found.'); return; }
-    BIZ_DATA = biz;
+    // Load business (no logo_data_url — too large, use initials)
+    const {data:biz, error:bErr} = await sb.from('businesses')
+      .select('id,name,tagline,email,phone,whatsapp,bookings_enabled,booking_note,currency,primary_color')
+      .eq('id', bizId).maybeSingle();
 
-    if(biz.bookings_enabled === false){ showError('Online bookings are currently unavailable. Please contact the business directly.'); return; }
+    if(bErr){ console.error('Biz load error:', bErr.message); return showError('Could not load business.', bErr.message); }
+    if(!biz){ return showError('Business not found.','Please check your booking link.'); }
+    if(biz.bookings_enabled === false){ return showError('Bookings unavailable.','Online bookings are currently turned off. Please contact the business directly.'); }
 
-    // Update header
-    document.getElementById('biz-name-el').textContent = biz.name;
-    document.getElementById('biz-tagline-el').textContent = biz.tagline || '';
-    document.title = 'Book — ' + biz.name;
-    if(biz.logo_data_url){
-      const logoEl = document.getElementById('biz-logo-el');
-      logoEl.innerHTML = `<img src="${biz.logo_data_url}" style="width:64px;height:64px;object-fit:cover;border-radius:14px"/>`;
-      logoEl.style.background = 'none';
-    } else {
-      document.getElementById('biz-logo-el').textContent = biz.name.slice(0,2).toUpperCase();
-    }
+    BIZ = biz;
+    applyBranding();
 
     // Load services
-    const { data: svcs } = await sb.from('services').select('*').eq('biz_id', BIZ_ID).eq('active', true).order('name');
-    SERVICES = svcs || [];
+    await loadServices(bizId);
 
     // Load upcoming appointments (for availability)
-    const today = todayStr();
-    const { data: appts } = await sb.from('appointments').select('date,start_time,end_time,staff_id').eq('biz_id', BIZ_ID).gte('date', today).not('status', 'in', '(Cancelled,No-Show)');
+    const {data:appts} = await sb.from('appointments')
+      .select('date,start_time,end_time')
+      .eq('biz_id', bizId)
+      .gte('date', today())
+      .not('status','in','(Cancelled,No-Show)');
     APPTS = appts || [];
 
     renderServices();
-  } catch(e){
-    showError('Could not load booking data. Please try again.');
-    console.error(e);
+
+  }catch(e){
+    console.error('Init error:', e);
+    showError('Could not load booking page.', e.message || 'Please try again.');
   }
 }
 
-function showError(msg){
-  document.querySelectorAll('.step').forEach(s=>s.classList.remove('on'));
-  document.getElementById('error-state').style.display = 'block';
-  document.getElementById('error-msg').textContent = msg;
+async function loadServices(bizId){
+  // Try with photo column first
+  try{
+    const {data, error} = await sb.from('services')
+      .select('id,name,duration_mins,price,price_type,category,color,description,img_data_url,active')
+      .eq('biz_id', bizId)
+      .order('name');
+    if(error) throw error;
+    // Include active=true AND active=null (some may not have column set)
+    SERVICES = (data||[]).filter(s => s.active !== false);
+    return;
+  }catch(e){ console.warn('Services query (with photo) failed:', e.message); }
+
+  // Fallback without img_data_url
+  try{
+    const {data, error} = await sb.from('services')
+      .select('id,name,duration_mins,price,price_type,category,color,description,active')
+      .eq('biz_id', bizId)
+      .order('name');
+    if(error) throw error;
+    SERVICES = (data||[]).filter(s => s.active !== false);
+  }catch(e){
+    console.error('Services fallback also failed:', e.message);
+    SERVICES = [];
+  }
 }
 
-// ── Step 1: Services ──────────────────────────────────────────
+// Price type label and formatted display for booking page
+function ptLabel(pt){
+  const map={flat:'Flat Rate',per_session:'Per Session',per_hour:'Per Hour',per_day:'Per Day',per_week:'Per Week',per_min:'Per Minute',starting:'Starting From'};
+  return map[pt]||'Flat Rate';
+}
+function computeSvcTotal(price, priceType, durationMins){
+  const p=price||0, d=durationMins||60;
+  switch(priceType){
+    case 'per_hour': return Math.round(p*(d/60)*100)/100;
+    case 'per_min':  return Math.round(p*d*100)/100;
+    case 'per_day':  return Math.round(p*(d/1440)*100)/100;
+    case 'per_week': return Math.round(p*(d/10080)*100)/100;
+    default:         return p;
+  }
+}
+function fmtSvcPrice(s){
+  // s is a raw Supabase service row (price_type, price, duration_mins)
+  const pt = s.price_type || 'flat';
+  const cur = BIZ.currency || 'XAF';
+  const rate = RATES[cur] || 615;
+  const sym  = SYMS[cur]  || 'Frs';
+  const rawPrice = s.price || 0;
+  if(!rawPrice) return 'Free';
+  const dispPrice = rawPrice * rate;
+  const fmtAmt = n => (cur==='XAF'||cur==='XOF') ? fmt(Math.round(n))+' '+sym : sym+fmt(Math.round(n));
+  const suffixMap = {per_hour:'/hr', per_min:'/min', per_day:'/day', per_week:'/wk', per_session:'/session'};
+  if(pt === 'starting') return 'From ' + fmtAmt(dispPrice);
+  const suffix = suffixMap[pt] || '';
+  return fmtAmt(dispPrice) + suffix;
+}
+function fmtSvcTotal(s){
+  // Returns the estimated total for the booking (price × duration for time-based)
+  const pt = s.price_type || 'flat';
+  if(['flat','per_session','starting'].includes(pt)) return fmtSvcPrice(s);
+  const cur = BIZ.currency || 'XAF';
+  const rate = RATES[cur] || 615;
+  const sym  = SYMS[cur]  || 'Frs';
+  const total = computeSvcTotal(s.price||0, pt, s.duration_mins!=null?s.duration_mins:60) * rate;
+  const fmtAmt = n => (cur==='XAF'||cur==='XOF') ? fmt(Math.round(n))+' '+sym : sym+fmt(Math.round(n));
+  return fmtAmt(total);
+}
+
+function applyBranding(){
+  $('biz-name').textContent    = BIZ.name || 'Book Appointment';
+  $('biz-tagline').textContent = BIZ.tagline || 'Online Booking';
+  document.title = 'Book — ' + (BIZ.name || 'Appointment');
+  // Logo initials
+  const initials = (BIZ.name||'ST').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  $('biz-logo').textContent = initials;
+  // Apply brand color if set
+  if(BIZ.primary_color){
+    document.documentElement.style.setProperty('--a', BIZ.primary_color);
+  }
+}
+
+// ── Step 1: Services ─────────────────────────────────────────
 function renderServices(){
-  const el = document.getElementById('svc-list');
+  const el = $('svc-list');
   if(!SERVICES.length){
-    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text2)">No services available right now. Please contact the business.</div>';
+    el.innerHTML = `<div style="text-align:center;padding:32px 16px">
+      <div style="font-size:40px;margin-bottom:12px">📋</div>
+      <div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px">No services listed yet</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.6">This business has not published their services yet.<br>Please contact them directly to book.</div>
+    </div>`;
     return;
   }
-  el.innerHTML = SERVICES.map(s => `
-    <div class="svc-card" id="svc-${s.id}" onclick="selService('${s.id}')">
-      <div class="svc-dot" style="background:${s.color||'#4361ee'}"></div>
-      <div style="flex:1">
-        <div style="font-size:14px;font-weight:700;color:var(--ink)">${s.name}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">${s.duration_mins} min</div>
-        ${s.description ? `<div style="font-size:12px;color:var(--text2);margin-top:2px">${s.description}</div>` : ''}
+
+  // Group services by category; uncategorised go under blank key
+  const groups = {};
+  const order  = [];
+  SERVICES.forEach(s => {
+    const cat = s.category || '';
+    if(!groups[cat]){ groups[cat]=[]; order.push(cat); }
+    groups[cat].push(s);
+  });
+
+  const renderCard = s => {
+    const pt = s.price_type || 'flat';
+    const photo = s.img_data_url
+      ? `<div class="svc-photo"><img src="${esc(s.img_data_url)}" alt="${esc(s.name)}" loading="lazy"/></div>`
+      : `<div class="svc-photo" style="background:${s.color||'#6366f1'}15;border-color:${s.color||'#6366f1'}30"><div style="width:18px;height:18px;border-radius:50%;background:${s.color||'#6366f1'}"></div></div>`;
+    const ptBadge = pt !== 'flat'
+      ? `<span style="font-size:9px;font-weight:700;background:${s.color||'#6366f1'}20;color:${s.color||'#6366f1'};padding:1px 6px;border-radius:8px;letter-spacing:.2px;margin-left:4px">${ptLabel(pt)}</span>`
+      : '';
+    const priceNote = ['per_hour','per_min','per_day','per_week'].includes(pt)
+      ? `<div style="font-size:10px;color:var(--text2);margin-top:2px">Est. total: ${fmtSvcTotal(s)}</div>`
+      : pt === 'starting'
+      ? `<div style="font-size:10px;color:var(--text2);margin-top:2px">Final price confirmed on-site</div>`
+      : '';
+    return `<div class="svc-card" id="svc-${s.id}" onclick="pickService('${s.id}')">
+      ${photo}
+      <div class="svc-info">
+        <div class="svc-name">${esc(s.name)}</div>
+        <div class="svc-dur">⏱ ${s.duration_mins>0?s.duration_mins+" min":"Duration TBD"}${ptBadge}</div>
+        ${s.description?`<div class="svc-desc">${esc(s.description)}</div>`:''}
       </div>
-      <div style="font-size:15px;font-weight:800;color:${s.color||'var(--a)'}">
-        ${s.price>0 ? fmt(Math.round(s.price*615))+' Frs' : 'Free'}
+      <div style="text-align:right;flex-shrink:0">
+        <div class="svc-price" style="color:${s.color||'var(--a)'}">${fmtSvcPrice(s)}</div>
+        ${priceNote}
+        <div class="svc-check" id="chk-${s.id}">✓</div>
       </div>
-    </div>
-  `).join('');
-}
+    </div>`;
+  };
 
-function selService(id){
-  selSvc = SERVICES.find(s=>s.id===id);
-  document.querySelectorAll('.svc-card').forEach(c=>c.classList.remove('sel'));
-  document.getElementById('svc-'+id)?.classList.add('sel');
-  setTimeout(()=>goStep(2), 200);
-}
-
-// ── Step 2: Date & Time ───────────────────────────────────────
-function renderDatePicker(){
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const baseDate = new Date(today);
-  baseDate.setDate(today.getDate() + weekOffset * 7);
-
-  const days = [];
-  for(let i=0; i<7; i++){
-    const d = new Date(baseDate);
-    d.setDate(baseDate.getDate() + i);
-    days.push(d);
+  // If only one group (all uncategorised), render flat list
+  const hasCategories = order.some(k => k !== '');
+  if(!hasCategories){
+    el.innerHTML = SERVICES.map(renderCard).join('');
+    return;
   }
 
-  const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-  document.getElementById('week-label').textContent =
-    MONTHS[days[0].getMonth()]+' '+days[0].getDate()+' – '+MONTHS[days[6].getMonth()]+' '+days[6].getDate();
-
-  const grid = document.getElementById('day-grid');
-  grid.innerHTML = days.map(d => {
-    const ds = isoDate(d);
-    const isPast = d < today;
-    const isToday = ds === todayStr();
-    const isSel = ds === selDate;
-    return `<div class="day-btn ${isPast?'':''}${isToday?' today':''}${isSel?' sel':''}"
-      style="${isPast?'opacity:.35;cursor:not-allowed;':''}"
-      onclick="${isPast?'':'selectDay(\''+ds+'\')'}">
-      <div style="font-size:10px;font-weight:600;color:${isSel?'#fff':'var(--text2)'};margin-bottom:2px">${DAYS[d.getDay()]}</div>
-      <div style="font-size:14px;font-weight:700">${d.getDate()}</div>
-    </div>`;
-  }).join('');
-
-  if(selDate) renderTimePicker();
+  // Render with category group headers
+  let html = '';
+  order.forEach(cat => {
+    if(cat){
+      html += `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--a);padding:14px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px">${esc(cat)}</div>`;
+    }
+    html += groups[cat].map(renderCard).join('');
+    if(cat) html += '<div style="height:8px"></div>';
+  });
+  el.innerHTML = html;
 }
 
-function shiftWeek(dir){
-  weekOffset += dir;
-  if(weekOffset < 0) weekOffset = 0;
-  selDate = null; selTime = null;
-  document.getElementById('step2-next').disabled = true;
-  document.getElementById('step2-next').style.opacity = '.4';
-  renderDatePicker();
-  document.getElementById('time-grid').innerHTML = '';
+function pickService(id){
+  selSvc = SERVICES.find(s=>s.id===id);
+  if(!selSvc) return;
+  document.querySelectorAll('.svc-card').forEach(c=>c.classList.remove('sel'));
+  document.querySelectorAll('.svc-check').forEach(c=>{ c.style.background=''; c.style.borderColor=''; c.style.color=''; });
+  $('svc-'+id).classList.add('sel');
+  const btn = $('btn-step1');
+  btn.disabled = false;
+  btn.style.opacity = '1';
 }
 
-function selectDay(ds){
-  selDate = ds; selTime = null;
-  document.getElementById('step2-next').disabled = true;
-  document.getElementById('step2-next').style.opacity = '.4';
-  renderDatePicker();
-  renderTimePicker();
+// ── Step 2: Calendar ─────────────────────────────────────────
+function renderCalendar(){
+  const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  $('cal-month-label').textContent = MONTHS[calMonth] + ' ' + calYear;
+
+  // Day labels
+  $('day-labels').innerHTML = DAYS.map(d=>`<div class="day-label">${d}</div>`).join('');
+
+  const todayStr = today();
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+
+  let html = '';
+  for(let i=0; i<firstDay; i++) html += `<div class="day-btn empty"></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const isPast  = dateStr < todayStr;
+    const isToday = dateStr === todayStr;
+    const isSel   = dateStr === selDate;
+    html += `<div class="day-btn${isPast?' past':''}${isToday?' today':''}${isSel?' sel':''}"
+      onclick="${isPast?'':'selectDay(\''+dateStr+'\')'}">${d}</div>`;
+  }
+  $('cal-grid').innerHTML = html;
 }
 
-function renderTimePicker(){
+function shiftMonth(dir){
+  calMonth += dir;
+  if(calMonth > 11){ calMonth=0; calYear++; }
+  if(calMonth < 0){ calMonth=11; calYear--; }
+  // Don't go before current month
+  const now = new Date();
+  if(calYear < now.getFullYear() || (calYear===now.getFullYear() && calMonth<now.getMonth())){
+    calYear = now.getFullYear(); calMonth = now.getMonth();
+  }
+  selDate = null; selTime = null; selTimeEnd = null;
+  renderCalendar();
+  $('time-slots').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Select a date to see available times</div>';
+  $('btn-step2').disabled = true;
+  $('btn-step2').style.opacity = '.4';
+}
+
+function selectDay(dateStr){
+  selDate = dateStr; selTime = null; selTimeEnd = null;
+  renderCalendar();
+  renderTimeSlots();
+  $('btn-step2').disabled = true;
+  $('btn-step2').style.opacity = '.4';
+}
+
+function renderTimeSlots(){
   if(!selDate || !selSvc) return;
-  const dur = selSvc.duration_mins || 60;
+  const dur  = selSvc.duration_mins > 0 ? selSvc.duration_mins : 30; // TBD services use 30min slot
+  const now  = new Date();
+  const todayStr = today();
 
-  // Business hours: 8am – 7pm, 30-min slots
+  // Generate slots 8am–7pm in 30-min increments
   const slots = [];
   for(let h=8; h<19; h++){
     for(let m=0; m<60; m+=30){
       const start = String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
       const end   = addMins(start, dur);
-      if(end <= '19:00') slots.push({start, end});
+      if(end > '19:00') continue;
+      // If today, skip past slots
+      if(selDate === todayStr){
+        const slotTime = new Date();
+        slotTime.setHours(h, m+30, 0); // 30min buffer
+        if(slotTime <= now) continue;
+      }
+      slots.push({start, end});
     }
   }
 
-  // Filter out booked slots
+  // Filter booked slots
   const dayAppts = APPTS.filter(a=>a.date===selDate);
-  const available = slots.filter(slot=>{
-    return !dayAppts.some(a => a.start_time <= slot.start && a.end_time > slot.start);
-  });
+  const available = slots.filter(slot=>
+    !dayAppts.some(a=> a.start_time <= slot.start && a.end_time > slot.start)
+  );
 
-  const grid = document.getElementById('time-grid');
   if(!available.length){
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:16px;color:var(--text2);font-size:13px">No available slots on this day. Please choose another date.</div>';
+    $('time-slots').innerHTML = `<div class="no-slots">😔 No available slots on this day.<br>Please choose another date.</div>`;
     return;
   }
 
-  grid.innerHTML = available.map(slot => `
-    <div class="time-btn${slot.start===selTime?' sel':''}" onclick="selectTime('${slot.start}','${slot.end}')">
-      ${timeLabel(slot.start)}
-    </div>
-  `).join('');
+  $('time-slots').innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Available Times</div>
+    <div class="time-grid">
+      ${available.map(s=>`
+        <div class="time-btn${selTime===s.start?' sel':''}" onclick="pickTime('${s.start}','${s.end}')">
+          ${timeLabel(s.start)}
+        </div>
+      `).join('')}
+    </div>`;
 }
 
-function selectTime(start, end){
-  selTime = start;
-  document.querySelectorAll('.time-btn').forEach(b=>{
-    b.classList.toggle('sel', b.textContent.trim()===timeLabel(start));
-  });
-  const btn = document.getElementById('step2-next');
-  btn.disabled = false; btn.style.opacity = '1';
+function pickTime(start, end){
+  selTime = start; selTimeEnd = end;
+  document.querySelectorAll('.time-btn').forEach(b=>b.classList.remove('sel'));
+  event.target.classList.add('sel');
+  const btn = $('btn-step2');
+  btn.disabled = false;
+  btn.style.opacity = '1';
 }
 
-// ── Step navigation ───────────────────────────────────────────
-function goStep(n){
-  document.querySelectorAll('.step').forEach(s=>s.classList.remove('on'));
-  document.getElementById('step'+n).classList.add('on');
-  document.getElementById('progress').style.width = (n*25)+'%';
-  window.scrollTo({top:0,behavior:'smooth'});
-  if(n===2) renderDatePicker();
+// ── Step 3: Details & Summary ────────────────────────────────
+function renderSummary(){
+  const dateObj = new Date(selDate+'T12:00:00');
+  const dateFmt = dateObj.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const pt = selSvc.price_type || 'flat';
+  const priceRow = ['per_hour','per_min','per_day','per_week'].includes(pt)
+    ? `<div class="summary-row"><div class="summary-icon">💰</div><div><div class="summary-lbl">Rate</div><div class="summary-val">${fmtSvcPrice(selSvc)}</div></div></div>
+       <div class="summary-row" style="border-bottom:none"><div class="summary-icon">🧾</div><div><div class="summary-lbl">Est. Total${selSvc.duration_mins>0?" for "+selSvc.duration_mins+" min":""}</div><div class="summary-val" style="color:var(--g)">${fmtSvcTotal(selSvc)}</div></div></div>`
+    : `<div class="summary-row" style="border-bottom:none"><div class="summary-icon">💰</div><div><div class="summary-lbl">Price${pt==='starting'?' (Starting From)':''}</div><div class="summary-val" style="color:var(--g)">${fmtSvcPrice(selSvc)}</div></div></div>`;
+  $('booking-summary').innerHTML = `
+    <div class="summary-row"><div class="summary-icon">✂️</div><div><div class="summary-lbl">Service</div><div class="summary-val">${esc(selSvc.name)}</div></div></div>
+    <div class="summary-row"><div class="summary-icon">📅</div><div><div class="summary-lbl">Date</div><div class="summary-val">${dateFmt}</div></div></div>
+    <div class="summary-row"><div class="summary-icon">🕐</div><div><div class="summary-lbl">Time</div><div class="summary-val">${timeLabel(selTime)} – ${timeLabel(selTimeEnd)}</div></div></div>
+    ${priceRow}`;
 }
 
-// ── Step 3 & 4: Confirm ───────────────────────────────────────
+// ── Confirm booking ───────────────────────────────────────────
 async function confirmBooking(){
-  const name = document.getElementById('inp-name').value.trim();
-  const phone = document.getElementById('inp-phone').value.trim();
-  const notes = document.getElementById('inp-notes').value.trim();
+  // Client-side rate limit: max 3 bookings per 10 minutes from this browser tab
+  const _rl = JSON.parse(sessionStorage.getItem('st_bk_rl') || '[]')
+    .filter(t => Date.now() - t < 10 * 60_000);
+  if (_rl.length >= 3) {
+    showFormError('Too many booking attempts. Please wait a few minutes and try again.');
+    return;
+  }
+  sessionStorage.setItem('st_bk_rl', JSON.stringify([..._rl, Date.now()]));
+  const name  = $('inp-name').value.trim();
+  const phone = $('inp-phone').value.trim();
+  const notes = $('inp-notes').value.trim();
 
-  if(!name){ alert('Please enter your name.'); document.getElementById('inp-name').focus(); return; }
-  if(!phone){ alert('Please enter your phone number.'); document.getElementById('inp-phone').focus(); return; }
+  $('form-error').style.display = 'none';
+  if(!name){  showFormError('Please enter your full name.'); return; }
+  if(!phone){ showFormError('Please enter your phone number.'); return; }
 
-  const btn = document.getElementById('confirm-btn');
-  btn.innerHTML = '<span class="spinner"></span> Booking…';
+  const btn = $('btn-confirm');
+  btn.innerHTML = '<span class="spinner" style="width:18px;height:18px;border-width:2px"></span> Booking…';
   btn.disabled = true;
 
   try{
+    const apptId   = 'APT-'+Date.now().toString(36).toUpperCase();
+    const dateObj  = new Date(selDate+'T12:00:00');
+    const dateFmt  = dateObj.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
     const appt = {
-      id: newId(),
-      biz_id: BIZ_ID,
-      service_id: selSvc.id,
-      service_name: selSvc.name,
-      customer_id: '',
+      id:            apptId,
+      biz_id:        BIZ.id,
+      service_id:    selSvc.id,
+      service_name:  selSvc.name,
       customer_name: name,
-      customer_phone: phone,
-      staff_id: '',
-      staff_name: '',
-      date: selDate,
-      start_time: selTime,
-      end_time: addMins(selTime, selSvc.duration_mins||60),
-      status: 'Reserved',
-      notes: notes,
-      walk_in: false,
-      total_amount: selSvc.price || 0,
+      customer_phone:phone,
+      date:          selDate,
+      start_time:    selTime,
+      end_time:      selTimeEnd,
+      status:        'Reserved',
+      notes:         notes,
+      walk_in:       false,
+      total_amount:  computeSvcTotal(selSvc.price||0, selSvc.price_type||'flat', selSvc.duration_mins!=null?selSvc.duration_mins:60),
     };
 
-    const { error } = await sb.from('appointments').insert(appt);
+    const {error} = await sb.from('appointments').insert(appt);
     if(error) throw error;
 
+    // Add to local APPTS so double-booking is prevented if user books again
+    APPTS.push({date:selDate, start_time:selTime, end_time:selTimeEnd});
+
+    // Build confirmation message for WhatsApp
+    const note = BIZ.booking_note || 'Thank you for booking with us! We look forward to seeing you.';
+    const pt2 = selSvc.price_type || 'flat';
+    const priceStr = ['per_hour','per_min','per_day','per_week'].includes(pt2)
+      ? `${fmtSvcPrice(selSvc)}${selSvc.duration_mins>0?" (Est. "+fmtSvcTotal(selSvc)+" for "+selSvc.duration_mins+" min)":""}`
+      : fmtSvcPrice(selSvc);
+    window._waMsg = `Hi ${name.split(' ')[0]}! Your appointment is confirmed ✅\n\n`
+      +`🏪 *${BIZ.name}*\n`
+      +`📋 *${selSvc.name}*\n`
+      +`💰 ${priceStr}\n`
+      +`📅 ${dateFmt}\n`
+      +`🕐 ${timeLabel(selTime)} – ${timeLabel(selTimeEnd)}\n\n`
+      +`${note}\n\n`
+      +`_Reply to this message if you need to reschedule._`;
+
     // Show confirmation
-    const dateFormatted = new Date(selDate+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    document.getElementById('confirm-sub').textContent = `See you on ${dateFormatted}!`;
-
-    document.getElementById('confirm-details').innerHTML = `
-      <div class="confirm-detail"><div class="confirm-icon">✂️</div><div><div class="confirm-label">Service</div><div class="confirm-value">${selSvc.name}</div></div></div>
-      <div class="confirm-detail"><div class="confirm-icon">📅</div><div><div class="confirm-label">Date</div><div class="confirm-value">${dateFormatted}</div></div></div>
-      <div class="confirm-detail"><div class="confirm-icon">🕐</div><div><div class="confirm-label">Time</div><div class="confirm-value">${timeLabel(selTime)} – ${timeLabel(addMins(selTime,selSvc.duration_mins||60))}</div></div></div>
-      <div class="confirm-detail"><div class="confirm-icon">💰</div><div><div class="confirm-label">Price</div><div class="confirm-value">${selSvc.price>0?fmt(Math.round(selSvc.price*615))+' Frs':'Free consultation'}</div></div></div>
-    `;
-
-    const bizNote = BIZ_DATA.booking_note || 'We look forward to seeing you!';
-    document.getElementById('confirm-msg').textContent = bizNote;
-
-    // Store WA message
-    window._waMsg = `Hi! I've just booked an appointment at *${BIZ_DATA.name}* ✅\n\n` +
-      `📋 *${selSvc.name}*\n📅 ${dateFormatted}\n🕐 ${timeLabel(selTime)}\n\n` +
-      `Name: ${name}\nPhone: ${phone}\n\n${bizNote}`;
+    const pt3 = selSvc.price_type || 'flat';
+    const confPriceRow = ['per_hour','per_min','per_day','per_week'].includes(pt3)
+      ? `<div class="summary-row"><div class="summary-icon">💰</div><div><div class="summary-lbl">Rate</div><div class="summary-val">${fmtSvcPrice(selSvc)}</div></div></div>
+         <div class="summary-row" style="border-bottom:none"><div class="summary-icon">🧾</div><div><div class="summary-lbl">Est. Total</div><div class="summary-val" style="color:var(--g)">${fmtSvcTotal(selSvc)}</div></div></div>`
+      : `<div class="summary-row" style="border-bottom:none"><div class="summary-icon">💰</div><div><div class="summary-lbl">Price${pt3==='starting'?' (Starting From)':''}</div><div class="summary-val" style="color:var(--g)">${fmtSvcPrice(selSvc)}</div></div></div>`;
+    $('success-sub').textContent = `See you on ${dateFmt}!`;
+    $('success-details').innerHTML = `
+      <div class="summary-row"><div class="summary-icon">✂️</div><div><div class="summary-lbl">Service</div><div class="summary-val">${esc(selSvc.name)}</div></div></div>
+      <div class="summary-row"><div class="summary-icon">📅</div><div><div class="summary-lbl">Date</div><div class="summary-val">${dateFmt}</div></div></div>
+      <div class="summary-row"><div class="summary-icon">🕐</div><div><div class="summary-lbl">Time</div><div class="summary-val">${timeLabel(selTime)} – ${timeLabel(selTimeEnd)}</div></div></div>
+      ${confPriceRow}`;
 
     goStep(4);
-  } catch(e){
+
+  }catch(e){
     btn.innerHTML = '📅 Confirm Booking';
     btn.disabled = false;
-    document.getElementById('error-state').style.display = 'block';
-    document.getElementById('error-msg').textContent = 'Booking failed. Please try again or contact the business.';
-    console.error(e);
+    console.error('Booking error:', e);
+    showFormError('Booking failed: '+(e.message||'Please try again.'));
   }
 }
 
-function sendWAConfirm(){
-  const bizPhone = (BIZ_DATA.whatsapp || BIZ_DATA.phone || '').replace(/[^0-9]/g,'');
-  const msg = encodeURIComponent(window._waMsg || '');
-  if(bizPhone){
-    window.open('https://wa.me/'+bizPhone+'?text='+msg, '_blank');
-  } else {
-    window.open('https://wa.me/?text='+msg, '_blank');
-  }
+// ── WhatsApp ─────────────────────────────────────────────────
+function sendWhatsApp(){
+  const phone = (BIZ.whatsapp || BIZ.phone || '').replace(/[^0-9]/g,'');
+  const msg   = encodeURIComponent(window._waMsg || '');
+  window.open(phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
 }
 
+// ── Navigation ───────────────────────────────────────────────
+function goStep(n){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('on'));
+  $('step-'+n).classList.add('on');
+  // Update progress
+  const pct = [25,50,75,100][n-1];
+  $('progress-fill').style.width = pct+'%';
+  // Update labels
+  for(let i=1;i<=4;i++) $('lbl-'+i).classList.toggle('on', i<=n);
+  // Step-specific setup
+  if(n===2){ renderCalendar(); if(selDate) renderTimeSlots(); }
+  if(n===3){ renderSummary(); }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── Utilities ────────────────────────────────────────────────
+function showError(title, msg){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('on'));
+  $('error-state').style.display = 'block';
+  $('error-title').textContent = title || 'Something went wrong';
+  $('error-msg').textContent   = msg   || 'Please contact the business directly.';
+}
+function showFormError(msg){
+  const el = $('form-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
 function resetBooking(){
-  selSvc=null; selDate=null; selTime=null; weekOffset=0;
-  document.getElementById('inp-name').value='';
-  document.getElementById('inp-phone').value='';
-  document.getElementById('inp-notes').value='';
-  document.getElementById('error-state').style.display='none';
+  selSvc=null; selDate=null; selTime=null; selTimeEnd=null;
+  $('inp-name').value=''; $('inp-phone').value=''; $('inp-notes').value='';
+  $('form-error').style.display='none';
+  $('btn-step1').disabled=true; $('btn-step1').style.opacity='.4';
+  document.querySelectorAll('.svc-card').forEach(c=>c.classList.remove('sel'));
   goStep(1);
 }
 
-init();
+// ── Boot ─────────────────────────────────────────────────────
+const _timeout = setTimeout(()=> showError('Loading timed out.','Please check your connection and try again.'), 15000);
+init().then(()=> clearTimeout(_timeout)).catch(e=>{ clearTimeout(_timeout); showError('Error', e.message); });
 </script>
 </body>
 </html>

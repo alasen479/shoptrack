@@ -1,0 +1,23 @@
+# HTML — never cache (always fresh, contains no hash in filename)
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+/booking.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+# JS — cache for 1 year; deploy a new filename or append ?v=BUILD to bust
+/app.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Content-Type: application/javascript; charset=utf-8
+
+# Netlify functions — never cache
+/.netlify/functions/*
+  Cache-Control: no-store
+
+# Default for everything else (images, fonts, etc.)
+/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=3600

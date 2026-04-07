@@ -1,0 +1,54 @@
+# netlify.toml — ShopTrack cache & routing config
+# Drop-deploy compatible — no plugins, no build command
+
+# ── Cache headers ─────────────────────────────────────────────────────────────
+
+# HTML files — never cache
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+
+# app.js — short cache, busted by ?v= param on every deploy
+[[headers]]
+  for = "/app.js"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+# Netlify functions — no cache
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# ── Redirects ─────────────────────────────────────────────────────────────────
+[[redirects]]
+  from = "/affiliates"
+  to = "/affiliates.html"
+  status = 200
+
+[[redirects]]
+  from = "/affiliates/"
+  to = "/affiliates.html"
+  status = 200
+
+# ── Scheduled functions (cron) — defined here, no plugin needed ───────────────
+[functions]
+  directory = "netlify/functions"
+
+[[schedule]]
+  function = "trial-drip"
+  cron = "0 8 * * *"
+
+[[schedule]]
+  function = "campay-billing"
+  cron = "0 7 * * *"

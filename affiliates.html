@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Affiliate Program / Programme d'affiliation &mdash; ShopTrack</title>
+<meta name="description" content="Earn 20% month 1 then 10% for 11 months per referral. Gagnez 20% le mois 1 puis 10% pendant 11 mois par parrainage."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f17;--bg2:#13151f;--bg3:#1a1d2b;--bg4:#222538;
+  --border:#1e2236;--border2:#2a2e45;
+  --text:#d8deee;--text2:#8e97ba;--text3:#4a5070;--ink:#eef1ff;
+  --a:#6b8fff;--a2:#4169f5;--a-dim:rgba(107,143,255,.14);
+  --p:#a78bfa;--g:#2dd4a0;--g-dim:rgba(45,212,160,.13);--y:#f5c842;--r:#ff6080;
+  --mono:'DM Mono',monospace;--sans:'Plus Jakarta Sans',sans-serif;
+  --r8:8px;--r12:12px;--r16:16px;
+  --grad:linear-gradient(135deg,#6b8fff,#a78bfa);
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;line-height:1.6}
+body::before{content:'';position:fixed;inset:0;opacity:.035;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.glow{position:fixed;border-radius:50%;filter:blur(130px);pointer-events:none;z-index:0}
+.g1{width:600px;height:600px;background:radial-gradient(circle,rgba(107,143,255,.12) 0%,transparent 70%);top:-200px;right:-150px}
+.g2{width:400px;height:400px;background:radial-gradient(circle,rgba(167,139,250,.08) 0%,transparent 70%);bottom:80px;left:-100px}
+/* NAV */
+nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 40px;background:rgba(13,15,23,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+@media(max-width:600px){nav{padding:12px 16px}}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo{width:36px;height:36px;background:var(--grad);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(91,127,255,.3);flex-shrink:0}
+.nav-logo svg{width:18px;height:18px}
+.brand-name{font-size:17px;font-weight:900;color:var(--ink);letter-spacing:-.3px}
+.nav-right{display:flex;align-items:center;gap:8px}
+.lang-toggle{display:flex;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);overflow:hidden;flex-shrink:0}
+.lbtn{padding:6px 13px;border:none;background:transparent;font-family:var(--sans);font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;transition:all .15s}
+.lbtn.on{background:var(--a);color:#fff}
+.btn-nav-g{padding:7px 14px;border:1px solid var(--border2);background:transparent;border-radius:var(--r8);font-family:var(--sans);font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;text-decoration:none;transition:all .15s}
+.btn-nav-g:hover{border-color:var(--a);color:var(--a)}
+.btn-nav-p{padding:8px 18px;background:var(--grad);border:none;border-radius:var(--r8);font-family:var(--sans);font-size:13px;font-weight:700;color:#fff;cursor:pointer;text-decoration:none;box-shadow:0 3px 12px rgba(91,127,255,.3);transition:opacity .15s,transform .1s}
+.btn-nav-p:hover{opacity:.88;transform:translateY(-1px)}
+@media(max-width:520px){.btn-nav-g{display:none}}
+/* HERO */
+.hero{position:relative;z-index:1;text-align:center;padding:90px 24px 70px;max-width:820px;margin:0 auto}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;padding:5px 14px;background:var(--a-dim);border:1px solid rgba(107,143,255,.35);border-radius:20px;font-size:11px;font-weight:700;color:var(--a);letter-spacing:.08em;text-transform:uppercase;margin-bottom:28px;animation:fadeUp .5s ease both}
+.edot{width:6px;height:6px;background:var(--a);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+.hero h1{font-size:clamp(34px,7vw,60px);font-weight:900;color:var(--ink);line-height:1.08;letter-spacing:-1.5px;margin-bottom:22px;animation:fadeUp .5s .1s ease both}
+.hero h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:16px;color:var(--text2);max-width:520px;margin:0 auto 44px;line-height:1.75;animation:fadeUp .5s .2s ease both}
+.hero-stats{display:flex;justify-content:center;border:1px solid var(--border2);border-radius:var(--r16);background:var(--bg2);overflow:hidden;animation:fadeUp .5s .3s ease both;flex-wrap:wrap}
+.hs{padding:20px 24px;border-right:1px solid var(--border2);flex:1;min-width:100px}
+.hs:last-child{border-right:none}
+.hs-n{font-size:24px;font-weight:900;color:var(--ink);letter-spacing:-1px;font-family:var(--mono)}
+.hs-n span{color:var(--a)}
+.hs-l{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+/* SECTIONS */
+.sec{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:0 24px 70px}
+.sec-t{font-size:25px;font-weight:900;color:var(--ink);letter-spacing:-.4px;margin-bottom:8px;text-align:center}
+.sec-s{font-size:14px;color:var(--text2);text-align:center;margin-bottom:32px}
+/* PERKS */
+.perk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:680px){.perk-grid{grid-template-columns:1fr}}
+.perk{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r16);padding:26px 22px;transition:border-color .2s,transform .2s;position:relative;overflow:hidden}
+.perk:hover{border-color:var(--border2);transform:translateY(-3px)}
+.perk::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--a-dim),transparent 60%);opacity:0;transition:opacity .2s}
+.perk:hover::before{opacity:1}
+.perk-ico{font-size:26px;margin-bottom:12px;display:block}
+.perk-ttl{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:6px}
+.perk-dsc{font-size:12px;color:var(--text2);line-height:1.65}
+.perk-val{font-family:var(--mono);font-size:19px;color:var(--a);font-weight:500;margin-top:12px;display:block}
+/* STEPS */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:2px}
+@media(max-width:700px){.steps{grid-template-columns:repeat(2,1fr);gap:10px}}
+@media(max-width:420px){.steps{grid-template-columns:1fr}}
+.step{background:var(--bg2);border:1px solid var(--border);padding:26px 20px}
+.step:first-child{border-radius:var(--r12) 0 0 var(--r12)}.step:last-child{border-radius:0 var(--r12) var(--r12) 0}
+@media(max-width:700px){.step{border-radius:var(--r12)!important}}
+.step-num{font-family:var(--mono);font-size:10px;color:var(--a);letter-spacing:.1em;margin-bottom:14px;display:block}
+.step-ico{font-size:22px;margin-bottom:10px;display:block}
+.step-ttl{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:5px}
+.step-dsc{font-size:12px;color:var(--text2);line-height:1.6}
+/* EARNINGS TABLE */
+.etbl{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r16);overflow:hidden}
+.erow{display:grid;grid-template-columns:210px 1fr 1fr;border-bottom:1px solid var(--border)}
+.erow:last-child{border-bottom:none}
+.ec{padding:12px 16px;font-size:13px}
+.ec:first-child{color:var(--text2);font-size:12px;background:var(--bg3)}
+.ehdr{background:var(--bg4)}.ehdr .ec{font-weight:800;color:var(--ink);font-size:13px}.ehdr .ec:first-child{background:var(--bg4)}
+@media(max-width:580px){.erow{grid-template-columns:1fr}.ec:first-child{padding-bottom:4px}}
+/* DASHBOARD */
+.d-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r16);padding:26px;margin-bottom:14px}
+.d-ttl{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:16px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:640px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
+.sbox{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r8);padding:14px}
+.sbox-n{font-family:var(--mono);font-size:22px;color:var(--ink)}
+.sbox-l{font-size:11px;color:var(--text2);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.rtbl{width:100%;border-collapse:collapse;font-size:12px}
+.rtbl th{text-align:left;padding:8px 10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:10px;border-bottom:1px solid var(--border)}
+.rtbl td{padding:10px;border-bottom:1px solid var(--border);color:var(--text)}
+.rtbl tr:last-child td{border-bottom:none}
+.badge-g{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;background:var(--g-dim);color:var(--g)}
+#d-link{font-family:var(--mono);font-size:12px;color:var(--a);word-break:break-all;flex:1}
+/* FORM */
+.f-wrap{max-width:600px;margin:0 auto}
+.f-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r16);padding:36px;position:relative;overflow:hidden}
+@media(max-width:520px){.f-card{padding:24px 18px}}
+.f-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad)}
+.fg{margin-bottom:16px}
+.fg label{display:block;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.fi,.ft,.fs{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);color:var(--ink);font-family:var(--sans);font-size:13px;padding:10px 13px;outline:none;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}
+.fi:focus,.ft:focus,.fs:focus{border-color:var(--a);box-shadow:0 0 0 3px var(--a-dim)}
+.fi::placeholder,.ft::placeholder{color:var(--text3)}
+.ft{min-height:90px;resize:vertical}.fs{cursor:pointer}.fs option{background:var(--bg3)}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.fg-row{grid-template-columns:1fr}}
+.fh{font-size:11px;color:var(--text3);margin-top:4px}
+.plt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+@media(max-width:480px){.plt-grid{grid-template-columns:repeat(2,1fr)}}
+.plt{position:relative}.plt input[type=checkbox]{position:absolute;opacity:0;width:0}
+.plt label{display:flex;align-items:center;gap:6px;padding:8px 11px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);transition:all .15s;white-space:nowrap}
+.plt input:checked+label{background:var(--a-dim);border-color:var(--a);color:var(--a)}
+.plt label:hover{border-color:var(--a);color:var(--ink)}
+.div-row{display:flex;align-items:center;gap:12px;margin:20px 0 18px}
+.div-row::before,.div-row::after{content:'';flex:1;height:1px;background:var(--border)}
+.div-row span{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.fi.err,.ft.err,.fs.err{border-color:var(--r);box-shadow:0 0 0 3px rgba(255,96,128,.12)}
+.err-msg{font-size:11px;color:var(--r);margin-top:4px}
+.btn-sub{width:100%;padding:13px;background:var(--grad);border:none;border-radius:var(--r8);font-family:var(--sans);font-size:14px;font-weight:800;color:#fff;cursor:pointer;box-shadow:0 4px 16px rgba(91,127,255,.3);transition:opacity .15s,transform .1s;margin-top:4px}
+.btn-sub:hover{opacity:.88;transform:translateY(-1px)}.btn-sub:active{transform:translateY(0)}.btn-sub:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.f-note{text-align:center;font-size:11px;color:var(--text3);margin-top:12px;line-height:1.6}
+.f-note a{color:var(--text2);text-decoration:underline;cursor:pointer}
+.suc-state{display:none;text-align:center;padding:40px 20px}
+.suc-icon{width:64px;height:64px;background:var(--a-dim);border:2px solid var(--a);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 20px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.suc-state h3{font-size:20px;font-weight:800;color:var(--ink);margin-bottom:10px}
+.suc-state p{font-size:13px;color:var(--text2);max-width:360px;margin:0 auto;line-height:1.7}
+.suc-ref{display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:11px 18px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);font-family:var(--mono);font-size:13px;color:var(--a)}
+/* BUTTONS */
+.btn-p{padding:9px 18px;background:var(--grad);border:none;border-radius:var(--r8);font-family:var(--sans);font-size:13px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 3px 10px rgba(91,127,255,.25);transition:opacity .15s;white-space:nowrap}
+.btn-p:hover{opacity:.85}.btn-p:disabled{opacity:.55;cursor:not-allowed}
+.btn-g{padding:9px 14px;background:transparent;border:1px solid var(--border2);border-radius:var(--r8);font-family:var(--sans);font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-g:hover{border-color:var(--a);color:var(--a)}
+/* FAQ */
+.faq-item{border-bottom:1px solid var(--border)}
+.faq-q{width:100%;background:none;border:none;text-align:left;padding:16px 0;font-family:var(--sans);font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.faq-q:hover{color:var(--a)}
+.faq-chev{font-size:9px;color:var(--text3);flex-shrink:0;transition:transform .2s}
+.faq-item.open .faq-chev{transform:rotate(180deg);color:var(--a)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.faq-item.open .faq-a{max-height:500px}
+.faq-a p{font-size:13px;color:var(--text2);line-height:1.7;padding-bottom:16px}
+/* MODAL */
+.m-ov{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.78);align-items:center;justify-content:center;padding:20px}
+.m-ov.open{display:flex}
+.m-box{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r16);width:100%;max-width:660px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.7)}
+.m-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.m-head h3{font-size:16px;font-weight:800;color:var(--ink)}
+.m-close{background:none;border:none;font-size:18px;color:var(--text3);cursor:pointer;padding:4px 8px;border-radius:6px}
+.m-close:hover{color:var(--ink);background:var(--bg3)}
+.m-body{padding:20px 24px;overflow-y:auto;flex:1}
+.m-body h4{font-size:13px;font-weight:800;color:var(--ink);margin:18px 0 6px}
+.m-body h4:first-child{margin-top:0}
+.m-body p,.m-body li{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:6px}
+.m-body ul{margin-left:18px;margin-bottom:8px}
+.m-foot{padding:16px 24px;border-top:1px solid var(--border);flex-shrink:0}
+/* FOOTER */
+footer{position:relative;z-index:1;border-top:1px solid var(--border);padding:28px 24px;text-align:center}
+.f-brand{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
+.f-logo{width:26px;height:26px;background:var(--grad);border-radius:7px;display:flex;align-items:center;justify-content:center}
+.f-logo svg{width:13px;height:13px}
+.f-name{font-size:14px;font-weight:900;color:var(--ink)}
+footer p{font-size:11px;color:var(--text3)}
+footer a{color:var(--text2);text-decoration:none}
+footer a:hover{color:var(--a)}
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg4);border:1px solid var(--border2);color:var(--ink);font-size:13px;font-weight:600;padding:11px 18px;border-radius:10px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .2s;opacity:0;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.sdiv{max-width:960px;margin:0 auto 70px;padding:0 24px}
+.sdiv div{height:1px;background:var(--border)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="glow g1"></div>
+<div class="glow g2"></div>
+<nav>
+  <a href="https://shoptrack.org" class="nav-brand">
+    <div class="nav-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </div>
+    <span class="brand-name">ShopTrack</span>
+  </a>
+  <div class="nav-right">
+    <div class="lang-toggle">
+      <button class="lbtn on" id="btn-en" onclick="setLang('en')">EN</button>
+      <button class="lbtn" id="btn-fr" onclick="setLang('fr')">FR</button>
+    </div>
+    <a href="#dashboard" class="btn-nav-g" id="nav-dash">My Dashboard</a>
+    <a href="#apply" class="btn-nav-p" id="nav-apply">Apply Now</a>
+  </div>
+</nav>
+<section class="hero">
+  <div class="eyebrow"><span class="edot"></span><span id="t-eyebrow">Affiliate Program</span></div>
+  <h1 id="t-h1">Help small businesses.<br/><em id="t-h1em">Get paid for it.</em></h1>
+  <p class="hero-sub" id="t-sub">Promote ShopTrack to your audience and earn recurring commissions for a full year &mdash; per referral. No contracts, no minimums.</p>
+  <div class="hero-stats">
+    <div class="hs"><div class="hs-n"><span>20</span>%</div><div class="hs-l" id="t-s1">Month 1 commission</div></div>
+    <div class="hs"><div class="hs-n"><span>10</span>%</div><div class="hs-l" id="t-s2">Months 2&ndash;12 recurring</div></div>
+    <div class="hs"><div class="hs-n">30<span>d</span></div><div class="hs-l" id="t-s3">Free trial for referrals</div></div>
+    <div class="hs"><div class="hs-n"><span>&infin;</span></div><div class="hs-l" id="t-s4">No cap on referrals</div></div>
+  </div>
+</section>
+<section class="sec" style="padding-bottom:40px">
+  <p class="sec-t" id="t-pdf-title">Download our presentation</p>
+  <p class="sec-s" id="t-pdf-sub">Everything you need to know about ShopTrack — one document, two languages.</p>
+  <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+    <a href="/ShopTrack_Presentation_EN.pdf" target="_blank" download="ShopTrack_Presentation_EN.pdf" style="display:flex;align-items:center;gap:14px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r16);padding:20px 28px;text-decoration:none;transition:border-color .2s,transform .2s;min-width:240px" onmouseover="this.style.borderColor='var(--a)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border2)';this.style.transform=''">
+      <div style="width:44px;height:52px;background:linear-gradient(135deg,#ff6080,#ff4060);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(255,96,128,.3)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+      <div><div style="font-size:14px;font-weight:800;color:var(--ink);margin-bottom:2px" id="t-pdf-en-title">ShopTrack Overview</div><div style="font-size:12px;color:var(--text2)" id="t-pdf-en-lang">English &middot; PDF &middot; 9 pages</div><div style="font-size:11px;color:var(--a);margin-top:4px;font-weight:600" id="t-pdf-en-dl">&#x2B07; Download</div></div>
+    </a>
+    <a href="/ShopTrack_Presentation_FR.pdf" target="_blank" download="ShopTrack_Presentation_FR.pdf" style="display:flex;align-items:center;gap:14px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r16);padding:20px 28px;text-decoration:none;transition:border-color .2s,transform .2s;min-width:240px" onmouseover="this.style.borderColor='var(--a)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border2)';this.style.transform=''">
+      <div style="width:44px;height:52px;background:linear-gradient(135deg,#6b8fff,#a78bfa);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(107,143,255,.3)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+      <div><div style="font-size:14px;font-weight:800;color:var(--ink);margin-bottom:2px" id="t-pdf-fr-title">Pr&eacute;sentation ShopTrack</div><div style="font-size:12px;color:var(--text2)" id="t-pdf-fr-lang">Fran&ccedil;ais &middot; PDF &middot; 9 pages</div><div style="font-size:11px;color:var(--a);margin-top:4px;font-weight:600" id="t-pdf-fr-dl">&#x2B07; T&eacute;l&eacute;charger</div></div>
+    </a>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="perk-grid">
+    <div class="perk">
+      <span class="perk-ico">&#x1F4B8;</span>
+      <div class="perk-ttl" id="t-p1t">Real recurring income</div>
+      <div class="perk-dsc" id="t-p1d">Earn 20% on month 1, then 10% every month for 11 more months per referral. A full year of commissions from one mention.</div>
+      <span class="perk-val">20% &rarr; 10% &times; 11</span>
+    </div>
+    <div class="perk">
+      <span class="perk-ico">&#x1F517;</span>
+      <div class="perk-ttl" id="t-p2t">Your unique link</div>
+      <div class="perk-dsc" id="t-p2d">A custom code &mdash; <code style="font-family:var(--mono);color:var(--a);font-size:11px">shoptrack.org/?aff=YOURCODE</code> &mdash; that you share anywhere: bio, captions, stories, WhatsApp.</div>
+      <span class="perk-val" id="t-p2v">1-click tracking</span>
+    </div>
+    <div class="perk">
+      <span class="perk-ico">&#x1F4CA;</span>
+      <div class="perk-ttl" id="t-p3t">Live dashboard</div>
+      <div class="perk-dsc" id="t-p3d">Track your clicks, conversions, and earnings in real time. Enter your email below to check your stats instantly.</div>
+      <span class="perk-val" id="t-p3v">Full visibility</span>
+    </div>
+  </div>
+</section>
+<section class="sec">
+  <p class="sec-t" id="t-how">How it works</p>
+  <p class="sec-s" id="t-how-s" style="margin-bottom:28px">Four steps from application to payout</p>
+  <div class="steps">
+    <div class="step"><span class="step-num">01</span><span class="step-ico">&#x1F4DD;</span><div class="step-ttl" id="t-st1">Apply below</div><div class="step-dsc" id="t-sd1">Fill out the 2-minute form. We approve most applications within 48 hours.</div></div>
+    <div class="step"><span class="step-num">02</span><span class="step-ico">&#x2705;</span><div class="step-ttl" id="t-st2">Get your link</div><div class="step-dsc" id="t-sd2">We email you a unique code and link. Track everything in the dashboard below.</div></div>
+    <div class="step"><span class="step-num">03</span><span class="step-ico">&#x1F4E3;</span><div class="step-ttl" id="t-st3">Promote naturally</div><div class="step-dsc" id="t-sd3">Share in videos, stories, your bio, or WhatsApp. Talk about it your way.</div></div>
+    <div class="step"><span class="step-num">04</span><span class="step-ico">&#x1F4B0;</span><div class="step-ttl" id="t-st4">Get paid monthly</div><div class="step-dsc" id="t-sd4">20% month 1, then 10% for 11 more months per referral. Paid monthly, no minimum.</div></div>
+  </div>
+</section>
+<section class="sec">
+  <p class="sec-t" id="t-earn">What you earn per referral</p>
+  <p class="sec-s" id="t-earn-s">Based on which plan the business chooses</p>
+  <div class="etbl">
+    <div class="erow ehdr">
+      <div class="ec" id="t-eh1">Plan</div>
+      <div class="ec" id="t-eh2">Month 1 (20%)</div>
+      <div class="ec" id="t-eh3">Months 2&ndash;12 &times; 11 (10%)</div>
+    </div>
+    <div class="erow">
+      <div class="ec" id="t-er1">Starter &mdash; 8,900 XAF/mo</div>
+      <div class="ec" style="color:var(--a);font-family:var(--mono);font-weight:700">980 XAF</div>
+      <div class="ec" style="color:var(--g);font-family:var(--mono);font-weight:700">490 XAF &times; 11 = 5,390 XAF</div>
+    </div>
+    <div class="erow">
+      <div class="ec" id="t-er2">Professional &mdash; 8,900 XAF/mo</div>
+      <div class="ec" style="color:var(--a);font-family:var(--mono);font-weight:700">2,380 XAF</div>
+      <div class="ec" style="color:var(--g);font-family:var(--mono);font-weight:700">1,190 XAF &times; 11 = 13,090 XAF</div>
+    </div>
+    <div class="erow">
+      <div class="ec" id="t-er3">Business &mdash; 28,900 XAF/mo</div>
+      <div class="ec" style="color:var(--a);font-family:var(--mono);font-weight:700">4,980 XAF</div>
+      <div class="ec" style="color:var(--g);font-family:var(--mono);font-weight:700">2,490 XAF &times; 11 = 27,390 XAF</div>
+    </div>
+    <div class="erow" style="background:var(--bg3)">
+      <div class="ec" id="t-er4" style="font-weight:700;color:var(--ink);font-style:normal">3 referrals on Pro</div>
+      <div class="ec" style="color:var(--a);font-family:var(--mono);font-weight:700">7,140 XAF</div>
+      <div class="ec" style="color:var(--g);font-family:var(--mono);font-weight:800">39,270 XAF over 12 months</div>
+    </div>
+  </div>
+</section><div class="sdiv"><div></div></div>
+<section class="sec" id="dashboard">
+  <p class="sec-t" id="t-dash-ttl">&#x1F4CA; Affiliate Dashboard</p>
+  <p class="sec-s" id="t-dash-sub">Already an affiliate? Enter your email to view your live stats.</p>
+  <div style="max-width:600px;margin:0 auto">
+    <div class="d-card">
+      <div class="d-ttl" id="t-dash-check">Check your performance</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input class="fi" type="email" id="dash-email" placeholder="your@email.com" autocomplete="email" style="flex:1;min-width:180px"/>
+        <button class="btn-p" id="dash-btn" onclick="_loadDash()">View Stats &rarr;</button>
+      </div>
+      <p class="fh" id="t-dash-hint" style="margin-top:8px">Enter the email you applied with. Your data loads instantly.</p>
+    </div>
+    <div id="dash-result" style="display:none">
+      <div id="d-pending" style="display:none;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.25);border-radius:var(--r12);padding:16px 20px;margin-bottom:14px;font-size:13px;color:var(--y)">
+        <span id="t-pending">&#x23F3; Your application is under review. We&rsquo;ll email you within 48 hours with your affiliate code.</span>
+      </div>
+      <div id="d-suspended" style="display:none;background:rgba(255,96,128,.08);border:1px solid rgba(255,96,128,.25);border-radius:var(--r12);padding:16px 20px;margin-bottom:14px;font-size:13px;color:var(--r)">
+        <span id="t-suspended">&#x26D4; Your affiliate account is suspended. Contact <a href="/cdn-cgi/l/email-protection#1970777f76596a7176696d6b787a72376e766b72" style="color:var(--r)"><span class="__cf_email__" data-cfemail="650c0b030a25160d0a15111704060e4b120a170e">[email&#160;protected]</span></a>.</span>
+      </div>
+      <div id="d-approved" style="display:none">
+        <div class="d-card">
+          <div class="d-ttl" id="t-link-ttl">&#x1F517; Your affiliate link</div>
+          <div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);padding:11px 14px;margin-bottom:12px">
+            <span id="d-link">shoptrack.org/?aff=...</span>
+            <button class="btn-g" style="padding:6px 12px;font-size:12px;flex-shrink:0" onclick="_cpLink()"><span id="t-copy">&#x1F4CB; Copy</span></button>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-p" style="font-size:12px;padding:8px 14px" onclick="_waShare()"><span id="t-wa">&#x1F4AC; Share on WhatsApp</span></button>
+            <button class="btn-g" style="font-size:12px;padding:8px 14px" onclick="_cpMsg()"><span id="t-cp-msg">&#x1F4E4; Copy message</span></button>
+          </div>
+        </div>
+        <div class="d-card">
+          <div class="d-ttl" id="t-stats-ttl">&#x1F4C8; Your stats</div>
+          <div class="stat-grid">
+            <div class="sbox"><div class="sbox-n" id="d-clicks">&mdash;</div><div class="sbox-l" id="t-clicks">Link clicks</div></div>
+            <div class="sbox"><div class="sbox-n" id="d-conv">&mdash;</div><div class="sbox-l" id="t-conv">Conversions</div></div>
+            <div class="sbox"><div class="sbox-n" id="d-earned" style="color:var(--g)">&mdash;</div><div class="sbox-l" id="t-earned-lbl">Total earned</div></div>
+            <div class="sbox"><div class="sbox-n" id="d-unpaid" style="color:var(--a)">&mdash;</div><div class="sbox-l" id="t-unpaid-lbl">Unpaid balance</div></div>
+          </div>
+        </div>
+        <div class="d-card">
+          <div class="d-ttl" id="t-comm-ttl">&#x1F4B3; Commission details</div>
+          <table class="rtbl"><thead><tr>
+            <th id="t-th1">Rate</th><th id="t-th2">Status</th><th id="t-th3">Next payout</th><th id="t-th4">Contact</th>
+          </tr></thead><tbody><tr>
+            <td style="font-family:var(--mono)" id="t-rate">20% mo.1 &middot; 10% mo.2&ndash;12</td>
+            <td><span class="badge-g" id="t-status-badge">Approved</span></td>
+            <td id="d-payout" style="color:var(--text2)">&mdash;</td>
+            <td><a href="/cdn-cgi/l/email-protection#d0b9beb6bf90a3b8bfa0a4a2b1b3bbfea7bfa2bb" style="color:var(--a)"><span class="__cf_email__" data-cfemail="dab3b4bcb59aa9b2b5aaaea8bbb9b1f4adb5a8b1">[email&#160;protected]</span></a></td>
+          </tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div id="d-notfound" style="display:none;text-align:center;padding:20px;color:var(--text2);font-size:13px">
+      <span id="t-notfound">No affiliate account found for that email.</span> <a href="#apply" style="color:var(--a);font-weight:600" id="t-apply-link">Apply below &rarr;</a>
+    </div>
+  </div>
+</section><div class="sdiv"><div></div></div>
+<section class="sec" id="apply">
+  <p class="sec-t" id="t-apply-ttl">Apply now</p>
+  <p class="sec-s" id="t-apply-sub">We approve most applications within 48 hours.</p>
+  <div class="f-wrap">
+    <div class="f-card">
+      <div class="suc-state" id="suc-state">
+        <div class="suc-icon">&#x2713;</div>
+        <h3 id="t-suc-h">Application submitted!</h3>
+        <p id="t-suc-p">We&rsquo;ll review and email you within 48 hours with your affiliate code and dashboard access.</p>
+        <div class="suc-ref" id="suc-ref">&#x1F4E7; Check your inbox</div>
+      </div>
+      <form id="aff-form" novalidate>
+        <div class="fg-row">
+          <div class="fg"><label for="aff-name" id="t-lbl-name">Full name *</label><input class="fi" id="aff-name" type="text" placeholder="Susan Messa" autocomplete="name"/></div>
+          <div class="fg"><label for="aff-email" id="t-lbl-email">Email address *</label><input class="fi" id="aff-email" type="email" placeholder="you@email.com" autocomplete="email"/></div>
+        </div>
+        <div class="fg">
+          <label for="aff-country" id="t-lbl-country">Country *</label>
+          <select class="fs" id="aff-country">
+            <option value="" id="t-opt-country">Select your country&hellip;</option>
+            <option value="CM">&#x1F1E8;&#x1F1F2; Cameroon</option>
+            <option value="NG">&#x1F1F3;&#x1F1EC; Nigeria</option>
+            <option value="GH">&#x1F1EC;&#x1F1ED; Ghana</option>
+            <option value="KE">&#x1F1F0;&#x1F1EA; Kenya</option>
+            <option value="SN">&#x1F1F8;&#x1F1F3; S&eacute;n&eacute;gal</option>
+            <option value="CI">&#x1F1E8;&#x1F1EE; C&ocirc;te d&rsquo;Ivoire</option>
+            <option value="FR">&#x1F1EB;&#x1F1F7; France</option>
+            <option value="GB">&#x1F1EC;&#x1F1E7; United Kingdom</option>
+            <option value="US">&#x1F1FA;&#x1F1F8; United States</option>
+            <option value="CA">&#x1F1E8;&#x1F1E6; Canada</option>
+            <option value="other">&#x1F30D; Other / Autre</option>
+          </select>
+        </div>
+        <div class="div-row"><span id="t-div-plat">Your content platforms</span></div>
+        <div class="fg">
+          <label id="t-lbl-plat">Where do you create? *</label>
+          <div class="plt-grid">
+            <div class="plt"><input type="checkbox" id="p-tt" value="TikTok"/><label for="p-tt">&#x1F3B5; TikTok</label></div>
+            <div class="plt"><input type="checkbox" id="p-ig" value="Instagram"/><label for="p-ig">&#x1F4F8; Instagram</label></div>
+            <div class="plt"><input type="checkbox" id="p-yt" value="YouTube"/><label for="p-yt">&#x25B6;&#xFE0F; YouTube</label></div>
+            <div class="plt"><input type="checkbox" id="p-fb" value="Facebook"/><label for="p-fb">&#x1F465; Facebook</label></div>
+            <div class="plt"><input type="checkbox" id="p-wa" value="WhatsApp"/><label for="p-wa">&#x1F4AC; WhatsApp</label></div>
+            <div class="plt"><input type="checkbox" id="p-sc" value="Snapchat"/><label for="p-sc">&#x1F47B; Snapchat</label></div>
+            <div class="plt"><input type="checkbox" id="p-ot" value="Other"/><label for="p-ot">&#x1F310; Other</label></div>
+          </div>
+          <div id="plt-err"></div>
+        </div>
+        <div class="fg"><label for="aff-handle" id="t-lbl-handle">Primary social handle *</label><input class="fi" id="aff-handle" type="text" placeholder="@yourhandle"/><div class="fh" id="t-hint-handle">Your main account where you&rsquo;ll be promoting</div></div>
+        <div class="fg">
+          <label for="aff-aud" id="t-lbl-aud">Estimated audience size</label>
+          <select class="fs" id="aff-aud">
+            <option value="" id="t-opt-aud">Prefer not to say</option>
+            <option value="under1k">Under 1,000</option>
+            <option value="1k-10k">1,000 &ndash; 10,000</option>
+            <option value="10k-50k">10,000 &ndash; 50,000</option>
+            <option value="50k-100k">50,000 &ndash; 100,000</option>
+            <option value="100k+">100,000+</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label for="aff-niche" id="t-lbl-niche">Content niche *</label>
+          <select class="fs" id="aff-niche">
+            <option value="" id="t-opt-niche">Select a niche&hellip;</option>
+            <option value="business">Business / Entrepreneurship</option>
+            <option value="finance">Finance / Money tips</option>
+            <option value="tech">Tech / Apps / Productivity</option>
+            <option value="fashion">Fashion / Beauty / Lifestyle</option>
+            <option value="food">Food / Restaurant / Catering</option>
+            <option value="events">Events / Photography</option>
+            <option value="ecommerce">E-commerce / Retail</option>
+            <option value="other">Other / Autre</option>
+          </select>
+        </div>
+        <div class="fg"><label for="aff-why" id="t-lbl-why">Why do you want to promote ShopTrack?</label><textarea class="ft" id="aff-why" placeholder="Tell us about your audience&hellip;"></textarea><div class="fh" id="t-hint-why">Optional &mdash; helps us approve faster.</div></div>
+        <button type="submit" class="btn-sub" id="aff-btn">Submit application &rarr;</button>
+        <p class="f-note" id="t-terms-note">By submitting you agree to our <a onclick="openTerms()" tabindex="0" id="t-terms-link">affiliate terms &amp; conditions</a>. We don&rsquo;t share your info with third parties.</p>
+      </form>
+    </div>
+  </div>
+</section>
+<section class="sec">
+  <p class="sec-t" id="t-faq-ttl">Common questions</p>
+  <div style="max-width:600px;margin:0 auto">
+    <div class="faq-item"><button class="faq-q"><span id="t-q1">How much do I earn per referral?</span><span class="faq-chev">&#x25BC;</span></button><div class="faq-a"><p id="t-a1">20% of the first month&rsquo;s payment, then 10% every month for 11 more months. A single Pro plan referral earns 15,470 XAF over a year. No cap on referrals.</p></div></div>
+    <div class="faq-item"><button class="faq-q"><span id="t-q2">When and how do I get paid?</span><span class="faq-chev">&#x25BC;</span></button><div class="faq-a"><p id="t-a2">Commissions are paid monthly. No minimum threshold &mdash; even one conversion gets paid. Our team will confirm your preferred payment method after approval.</p></div></div>
+    <div class="faq-item"><button class="faq-q"><span id="t-q3">How long does approval take?</span><span class="faq-chev">&#x25BC;</span></button><div class="faq-a"><p id="t-a3">Most applications are reviewed within 24&ndash;48 hours. You&rsquo;ll receive an email with your unique affiliate code and link as soon as you&rsquo;re approved.</p></div></div>
+    <div class="faq-item"><button class="faq-q"><span id="t-q4">Do I need a large following?</span><span class="faq-chev">&#x25BC;</span></button><div class="faq-a"><p id="t-a4">No minimum. A micro-creator whose audience is full of small business owners will outperform a massive account with unrelated followers. Quality matters more than size.</p></div></div>
+    <div class="faq-item"><button class="faq-q"><span id="t-q5">How do I track my clicks and conversions?</span><span class="faq-chev">&#x25BC;</span></button><div class="faq-a"><p id="t-a5">Use the Affiliate Dashboard above &mdash; enter your email to instantly see your clicks, conversions, total earned, and unpaid balance.</p></div></div>
+    <div class="faq-item" style="border-bottom:none"><button class="faq-q"><span id="t-q6">I already use ShopTrack. Can I still apply?</span><span class="faq-chev">&#x25BC;</span></button><div class="faq-a"><p id="t-a6">Absolutely. Your business referral link (Settings &rarr; Billing) is separate from an affiliate code, so you can use both independently.</p></div></div>
+  </div>
+</section>
+<footer>
+  <div class="f-brand">
+    <div class="f-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </div>
+    <span class="f-name">ShopTrack</span>
+  </div>
+  <p>&copy; 2026 ShopTrack &middot; <a href="https://shoptrack.org">shoptrack.org</a> &middot; <a href="/cdn-cgi/l/email-protection#aac3c4ccc5ead9c2c5daded8cbc9c184ddc5d8c1"><span class="__cf_email__" data-cfemail="375e59515877445f5847434556545c194058455c">[email&#160;protected]</span></a></p>
+</footer>
+<div class="toast" id="toast"></div>
+<div class="m-ov" id="terms-modal" onclick="if(event.target===this)closeTerms()">
+  <div class="m-box">
+    <div class="m-head">
+      <h3>&#x1F4C4; <span id="t-modal-ttl">Affiliate Terms &amp; Conditions</span></h3>
+      <button class="m-close" onclick="closeTerms()">&#x2715;</button>
+    </div>
+    <div class="m-body" id="terms-body"></div>
+    <div class="m-foot">
+      <button class="btn-p" onclick="closeTerms()" style="width:100%" id="t-modal-close">I understand &mdash; close</button>
+    </div>
+  </div>
+</div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+var SB='https://kjuxnigeexoynmvdzeyl.supabase.co';
+var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqdXhuaWdlZXhveW5tdmR6ZXlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODQyNzMsImV4cCI6MjA4OTc2MDI3M30.bQ_KBLcKTgI5qko9m0Rxjt8KLXl89Ow7jS1CH_csbHY';
+var _lang='en', _aff=null;
+
+// ── Translations ────────────────────────────────────────────────────────────
+var T={
+en:{
+  eyebrow:'Affiliate Program',
+  h1:'Help small businesses.',h1em:'Get paid for it.',
+  sub:'Promote ShopTrack to your audience and earn recurring commissions for a full year — per referral. No contracts, no minimums.',
+  s1:'Month 1 commission',s2:'Months 2–12 recurring',s3:'Free trial for referrals',s4:'No cap on referrals',
+  p1t:'Real recurring income',p1d:'Earn 20% on month 1, then 10% every month for 11 more months per referral. A full year of commissions from one mention.',
+  p2t:'Your unique link',p2d:'A custom code — shoptrack.org/?aff=YOURCODE — that you share anywhere: bio, captions, stories, WhatsApp.',p2v:'1-click tracking',
+  p3t:'Live dashboard',p3d:'Track your clicks, conversions, and earnings in real time. Enter your email below to check your stats instantly.',p3v:'Full visibility',
+  how:'How it works',hows:'Four steps from application to payout',
+  st1:'Apply below',sd1:'Fill out the 2-minute form. We approve most applications within 48 hours.',
+  st2:'Get your link',sd2:'We email you a unique code and link. Track everything in the dashboard below.',
+  st3:'Promote naturally',sd3:'Share in videos, stories, your bio, or WhatsApp. Talk about it your way.',
+  st4:'Get paid monthly',sd4:'20% month 1, then 10% for 11 more months per referral. Paid monthly, no minimum.',
+  earn:'What you earn per referral',earns:'Based on which plan the business chooses',
+  eh1:'Plan',eh2:'Month 1 (20%)',eh3:'Months 2–12 × 11 (10%)',
+  er1:'Starter — 8,900 XAF/mo',er2:'Professional — 8,900 XAF/mo',er3:'Business — 28,900 XAF/mo',er4:'3 referrals on Pro',
+  dashTtl:'Affiliate Dashboard',dashSub:'Already an affiliate? Enter your email to view your live stats.',
+  dashCheck:'Check your performance',dashHint:'Enter the email you applied with. Your data loads instantly.',dashBtn:'View Stats →',
+  pending:'Your application is under review. We’ll email you within 48 hours with your affiliate code.',
+  suspended:'Your affiliate account is suspended. Contact',
+  linkTtl:'Your affiliate link',copy:'Copy',wa:'Share on WhatsApp',cpMsg:'Copy message',
+  statsTtl:'Your stats',clicks:'Link clicks',conv:'Conversions',earnedLbl:'Total earned',unpaidLbl:'Unpaid balance',
+  commTtl:'Commission details',th1:'Rate',th2:'Status',th3:'Next payout',th4:'Contact',
+  rate:'20% mo.1 · 10% mo.2–12',status:'Approved',
+  notfound:'No affiliate account found for that email.',applyLink:'Apply below →',
+  applyTtl:'Apply now',applySub:'We approve most applications within 48 hours.',
+  sucH:'Application submitted!',sucP:'We’ll review and email you within 48 hours with your affiliate code and dashboard access.',
+  lblName:'Full name *',lblEmail:'Email address *',lblCountry:'Country *',optCountry:'Select your country…',
+  divPlat:'Your content platforms',lblPlat:'Where do you create? *',
+  lblHandle:'Primary social handle *',hintHandle:'Your main account where you’ll be promoting',
+  lblAud:'Estimated audience size',optAud:'Prefer not to say',
+  lblNiche:'Content niche *',optNiche:'Select a niche…',
+  lblWhy:'Why do you want to promote ShopTrack?',hintWhy:'Optional — helps us approve faster.',
+  btnSubmit:'Submit application →',
+  termsNote:'By submitting you agree to our <a onclick="openTerms()" tabindex="0" id="t-terms-link">affiliate terms &amp; conditions</a>. We don’t share your info with third parties.',
+  faqTtl:'Common questions',
+  q1:'How much do I earn per referral?',a1:'20% of the first month’s payment, then 10% every month for 11 more months. A single Pro plan referral earns 15,470 XAF over a year. No cap on referrals.',
+  q2:'When and how do I get paid?',a2:'Commissions are paid monthly. No minimum threshold — even one conversion gets paid. Our team will confirm your preferred payment method after approval.',
+  q3:'How long does approval take?',a3:'Most applications are reviewed within 24–48 hours. You’ll receive an email with your unique affiliate code and link as soon as you’re approved.',
+  q4:'Do I need a large following?',a4:'No minimum. A micro-creator whose audience is full of small business owners will outperform a massive account with unrelated followers.',
+  q5:'How do I track my clicks and conversions?',a5:'Use the Affiliate Dashboard above — enter your email to instantly see your clicks, conversions, total earned, and unpaid balance.',
+  q6:'I already use ShopTrack. Can I still apply?',a6:'Absolutely. Your business referral link (Settings → Billing) is separate from an affiliate code, so you can use both independently.',
+  navDash:'My Dashboard',navApply:'Apply Now',
+  modalTtl:'Affiliate Terms & Conditions',modalClose:'I understand — close',
+  errName:'Please enter your full name',errEmail:'Please enter a valid email',errCountry:'Please select your country',
+  errPlat:'Please select at least one platform',errHandle:'Please enter your social handle',errNiche:'Please select your content niche',
+  toastCopied:'Link copied!',toastMsg:'Message copied — paste anywhere!',toastErr:'Could not load — try again',
+  toastDup:'This email already applied — use the dashboard above',toastFail:'Something went wrong — email info@shoptrack.work',
+  loadingBtn:'Loading…',submittingBtn:'Submitting…',
+  waMsg:'Hey! I use ShopTrack to manage businesses — sales, inventory, WhatsApp alerts, all in one. Try it free for 30 days: ',
+  cpMsgTxt:'I recommend ShopTrack for any business owner — tracks sales, stock, customers and sends WhatsApp alerts automatically. Free 30-day trial: ',
+  sucEmail:'Confirmation sent to ',
+},
+fr:{
+  eyebrow:'Programme d’affiliation',
+  h1:'Aidez les petites entreprises.',h1em:'Soyez payé(e) pour ça.',
+  sub:'Promouvez ShopTrack auprès de votre audience et gagnez des commissions récurrentes pendant un an — par parrainage. Sans contrat, sans minimum.',
+  s1:'Commission mois 1',s2:'Mois 2–12 récurrents',s3:'Essai gratuit pour vos filleuls',s4:'Parrainages illimités',
+  p1t:'Revenus récurrents réels',p1d:'Gagnez 20% le 1er mois, puis 10% chaque mois pendant 11 mois supplémentaires par parrainage. Un an de commissions avec une seule mention.',
+  p2t:'Votre lien unique',p2d:'Un code personnalisé — shoptrack.org/?aff=VOTRECODE — que vous partagez où vous voulez : bio, légendes, stories, WhatsApp.',p2v:'Suivi en 1 clic',
+  p3t:'Tableau de bord en direct',p3d:'Suivez vos clics, conversions et gains en temps réel. Entrez votre e-mail ci-dessous pour voir vos stats instantanément.',p3v:'Visibilité totale',
+  how:'Comment ça marche',hows:'Quatre étapes, de la candidature au paiement',
+  st1:'Postulez ci-dessous',sd1:'Remplissez le formulaire en 2 minutes. La plupart des candidatures sont approuvées sous 48h.',
+  st2:'Recevez votre lien',sd2:'Nous vous envoyons votre code unique par e-mail. Tout est traçable depuis le tableau de bord.',
+  st3:'Promouvez naturellement',sd3:'Partagez dans vos vidéos, stories, bio ou WhatsApp. À votre façon.',
+  st4:'Soyez payé(e) chaque mois',sd4:'20% le mois 1, puis 10% pendant 11 mois par parrainage. Paiement mensuel, sans minimum.',
+  earn:'Ce que vous gagnez par parrainage',earns:'Selon le forfait choisi par l’entreprise',
+  eh1:'Forfait',eh2:'Mois 1 (20%)',eh3:'Mois 2–12 × 11 (10%)',
+  er1:'Starter — 4 900 XAF/mois',er2:'Professionnel — 11 900 XAF/mois',er3:'Business — 24 900 XAF/mois',er4:'3 parrainages Pro',
+  dashTtl:'Tableau de bord affilié',dashSub:'Déjà affilié(e) ? Entrez votre e-mail pour voir vos statistiques en direct.',
+  dashCheck:'Vérifier vos performances',dashHint:'Entrez l’e-mail utilisé lors de votre candidature. Les données se chargent instantanément.',dashBtn:'Voir mes stats →',
+  pending:'Votre candidature est en cours d’examen. Nous vous enverrons votre code par e-mail sous 48h.',
+  suspended:'Votre compte affilié est suspendu. Contactez',
+  linkTtl:'Votre lien d’affiliation',copy:'Copier',wa:'Partager sur WhatsApp',cpMsg:'Copier le message',
+  statsTtl:'Vos statistiques',clicks:'Clics sur le lien',conv:'Conversions',earnedLbl:'Gains totaux',unpaidLbl:'Solde non payé',
+  commTtl:'Détails de la commission',th1:'Taux',th2:'Statut',th3:'Prochain paiement',th4:'Contact',
+  rate:'20% mois 1 · 10% mois 2–12',status:'Approuvé(e)',
+  notfound:'Aucun compte affilié trouvé pour cet e-mail.',applyLink:'Postulez ci-dessous →',
+  applyTtl:'Postuler maintenant',applySub:'La plupart des candidatures sont approuvées sous 48 heures.',
+  sucH:'Candidature envoyée !',sucP:'Nous examinerons votre dossier et vous enverrons votre code d’affiliation par e-mail sous 48 heures.',
+  lblName:'Nom complet *',lblEmail:'Adresse e-mail *',lblCountry:'Pays *',optCountry:'Sélectionnez votre pays…',
+  divPlat:'Vos plateformes de contenu',lblPlat:'Où créez-vous du contenu ? *',
+  lblHandle:'Réseau principal *',hintHandle:'Votre compte principal où vous ferez la promotion',
+  lblAud:'Taille estimée de l’audience',optAud:'Je préfère ne pas indiquer',
+  lblNiche:'Niche de contenu *',optNiche:'Sélectionnez une niche…',
+  lblWhy:'Pourquoi souhaitez-vous promouvoir ShopTrack ?',hintWhy:'Optionnel — nous aide à traiter votre dossier plus vite.',
+  btnSubmit:'Envoyer ma candidature →',
+  termsNote:'En soumettant, vous acceptez nos <a onclick="openTerms()" tabindex="0" id="t-terms-link">conditions d’affiliation</a>. Nous ne partageons pas vos informations avec des tiers.',
+  faqTtl:'Questions fréquentes',
+  q1:'Combien est-ce que je gagne par parrainage ?',a1:'20% du premier mois de paiement, puis 10% chaque mois pendant 11 mois supplémentaires. Un seul parrainage Pro rapporte 15 470 XAF sur un an. Sans limite de parrainages.',
+  q2:'Quand et comment suis-je payé(e) ?',a2:'Les commissions sont payées chaque mois. Aucun seuil minimum — même une seule conversion est payée. Notre équipe confirmera votre mode de paiement préféré après approbation.',
+  q3:'Combien de temps prend l’approbation ?',a3:'La plupart des candidatures sont examinées dans les 24–48 heures. Vous recevrez votre code et lien d’affiliation dès que vous serez approuvé(e).',
+  q4:'Ai-je besoin d’un grand nombre d’abonnés ?',a4:'Aucun minimum. Un micro-créateur dont l’audience est composée de propriétaires de commerces surpassera un grand compte non ciblé. La qualité prime sur la quantité.',
+  q5:'Comment suivre mes clics et conversions ?',a5:'Utilisez le tableau de bord ci-dessus — entrez votre e-mail pour voir instantanément vos clics, conversions, gains totaux et solde non payé.',
+  q6:'J’utilise déjà ShopTrack. Puis-je quand même postuler ?',a6:'Absolument. Votre lien de parrainage (Paramètres → Facturation) est distinct de votre code affilié, vous pouvez utiliser les deux indépendamment.',
+  navDash:'Mon tableau de bord',navApply:'Postuler',
+  modalTtl:'Conditions d’affiliation',modalClose:'J’ai compris — fermer',
+  errName:'Veuillez entrer votre nom complet',errEmail:'Veuillez entrer un e-mail valide',errCountry:'Veuillez sélectionner votre pays',
+  errPlat:'Veuillez sélectionner au moins une plateforme',errHandle:'Veuillez entrer votre pseudo',errNiche:'Veuillez sélectionner votre niche',
+  toastCopied:'Lien copié !',toastMsg:'Message copié — collez-le où vous voulez !',toastErr:'Impossible de charger — réessayez',
+  toastDup:'Cet e-mail a déjà postulé — utilisez le tableau de bord ci-dessus',toastFail:'Une erreur s’est produite — contactez info@shoptrack.work',
+  loadingBtn:'Chargement…',submittingBtn:'Envoi en cours…',
+  waMsg:'Bonjour ! J’utilise ShopTrack pour gérer les commerces — ventes, stock, alertes WhatsApp, tout en un. Essayez gratuitement pendant 30 jours : ',
+  cpMsgTxt:'Je recommande ShopTrack à tous les commerçants — suivi des ventes, stock, clients et alertes WhatsApp automatiques. Essai gratuit 30 jours : ',
+  sucEmail:'Confirmation envoyée à ',
+}
+};
+
+// Terms content (HTML strings, safe to use here)
+var TERMS={
+en:'<p style="font-size:11px;color:var(--text3);margin-bottom:16px">Last updated: April 2026</p>'
+ +'<h4>1. Programme Overview</h4><p>The ShopTrack Affiliate Programme allows approved participants to earn commissions by referring new paying customers to ShopTrack. By applying, you agree to these terms in full.</p>'
+ +'<h4>2. Eligibility</h4><p>You must be at least 18 years old with an active online presence. Employees of ShopTrack and their immediate family are not eligible. ShopTrack may accept or decline any application without explanation.</p>'
+ +'<h4>3. Affiliate Links &amp; Tracking</h4><p>You receive a unique link: <code style="font-family:var(--mono);font-size:12px;color:var(--a)">shoptrack.org/?aff=YOURCODE</code>. Conversions are credited only through this link. You must not modify or misrepresent your link.</p>'
+ +'<h4>4. Commission Structure</h4><ul><li><strong>Month 1:</strong> 20% of the first subscription payment.</li><li><strong>Months 2&ndash;12:</strong> 10% of each monthly payment for up to 11 additional months.</li><li>Commissions apply to confirmed payments only, not free trials.</li><li>ShopTrack may adjust rates with 30 days&rsquo; written notice.</li></ul>'
+ +'<h4>5. Payments</h4><p>Commissions are paid monthly, typically within the first 10 business days of the following month. No minimum payout threshold. Commissions may be withheld if fraud is suspected.</p>'
+ +'<h4>6. Prohibited Conduct</h4><p>Affiliates must not: make false claims about ShopTrack; use paid advertising targeting ShopTrack keywords without prior written approval; send spam; self-refer or create fictitious accounts; offer cash-back to referred customers; or use ShopTrack branding in unapproved ways.</p>'
+ +'<h4>7. Programme Changes &amp; Termination</h4><p>ShopTrack may modify or terminate the Programme with 30 days&rsquo; notice. Unpaid commissions for confirmed conversions will be paid in the next regular cycle after termination.</p>'
+ +'<h4>8. Disclosure</h4><p>Affiliates must clearly disclose their relationship with ShopTrack in all promotional content, in compliance with local advertising laws. You are responsible for compliance in your jurisdiction.</p>'
+ +'<h4>9. Intellectual Property</h4><p>ShopTrack grants a non-exclusive, revocable licence to use approved brand assets for promoting the Programme only. You may not alter logos or imply endorsement beyond this scope.</p>'
+ +'<h4>10. Liability</h4><p>ShopTrack&rsquo;s total liability shall not exceed commissions paid in the 3 months preceding any claim. ShopTrack is not liable for indirect or consequential damages.</p>'
+ +'<h4>11. Governing Law</h4><p>These terms are governed by the laws of Cameroon. Disputes shall first be resolved through good-faith negotiation, then by binding arbitration.</p>'
+ +'<h4>12. Contact</h4><p>Questions: <a href="mailto:info@shoptrack.work" style="color:var(--a)">info@shoptrack.work</a></p>',
+
+fr:'<p style="font-size:11px;color:var(--text3);margin-bottom:16px">Dernière mise à jour : Avril 2026</p>'
+ +'<h4>1. Présentation du programme</h4><p>Le Programme d’affiliation ShopTrack permet aux participants approuvés de gagner des commissions en recommandant de nouveaux clients payants à ShopTrack. En postulant, vous acceptez intégralement ces conditions.</p>'
+ +'<h4>2. Éligibilité</h4><p>Vous devez avoir au moins 18 ans et avoir une présence en ligne active. Les employés de ShopTrack et leur famille directe ne sont pas éligibles. ShopTrack se réserve le droit d’accepter ou refuser toute candidature sans justification.</p>'
+ +'<h4>3. Liens d’affiliation &amp; suivi</h4><p>Vous recevez un lien unique : <code style="font-family:var(--mono);font-size:12px;color:var(--a)">shoptrack.org/?aff=VOTRECODE</code>. Les conversions ne sont créditées que via ce lien. Vous ne devez pas le modifier ou l’utiliser de façon trompeuse.</p>'
+ +'<h4>4. Structure des commissions</h4><ul><li><strong>Mois 1 :</strong> 20% du premier paiement d’abonnement du client référé.</li><li><strong>Mois 2–12 :</strong> 10% de chaque paiement mensuel pendant 11 mois supplémentaires au maximum.</li><li>Les commissions s’appliquent uniquement aux paiements confirmés, pas aux périodes d’essai.</li><li>ShopTrack peut ajuster les taux avec un préavis de 30 jours.</li></ul>'
+ +'<h4>5. Paiements</h4><p>Les commissions sont versées chaque mois, généralement dans les 10 premiers jours ouvrables du mois suivant. Aucun seuil minimum. Les commissions peuvent être retenues en cas de suspicion de fraude.</p>'
+ +'<h4>6. Conduite interdite</h4><p>Les affiliés ne doivent pas : faire de fausses déclarations sur ShopTrack ; utiliser de la publicité payante ciblant des mots-clés ShopTrack sans autorisation ; envoyer des spams ; se parrainer soi-même ou créer des comptes fictifs ; offrir des remises aux clients référés ; utiliser la marque ShopTrack de façon non autorisée.</p>'
+ +'<h4>7. Modifications &amp; résiliation</h4><p>ShopTrack peut modifier ou résilier le Programme avec un préavis de 30 jours. Les commissions non payées pour des conversions confirmées seront versées lors du prochain cycle.</p>'
+ +'<h4>8. Divulgation</h4><p>Les affiliés doivent clairement divulguer leur relation avec ShopTrack dans tous leurs contenus promotionnels, conformément aux lois locales sur la publicité. Vous êtes responsable du respect de la législation applicable.</p>'
+ +'<h4>9. Propriété intellectuelle</h4><p>ShopTrack accorde une licence non exclusive et révocable pour utiliser les supports de marque approuvés uniquement dans le cadre de la promotion du Programme.</p>'
+ +'<h4>10. Responsabilité</h4><p>La responsabilité totale de ShopTrack ne peut excéder les commissions versées au cours des 3 mois précédant toute réclamation. ShopTrack n’est pas responsable des dommages indirects.</p>'
+ +'<h4>11. Droit applicable</h4><p>Ces conditions sont régies par le droit camerounais. Les litiges seront résolus par négociation amiable, puis par arbitrage contraignant.</p>'
+ +'<h4>12. Contact</h4><p>Questions : <a href="mailto:info@shoptrack.work" style="color:var(--a)">info@shoptrack.work</a></p>'
+};
+
+// ── Lang switcher ────────────────────────────────────────────────────────────
+function setLang(lang){
+  _lang=lang;
+  document.getElementById('btn-en').classList.toggle('on',lang==='en');
+  document.getElementById('btn-fr').classList.toggle('on',lang==='fr');
+  document.documentElement.lang=lang;
+  var L=T[lang];
+  // Map: element-id -> translation key
+  var map={
+    'nav-dash':'navDash','nav-apply':'navApply',
+    't-eyebrow':'eyebrow','t-h1':'h1','t-h1em':'h1em','t-sub':'sub',
+    't-s1':'s1','t-s2':'s2','t-s3':'s3','t-s4':'s4',
+    't-p1t':'p1t','t-p1d':'p1d','t-p2t':'p2t','t-p2d':'p2d','t-p2v':'p2v',
+    't-p3t':'p3t','t-p3d':'p3d','t-p3v':'p3v',
+    't-how':'how','t-how-s':'hows',
+    't-st1':'st1','t-sd1':'sd1','t-st2':'st2','t-sd2':'sd2',
+    't-st3':'st3','t-sd3':'sd3','t-st4':'st4','t-sd4':'sd4',
+    't-earn':'earn','t-earn-s':'earns',
+    't-eh1':'eh1','t-eh2':'eh2','t-eh3':'eh3',
+    't-er1':'er1','t-er2':'er2','t-er3':'er3','t-er4':'er4',
+    't-dash-sub':'dashSub','t-dash-check':'dashCheck','t-dash-hint':'dashHint',
+    't-pending':'pending','t-link-ttl':'linkTtl',
+    't-copy':'copy','t-wa':'wa','t-cp-msg':'cpMsg',
+    't-stats-ttl':'statsTtl','t-clicks':'clicks','t-conv':'conv',
+    't-earned-lbl':'earnedLbl','t-unpaid-lbl':'unpaidLbl',
+    't-comm-ttl':'commTtl','t-th1':'th1','t-th2':'th2','t-th3':'th3','t-th4':'th4',
+    't-rate':'rate','t-status-badge':'status',
+    't-notfound':'notfound','t-apply-link':'applyLink',
+    't-apply-ttl':'applyTtl','t-apply-sub':'applySub',
+    't-suc-h':'sucH','t-suc-p':'sucP',
+    't-lbl-name':'lblName','t-lbl-email':'lblEmail','t-lbl-country':'lblCountry',
+    't-opt-country':'optCountry','t-div-plat':'divPlat','t-lbl-plat':'lblPlat',
+    't-lbl-handle':'lblHandle','t-hint-handle':'hintHandle',
+    't-lbl-aud':'lblAud','t-opt-aud':'optAud','t-lbl-niche':'lblNiche','t-opt-niche':'optNiche',
+    't-lbl-why':'lblWhy','t-hint-why':'hintWhy',
+    't-faq-ttl':'faqTtl',
+    't-q1':'q1','t-a1':'a1','t-q2':'q2','t-a2':'a2','t-q3':'q3','t-a3':'a3',
+    't-q4':'q4','t-a4':'a4','t-q5':'q5','t-a5':'a5','t-q6':'q6','t-a6':'a6',
+    't-modal-ttl':'modalTtl','t-modal-close':'modalClose'
+  };
+  Object.keys(map).forEach(function(id){
+    var el=document.getElementById(id);
+    if(!el||!L[map[id]]) return;
+    el.textContent=L[map[id]];
+  });
+  // Dashboard title needs icon prefix
+  var dtt=document.getElementById('t-dash-ttl');
+  if(dtt) dtt.innerHTML='&#x1F4CA; '+L.dashTtl;
+  // Dash btn
+  var dbtn=document.getElementById('dash-btn');
+  if(dbtn) dbtn.textContent=L.dashBtn;
+  // Submit btn
+  var sbtn=document.getElementById('aff-btn');
+  if(sbtn) sbtn.textContent=L.btnSubmit;
+  // Terms note (has HTML link inside)
+  var tn=document.getElementById('t-terms-note');
+  if(tn) tn.innerHTML=L.termsNote;
+  // Suspended (has mailto link)
+  var sus=document.getElementById('t-suspended');
+  if(sus) sus.innerHTML=L.suspended+' <a href="mailto:info@shoptrack.work" style="color:var(--r)">info@shoptrack.work</a>.';
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg,type){
+  var el=document.getElementById('toast');
+  el.textContent=(type==='success'?'✅ ':type==='error'?'❌ ':'ℹ️ ')+msg;
+  el.style.borderColor=type==='success'?'rgba(45,212,160,.4)':type==='error'?'rgba(255,96,128,.4)':'var(--border2)';
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t=setTimeout(function(){el.classList.remove('show');},3400);
+}
+
+// ── Terms modal ───────────────────────────────────────────────────────────────
+function openTerms(){
+  document.getElementById('terms-body').innerHTML=TERMS[_lang];
+  document.getElementById('terms-modal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeTerms(){
+  document.getElementById('terms-modal').classList.remove('open');
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeTerms();});
+
+// ── FAQ ───────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.faq-q').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var item=btn.closest('.faq-item');
+    var was=item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(function(i){i.classList.remove('open');});
+    if(!was) item.classList.add('open');
+  });
+});
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+async function _loadDash(){
+  var email=(document.getElementById('dash-email').value||'').trim().toLowerCase();
+  var L=T[_lang];
+  if(!email||!email.includes('@')){toast(L.errEmail,'error');return;}
+  var btn=document.getElementById('dash-btn');
+  btn.disabled=true; btn.textContent=L.loadingBtn;
+  try{
+    var res=await fetch('/.netlify/functions/aff-lookup?email='+encodeURIComponent(email));
+    var data=await res.json().catch(function(){return[];});
+    ['d-pending','d-suspended','d-approved','d-notfound'].forEach(function(id){
+      document.getElementById(id).style.display='none';
+    });
+    document.getElementById('dash-result').style.display='';
+    if(!data||!data.length){
+      document.getElementById('d-notfound').style.display='';
+    } else {
+      var af=data[0]; _aff=af;
+      if(af.status==='pending'){
+        document.getElementById('d-pending').style.display='';
+      } else if(af.status==='suspended'){
+        document.getElementById('d-suspended').style.display='';
+      } else {
+        document.getElementById('d-approved').style.display='';
+        var link='https://shoptrack.org/?aff='+(af.affiliate_code||'');
+        document.getElementById('d-link').textContent=link;
+        document.getElementById('d-clicks').textContent=(af.clicks||0).toLocaleString();
+        document.getElementById('d-conv').textContent=(af.conversions||0).toLocaleString();
+        var fx=function(n){return n?Math.round(n).toLocaleString()+' XAF':'0 XAF';};
+        document.getElementById('d-earned').textContent=fx(af.total_earned_xaf);
+        document.getElementById('d-unpaid').textContent=fx(af.unpaid_xaf);
+        var nm=new Date(new Date().getFullYear(),new Date().getMonth()+1,1);
+        var loc=_lang==='fr'?'fr-FR':'en-GB';
+        document.getElementById('d-payout').textContent=nm.toLocaleDateString(loc,{day:'numeric',month:'long',year:'numeric'});
+      }
+      document.getElementById('dash-result').scrollIntoView({behavior:'smooth',block:'start'});
+    }
+  } catch(e){toast(T[_lang].toastErr,'error');}
+  finally{btn.disabled=false; btn.textContent=T[_lang].dashBtn;}
+}
+document.getElementById('dash-email').addEventListener('keydown',function(e){
+  if(e.key==='Enter') _loadDash();
+});
+
+function _cpLink(){
+  var l=document.getElementById('d-link').textContent;
+  navigator.clipboard.writeText(l)
+    .then(function(){toast(T[_lang].toastCopied,'success');})
+    .catch(function(){toast(l,'info');});
+}
+function _waShare(){
+  if(!_aff) return;
+  var l='https://shoptrack.org/?aff='+(_aff.affiliate_code||'');
+  window.open('https://wa.me/?text='+encodeURIComponent(T[_lang].waMsg+l),'_blank');
+}
+function _cpMsg(){
+  if(!_aff) return;
+  var l='https://shoptrack.org/?aff='+(_aff.affiliate_code||'');
+  navigator.clipboard.writeText(T[_lang].cpMsgTxt+l)
+    .then(function(){toast(T[_lang].toastMsg,'success');})
+    .catch(function(){toast('Copy: '+T[_lang].cpMsgTxt+l,'info');});
+}
+
+// Auto-load from ?check=email&lang=fr URL params
+(function(){
+  try{
+    var p=new URLSearchParams(window.location.search);
+    var lg=p.get('lang'); if(lg==='fr') setLang('fr');
+    var em=p.get('check');
+    if(em){
+      document.getElementById('dash-email').value=em;
+      setTimeout(_loadDash,400);
+      document.getElementById('dashboard').scrollIntoView({behavior:'smooth'});
+    }
+  }catch(e){}
+})();
+
+// ── Form ───────────────────────────────────────────────────────────────────
+function setErr(id,msg){
+  var el=document.getElementById(id); if(!el) return;
+  el.classList.add('err');
+  var s=el.nextElementSibling; if(s&&s.classList.contains('err-msg')) s.remove();
+  if(msg){var d=document.createElement('div');d.className='err-msg';d.textContent=msg;el.insertAdjacentElement('afterend',d);}
+}
+function clearErr(id){
+  var el=document.getElementById(id); if(!el) return;
+  el.classList.remove('err');
+  var s=el.nextElementSibling; if(s&&s.classList.contains('err-msg')) s.remove();
+}
+['aff-name','aff-email','aff-country','aff-handle','aff-niche'].forEach(function(id){
+  var el=document.getElementById(id);
+  if(el) el.addEventListener('input',function(){clearErr(id);});
+});
+
+document.getElementById('aff-form').addEventListener('submit',async function(e){
+  e.preventDefault();
+  var L=T[_lang]; var valid=true;
+  var name=document.getElementById('aff-name').value.trim();
+  var email=document.getElementById('aff-email').value.trim().toLowerCase();
+  var country=document.getElementById('aff-country').value;
+  var handle=document.getElementById('aff-handle').value.trim();
+  var niche=document.getElementById('aff-niche').value;
+  var plats=[].slice.call(document.querySelectorAll('.plt input:checked')).map(function(c){return c.value;});
+  if(!name){setErr('aff-name',L.errName);valid=false;}
+  if(!email||!email.includes('@')||!email.includes('.')){setErr('aff-email',L.errEmail);valid=false;}
+  if(!country){setErr('aff-country',L.errCountry);valid=false;}
+  if(!plats.length){document.getElementById('plt-err').innerHTML='<div class="err-msg">'+L.errPlat+'</div>';valid=false;}
+  else{document.getElementById('plt-err').innerHTML='';}
+  if(!handle){setErr('aff-handle',L.errHandle);valid=false;}
+  if(!niche){setErr('aff-niche',L.errNiche);valid=false;}
+  if(!valid) return;
+  var btn=document.getElementById('aff-btn');
+  btn.disabled=true; btn.textContent=L.submittingBtn;
+  try{
+    var why=document.getElementById('aff-why').value.trim();
+    var aud=document.getElementById('aff-aud').value;
+    var payload={
+      name:name, email:email,
+      social_handle:handle+(plats.length?' ['+plats.join(',')+']':'')+(country?' ['+country+']':'')
+        +(niche?' ['+niche+']':'')+(aud?' ['+aud+']':'')+(why?' | '+why.substring(0,200):'')
+        +' [lang:'+_lang+']',
+      status:'pending', clicks:0, conversions:0, total_earned_xaf:0, unpaid_xaf:0,
+      commission_pct:20, created_at:new Date().toISOString()
+    };
+    var res=await fetch('/.netlify/functions/aff-submit',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    if(res.ok||res.status===201){
+      var rb2=await res.clone().json().catch(function(){return{};});
+      document.getElementById('aff-form').style.display='none';
+      var ss=document.getElementById('suc-state'); ss.style.display='block';
+      if(rb2.emailSent){
+        document.getElementById('suc-ref').style.display='inline-flex';
+        document.getElementById('suc-ref').innerHTML='&#x1F4E7; '+L.sucEmail+email;
+      } else {
+        document.getElementById('suc-ref').style.d
