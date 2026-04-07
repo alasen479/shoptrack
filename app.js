@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775599460");
+console.log("ShopTrack v2.5 - build:1775600295");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -10335,7 +10335,7 @@ function pgAdminBiz(){
   const active    = bizes.filter(b=>b.st==='Active').length;
   const suspended = bizes.filter(b=>b.st==='Suspended').length;
   const pending   = bizes.filter(b=>b.st==='Pending').length;
-  const trials    = bizes.filter(b=>b.plan&&b.plan.toLowerCase().includes('trial')).length;
+  const trials    = bizes.filter(b=>(b.plan||'').toLowerCase().includes('trial')||!!b.trialEnd).length;
   const paying    = bizes.filter(b=>b.plan&&!b.plan.toLowerCase().includes('trial')&&b.st==='Active').length;
   const overdue   = bizes.filter(b=>{ const d=_billingDaysLeft(b); return d!==null&&d<=0&&b.st==='Active'&&_billingAmtXAF(b)>0; }).length;
   const expiring  = bizes.filter(b=>{ const d=_billingDaysLeft(b); return d!==null&&d>0&&d<=3&&b.st==='Active'; }).length;
@@ -10383,7 +10383,8 @@ function pgAdminBiz(){
     const expiry  = b.subExpires || b.trialEnd || '';
     const phone   = b.phone || b.whatsapp || '';
     const isFree  = amt === 0;
-    const isTrial = b.plan && b.plan.toLowerCase().includes('trial');
+    const isTrial = b.plan && (b.plan.toLowerCase().includes('trial'));
+    const isFreePl = !isTrial && amt===0;
 
     // Expiry display
     const expiryDisplay = expiry
@@ -10392,16 +10393,17 @@ function pgAdminBiz(){
       : `<span style="color:var(--text2);font-size:11px">—</span>`;
 
     // Plan display
+    const _normPlan = (function(p){ var m={'professional':'Premium','pro':'Premium','starter':'Premium','enterprise':'Premium','free':'Free','premium':'Premium','trial':'Trial (30 Days)'}; return m[p.toLowerCase()]||p; })(b.plan||'Free');
     const planDisplay = isTrial
-      ? bx('Trial','bx-y')
-      : bx(b.plan||'—','bx-b');
+      ? bx('Trial (30 Days)','bx-y')
+      : bx(_normPlan,'bx-b');
 
     // Amount display
     const amtDisplay = isTrial
-      ? `<span style="font-size:11px;color:var(--text2)">Trial</span>`
-      : amt > 0
-        ? `<span style="font-family:var(--mono);font-size:11px;color:var(--g)">${amt.toLocaleString()} Frs</span>`
-        : `<span style="font-size:11px;color:var(--text2)">—</span>`;
+      ? '<span style="font-size:11px;color:var(--y)">Trial</span>'
+      : isFreePl
+        ? '<span style="font-size:11px;color:var(--text2)">Free</span>'
+        : '<span style="font-family:var(--mono);font-size:11px;color:var(--g)">'+amt.toLocaleString()+' Frs</span>';
 
     // Row highlight
     const rowBg = bSt.urgent ? 'background:rgba(239,68,68,.04)' : b.st==='Pending' ? 'background:rgba(245,200,66,.04)' : '';
@@ -10456,7 +10458,7 @@ function pgAdminBiz(){
 
 <!-- ── KPI Grid ──────────────────────────────────────────────── -->
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-bottom:14px">
-  <div class="kpi g"><div class="kpi-lbl">MRR</div><div class="kpi-val g" style="font-size:20px">${Math.round(mrr/615)} USD</div><div class="kpi-sub">${mrr.toLocaleString()} XAF</div></div>
+  <div class="kpi g"><div class="kpi-lbl">MRR</div><div class="kpi-val g" style="font-size:18px">${mrr.toLocaleString()} XAF</div><div class="kpi-sub">~$${Math.round(mrr/620)} USD</div></div>
   <div class="kpi b" style="cursor:pointer" onclick="_saFilter('','','')"><div class="kpi-lbl">Total</div><div class="kpi-val b">${total}</div><div class="kpi-sub">All businesses</div></div>
   <div class="kpi g" style="cursor:pointer" onclick="_saFilter('Active','','')"><div class="kpi-lbl">Active</div><div class="kpi-val g">${active}</div><div class="kpi-sub">${paying} paying</div></div>
   <div class="kpi y" style="cursor:pointer" onclick="_saFilter('','','Trial (30 Days)')"><div class="kpi-lbl">Trials</div><div class="kpi-val y">${trials}</div><div class="kpi-sub">Free</div></div>
@@ -11873,7 +11875,7 @@ function pgAdminAnalytics(){
       <td>${mono(b.id,'p')}</td>
       <td><strong style="color:var(--ink)">${b.name}</strong></td>
       <td style="color:var(--text2)">${b.owner}</td>
-      <td>${b.trialEnd ? bx('Trial','bx-y') : bx(b.plan||'Starter','bx-b')}</td>
+      <td>${(b.plan||'').toLowerCase().includes('trial')||b.trialEnd ? bx('Trial (30 Days)','bx-y') : bx((function(p){var m={'professional':'Premium','pro':'Premium','starter':'Premium','enterprise':'Premium'};return m[p.toLowerCase()]||p||'Free';})(b.plan||'Free'),'bx-b')}</td>
       <td>${badge(b.st)}</td>
       <td style="text-align:center">${b.users}</td>
       <td style="color:var(--text2);font-size:12px">${b.created}</td>
