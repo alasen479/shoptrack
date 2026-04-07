@@ -14626,6 +14626,9 @@ async function _confirmVerifyToken(){
         const loginEl = document.getElementById('login-screen');
         if(loginEl){ loginEl.style.display='none'; loginEl.style.opacity='0'; }
 
+        // Clear any previous session (e.g. SA was logged in during signup testing)
+        try{ localStorage.removeItem('st_session'); sessionStorage.removeItem('st_session'); }catch(_){}
+
         // Set SESSION from signup data we already have
         SESSION.userId       = userId;
         SESSION.bizId        = bizId;
@@ -14659,6 +14662,17 @@ async function _confirmVerifyToken(){
         if(_sb && bizId) {
           _dbLoadBizData(bizId).catch(e=>console.warn('[auto-login] DB load error:', e.message));
         }
+
+        // Force-clear sidebar user chip so it re-renders with new session (not SA's)
+        const sbName = document.getElementById('sb-user-name');
+        const sbRole = document.getElementById('sb-user-role');
+        const sbAva  = document.getElementById('sb-user-avatar');
+        if(sbName) sbName.textContent = '';
+        if(sbRole) sbRole.textContent = '';
+        if(sbAva)  sbAva.textContent  = '';
+
+        // Re-render sidebar for business role (hides SA sections, shows business sections)
+        updateSidebarForRole();
 
         // Navigate to dashboard
         nav('dashboard');
