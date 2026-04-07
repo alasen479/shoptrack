@@ -406,7 +406,9 @@ exports.handler = async function (event) {
         );
         if (affRows && affRows[0] && affRows[0].id) {
           const aff    = affRows[0];
-          const pct    = payNum === 1 ? 20 : 10;
+          // Use DB commission_pct for payment 1; half rate for renewals (2-12)
+          const basePct = aff.commission_pct || 20;
+          const pct    = payNum === 1 ? basePct : Math.round(basePct / 2);
           const earned = Math.round(amount * pct / 100);
 
           // Update affiliate running totals

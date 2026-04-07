@@ -196,7 +196,9 @@ exports.handler = async (event) => {
         );
         if (affRows && affRows[0] && affRows[0].id) {
           const aff    = affRows[0];
-          const pct    = payNum === 1 ? 20 : 10;
+          // Use DB commission_pct for payment 1; half rate for renewals (2-12)
+          const basePct = aff.commission_pct || 20;
+          const pct    = payNum === 1 ? basePct : Math.round(basePct / 2);
           // Convert USD to XAF (approx 1 USD = 610 XAF)
           const amtXAF = Math.round(parseFloat(amtUSD) * 610);
           const earned = Math.round(amtXAF * pct / 100);

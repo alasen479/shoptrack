@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775601583");
+console.log("ShopTrack v2.5 - build:1775602288");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -12619,6 +12619,8 @@ function _affRenderTable(){
   }
   tb.innerHTML = list.map(function(a){
     var rate = a.clicks>0 ? Math.round((a.conversions||0)/a.clicks*100)+'%' : '\u2014';
+    var rateNum = a.clicks>0 ? (a.conversions||0)/a.clicks*100 : -1;
+    var rateColor = rateNum<0?'var(--text2)':rateNum>=5?'var(--g)':rateNum>=2?'var(--y)':'var(--r)';
     var statusBadge = a.status==='approved' ? '<span class="bx bx-g">Approved</span>'
       : a.status==='pending' ? '<span class="bx bx-y">Pending</span>'
       : '<span class="bx bx-r">Suspended</span>';
@@ -12629,19 +12631,27 @@ function _affRenderTable(){
       '<td>'+statusBadge+'</td>'+
       '<td>'+(a.clicks||0)+'</td>'+
       '<td>'+(a.conversions||0)+'</td>'+
-      '<td>'+rate+'</td>'+
+      '<td style="color:'+rateColor+'">'+rate+'</td>'+
       '<td style="color:var(--g)">'+fmt(a.total_earned_xaf||0)+'</td>'+
       '<td style="color:'+(a.unpaid_xaf>0?'var(--r)':'var(--text2)')+'">'+fmt(a.unpaid_xaf||0)+'</td>'+
       '<td style="color:var(--text2);font-size:12px">'+(a.created_at||'').slice(0,10)+'</td>'+
       '<td><div class="btn-row">'+
-        (a.status==='pending'?'<button class="btn btn-g btn-xs" onclick="_affApprove(\''+a.id+'\')">&#x2714; Approve</button>':'')+
-        (a.status==='approved'?'<button class="btn btn-p btn-xs" onclick="_affPayPartial(\''+a.id+'\')">💳 Pay</button>'+(a.unpaid_xaf>0?'':'')+
-        '<button class="btn btn-s btn-xs" onclick="_affViewHistory(\''+a.id+'\')">📋 History</button>':'')+
-        (a.status!=='suspended'?'<button class="btn btn-d btn-xs" onclick="_affSuspend(\''+a.id+'\')">Suspend</button>':
-          '<button class="btn btn-g btn-xs" onclick="_affApprove(\''+a.id+'\')">Reactivate</button>')+
-        '<button class="btn btn-p btn-xs" onclick="_affSetCode(\''+a.id+'\')">&#x270F; Code</button>'+
+        (a.status==='pending'?
+          '<button class="btn btn-g btn-xs" onclick="_affApprove(\''+a.id+'\')">&#x2714; Approve</button>'
+        :'')+
+        (a.status==='approved'?
+          '<button class="btn btn-p btn-xs" onclick="_affPayPartial(\''+a.id+'\')">&#x1F4B3; Pay</button>'+
+          (a.unpaid_xaf>0?'<button class="btn btn-g btn-xs" onclick="_affMarkPaid(\''+a.id+'\')">&#x2714; All Paid</button>':'')+
+          '<button class="btn btn-s btn-xs" onclick="_affViewHistory(\''+a.id+'\')">&#x1F4CB; History</button>'
+        :'')+
+        (a.status==='suspended'?
+          '<button class="btn btn-g btn-xs" onclick="_affApprove(\''+a.id+'\')">&#x21BA; Reactivate</button>':
+          '<button class="btn btn-d btn-xs" onclick="_affSuspend(\''+a.id+'\')">&#x26D4; Suspend</button>')+
+        '<button class="btn btn-s btn-xs" onclick="_affSetCode(\''+a.id+'\')">&#x270F; Code</button>'+
+        (a.affiliate_code&&!a.affiliate_code.startsWith('PENDING')?
+          '<button class="btn btn-s btn-xs" onclick="_affCopyLink(\''+affLink+'\')">&#x1F4CB; Copy</button>':
+          '<span style="font-size:10px;color:var(--y)">&#x26A0; Set code first</span>')+
         '<button class="btn btn-d btn-xs" onclick="_affDelete(\''+a.id+'\')">&#x1F5D1; Delete</button>'+
-        '<button class="btn btn-s btn-xs" onclick="_affCopyLink(\''+affLink+'\')">&#x1F4CB; Copy Link</button>'+
       '</div></td>'+
     '</tr>';
   }).join('');
@@ -12663,56 +12673,109 @@ async function _affManage(action, id, record){
 }
 
 async function _affApprove(id){
+  var a=_affiliates.find(function(x){return x.id===id;});
+  if(!a) return;
+  var isReactivate = a.status==='suspended';
+  var code = a.affiliate_code&&!a.affiliate_code.startsWith('PENDING') ? a.affiliate_code : '';
+  // If still has PENDING code, require SA to set a real code first
+  if(!code){
+    toast('Set a real affiliate code first before approving','error');
+    _affSetCode(id); return;
+  }
   var r=await _affManage('approve',id);
-  if(r.ok){ var a=_affiliates.find(x=>x.id===id); if(a) a.status='approved'; _affUpdateKPIs(); _affRenderTable(); toast('Affiliate approved','success'); }
-  else toast('Error: '+r.error,'error');
+  if(r.ok){
+    if(a) a.status='approved';
+    _affUpdateKPIs(); _affRenderTable();
+    toast((isReactivate?'Affiliate reactivated':'Affiliate approved \u2713 Code: '+code),'success');
+  } else toast('Error: '+r.error,'error');
 }
 
 async function _affSuspend(id){
+  var a=_affiliates.find(function(x){return x.id===id;});
+  modal('\u26a0\uFE0F Suspend Affiliate',
+    '<p style="font-size:13px;color:var(--text2)">Suspend <strong>'+(a?_esc(a.name):'this affiliate')+'</strong>?<br>'
+    +'Their link will stop converting. You can reactivate at any time.</p>',
+    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    +'<button class="btn btn-d" onclick="closeModal();_doAffSuspend(\''+id+'\')">\u26d4 Suspend</button>'
+  );
+}
+async function _doAffSuspend(id){
   var r=await _affManage('suspend',id);
-  if(r.ok){ var a=_affiliates.find(x=>x.id===id); if(a) a.status='suspended'; _affUpdateKPIs(); _affRenderTable(); toast('Affiliate suspended','success'); }
-  else toast('Error: '+r.error,'error');
+  if(r.ok){
+    var a=_affiliates.find(function(x){return x.id===id;});
+    if(a) a.status='suspended';
+    _affUpdateKPIs(); _affRenderTable();
+    toast('Affiliate suspended','success');
+  } else toast('Error: '+r.error,'error');
 }
 
 async function _affMarkPaid(id){
-  if(!confirm('Mark all unpaid earnings as paid for this affiliate?')) return;
+  var a=_affiliates.find(function(x){return x.id===id;});
+  if(!a) return;
+  var unpaid=a.unpaid_xaf||0;
+  if(unpaid===0){ toast('No unpaid balance','info'); return; }
+  modal('Mark as Fully Paid',
+    '<div class="alrt alrt-b" style="margin-bottom:12px">Clear full unpaid balance for <strong>'+_esc(a.name)+'</strong>?</div>'
+    +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:13px;display:flex;justify-content:space-between">'
+    +'<span style="color:var(--text2)">Unpaid balance to clear</span><strong style="color:var(--r)">'+fmt(unpaid)+'</strong></div>',
+    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    +'<button class="btn btn-p" onclick="closeModal();_doAffMarkPaid(\''+id+'\')">\u2714 Mark Paid</button>'
+  );
+}
+async function _doAffMarkPaid(id){
   var r=await _affManage('mark-paid',id);
-  if(r.ok){ var a=_affiliates.find(x=>x.id===id); if(a) a.unpaid_xaf=0; _affUpdateKPIs(); _affRenderTable(); toast('Marked as paid','success'); }
-  else toast('Error: '+r.error,'error');
+  if(r.ok){
+    var a=_affiliates.find(function(x){return x.id===id;});
+    if(a) a.unpaid_xaf=0;
+    _affUpdateKPIs(); _affRenderTable();
+    toast('Marked as paid \u2713','success');
+  } else toast('Error: '+r.error,'error');
 }
 
-async function _affSetCode(id){
-  var a = _affiliates.find(function(x){return x.id===id;});
-  var cur = a ? (a.affiliate_code||'') : '';
-  var newCode = prompt('Set affiliate code (letters & numbers, min 3 chars):', cur);
-  if(newCode===null) return;
-  newCode = newCode.toUpperCase().replace(/[^A-Z0-9]/g,'');
-  if(newCode.length < 3){ toast('Code must be at least 3 characters','error'); return; }
-  var r = await _affManage('set-code', id, {affiliate_code: newCode});
+function _affSetCode(id){
+  var a=_affiliates.find(function(x){return x.id===id;});
+  var cur=a?(a.affiliate_code&&!a.affiliate_code.startsWith('PENDING')?a.affiliate_code:''):''
+  modal('Edit Affiliate Code',
+    '<div class="fg"><label class="fl">Affiliate Code *</label>'
+    +'<input class="fi" id="aff-code-inp" value="'+_esc(cur)+'"'
+    +' placeholder="e.g. AMAKA2026" style="text-transform:uppercase;font-family:var(--mono)"'
+    +' oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\')"/>'
+    +'<div class="fh">Min 3 chars, letters and numbers only. Used in shoptrack.org/?aff=CODE</div></div>',
+    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    +'<button class="btn btn-p" onclick="_doAffSetCode(\''+id+'\')">\u270F Save Code</button>'
+  );
+  setTimeout(function(){ var el=document.getElementById('aff-code-inp'); if(el){el.focus();el.select();} },80);
+}
+async function _doAffSetCode(id){
+  var code=((document.getElementById('aff-code-inp')||{}).value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(code.length<3){ toast('Code must be at least 3 characters','error'); return; }
+  var r=await _affManage('set-code',id,{affiliate_code:code});
   if(r.ok){
-    if(a) a.affiliate_code = newCode;
-    _affRenderTable();
-    toast('Code updated to ' + newCode,'success');
-  } else { toast('Error: '+r.error,'error'); }
+    var a=_affiliates.find(function(x){return x.id===id;}); if(a) a.affiliate_code=code;
+    closeModal(); _affRenderTable();
+    toast('Code updated to '+code,'success');
+  } else toast('Error: '+r.error,'error');
 }
 
 async function _affDelete(id){
-  var a = _affiliates.find(function(x){return x.id===id;});
-  var label = a ? (a.name+' ('+a.email+')') : id;
-  if(!confirm('Permanently delete affiliate: '+label+'?\n\nThis cannot be undone.')) return;
-  var r = await _affManage('delete', id);
+  var a=_affiliates.find(function(x){return x.id===id;});
+  var label=a?(a.name+' ('+a.email+')'):id;
+  modal('\uD83D\uDDD1 Delete Affiliate',
+    '<div class="alrt alrt-r" style="margin-bottom:12px">Permanently delete <strong>'+_esc(label)+'</strong>?<br>'
+    +'All their earnings data and commission history will be removed. This cannot be undone.</div>',
+    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    +'<button class="btn btn-d" onclick="closeModal();_doAffDelete(\''+id+'\')">\uD83D\uDDD1 Delete Permanently</button>'
+  );
+}
+async function _doAffDelete(id){
+  var r=await _affManage('delete',id);
   if(r.ok){
-    // Remove from local array — stays gone even after table re-render
-    _affiliates = _affiliates.filter(function(x){return x.id!==id;});
-    _affUpdateKPIs();
-    _affRenderTable();
+    _affiliates=_affiliates.filter(function(x){return x.id!==id;});
+    _affUpdateKPIs(); _affRenderTable();
     toast('Affiliate deleted','success');
-    // Force a background reload to confirm deletion persisted in DB
-    setTimeout(function(){
-      _affLoad();  // re-fetch from DB — if record is gone in DB it won't reappear
-    }, 1500);
+    setTimeout(_affLoad,1500);
   } else {
-    console.error('[_affDelete] failed:', r.error);
+    console.error('[_affDelete] failed:',r.error);
     toast('Delete failed: '+r.error,'error');
   }
 }
@@ -15549,7 +15612,20 @@ function _hideDataLoading(){
   try{var _r=new URLSearchParams(window.location.search).get('ref');
   if(_r&&_r.startsWith('BIZ-'))sessionStorage.setItem('st_ref_code',_r);
     var _aff=new URLSearchParams(window.location.search).get('aff');
-    if(_aff)sessionStorage.setItem('st_aff_code',_aff);}catch(e){}
+    if(_aff){
+      sessionStorage.setItem('st_aff_code',_aff);
+      var _affKey='st_aff_clicked_'+_aff;
+      if(!sessionStorage.getItem(_affKey)){
+        sessionStorage.setItem(_affKey,'1');
+        setTimeout(function(){
+          fetch('/.netlify/functions/aff-click',{method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({code:_aff})
+          }).catch(function(){});
+        },1000);
+      }
+    }
+  }catch(e){}
 })();
 function _track(ev,props){
   try{if(typeof window.plausible==='function')window.plausible(ev,props?{props:props}:undefined);}catch(e){}

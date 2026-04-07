@@ -31,7 +31,21 @@ exports.handler = async function(event) {
   if (action === 'approve')     patch = { status: 'approved' };
   else if (action === 'suspend')    patch = { status: 'suspended' };
   else if (action === 'reactivate') patch = { status: 'approved' };
-  else if (action === 'mark-paid')  patch = { unpaid_xaf: 0 };
+  else if (action === 'mark-paid') {
+    // Fetch current state to log payment in history
+    try {
+      const fetchRes = await fetch(`${SB_URL}/rest/v1/affiliates?id=eq.${encodeURIComponent(id)}&select=unpaid_xaf,payment_history`, {
+        headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+      });
+      const rows = await fetchRes.json().catch(() => []);
+      if (rows && rows[0]) {
+        const existing = Array.isArray(rows[0].payment_history) ? rows[0].payment_history : [];
+        const amount = rows[0].unpaid_xaf || 0;
+        const entry = { amount, method: 'Mark Paid (SA)', reference: '', notes: 'Full balance cleared', paid_at: new Date().toISOString(), paid_by: 'SA' };
+        patch = { unpaid_xaf: 0, payment_history: [entry, ...existing] };
+      } else { patch = { unpaid_xaf: 0 }; }
+    } catch (_e) { patch = { unpaid_xaf: 0 }; }
+  }
 
   else if (action === 'partial-pay') {
     // Partial or full payment — record is { amount, new_unpaid, method, reference, notes, paid_at, paid_by }
