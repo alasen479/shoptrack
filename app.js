@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775599221");
+console.log("ShopTrack v2.5 - build:1775599460");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -2448,9 +2448,9 @@ function _showPlanSelectionModal(){
       +'<div style="font-size:17px;font-weight:900;color:var(--ink);font-family:var(--display)">'+p.id+'</div>'
       +'<div style="font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.4">'+p.desc+'</div>'
       +'<div style="margin-bottom:14px">'
-        +'<span style="font-size:22px;font-weight:900;color:'+p.color+';font-family:var(--mono)">'+p.xaf.toLocaleString()+' XAF</span>'
+        +'<span style="font-size:22px;font-weight:900;color:'+p.color+';font-family:var(--mono)">'+(_isUSD()?(p.id==='Free'?'$0':'$18'):p.xaf.toLocaleString()+' XAF')+'</span>'
         +'<span style="font-size:11px;color:var(--text2)"> /mo</span><br>'
-        +'<span style="font-size:10px;color:var(--text2)">or '+Math.round(p.yearly/12).toLocaleString()+' XAF/mo billed yearly</span>'
+        +'<span style="font-size:10px;color:var(--text2)">or '+(_isUSD()?(p.id==='Free'?'$0':'$15'):(Math.round(p.yearly/12).toLocaleString()+' XAF'))+'/mo billed yearly</span>'
       +'</div>'
       +feats
       +'</div>';
@@ -2532,7 +2532,6 @@ function _isUSD(){ return CUR.code==='USD' || (BIZ.country||'').toLowerCase().in
 
 // Stripe payment flow for USD businesses
 async function mSubPayNowStripe(){
-  var _rawPlan=(BIZ.plan||'').toLowerCase();
   var plan='Premium'; // Stripe checkout is always upgrading to Premium
   var planKey='Premium';
   var cycle=BIZ.billingCycle==='yearly'?'yearly':'monthly';
@@ -2589,7 +2588,6 @@ function mSubPayNow(){
   // USD businesses use Stripe card payment
   if(_isUSD()){ mSubPayNowStripe(); return; }
   const d      = _subDaysLeft();
-  const isTrial2 = (BIZ.plan||'').toLowerCase().includes('trial')||(BIZ.plan||'')==='Free Trial';
   const plan   = 'Premium'; // CamPay payment = upgrading to Premium
   const amt    = _subAmtXAF() || 8900; // XAF: 8,900/mo for Premium
   const expiry = BIZ.subExpires || BIZ.trialEnd || '';
@@ -10488,7 +10486,7 @@ ${unvSection}
       <option value="overdue">🔴 Overdue</option>
       <option value="expiring">⚠ Expiring ≤3d</option>
       <option value="current">✓ Current</option>
-      <option value="trial">Free Trial</option>
+      <option value="trial">Trial (30 Days)</option>
       <option value="nophone">⚠ No Phone</option>
     </select>
     <button class="btn btn-s btn-xs" onclick="_saFilter('','','');document.getElementById('sa-search').value='';document.getElementById('sa-st-filter').value='';document.getElementById('sa-plan-filter').value='';document.getElementById('sa-billing-filter').value=''">✕ Clear</button>
@@ -16786,7 +16784,7 @@ function pgSettings(){
 <div id="tab-subscription" style="display:none">
 ${(function(){
   var d      = _subDaysLeft();
-  var plan   = BIZ.plan || 'Starter';
+  var plan   = _isTrialActive() ? 'Trial (30 Days)' : (_isFreePlan() ? 'Free' : (BIZ.plan || 'Premium'));
   var exp    = BIZ.subExpires || '';
   var amt    = _subAmtXAF();
   var cycle  = BIZ.billingCycle === 'yearly' ? 'Annual' : 'Monthly';
