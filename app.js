@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775601374");
+console.log("ShopTrack v2.5 - build:1775601583");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5626,7 +5626,7 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
 </div>
 <div class="fbar">
   <input class="fi-s" id="rent-search" placeholder="${_ui.flt_search_rent}" style="width:200px" oninput="filterRentalsSearch()"/>
-  <select class="sel" id="rent-status-sel" onchange="filterRentals(null,this.value)"><option value="">${_ui.flt_all_status}</option><option>Overdue</option><option>Checked Out</option><option>Reserved</option><option>Returned</option></select>
+  <select class="sel" id="rent-status-sel" onchange="filterRentals(null,this.value)"><option value="">${_ui.flt_all_status}</option><option>Overdue</option><option>Cancelled</option><option>Checked Out</option><option>Reserved</option><option>Returned</option></select>
   <div class="dtabs"><button class="dtab" onclick="setRentalsPeriod(this,'today')">${_ui.per_today}</button><button class="dtab" onclick="setRentalsPeriod(this,'week')">${_ui.per_week}</button><button class="dtab" onclick="setRentalsPeriod(this,'lastweek')">${_ui.per_lastweek}</button><button class="dtab on" onclick="setRentalsPeriod(this,'month')">${_ui.per_month}</button><button class="dtab" onclick="setRentalsPeriod(this,'lastmonth')">${_ui.per_lastmonth}</button><button class="dtab" onclick="setRentalsPeriod(this,'quarter')">${_ui.per_quarter}</button><button class="dtab" onclick="setRentalsPeriod(this,'ytd')">${_ui.per_ytd}</button></div>
 </div>
 <div class="card">
@@ -12984,6 +12984,8 @@ async function _dbLoadBizProfile(bizId){
     const {data, error} = await _sb.from('businesses').select('*').eq('id', bizId).single();
     if(error || !data) return;
     BIZ.name            = data.name||'';
+    BIZ.owner           = data.owner||BIZ.owner||'';
+    BIZ.type            = data.type||BIZ.type||'';
     BIZ.tagline         = data.tagline||'';
     BIZ.email           = data.email||'';
     BIZ.phone           = data.phone||'';
@@ -13105,7 +13107,7 @@ async function _dbSaveBizProfile(bizId){
   if(!_sb || !bizId || SESSION.isSuperAdmin) return;
   try {
     await _sb.from('businesses').update({
-      name:BIZ.name, tagline:BIZ.tagline, email:BIZ.email, phone:BIZ.phone,
+      name:BIZ.name, owner:BIZ.owner||null, type:BIZ.type||null, tagline:BIZ.tagline, email:BIZ.email, phone:BIZ.phone,
       whatsapp:BIZ.whatsapp, address:BIZ.address, website:BIZ.website,
       instagram:BIZ.instagram, facebook:BIZ.facebook, tiktok:BIZ.tiktok,
       twitter:BIZ.twitter, logo_data_url:BIZ.logoDataUrl,
@@ -16615,8 +16617,12 @@ function pgSettings(){
         </div>
       </div>
     </div>
-    <div class="fg"><label class="fl">Business Name</label><input class="fi" id="biz-name" value="${BIZ.name}"/></div>
+    <div class="fg-2">
+      <div class="fg"><label class="fl">Business Name</label><input class="fi" id="biz-name" value="${BIZ.name}"/></div>
+      <div class="fg"><label class="fl">Owner / Contact Name</label><input class="fi" id="biz-owner" value="${BIZ.owner||''}" placeholder="Your full name"/></div>
+    </div>
     <div class="fg"><label class="fl">Tagline / Description</label><input class="fi" id="biz-tagline" value="${BIZ.tagline}"/></div>
+    <div class="fg"><label class="fl">Business Type</label><input class="fi" id="biz-type" value="${BIZ.type||''}" placeholder="e.g. Boutique, Restaurant, Salon"/></div>
     <div class="fg-2">
       <div class="fg"><label class="fl">Country</label>
         <select class="fs" id="biz-country" onchange="_bizCountryChanged(this.value)">
@@ -18220,6 +18226,8 @@ function handleLogoUpload(input){
 
 function saveBizProfile(){
   BIZ.name      = document.getElementById('biz-name')?.value      || BIZ.name;
+  BIZ.owner     = document.getElementById('biz-owner')?.value     || BIZ.owner;
+  BIZ.type      = document.getElementById('biz-type')?.value      || BIZ.type;
   BIZ.tagline   = document.getElementById('biz-tagline')?.value   || BIZ.tagline;
   BIZ.email     = document.getElementById('biz-email')?.value     || BIZ.email;
   BIZ.phone     = document.getElementById('biz-phone')?.value     || BIZ.phone;
