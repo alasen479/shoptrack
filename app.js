@@ -55,10 +55,10 @@ const D = {
   kpis:{rev:0,saleRev:0,rentRev:0,cogs:0,gp:0,np:0,ar:0,ap:0,invVal:0,oh:0,cashIn:0,cashOut:0},
   inv:[], cust:[], rentals:[], sales:[], exp:[], vendors:[],
   purchases:[], audit:[],
-  invCats:['General','Equipment','Accessories','Other'],
-  vendorCats:['Supplier','Distributor','Manufacturer','Other'],
-  expCats:['Rent','Utilities','Salaries','Marketing','Repairs','Packaging','Internet','Insurance','Photography','Transport','Cleaning','Staff Bonus','Website','Miscellaneous','Other'],
-  svcCats:['Consultation','Design & Planning','Installation','Finishing','Sourcing','Maintenance','Training','Other'],
+  invCats:['General','Clothing & Fashion','Electronics','Food & Beverages','Beauty & Health','Home & Furniture','Equipment & Tools','Raw Materials','Packaging','Accessories','Other'],
+  vendorCats:['Supplier','Distributor','Manufacturer','Wholesaler','Service Provider','Other'],
+  expCats:['Rent & Lease','Salaries & Wages','Utilities','Internet & Phone','Marketing & Advertising','Transport & Fuel','Packaging & Supplies','Repairs & Maintenance','Insurance','Staff Bonus','Cleaning','Photography','Bank Charges','Taxes & Duties','Miscellaneous','Other'],
+  svcCats:['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'],
   adminBiz:[], // populated below with demo or real admin list
 };
 
@@ -78,10 +78,10 @@ function _ensureDArrays(){
   if(!Array.isArray(D.appointments))      D.appointments      = [];
   if(!Array.isArray(D.adminBiz))          D.adminBiz          = [];
   if(!Array.isArray(D.adminBizUnverified))D.adminBizUnverified= [];
-  if(!Array.isArray(D.invCats))           D.invCats           = ['General','Equipment','Accessories','Other'];
-  if(!Array.isArray(D.vendorCats))        D.vendorCats        = ['Supplier','Distributor','Manufacturer','Other'];
-  if(!Array.isArray(D.expCats))           D.expCats           = ['Rent','Utilities','Salaries','Marketing','Other'];
-  if(!Array.isArray(D.svcCats))           D.svcCats           = ['Consultation','Training','Other'];
+  if(!Array.isArray(D.invCats)||D.invCats.length===0)    D.invCats    = ['General','Clothing & Fashion','Electronics','Food & Beverages','Beauty & Health','Home & Furniture','Equipment & Tools','Raw Materials','Packaging','Accessories','Other'];
+  if(!Array.isArray(D.vendorCats)||D.vendorCats.length===0) D.vendorCats = ['Supplier','Distributor','Manufacturer','Wholesaler','Service Provider','Other'];
+  if(!Array.isArray(D.expCats)||D.expCats.length===0)    D.expCats    = ['Rent & Lease','Salaries & Wages','Utilities','Internet & Phone','Marketing & Advertising','Transport & Fuel','Packaging & Supplies','Repairs & Maintenance','Insurance','Staff Bonus','Cleaning','Photography','Bank Charges','Taxes & Duties','Miscellaneous','Other'];
+  if(!Array.isArray(D.svcCats)||D.svcCats.length===0)    D.svcCats    = ['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
 }
 
 const _DEMO_DATA = {
@@ -414,10 +414,10 @@ function _loadDemoDataForTestLLC(){
   ];
 
   // ── CATEGORIES ───────────────────────────────────────────────────────────
-  D.invCats    = ['Electronics','Computers','Tablets','Clothing','Footwear','Accessories','Equipment','Beauty','Furniture'];
+  D.invCats    = ['General','Clothing & Fashion','Electronics','Food & Beverages','Beauty & Health','Home & Furniture','Equipment & Tools','Raw Materials','Packaging','Accessories','Other'];
   D.vendorCats = ['Supplier','Distributor','Manufacturer','Other'];
   D.expCats    = ['Rent','Utilities','Salaries','Marketing','Repairs','Packaging','Internet','Insurance','Photography','Transport','Cleaning','Staff Bonus','Website','Miscellaneous','Other'];
-  D.svcCats    = ['Consultation','Design & Planning','Installation','Finishing','Sourcing','Maintenance','Training','Other'];
+  D.svcCats    = ['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
 
   // ── BIZ PROFILE ──────────────────────────────────────────────────────────
   BIZ.name          = 'Test LLC';
@@ -12329,15 +12329,19 @@ async function _dbLoadBizData(bizId){
       (inv.data||[]).forEach(r=>{ if(!D.inv.find(i=>i.id===r.id)) D.inv.push(_dbToInv(r)); });
     }
 
-    // Categories
+    // Categories — load from DB, or seed defaults for new businesses
     const invCats    = (cats.data||[]).filter(c=>c.type==='inv').map(c=>c.name);
     const vendorCats = (cats.data||[]).filter(c=>c.type==='vendor').map(c=>c.name);
     const expCats    = (cats.data||[]).filter(c=>c.type==='exp').map(c=>c.name);
-    if(invCats.length)    D.invCats    = invCats;
-    if(vendorCats.length) D.vendorCats = vendorCats;
-    if(expCats.length)    D.expCats    = expCats;
-    const svcCats = (cats.data||[]).filter(c=>c.type==='svc').map(c=>c.name);
-    if(svcCats.length)    D.svcCats    = svcCats;
+    const svcCats    = (cats.data||[]).filter(c=>c.type==='svc').map(c=>c.name);
+    if(invCats.length)    D.invCats    = invCats;    else _ensureDArrays(); // seeds defaults
+    if(vendorCats.length) D.vendorCats = vendorCats; else _ensureDArrays();
+    if(expCats.length)    D.expCats    = expCats;    else _ensureDArrays();
+    if(svcCats.length)    D.svcCats    = svcCats;    else _ensureDArrays();
+    // If brand new business (no categories saved), persist defaults to Supabase immediately
+    if(!(cats.data||[]).length && bizId && !_is107){
+      setTimeout(function(){ _dbSaveCategories(bizId); }, 1000);
+    }
 
     // Reconcile customer spent/orders/balance from actual sales in DB
     // This ensures spend totals survive sale deletions and re-entries
@@ -21622,7 +21626,7 @@ function mEditService(id){ mEditSvc(id); }
 function mNewService(){
   const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId).map(u=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="${u.id}" style="accent-color:var(--a)"/> ${u.name}</label>`).join('');
   const ptOpts=_PRICE_TYPES.map(pt=>`<option value="${pt.value}">${pt.label}</option>`).join('');
-  if(!D.svcCats||!D.svcCats.length) D.svcCats=['Consultation','Design & Planning','Installation','Finishing','Sourcing','Maintenance','Training','Other'];
+  if(!D.svcCats||!D.svcCats.length) D.svcCats=['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
   modal('🛠 New Service',`
   <div class="fg-2">
     <div class="fg"><label class="fl">Service Name</label><input class="fi" id="sv-nm" placeholder="e.g. Interior Consultation, Haircut…"/></div>
@@ -21666,7 +21670,7 @@ function mNewService(){
   setTimeout(_svPtChange, 50);
   // Init service category searchable select with live D.svcCats
   setTimeout(function(){
-    var svcCats = D.svcCats || ['Consultation','Training','Other'];
+    var svcCats = D.svcCats || ['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
     var catOpts = [{val:'',label:'— No category —'}].concat(svcCats.map(function(c){ return {val:c,label:c}; }));
     _mkSearchSelect('sv-cat-wrap', catOpts, '', function(val){
       var h = document.getElementById('sv-cat'); if(h) h.value = val;
@@ -21679,7 +21683,7 @@ function mEditSvc(id){
   const pt=s.priceType||'flat';
   const ptOpts=_PRICE_TYPES.map(p=>`<option value="${p.value}"${p.value===pt?' selected':''}>${p.label}</option>`).join('');
   const sCat=s.cat||'';
-  if(!D.svcCats||!D.svcCats.length) D.svcCats=['Consultation','Design & Planning','Installation','Finishing','Sourcing','Maintenance','Training','Other'];
+  if(!D.svcCats||!D.svcCats.length) D.svcCats=['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
   modal('✏ Edit — '+s.name,`
   <div class="fg-2">
     <div class="fg"><label class="fl">Service Name</label><input class="fi" id="sv-nm" value="${_esc(s.name)}"/></div>
@@ -21723,7 +21727,7 @@ function mEditSvc(id){
   setTimeout(function(){ _svPtChange(); _svSyncTotal(); }, 50);
   // Init service category searchable select with live D.svcCats
   setTimeout(function(){
-    var svcCats = D.svcCats || ['Consultation','Training','Other'];
+    var svcCats = D.svcCats || ['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
     var catOpts = [{val:'',label:'— No category —'}].concat(svcCats.map(function(c){ return {val:c,label:c}; }));
     _mkSearchSelect('sv-cat-wrap', catOpts, sCat||'', function(val){
       var h = document.getElementById('sv-cat'); if(h) h.value = val;
