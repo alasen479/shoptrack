@@ -2204,15 +2204,17 @@ const SUB_PLAN_XAF = {
 };
 
 function _subDaysLeft(){
-  if(!BIZ.subExpires) return null;
-  const now  = new Date(); now.setHours(0,0,0,0);
-  const then = new Date(BIZ.subExpires+'T00:00:00');
+  var exp = BIZ.subExpires || BIZ.trialEnd || null;
+  if(!exp) return null;
+  var now = new Date(); now.setHours(0,0,0,0);
+  var then = new Date(exp+'T00:00:00');
   return Math.round((then - now) / 86400000);
 }
 
 function _subAmtXAF(){
-  const p = SUB_PLAN_XAF[BIZ.plan||'Free'] || SUB_PLAN_XAF['Free'];
-  return (BIZ.billingCycle||'monthly') === 'yearly' ? p.yearly : p.monthly;
+  var activePl=_activePlan(); if(activePl==='trial'||activePl==='free') return 0;
+  var p=SUB_PLAN_XAF['Premium']||SUB_PLAN_XAF['Pro']||{monthly:8900,yearly:89000};
+  return (BIZ.billingCycle||'monthly')==='yearly'?p.yearly:p.monthly;
 }
 
 // Returns HTML for the dashboard banner — empty string when nothing to show
@@ -13581,32 +13583,6 @@ const SUBSCRIPTION_PLANS = [
       ]},
     ],
   },
-  {
-    id:'trial', name:'Free Trial', emoji:'🎁',
-    tagline:'30 days full Premium access — no card required',
-    monthlyXAF:0, yearlyXAF:0,
-    color:'#f59e0b', colorDim:'rgba(245,158,11,.12)', badge:'30-Day Free Trial',
-    highlight: false,
-    trialDays: 30,
-    limits:{staff:'Up to 5 users', customers:'Unlimited', products:'Unlimited', invoices:'Unlimited'},
-    sections:[
-      { title:'Full Premium Access During Trial', items:[
-        {label:'All Premium features included',         inc:true},
-        {label:'Unlimited inventory & sales',           inc:true},
-        {label:'Appointments & rental management',      inc:true},
-        {label:'AI Studio assistant',                   inc:true},
-        {label:'Custom branding — no watermark',        inc:true},
-        {label:'Full WhatsApp automation',              inc:true},
-        {label:'All reports — PDF & CSV export',        inc:true},
-      ]},
-      { title:'After Trial Ends', items:[
-        {label:'Continue free on Free plan',            inc:true},
-        {label:'Upgrade to Premium anytime',            inc:true},
-        {label:'Data always retained',                  inc:true},
-        {label:'No credit card required to start',      inc:true},
-      ]},
-    ],
-  },
 ];
 
 // Platform-level subscription enforcement toggle (Super Admin only)
@@ -16632,8 +16608,8 @@ ${(function(){
   var exp    = BIZ.subExpires || '';
   var amt    = _subAmtXAF();
   var cycle  = BIZ.billingCycle === 'yearly' ? 'Annual' : 'Monthly';
-  var isFree = amt === 0;
-  var isTrial = plan.toLowerCase().includes('trial');
+  var isTrial = _isTrialActive();
+  var isFree = _isFreePlan() && !isTrial;
 
   var statusColor = d===null?'var(--text2)':d>7?'var(--g)':d>3?'var(--b)':d>0?'var(--y)':'var(--r)';
   var statusLabel = d===null?'No expiry set'
@@ -16643,10 +16619,7 @@ ${(function(){
                  : d>0  ? '⚠ '+d+' day'+(d>1?'s':'')+' remaining'
                  : '🔴 Expired '+Math.abs(d)+' day'+(Math.abs(d)>1?'s':'')+' ago';
 
-  var planColors = {
-    'Starter':'#2dd4a0','Pro':'#5b7fff','Professional':'#5b7fff',
-    'Enterprise':'#a855f7','Trial (30 Days)':'#f59e0b'
-  };
+  var planColors = {'Free':'#2dd4a0','free':'#2dd4a0','Starter':'#2dd4a0','Premium':'#5b7fff','premium':'#5b7fff','Pro':'#5b7fff','Professional':'#5b7fff','Enterprise':'#a855f7','trial':'#f59e0b'};
   var planColor = planColors[plan] || '#5b7fff';
 
   // ── How to Pay card — currency-aware (USD→Stripe, XAF/NGN→Mobile Money) ──
@@ -16684,10 +16657,10 @@ ${(function(){
       )
     + '</div>';
 
-  var payBtn = (!isFree && d !== null && d <= 30)
+  var payBtn = (!isFree && !isTrial && d !== null && d <= 30)
     ? '<button class="btn btn-p" onclick="mSubPayNow()" style="width:100%;padding:12px;font-size:14px;font-weight:700;margin-top:4px">💳 Pay Now — '+(_isUsdBiz?_usdAmt:amt.toLocaleString()+' XAF')+'</button>'
     : '';
-  var urgentNote = (!isFree && d !== null && d <= 5)
+  var urgentNote = (!isFree && !isTrial && d !== null && d <= 5)
     ? '<div class="alrt '+(d<=0?'alrt-r':'alrt-y')+'" style="margin-top:12px;font-size:12px">'
       +(d<=0?'⛔ Your subscription has expired. Tap Pay Now to restore full access.':'⚠ Expires in '+d+' day'+(d>1?'s':'')+' on '+exp+'. Tap Pay Now to renew without interruption.')
       +'</div>'
@@ -16726,7 +16699,7 @@ ${(function(){
     </div>
     ${payBtn}
     ${urgentNote}
-    ${isFree?'<div class="alrt alrt-b" style="margin-top:12px;font-size:12px">You are on a free trial. Tap <strong>Change Plan</strong> above to upgrade at any time.</div>':''}
+    ${isTrial?'<div class="alrt alrt-b" style="margin-top:12px;font-size:12px">🎁 You are on a <strong>30-day free trial</strong> with full Premium access. Trial ends <strong>'+(BIZ.trialEnd||BIZ.subExpires||'')+'</strong>.</div>':isFree?'<div class="alrt alrt-b" style="margin-top:12px;font-size:12px">You are on the <strong>Free plan</strong>. <button class="btn btn-p btn-xs" onclick="mChangePlan()">🚀 Upgrade to Premium</button></div>':''}
     <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
       <button class="btn btn-p btn-sm" onclick="mChangePlan()" style="width:100%">🔄 Change Plan</button>
       <button class="btn btn-s btn-sm" onclick="mViewPlans()" style="width:100%">📋 View All Plans</button>
