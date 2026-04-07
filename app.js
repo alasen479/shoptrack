@@ -13181,7 +13181,7 @@ const SUBSCRIPTION_PLANS = [
 
 // Platform-level subscription enforcement toggle (Super Admin only)
 // When false, all businesses have full access regardless of plan (testing mode)
-let SUBSCRIPTIONS_ENFORCED = false;
+let SUBSCRIPTIONS_ENFORCED = true;
 
 // Login hints removed — business identity is derived solely from email credentials
 
@@ -16615,7 +16615,7 @@ function renderPlansTab(){
     + '</div></div>';
 
   return '<div style="margin-bottom:24px">'
-    + enforcementBanner
+    + (SESSION.isSuperAdmin ? enforcementBanner : '')
     + billingToggle
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;align-items:start">'
     + cards
