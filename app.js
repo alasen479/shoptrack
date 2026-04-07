@@ -11546,8 +11546,8 @@ function _notifEvent(type, payload){
 }
 
 // ── Proactive monitoring — runs every 60 seconds ──────────────
-let _notifCheckInterval = null;
-let _notifSeen = new Set(); // track already-fired notifications to prevent spam
+var _notifCheckInterval = null;
+var _notifSeen = new Set(); // track already-fired notifications to prevent spam
 
 function _startNotifMonitor(){
   if(_notifCheckInterval) return; // already running
