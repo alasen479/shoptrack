@@ -6649,8 +6649,6 @@ const SUBSCRIPTION_PLANS = [
       ]},
     ],
   },
-]
-
 ];
 
 // Platform-level subscription enforcement toggle (Super Admin only)
