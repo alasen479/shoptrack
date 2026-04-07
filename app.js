@@ -2029,10 +2029,9 @@ const STRIPE_PK = 'pk_live_51TIU2aDJ710ezCR6Y4mNk05q3LXt9UaEUAWLK9Y6QKiQnL06YK3n
 
 // Plan prices in USD (cents) for Stripe checkout
 const SUB_PLAN_USD = {
-  Free:          { monthly: 0,    yearly: 0     },
-  Premium:       { monthly: 8900, yearly: 89000 },
-  Pro:          { monthly: 1900, yearly: 19000 },
-  Enterprise:   { monthly: 5700, yearly: 57000 },
+  Free:              { monthly: 0,    yearly: 0     },
+  Premium:           { monthly: 8900, yearly: 89000 },
+  'Trial (30 Days)': { monthly: 0,    yearly: 0     },
 };
 
 const SUB_PLAN_XAF = {
@@ -2099,7 +2098,7 @@ function _subExpiryBanner(){
     +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:13px;color:var(--ink)">'+msg+'</div>'
       +(CUR.code==='USD'
-        ? '<div style="font-size:11px;color:var(--text2);margin-top:2px">Amount due: <strong style="font-family:var(--mono);color:var(--ink)">$'+(((SUB_PLAN_USD[(BIZ.plan==='Pro'?'Professional':BIZ.plan||'Starter')]||SUB_PLAN_USD.Starter)[(BIZ.billingCycle==='yearly'?'yearly':'monthly')])/100).toFixed(2)+' USD</strong> · Secure card payment via Stripe</div>'
+        ? '<div style="font-size:11px;color:var(--text2);margin-top:2px">Amount due: <strong style="font-family:var(--mono);color:var(--ink)">$'+(((SUB_PLAN_USD[BIZ.plan||'Free']||SUB_PLAN_USD.Free)[(BIZ.billingCycle==='yearly'?'yearly':'monthly')])/100).toFixed(2)+' USD</strong> · Secure card payment via Stripe</div>'
         : '<div style="font-size:11px;color:var(--text2);margin-top:2px">Amount due: <strong style="font-family:var(--mono);color:var(--ink)">'+amt.toLocaleString()+' XAF</strong> · Payment via Mobile Money (MTN or Orange)</div>'
       )
     +'</div>'
@@ -2230,7 +2229,7 @@ async function mSubPayNowStripe(){
   var d2=new Date(base+'T00:00:00');
   if(cycle==='yearly')d2.setFullYear(d2.getFullYear()+1); else d2.setMonth(d2.getMonth()+1);
   var newExpiry=d2.toISOString().slice(0,10);
-  var prices=SUB_PLAN_USD[planKey]||SUB_PLAN_USD.Starter;
+  var prices=SUB_PLAN_USD[planKey]||SUB_PLAN_USD.Free;
   var amtCents=prices[cycle];
   var amtUSD=(amtCents/100).toFixed(2);
 
@@ -11364,7 +11363,7 @@ const BILLING_PLANS = {
 };
 
 function _billingAmtXAF(biz){
-  const p = BILLING_PLANS[biz.plan||'Starter'] || BILLING_PLANS['Starter'];
+  const p = BILLING_PLANS[biz.plan||'Free'] || BILLING_PLANS['Free'];
   return (biz.billingCycle||'monthly') === 'yearly' ? p.yearly : p.monthly;
 }
 
@@ -16018,7 +16017,7 @@ ${(function(){
 
   // ── How to Pay card — currency-aware (USD→Stripe, XAF/NGN→Mobile Money) ──
   var _usdPk    = plan === 'Pro' ? 'Professional' : plan;
-  var _usdPrObj = SUB_PLAN_USD[_usdPk] || SUB_PLAN_USD.Starter;
+  var _usdPrObj = SUB_PLAN_USD[_usdPk] || SUB_PLAN_USD.Free;
   var _usdCyc   = BIZ.billingCycle === 'yearly' ? 'yearly' : 'monthly';
   var _usdAmt   = '$' + (_usdPrObj[_usdCyc] / 100).toFixed(2) + ' USD';
   var _isUsdBiz = CUR.code === 'USD';
