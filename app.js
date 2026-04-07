@@ -186,12 +186,12 @@ const _DEMO_DATA = {
   vendorCats:['Wedding Gowns','Wigs & Hair','Skincare & Cosmetics','Accessories','Decor','Equipment','Packaging','Other'],
   expCats:['Rent','Utilities','Salaries','Marketing','Repairs','Packaging','Internet','Insurance','Photography','Transport','Cleaning','Staff Bonus','Website','Miscellaneous','Other'],
   adminBiz:[
-    {id:'BIZ-001',name:'Peaches Paradise',owner:'Precious Nguema',st:'Active',plan:'Professional',users:4,rev:780,created:'2024-06-01'},
-    {id:'BIZ-002',name:'Premier Party Rentals',owner:'Marcus Johnson',st:'Active',plan:'Starter',users:2,rev:320,created:'2024-08-15'},
-    {id:'BIZ-003',name:'Luxe Fashion Boutique',owner:'Diana Reeves',st:'Active',plan:'Professional',users:6,rev:980,created:'2024-09-01'},
-    {id:'BIZ-004',name:'EcoDecor Rentals',owner:'Tom Wei',st:'Inactive',plan:'Starter',users:1,rev:42,created:'2024-11-20'},
+    {id:'BIZ-001',name:'Peaches Paradise',owner:'Precious Nguema',st:'Active',plan:'Premium',users:4,rev:780,created:'2024-06-01'},
+    {id:'BIZ-002',name:'Premier Party Rentals',owner:'Marcus Johnson',st:'Active',plan:'Free',users:2,rev:320,created:'2024-08-15'},
+    {id:'BIZ-003',name:'Luxe Fashion Boutique',owner:'Diana Reeves',st:'Active',plan:'Premium',users:6,rev:980,created:'2024-09-01'},
+    {id:'BIZ-004',name:'EcoDecor Rentals',owner:'Tom Wei',st:'Inactive',plan:'Free',users:1,rev:42,created:'2024-11-20'},
     {id:'BIZ-005',name:'Heritage Furniture Co.',owner:'Amanda Price',st:'Pending',plan:'—',users:0,rev:0,created:localDateStr(-3)},
-    {id:'BIZ-006',name:'Chic Bridal Studio',owner:'Nadia Osei',st:'Active',plan:'Professional',users:3,rev:521,created:'2024-10-12'},
+    {id:'BIZ-006',name:'Chic Bridal Studio',owner:'Nadia Osei',st:'Active',plan:'Premium',users:3,rev:521,created:'2024-10-12'},
   ]
 };
 // ── Load demo data for Peaches Paradise (BIZ-001) ────────────────────────────
@@ -451,7 +451,7 @@ function _loadDemoDataForTestLLC(){
 function _loadAdminBiz(){
   const existing = D.adminBiz.filter(b=>!_DEMO_DATA.adminBiz.find(d=>d.id===b.id));
   // Always include Test LLC (BIZ-107) in the SA list
-  const testLLC = {id:'BIZ-107',name:'Test LLC',owner:'Alex Lasen',email:'alasen479@gmail.com',type:'General Retail',st:'Active',plan:'Professional',users:1,rev:0,created:'2026-03-23'};
+  const testLLC = {id:'BIZ-107',name:'Test LLC',owner:'Alex Lasen',email:'alasen479@gmail.com',type:'General Retail',st:'Active',plan:'Premium',users:1,rev:0,created:'2026-03-23'};
   const hasTestLLC = existing.find(b=>b.id==='BIZ-107') || D.adminBiz.find(b=>b.id==='BIZ-107');
   D.adminBiz = _DEMO_DATA.adminBiz.slice().concat(hasTestLLC ? existing : [...existing, testLLC]);
 }
@@ -5382,7 +5382,7 @@ function mProvision(){
       </select>
     </div>
     <div class="fg"><label class="fl">Plan</label>
-      <select class="fs" id="prov-plan"><option>Trial (30 Days)</option><option>Starter</option><option selected>Professional</option><option>Enterprise</option></select>
+      <select class="fs" id="prov-plan"><option selected>Trial (30 Days)</option><option>Free</option><option>Premium</option></select>
     </div>
   </div>
 
@@ -5428,7 +5428,7 @@ function doProvision(){
   const email  = (document.getElementById('prov-email')?.value  || '').toLowerCase().trim();
   const name   = (document.getElementById('prov-name')?.value   || '').trim();
   const owner  = (document.getElementById('prov-owner')?.value  || '').trim();
-  const plan   = document.getElementById('prov-plan')?.value    || 'Professional';
+  const plan   = document.getElementById('prov-plan')?.value    || 'Trial (30 Days)';
   const type   = document.getElementById('prov-type')?.value    || 'General Retail';
   const pass   = document.getElementById('prov-pass-display')?.textContent || _genTempPassword();
   const errEl  = document.getElementById('prov-email-error');
@@ -6065,7 +6065,7 @@ function pgAdminAnalytics(){
   const pending  = D.adminBiz.filter(b=>b.st==='Pending').length;
   const totalUsers = BIZ_USERS.length + 1; // +1 for super admin
   const byPlan = {};
-  D.adminBiz.forEach(b=>{ byPlan[b.plan||'Starter']=(byPlan[b.plan||'Starter']||0)+1; });
+  D.adminBiz.forEach(b=>{ byPlan[b.plan||'Free']=(byPlan[b.plan||'Free']||0)+1; });
   return `
 <div class="adm-banner">
   <span style="font-size:20px">📊</span>
@@ -6107,7 +6107,7 @@ function pgAdminAnalytics(){
       <td>${mono(b.id,'p')}</td>
       <td><strong style="color:var(--ink)">${b.name}</strong></td>
       <td style="color:var(--text2)">${b.owner}</td>
-      <td>${b.trialEnd ? bx('Trial','bx-y') : bx(b.plan||'Starter','bx-b')}</td>
+      <td>${b.trialEnd ? bx('Trial','bx-y') : bx(b.plan||'Free','bx-b')}</td>
       <td>${badge(b.st)}</td>
       <td style="text-align:center">${b.users}</td>
       <td style="color:var(--text2);font-size:12px">${b.created}</td>
@@ -6125,8 +6125,8 @@ function initAdminAnalytics(){
     datasets:[{data:statusCounts,backgroundColor:['rgba(45,212,160,.75)','rgba(245,200,66,.75)','rgba(255,95,122,.75)','rgba(159,122,234,.75)'],borderWidth:0}]
   },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#374151',font:{size:11}}}}}});
 
-  const plans = [...new Set(D.adminBiz.map(b=>b.plan||'Starter'))];
-  const planCounts = plans.map(p=>D.adminBiz.filter(b=>(b.plan||'Starter')===p).length);
+  const plans = [...new Set(D.adminBiz.map(b=>b.plan||'Free'))];
+  const planCounts = plans.map(p=>D.adminBiz.filter(b=>(b.plan||'Free')===p).length);
   mkChart('admPlanChart',{type:'doughnut',data:{
     labels:plans,
     datasets:[{data:planCounts,backgroundColor:['rgba(91,127,255,.75)','rgba(56,189,248,.75)','rgba(232,102,122,.75)'],borderWidth:0}]
@@ -6552,141 +6552,140 @@ let SA_PROFILE = {
 // Subscription plans definition
 const SUBSCRIPTION_PLANS = [
   {
-    id:'starter', name:'Starter', emoji:'🌱',
-    tagline:'Launch your business with everything essential',
-    monthlyXAF:4900, yearlyXAF:49000,
+    id:'free', name:'Free', emoji:'🆓',
+    tagline:'Start managing your business — no payment required, forever',
+    monthlyXAF:0, yearlyXAF:0,
     color:'#2dd4a0', colorDim:'rgba(45,212,160,.12)', badge:null,
     highlight: false,
-    limits:{staff:'3 staff', customers:'200 customers', products:'100 products', storage:'500 MB storage'},
+    limits:{users:'1 user', products:'30 products', customers:'30 customers', vendors:'10 vendors'},
     sections:[
-      { title:'Core Features', items:[
-        {label:'Dashboard & KPI overview',       inc:true},
-        {label:'Inventory management',           inc:true},
-        {label:'Sales recording & receipts',     inc:true},
-        {label:'Basic expense tracking',         inc:true},
-        {label:'Customer database (200 max)',    inc:true},
-        {label:'1 business location',            inc:true},
+      { title:'Always Included', items:[
+        {label:'Dashboard & KPI overview',              inc:true},
+        {label:'Inventory management (30 products)',    inc:true},
+        {label:'Sales recording — Unlimited',           inc:true},
+        {label:'Expense tracking — Unlimited',          inc:true},
+        {label:'Purchase tracking — Unlimited',         inc:true},
+        {label:'Customer database (30 max)',             inc:true},
+        {label:'Vendor database (10 max)',               inc:true},
+        {label:'1 user account',                        inc:true},
       ]},
-      { title:'Advanced Tools', items:[
-        {label:'Rental management',              inc:false},
-        {label:'Purchase orders & vendors',      inc:false},
-        {label:'Document generator (invoices)',  inc:false},
-        {label:'AI Studio assistant',            inc:false},
-        {label:'Data export (Excel / CSV)',      inc:false},
-        {label:'Multi-currency support',         inc:false},
+      { title:'Invoices & Documents', items:[
+        {label:'30 invoices/month (with watermark)',    inc:true},
+        {label:'Catalog (with ShopTrack watermark)',    inc:true},
+        {label:'Custom branding / no watermark',        inc:false},
+        {label:'Unlimited invoices & receipts',         inc:false},
       ]},
-      { title:'Support', items:[
-        {label:'Email support (48h response)',   inc:true},
-        {label:'Help documentation',             inc:true},
-        {label:'Priority support',               inc:false},
-        {label:'Dedicated account manager',      inc:false},
+      { title:'Advanced Features', items:[
+        {label:'Appointments & Bookings',               inc:false},
+        {label:'Rental Management',                     inc:false},
+        {label:'AI Studio assistant',                   inc:false},
+        {label:'WhatsApp — document sharing only',      inc:true},
+        {label:'WhatsApp full alerts & automation',     inc:false},
+      ]},
+      { title:'Reports', items:[
+        {label:'Monthly Inventory & Sales (PDF)',        inc:true},
+        {label:'Real-time + Accounting Reports',         inc:false},
+        {label:'Export CSV & PDF',                       inc:false},
       ]},
     ],
   },
   {
-    id:'pro', name:'Pro', emoji:'🚀',
-    tagline:'Everything you need to run and grow your business',
-    monthlyXAF:14900, yearlyXAF:149000,
+    id:'premium', name:'Premium', emoji:'⭐',
+    tagline:'Unlimited everything — run your business without restrictions',
+    monthlyXAF:8900, yearlyXAF:89000,
     color:'#5b7fff', colorDim:'rgba(91,127,255,.12)', badge:'Most Popular',
     highlight: true,
-    limits:{staff:'10 staff', customers:'2,000 customers', products:'1,000 products', storage:'5 GB storage'},
+    limits:{users:'Up to 5 users', products:'Unlimited', customers:'Unlimited', vendors:'Unlimited'},
     sections:[
-      { title:'Core Features', items:[
-        {label:'Dashboard & KPI overview',       inc:true},
-        {label:'Inventory management',           inc:true},
-        {label:'Sales recording & receipts',     inc:true},
-        {label:'Full expense tracking',          inc:true},
-        {label:'Customer database (2,000 max)',  inc:true},
-        {label:'Multiple business locations',    inc:true},
+      { title:'Everything in Free, plus', items:[
+        {label:'Up to 5 user accounts',                 inc:true},
+        {label:'Unlimited products',                    inc:true},
+        {label:'Unlimited customers',                   inc:true},
+        {label:'Unlimited vendors',                     inc:true},
       ]},
-      { title:'Advanced Tools', items:[
-        {label:'Rental management',              inc:true},
-        {label:'Purchase orders & vendors',      inc:true},
-        {label:'Document generator (invoices)',  inc:true},
-        {label:'AI Studio assistant',            inc:true},
-        {label:'Data export (Excel / CSV)',      inc:true},
-        {label:'Multi-currency (5 currencies)',  inc:true},
+      { title:'Invoices & Documents', items:[
+        {label:'Unlimited invoices & receipts',         inc:true},
+        {label:'No watermark — Custom Business Branding',inc:true},
+        {label:'Branded product catalog',               inc:true},
       ]},
-      { title:'Support', items:[
-        {label:'Priority email support (24h)',   inc:true},
-        {label:'Help documentation',             inc:true},
-        {label:'Live chat support',              inc:true},
-        {label:'Dedicated account manager',      inc:false},
+      { title:'Advanced Features', items:[
+        {label:'Appointments & Bookings — Unlimited + multi-staff', inc:true},
+        {label:'Rental Management — Included',          inc:true},
+        {label:'AI Studio assistant',                   inc:true},
+        {label:'WhatsApp — documents + full alerts & automation', inc:true},
+      ]},
+      { title:'Reports', items:[
+        {label:'Real-time + Accounting & Management Reports', inc:true},
+        {label:'Export PDF & CSV',                      inc:true},
+        {label:'Monthly Inventory & Sales (PDF)',        inc:true},
       ]},
     ],
   },
   {
     id:'trial', name:'Free Trial', emoji:'🎁',
-    tagline:'30 days free — no credit card required',
+    tagline:'30 days full Premium access — no credit card required',
     monthlyXAF:0, yearlyXAF:0,
     color:'#f59e0b', colorDim:'rgba(245,158,11,.12)', badge:'30-Day Free',
     highlight: false,
     trialDays: 30,
-    limits:{staff:'3 staff', customers:'50 customers', products:'30 products', storage:'100 MB storage'},
+    limits:{users:'Up to 5 users', products:'Unlimited', customers:'Unlimited', vendors:'Unlimited'},
     sections:[
-      { title:'Included in Trial', items:[
-        {label:'Full Pro feature access',        inc:true},
-        {label:'Dashboard & KPI overview',       inc:true},
-        {label:'Inventory management',           inc:true},
-        {label:'Sales recording & receipts',     inc:true},
-        {label:'Rental management',              inc:true},
-        {label:'Document generator (invoices)',  inc:true},
-        {label:'AI Studio assistant',            inc:true},
-        {label:'Data export (Excel / CSV)',      inc:true},
-      ]},
-      { title:'Trial Limits', items:[
-        {label:'Up to 30 inventory items',       inc:true},
-        {label:'Up to 50 customers',             inc:true},
-        {label:'Up to 3 staff accounts',         inc:true},
-        {label:'100 MB photo storage',           inc:true},
-        {label:'No payment required to start',   inc:true},
-        {label:'Convert to paid plan anytime',   inc:true},
+      { title:'Full Premium Access for 30 Days', items:[
+        {label:'All Premium features unlocked',         inc:true},
+        {label:'Unlimited products, customers, vendors',inc:true},
+        {label:'Up to 5 user accounts',                 inc:true},
+        {label:'Appointments & Bookings',               inc:true},
+        {label:'Rental Management',                     inc:true},
+        {label:'AI Studio assistant',                   inc:true},
+        {label:'WhatsApp full alerts & automation',     inc:true},
+        {label:'Unlimited invoices — no watermark',     inc:true},
+        {label:'Real-time reports + CSV/PDF export',    inc:true},
       ]},
       { title:'After Trial Ends', items:[
-        {label:'Data retained for 30 days',      inc:true},
-        {label:'Export all your data',           inc:true},
-        {label:'Instant plan upgrade available', inc:true},
-        {label:'Continued access (paid plan)',   inc:false},
+        {label:'Reverts to Free plan automatically',    inc:true},
+        {label:'Your data is always retained',          inc:true},
+        {label:'Upgrade to Premium anytime',            inc:true},
+        {label:'No credit card needed to start',        inc:true},
       ]},
     ],
   },
-  {
-    id:'enterprise', name:'Enterprise', emoji:'💎',
-    tagline:'Unlimited scale with white-glove service',
-    monthlyXAF:34900, yearlyXAF:349000,
-    color:'#9f7aea', colorDim:'rgba(159,122,234,.12)', badge:'Best Value',
-    highlight: false,
-    limits:{staff:'Unlimited staff', customers:'Unlimited customers', products:'Unlimited products', storage:'50 GB storage'},
-    sections:[
-      { title:'Core Features', items:[
-        {label:'Dashboard & KPI overview',       inc:true},
-        {label:'Inventory management',           inc:true},
-        {label:'Sales recording & receipts',     inc:true},
-        {label:'Full expense tracking',          inc:true},
-        {label:'Unlimited customers',            inc:true},
-        {label:'Unlimited locations',            inc:true},
-      ]},
-      { title:'Advanced Tools', items:[
-        {label:'Rental management',              inc:true},
-        {label:'Purchase orders & vendors',      inc:true},
-        {label:'Document generator + branding',  inc:true},
-        {label:'AI Studio + custom prompts',     inc:true},
-        {label:'Data export (Excel / CSV / PDF)',inc:true},
-        {label:'All currencies + custom FX',     inc:true},
-      ]},
-      { title:'Support', items:[
-        {label:'Priority phone & chat support',  inc:true},
-        {label:'Help documentation',             inc:true},
-        {label:'Dedicated account manager',      inc:true},
-        {label:'Custom onboarding & training',   inc:true},
-      ]},
-    ],
-  },
+]
+
 ];
 
 // Platform-level subscription enforcement toggle (Super Admin only)
 // When false, all businesses have full access regardless of plan (testing mode)
 let SUBSCRIPTIONS_ENFORCED = false;
+// ── Plan helper functions ──────────────────────────────────────────────────
+// Returns true if the current business has Premium (paid) or active Trial access
+function _isPremium(){
+  if(!SESSION.bizId) return false;
+  const biz = D.adminBiz.find(b=>b.id===SESSION.bizId) || BIZ;
+  if(!biz) return false;
+  // Active trial counts as premium
+  if(biz.trialEnd){
+    const today = new Date();
+    const expiry = new Date(biz.trialEnd);
+    if(expiry >= today) return true;
+  }
+  const plan = (biz.plan||'free').toLowerCase();
+  return plan === 'premium' || plan === 'professional' || plan === 'pro' || plan === 'enterprise';
+}
+
+function _isFreeUser(){
+  return !_isPremium();
+}
+
+// Returns a FCFA amount for the current plan
+function _subAmtFCFA(){
+  if(!SESSION.bizId) return 8900;
+  const biz = D.adminBiz.find(b=>b.id===SESSION.bizId) || BIZ;
+  if(!biz) return 8900;
+  const plan = (biz.plan||'free').toLowerCase();
+  if(plan==='free' || plan==='starter') return 0;
+  return 8900; // Premium
+}
+
 
 // Login hints removed — business identity is derived solely from email credentials
 
@@ -8226,7 +8225,7 @@ function renderPlansTab(){
   // Billing toggle
   var billingToggle = '<div style="text-align:center;margin-bottom:28px">'
     + '<h2 style="font-size:22px;font-weight:900;color:var(--ink);font-family:var(--display);margin-bottom:6px">ShopTrack Subscription Plans</h2>'
-    + '<p style="color:var(--text2);font-size:13px;max-width:480px;margin:0 auto">Choose the right plan for your businesses. All plans include a 14-day free trial and can be changed at any time.</p>'
+    + '<p style="color:var(--text2);font-size:13px;max-width:480px;margin:0 auto">ShopTrack offers a permanent Free plan and a Premium plan at 8,900 FCFA/month. All new businesses start with a 30-day full Premium trial — no card required.</p>'
     + '<div style="display:inline-flex;align-items:center;gap:10px;margin-top:16px;background:var(--bg3);padding:7px 16px;border-radius:30px;border:1px solid var(--border2)">'
       + '<span id="lbl-monthly" style="font-size:12px;font-weight:700;color:var(--ink)">Monthly</span>'
       + '<label style="position:relative;display:inline-block;width:40px;height:22px">'
@@ -8242,7 +8241,7 @@ function renderPlansTab(){
   var includes = '<div style="margin-top:24px;background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:20px 24px">'
     + '<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">✅ Included in all plans</div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">'
-    + ['ShopTrack mobile-ready web app','Secure data backup daily','256-bit SSL encryption','GDPR-compliant data handling','Automatic platform updates','Onboarding walkthrough & guide','14-day free trial on signup','In-app help & documentation'].map(function(f){
+    + ['ShopTrack mobile-ready web app','Secure data backup daily','256-bit SSL encryption','GDPR-compliant data handling','Automatic platform updates','Onboarding walkthrough & guide','30-day full Premium trial on signup','In-app help & documentation'].map(function(f){
         return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text)"><span style="color:var(--g);font-size:13px">✓</span>'+f+'</div>';
       }).join('')
     + '</div></div>';
@@ -10365,7 +10364,7 @@ function _checkPlanExpiry(){
   if(daysLeft <= 0){
     // Expired
     const banner = document.getElementById('plan-expiry-banner');
-    if(banner){ banner.style.display='flex'; banner.querySelector('.peb-msg').textContent = '⚠ Your trial has expired. Contact your administrator to continue.'; banner.style.background='#fef2f2'; banner.style.borderColor='#fecaca'; }
+    if(banner){ banner.style.display='flex'; banner.querySelector('.peb-msg').textContent = '⚠ Your 30-day trial has ended. You are now on the Free plan. Upgrade to Premium for unlimited access.'; banner.style.background='#fef2f2'; banner.style.borderColor='#fecaca'; }
   } else if(daysLeft <= 7){
     const banner = document.getElementById('plan-expiry-banner');
     if(banner){ banner.style.display='flex'; banner.querySelector('.peb-msg').textContent = `⏰ Your trial expires in ${daysLeft} day${daysLeft!==1?'s':''}. Contact your administrator to upgrade.`; }
