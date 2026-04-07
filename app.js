@@ -15766,9 +15766,9 @@ function pgSettings(){
       :'Your complete ShopTrack documentation. Download the full manual or the day-by-day quick guide.')
     +'</p>'
     +'<div style="display:flex;flex-wrap:wrap;gap:12px">'
-    +'<a href="/docs/'+(BIZ.language==='fr'?'ShopTrack_Guide_Demarrage_Rapide_FR.pdf':'ShopTrack_Quick_Start_Guide_EN.pdf')+'" download target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:var(--a-dim);border:1.5px solid var(--a);color:var(--a);padding:10px 18px;border-radius:var(--r8);font-size:13px;font-weight:600;text-decoration:none">'
+    +'<a href="/'+(BIZ.language==='fr'?'ShopTrack_Guide_Demarrage_Rapide_FR.pdf':'ShopTrack_Quick_Start_Guide_EN.pdf')+'" download target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:var(--a-dim);border:1.5px solid var(--a);color:var(--a);padding:10px 18px;border-radius:var(--r8);font-size:13px;font-weight:600;text-decoration:none">'
     +'&#128203; '+(BIZ.language==='fr'?'Guide de Démarrage Rapide':'Quick Start Guide')+'</a>'
-    +'<a href="/docs/'+(BIZ.language==='fr'?'ShopTrack_Manuel_Proprietaire_FR.pdf':'ShopTrack_Owner_Manual_EN.pdf')+'" download target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:var(--bg3);border:1.5px solid var(--border2);color:var(--ink);padding:10px 18px;border-radius:var(--r8);font-size:13px;font-weight:600;text-decoration:none">'
+    +'<a href="/'+(BIZ.language==='fr'?'ShopTrack_Manuel_Proprietaire_FR.pdf':'ShopTrack_Owner_Manual_EN.pdf')+'" download target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:var(--bg3);border:1.5px solid var(--border2);color:var(--ink);padding:10px 18px;border-radius:var(--r8);font-size:13px;font-weight:600;text-decoration:none">'
     +'&#128214; '+(BIZ.language==='fr'?'Manuel du Propriétaire':'Owner Manual')+'</a>'
     +'</div>'
     +'<div style="font-size:11px;color:var(--text2);margin-top:10px">'
