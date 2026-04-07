@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775600629");
+console.log("ShopTrack v2.5 - build:1775601374");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -212,12 +212,12 @@ const _DEMO_DATA = {
   expCats:['Rent','Utilities','Salaries','Marketing','Repairs','Packaging','Internet','Insurance','Photography','Transport','Cleaning','Staff Bonus','Website','Miscellaneous','Other'],
   svcCats:['Bridal Services','Hair & Styling','Makeup & Beauty','Nail Care','Skin Treatments','Packages','Other'],
   adminBiz:[
-    {id:'BIZ-001',name:'Peaches Paradise',owner:'Precious Nguema',st:'Active',plan:'Professional',users:4,rev:780,created:'2024-06-01'},
+    {id:'BIZ-001',name:'Peaches Paradise',owner:'Precious Nguema',st:'Active',plan:'Premium',users:4,rev:780,created:'2024-06-01'},
     {id:'BIZ-002',name:'Premier Party Rentals',owner:'Marcus Johnson',st:'Active',plan:'Starter',users:2,rev:320,created:'2024-08-15'},
-    {id:'BIZ-003',name:'Luxe Fashion Boutique',owner:'Diana Reeves',st:'Active',plan:'Professional',users:6,rev:980,created:'2024-09-01'},
+    {id:'BIZ-003',name:'Luxe Fashion Boutique',owner:'Diana Reeves',st:'Active',plan:'Premium',users:6,rev:980,created:'2024-09-01'},
     {id:'BIZ-004',name:'EcoDecor Rentals',owner:'Tom Wei',st:'Inactive',plan:'Starter',users:1,rev:42,created:'2024-11-20'},
     {id:'BIZ-005',name:'Heritage Furniture Co.',owner:'Amanda Price',st:'Pending',plan:'—',users:0,rev:0,created:localDateStr(-3)},
-    {id:'BIZ-006',name:'Chic Bridal Studio',owner:'Nadia Osei',st:'Active',plan:'Professional',users:3,rev:521,created:'2024-10-12'},
+    {id:'BIZ-006',name:'Chic Bridal Studio',owner:'Nadia Osei',st:'Active',plan:'Premium',users:3,rev:521,created:'2024-10-12'},
   ]
 };
 // ── Load demo data for Peaches Paradise (BIZ-001) ────────────────────────────
@@ -2818,7 +2818,7 @@ async function _doSubPayNow(currentExpiry, newExpiry, amtXAF){
 }
 
 function _subPaymentConfirmed(newExpiry, amtXAF){
-  _track('Trial Converted',{plan:BIZ.plan||'Starter',amount_xaf:amtXAF});
+  _track('Trial Converted',{plan:BIZ.plan||'Premium',amount_xaf:amtXAF});
   // Update BIZ in memory so banner disappears immediately
   BIZ.subExpires = newExpiry;
   // Update status message
@@ -3011,7 +3011,7 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
 
 function initDash(){
   // Starter revenue upsell: check if monthly revenue > 5M XAF
-  if(!SESSION.isSuperAdmin && _getPlanTier()==='starter'){
+  if(!SESSION.isSuperAdmin && _isFreePlan()){
     var _upsellKey='st_rev_upsell_'+(new Date().getMonth())+SESSION.bizId;
     try{
       if(!localStorage.getItem(_upsellKey)){
@@ -6993,7 +6993,7 @@ function mAddCustomer(_returnSelectId){
   `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
    <button class="btn btn-p" onclick="
     if(_planWriteBlocked('Adding a customer','cust')) return;
-    if(!SESSION.isSuperAdmin && _getPlanTier()==='starter' && D.cust.length>=200){ _showUpsell('customers'); closeModal(); return; }
+    if(!SESSION.isSuperAdmin && _isFreePlan() && D.cust.length>=200){ _showUpsell('customers'); closeModal(); return; }
     var name=document.getElementById('ac-name').value.trim();
     if(!name){toast('Customer name is required','error');return;}
     var type=document.getElementById('ac-type').value;
@@ -11573,33 +11573,26 @@ function filterAdminUsers(){
 }
 
 function _getPlanTier(){
-  var p=(BIZ.plan||'').toLowerCase();
-  if(p.includes('enterprise')) return 'enterprise';
-  if(p==='pro'||p==='professional'||p.includes('pro')) return 'pro';
-  if(p.includes('starter')) return 'starter';
-  return 'trial';
+  // Returns canonical tier: 'premium', 'free', 'trial'
+  var plan = _activePlan();
+  return plan; // 'premium' | 'free' | 'trial'
 }
 function _showUpsell(reason){
-  window._pwSelectedPlan='Pro';
-  var msgs={
-    users:'The Starter plan allows up to 5 team members. Upgrade to Pro for 7,000 XAF more/month \u2014 less than one cup of coffee per day.',
-    customers:'You have over 200 customers. Pro gives you unlimited customers, advanced AR tools, and AI Studio.',
-    revenue:'You processed over 5M XAF this month on Starter. Pro businesses at your level save an average of 2.4M XAF/year through better inventory and AR management.',
-  };
-  modal('\uD83D\uDE80 Upgrade to Pro',
-    '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px">\uD83D\uDE80 Pro \u2014 11,900 XAF/month</div>'
-    +'<p style="font-size:13px;color:var(--text2);line-height:1.7;margin:0 0 16px">'+(msgs[reason]||'Upgrade to Pro to unlock this feature.')+'</p>'
-    +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:12px;color:var(--text2)">'  
-    +'<strong style="color:var(--ink)">Pro includes:</strong> 5 users \u00b7 AI Studio \u00b7 Rentals \u00b7 Unlimited customers \u00b7 Priority support'
+  window._pwSelectedPlan='Premium';
+  modal('\uD83D\uDE80 Upgrade to Premium',
+    '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px">\uD83D\uDE80 Premium \u2014 8,900 XAF/month</div>'
+    +'<p style="font-size:13px;color:var(--text2);line-height:1.7;margin:0 0 16px">Upgrade to Premium for unlimited inventory, customers, rentals, AI Studio, WhatsApp automation and full reports.</p>'
+    +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:12px;color:var(--text2)">'
+    +'<strong style="color:var(--ink)">Includes:</strong> Unlimited everything \u00b7 5 users \u00b7 AI Studio \u00b7 Rentals \u00b7 No watermark'
     +'</div>',
     '<button class="btn btn-s" onclick="closeModal()">Not now</button>'
-    +'<button class="btn btn-p" onclick="closeModal();_pwProceed()">\u25b6 Upgrade to Pro \u2014 11,900 XAF/mo</button>'
+    +'<button class="btn btn-p" onclick="closeModal();_pwProceed()">\u25b6 Upgrade \u2014 8,900 XAF/mo</button>'
   );
 }
 function mAddBizUser(){
   if(!can('manage_users')){ toast('⛔ Manage Users — permission denied','error'); return; }
-  // Starter plan: max 5 users total (owner + 4 staff)
-  if(!SESSION.isSuperAdmin && _getPlanTier()==='starter'){
+  // Free plan: max 1 user
+  if(!SESSION.isSuperAdmin && _isFreePlan()){
     var _curU=BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId&&u.st==='Active';}).length+1;
     if(_curU>=5){ _showUpsell('users'); return; }
   }
@@ -11833,7 +11826,7 @@ function pgAdminAnalytics(){
   const pending  = D.adminBiz.filter(b=>b.st==='Pending').length;
   const totalUsers = BIZ_USERS.length + 1; // +1 for super admin
   const byPlan = {};
-  D.adminBiz.forEach(b=>{ byPlan[b.plan||'Starter']=(byPlan[b.plan||'Starter']||0)+1; });
+  D.adminBiz.forEach(b=>{ byPlan[b.plan||'Free']=(byPlan[b.plan||'Free']||0)+1; });
   return `
 <div class="adm-banner">
   <span style="font-size:20px">📊</span>
@@ -11931,7 +11924,7 @@ function _billingStatus(biz){
 
 function _billingWAMsg(biz, daysLeft){
   const amt   = _billingAmtXAF(biz).toLocaleString();
-  const plan  = biz.plan||'Starter';
+  const plan  = biz.plan||'Free';
   const expiry= biz.subExpires || biz.trialEnd || '';
   const name  = (biz.owner||'').split(' ')[0] || 'there';
   const urg   = daysLeft <= 0 ? '🚨 URGENT — ' : daysLeft <= 2 ? '⚠️ ' : '📅 ';
@@ -14835,8 +14828,20 @@ function showSignup(){
   loginEl.style.display='flex';
   loginEl.style.opacity='1';
 
+  // Auto-detect country from browser timezone
+  var _tzCountry = (function(){
+    try{
+      var tz = Intl.DateTimeFormat().resolvedOptions().timeZone||'';
+      if(tz.includes('New_York')||tz.includes('Chicago')||tz.includes('Denver')||tz.includes('Los_Angeles')||tz.includes('America/')) return 'US';
+      if(tz.includes('London')) return 'GB';
+      if(tz.includes('Lagos')||tz.includes('Africa/Lagos')) return 'NG';
+      if(tz.includes('Accra')) return 'GH';
+      if(tz.includes('Paris')||tz.includes('Brussels')) return 'FR';
+    }catch(_e){}
+    return 'CM'; // default Cameroon
+  })();
   var countryOpts = Object.entries(COUNTRY_DIAL)
-    .map(function(_e){ var code=_e[0],c=_e[1]; return '<option value="'+code+'"'+(code==='CM'?' selected':'')+'>'+c.flag+' '+c.name+' ('+c.dial+')</option>'; })
+    .map(function(_e){ var code=_e[0],c=_e[1]; return '<option value="'+code+'"'+(code===_tzCountry?' selected':'')+'>'+c.flag+' '+c.name+' ('+c.dial+')</option>'; })
     .join('');
 
   var inner = loginEl.querySelector('div');
@@ -16361,6 +16366,8 @@ function _toggleNotifPref(key, el){
   }
 }
 function pgSettings(){
+  // Track unsaved changes
+  window._settingsDirty = false;
   if(SESSION.isSuperAdmin) return pgSettingsSA();
   // Kick off background sync — re-renders category pills when done
   _syncCatsFromDB().then(function(){ _renderInvCatPills(); _renderExpCatPills(); _renderSvcCatPills(); }).catch(function(){});
@@ -16820,7 +16827,8 @@ ${(function(){
       + '<div style="font-size:12px;color:var(--text2);margin-top:2px">'+desc+'</div></div></div>';
   };
 
-  var howToPayHtml = '<div class="card-hd"><div class="card-ttl">How to Pay</div></div>'
+  var _payMethod = _isUSD() ? 'Stripe (Card)' : 'Mobile Money (MTN/Orange)';
+  var howToPayHtml = '<div class="card-hd"><div class="card-ttl">How to Pay &mdash; '+_payMethod+'</div></div>'
     + '<div style="display:flex;flex-direction:column;gap:14px;padding:4px 0">'
     + _htpStep('1','Tap &quot;Pay Now&quot;','The button appears here and on your Dashboard when your subscription is within 30 days of expiry.')
     + (_isUsdBiz
@@ -21136,21 +21144,13 @@ function _showTrialPaywall(daysLeft, hardBlock){
         +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:15px;font-weight:800;color:var(--g);font-family:var(--mono)">'+fmtKpi(totalRev)+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Revenue</div></div>'
       +'</div>'
       +'<div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:8px;padding:10px 12px;font-size:12px;color:#dc2626;margin-bottom:14px">\u26a0\ufe0f '+accessMsg+'</div>'
-      +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Choose your plan to continue</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">'
-        +'<div style="border:1.5px solid var(--border2);border-radius:10px;padding:13px;cursor:pointer" id="pw-starter-card" onclick="_pwSelectPlan(\'Starter\')">'
-          +'<div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:4px">\uD83C\uDF31 STARTER</div>'
-          +'<div style="font-size:18px;font-weight:800;color:var(--ink)">4,900 <span style="font-size:11px;font-weight:400;color:var(--text2)">XAF/mo</span></div>'
-          +'<div style="font-size:11px;color:var(--text2);margin-top:3px">1 user \u00b7 All core features</div>'
-        +'</div>'
-        +'<div style="border:2px solid var(--a);border-radius:10px;padding:13px;cursor:pointer;position:relative;background:var(--a-dim)" id="pw-pro-card" onclick="_pwSelectPlan(\'Pro\')">'
-          +'<div style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--a);color:#fff;font-size:9px;font-weight:800;padding:2px 10px;border-radius:20px;white-space:nowrap">\u2b50 MOST POPULAR</div>'
-          +'<div style="font-size:10px;font-weight:700;color:var(--a);margin-bottom:4px">\uD83D\uDE80 PRO</div>'
-          +'<div style="font-size:18px;font-weight:800;color:var(--ink)">11,900 <span style="font-size:11px;font-weight:400;color:var(--text2)">XAF/mo</span></div>'
-          +'<div style="font-size:11px;color:var(--text2);margin-top:3px">5 users \u00b7 AI Studio \u00b7 Rentals</div>'
-        +'</div>'
+      +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Upgrade to keep full access</div>'
+      +'<div style="background:var(--bg3);border:2px solid var(--a);border-radius:10px;padding:16px;margin-bottom:14px;position:relative">'
+        +'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--a);color:#fff;font-size:9px;font-weight:800;padding:2px 12px;border-radius:20px;white-space:nowrap">\u2b50 PREMIUM</div>'
+        +'<div style="font-size:10px;font-weight:700;color:var(--a);margin-bottom:6px">\uD83D\uDE80 PREMIUM PLAN</div>'
+        +'<div style="font-size:22px;font-weight:900;color:var(--ink)">8,900 <span style="font-size:12px;font-weight:400;color:var(--text2)">XAF/mo</span></div>'
+        +'<div style="font-size:11px;color:var(--text2);margin-top:5px">Unlimited inventory \u00b7 5 users \u00b7 AI Studio \u00b7 Rentals \u00b7 WhatsApp automation</div>'
       +'</div>'
-    +'</div>'
     +'<div style="padding:0 24px 20px">'
       +'<button id="pw-upgrade-btn" onclick="_pwProceed()" style="width:100%;padding:13px;background:var(--a);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">\u25b6 Upgrade Now \u2014 Keep My Data</button>'
       +(hardBlock ? '' : '<button onclick="_pwDismiss()" style="width:100%;margin-top:8px;padding:9px;background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Continue in read-only mode \u2192</button>')
@@ -21158,23 +21158,14 @@ function _showTrialPaywall(daysLeft, hardBlock){
     +'</div>'
   +'</div>';
   document.body.appendChild(ov);
-  window._pwSelectedPlan = 'Pro';
-  _pwSelectPlan('Pro');
+  window._pwSelectedPlan = 'Premium';
+  _pwSelectPlan('Premium');
 }
 
 function _pwSelectPlan(plan){
-  window._pwSelectedPlan = plan;
-  var sc=document.getElementById('pw-starter-card'), pc=document.getElementById('pw-pro-card');
-  if(!sc||!pc) return;
-  if(plan==='Starter'){
-    sc.style.borderColor='var(--a)'; sc.style.background='var(--a-dim)';
-    pc.style.borderColor='var(--border2)'; pc.style.background='';
-  } else {
-    pc.style.borderColor='var(--a)'; pc.style.background='var(--a-dim)';
-    sc.style.borderColor='var(--border2)'; sc.style.background='';
-  }
+  window._pwSelectedPlan = 'Premium';
   var btn=document.getElementById('pw-upgrade-btn');
-  if(btn) btn.textContent='\u25b6 Upgrade to '+plan+' \u2014 '+(plan==='Pro'?'11,900':'4,900')+' XAF/mo';
+  if(btn) btn.textContent='\u25b6 Upgrade to Premium \u2014 8,900 XAF/mo';
 }
 
 function _pwDismiss(){
@@ -21184,16 +21175,14 @@ function _pwDismiss(){
 
 function _pwProceed(){
   var ov=document.getElementById('trial-paywall-overlay'); if(ov) ov.remove();
-  var selectedPlan = window._pwSelectedPlan || 'Starter';
-  var planId = (selectedPlan==='Pro'||selectedPlan==='Professional') ? 'Professional' : 'Starter';
+  var planId = 'Premium';
   if(_sb && SESSION.bizId){
-    _sb.from('businesses').update({plan:planId}).eq('id',SESSION.bizId).then(function(r){
+    _sb.from('businesses').update({plan:'Premium'}).eq('id',SESSION.bizId).then(function(r){
       if(r&&r.error){toast('Could not set plan: '+r.error.message,'error');return;}
-      BIZ.plan=planId;
-      BIZ.subExpires=BIZ.subExpires||BIZ.trialEnd||'';
-      addAudit('Trial converted via paywall',SESSION.bizId+' to '+planId);
+      BIZ.plan='Premium';
+      addAudit('Trial converted via paywall',SESSION.bizId+' to Premium');
     });
-  } else { BIZ.plan=planId; }
+  } else { BIZ.plan='Premium'; }
   setTimeout(function(){ mSubPayNow(); }, 200);
 }
 
