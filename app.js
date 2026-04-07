@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775605042");
+console.log("ShopTrack v2.5 - build:1775605901");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -3041,7 +3041,7 @@ function initDash(){
 // INVENTORY
 // ============================================================
 // ── Inventory filter state (persists across nav) ─────────────
-let _invFilterQ='', _invFilterCat='', _invFilterSt='', _invFilterCond='';
+let _invFilterQ='', _invFilterCat='', _invFilterSt='', _invFilterCond='', _invSortVal='';
 
 function pgInv(){const _ui=_L();
   var _invOverBanner = _overLimitBanner('inv');
@@ -3077,6 +3077,17 @@ ${_invOverBanner}<div class="ph">
   <select class="sel" id="inv-cat-filter" onchange="_filterInv()"><option value="">${_ui.flt_all_cat}</option>${(D.invCats.length?D.invCats:[...new Set(D.inv.map(i=>i.cat).filter(Boolean))].sort()).map(c=>`<option value="${c}"${_invFilterCat===c?' selected':''}>${c}</option>`).join('')}</select>
   <select class="sel" id="inv-st-filter" onchange="_filterInv()"><option value="">${_ui.flt_all_status}</option>${['For Sale','For Rent','Both'].map(s=>`<option${_invFilterSt===s?' selected':''}>${s}</option>`).join('')}</select>
   <select class="sel" id="inv-cond-filter" onchange="_filterInv()"><option value="">All Conditions</option>${['New','Excellent','Good','Fair','Worn','Damaged'].map(s=>`<option${_invFilterCond===s?' selected':''}>${s}</option>`).join('')}</select>
+    <select class="fs" id="inv-sort" onchange="_filterInv()" style="flex:0 0 auto;min-width:130px">
+      <option value="">Sort: Default</option>
+      <option value="name-asc">Name A–Z</option>
+      <option value="name-desc">Name Z–A</option>
+      <option value="qty-asc">Stock: Low first</option>
+      <option value="qty-desc">Stock: High first</option>
+      <option value="sp-asc">Price: Low first</option>
+      <option value="sp-desc">Price: High first</option>
+      <option value="cost-desc">Cost: High first</option>
+      <option value="cat-asc">Category A–Z</option>
+    </select>
   ${(_invFilterQ||_invFilterCat||_invFilterSt||_invFilterCond)?`<button class="btn btn-s btn-xs" onclick="_invClearFilters()" style="flex-shrink:0">✕ Clear</button>`:''}
 </div>
 <div id="inv-view" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px" onclick="_invGridClick(event)">
@@ -3086,17 +3097,34 @@ ${D.inv.length===0?'<div style="background:var(--bg2);border:1px dashed var(--bo
 
 function _getFilteredInv(){
   const q=_invFilterQ.toLowerCase();
-  return D.inv.filter(function(i){
-    if(q && !i.name.toLowerCase().includes(q) && !(i.sku||'').toLowerCase().includes(q) && !(i.cat||'').toLowerCase().includes(q)) return false;
+  var filtered = D.inv.filter(function(i){
+    if(q && !i.name.toLowerCase().includes(q) && !(i.sku||'').toLowerCase().includes(q) && !(i.cat||'').toLowerCase().includes(q) && !(i.brand||'').toLowerCase().includes(q)) return false;
     if(_invFilterCat && i.cat!==_invFilterCat) return false;
     if(_invFilterSt && i.st!==_invFilterSt) return false;
     if(_invFilterCond && i.cond!==_invFilterCond) return false;
     return true;
   });
+  // Apply sort
+  if(_invSortVal){
+    var parts=_invSortVal.split('-'), sb=parts[0], sd=parts.slice(1).join('-');
+    filtered.sort(function(a,b){
+      var va,vb;
+      if(sb==='name'||sb==='cat'){ va=(sb==='name'?a.name:a.cat)||''; vb=(sb==='name'?b.name:b.cat)||''; return sd==='desc'?vb.localeCompare(va):va.localeCompare(vb); }
+      va=(sb==='qty'?(a.qty||0):sb==='sp'?(a.sp||0):sb==='cost'?(a.cost||0):(a.qty||0));
+      vb=(sb==='qty'?(b.qty||0):sb==='sp'?(b.sp||0):sb==='cost'?(b.cost||0):(b.qty||0));
+      return sd==='desc'?vb-va:va-vb;
+    });
+  }
+  return filtered;
 }
 
 function _invClearFilters(){
-  _invFilterQ=''; _invFilterCat=''; _invFilterSt=''; _invFilterCond='';
+  _invFilterQ=''; _invFilterCat=''; _invFilterSt=''; _invFilterCond=''; _invSortVal='';
+  // Also reset DOM selects
+  ['inv-cat-filter','inv-st-filter','inv-cond-filter','inv-sort'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var sq=document.getElementById('inv-search'); if(sq) sq.value='';
   nav('inventory');
 }
 
@@ -3119,6 +3147,7 @@ function _filterInv(){
   _invFilterCat = document.getElementById('inv-cat-filter')?.value||'';
   _invFilterSt  = document.getElementById('inv-st-filter')?.value||'';
   _invFilterCond= document.getElementById('inv-cond-filter')?.value||'';
+  _invSortVal   = document.getElementById('inv-sort')?.value||'';
   const filtered = _getFilteredInv();
   const v = document.getElementById('inv-view');
   if(!v) return;
@@ -3126,7 +3155,12 @@ function _filterInv(){
   const hasFilt = _invFilterQ||_invFilterCat||_invFilterSt||_invFilterCond;
   const clearBtn = document.querySelector('.fbar .btn-xs');
   if(clearBtn) clearBtn.style.display = hasFilt ? '' : 'none';
-  if(v.style.display==='grid'||v.style.display===''){
+  if(v.style.display==='none') return; // movements view — skip
+  var tbl=document.getElementById('inv-table-body');
+  if(tbl){
+    // Table view — re-render rows
+    _renderInvTableRows(filtered, tbl);
+  } else {
     v.innerHTML = _buildInvGridFiltered(filtered);
   }
 }
@@ -3252,11 +3286,23 @@ function _saveItemPrices(id){
   }
   if(!isNaN(rpVal)) itx.rp=rpVal/r2;
   if(!isNaN(msVal)) itx.minSp=msVal/r2;
-  addAudit('Prices updated',itx.id+' SP='+fmt(itx.sp)+' RP='+fmt(itx.rp));
-  toast('Prices saved','success');
+  _dbSaveInv(itx);
+  refreshLiveKpis();
+  addAudit('Prices updated',itx.id+' SP='+fmt(itx.sp)+' RP='+fmt(itx.rp)+' MinSP='+fmt(itx.minSp));
+  toast('Prices saved ✓','success');
   closeModal();nav('inventory');
 }
 
+function _adjStock(id, delta){
+  var it=D.inv.find(function(x){return x.id===id;}); if(!it) return;
+  var newQty = Math.max(0, (it.qty||0) + delta);
+  it.qty = newQty;
+  var el=document.getElementById('inv-qty-'+id); if(el) el.textContent=newQty;
+  _dbSaveInv(it);
+  refreshLiveKpis();
+  addAudit('Stock adjusted',id+' qty:'+newQty);
+  toast('Stock updated: '+newQty+' units','success');
+}
 function _invStatusBadge(st){
   var cfg = {
     'For Sale':  {bg:'#2563eb',color:'#fff',label:'For Sale'},
@@ -3304,7 +3350,13 @@ function mItem(id){
     <div><div class="fl">Brand</div><div>${it.brand||'—'}</div></div>
     <div><div class="fl">Color</div><div>${it.color||'—'}</div></div>
     <div><div class="fl">Size</div><div>${it.sz||'—'}</div></div>
-    <div><div class="fl">Qty on Hand</div><div style="font-weight:600;color:var(--ink)">${it.qty}</div></div>
+      <div><div class="fl">Qty on Hand</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button onclick="_adjStock('\${it.id}',-1)" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">-</button>
+          <span id="inv-qty-\${it.id}" style="font-weight:700;color:var(--ink);min-width:28px;text-align:center">\${it.qty}</span>
+          <button onclick="_adjStock('\${it.id}',1)" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">+</button>
+          <span style="font-size:11px;color:var(--text2);margin-left:2px">(click to adjust)</span>
+        </div></div>
     <div><div class="fl">Available</div><div style="font-weight:600;color:var(--g)">${it.qty-it.rented}</div></div>
     ${it.rented>0?`<div><div class="fl">Rented Out</div><div style="font-weight:600;color:var(--c)">${it.rented}</div></div>`:''}
     <div><div class="fl">Stock Value</div><div style="font-weight:700;color:var(--a);font-family:var(--mono)">${fmt((it.cost||0)*(it.qty||0))}</div></div>
@@ -3344,12 +3396,12 @@ function mItem(id){
 
   <div id="mi-history" style="display:none">
   <div class="tl">
-    ${D.rentals.filter(r=>r.item.includes(it.name.split(' ')[0])).slice(0,4).map(r=>`
+    ${D.rentals.filter(r=>r.itemId===it.id||r.item===it.name).slice(0,6).map(r=>`
     <div class="tl-item on">
       <div class="tl-meta">${r.start} \xB7 Rental ${r.id}</div>
       <div class="tl-txt">${r.cust} \u2014 ${r.st} \xB7 ${fmt(r.fee)}</div>
     </div>`).join('')}
-    ${D.sales.filter(s=>s.items.includes(it.name.split(' ')[0])).slice(0,3).map(s=>`
+    ${D.sales.filter(s=>s.invId===it.id||(s.lineItems&&s.lineItems.some(function(li){return li.invId===it.id;}))).slice(0,6).map(s=>`
     <div class="tl-item">
       <div class="tl-meta">${s.dt} \xB7 Sale ${s.id}</div>
       <div class="tl-txt">${s.cust} \u2014 ${badge(s.st)} \xB7 ${fmt(s.amt)}</div>
@@ -4100,6 +4152,7 @@ function mDuplicateItem(id){
   // Deep copy photoDataUrls so original is not affected
   const dup={
     ...src,
+    qty:0,
     id:newId,
     sku:newSku,
     name:'Copy of '+src.name,
@@ -13311,7 +13364,8 @@ function _invToDB(item, bizId){
     rented:item.rented||0, img:item.img||'gown-aline',
     img_color:imgColor,
     img_data_url:item.imgDataUrl||(item.photoDataUrls&&item.photoDataUrls[0])||null,
-    photo_data_urls:photoUrls
+    photo_data_urls:photoUrls,
+    cost_lines:item.costLines?JSON.stringify(item.costLines):null
   };
 }
 function _custToDB(c, bizId){ return {
