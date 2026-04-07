@@ -41,6 +41,15 @@
   to = "/affiliates.html"
   status = 200
 
+# ── SPA catch-all — serves index.html for all paths ──────────────────────────
+# This prevents 'Uncaught SyntaxError: Invalid or unexpected token' when
+# Supabase email verification URLs (with long query params) are opened directly
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
 # ── Scheduled functions (cron) — defined here, no plugin needed ───────────────
 [functions]
   directory = "netlify/functions"

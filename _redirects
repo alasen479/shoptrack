@@ -1,0 +1,2 @@
+# SPA: all routes serve index.html — prevents script-load errors on email verification URLs
+/*    /index.html   200

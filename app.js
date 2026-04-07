@@ -15534,6 +15534,20 @@ function _track(ev,props){
   try{if(typeof window.plausible==='function')window.plausible(ev,props?{props:props}:undefined);}catch(e){}
 }
 function bootApp(){
+  // ── Strip email-tracking and Supabase verification URL params immediately ──
+  // Prevents the long ?_am_pdc=1&_sm_rid=... URL from corrupting script loading
+  try{
+    var _qs = window.location.search;
+    if(_qs && (_qs.includes('_am_pdc') || _qs.includes('_sm_rid') || _qs.includes('token_hash') || _qs.length > 200)){
+      // Extract any token_hash for Supabase email verification before stripping
+      var _th = new URLSearchParams(_qs).get('token_hash') || new URLSearchParams(_qs).get('access_token') || '';
+      var _tp = new URLSearchParams(_qs).get('type') || '';
+      if(_th) sessionStorage.setItem('_st_pending_token', JSON.stringify({token:_th, type:_tp}));
+      // Clean the URL — replace the ugly tracking URL with the clean base URL
+      history.replaceState({}, document.title, window.location.pathname);
+    }
+  }catch(_e){}
+
   // Restore theme FIRST — before any session/nav logic so it never flashes wrong theme
   try{ const _t=localStorage.getItem('st_theme'); if(_t) _applyTheme(_t); }catch(e){}
 
