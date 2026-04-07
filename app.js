@@ -3319,7 +3319,7 @@ function _cbReadLines(prefix){
 }
 
 async function mAddItem(_returnSelectId){
-  if(D.invCats.length <= 4 && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
+  if(D.invCats.length === 0 && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
     try{
       var _cats=await _sb.from('categories').select('name').eq('biz_id',SESSION.bizId).eq('type','inv');
       if(_cats.data && _cats.data.length) D.invCats=_cats.data.map(function(r){return r.name;});
@@ -3379,6 +3379,13 @@ async function mAddItem(_returnSelectId){
   `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
    <button class="btn btn-p" onclick="_saveNewItem()">Add Item</button>`);
   window._retSelAI=_returnSelectId||null;
+  // Explicitly init category dropdown (belt-and-suspenders — _initModalSearchSelects may race)
+  setTimeout(function(){
+    var inv = D.invCats.length ? D.invCats : ['General','Clothing & Fashion','Electronics','Food & Beverages','Beauty & Health','Home & Furniture','Equipment & Tools','Raw Materials','Packaging','Accessories','Other'];
+    var cur = document.getElementById('ai-cat')?.value || inv[0] || 'General';
+    if(document.getElementById('ai-cat-wrap'))
+      _mkSearchSelect('ai-cat-wrap', inv.map(function(c){return{val:c,label:c};}), cur, function(v){var h=document.getElementById('ai-cat');if(h)h.value=v;}, 'Category…');
+  }, 60);
 }
 function _previewNewItemPhotos(input){
   const files = Array.from(input.files);
@@ -3495,7 +3502,7 @@ function _ciCostManual(){
 
 
 async function mEditItem(id){
-  if(D.invCats.length <= 4 && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
+  if(D.invCats.length === 0 && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
     try{
       var _ec=await _sb.from('categories').select('name').eq('biz_id',SESSION.bizId).eq('type','inv');
       if(_ec.data && _ec.data.length) D.invCats=_ec.data.map(function(r){return r.name;});
@@ -7296,6 +7303,11 @@ async function mAddVendor(_returnSelectId){
     else { closeModal(); setTimeout(function(){ mEditVendor(nid); },80); }
    ">Add Vendor</button>`);
   window._retSelAV=_returnSelectId||null;
+  setTimeout(function(){
+    var vc=D.vendorCats.length?D.vendorCats:['Supplier','Distributor','Manufacturer','Wholesaler','Service Provider','Other'];
+    var cur=document.getElementById('av-cat')?document.getElementById('av-cat').value:vc[0];
+    if(document.getElementById('av-cat-wrap')) _mkSearchSelect('av-cat-wrap',vc.map(function(c){return{val:c,label:c};}),cur||vc[0],function(v){var h=document.getElementById('av-cat');if(h)h.value=v;},'Vendor category…');
+  },60);
 }
 function mEditVendor(id){
   if(!requireRight('edit_vendors','Edit Vendor')) return;
@@ -7332,6 +7344,11 @@ function mEditVendor(id){
   <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="ev-notes" style="min-height:55px">${v.notes||''}</textarea></div>`,
   `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
    <button class="btn btn-p" onclick="_saveEditVendor('${id}')">💾 Save Changes</button>`);
+  setTimeout(function(){
+    var vc=D.vendorCats.length?D.vendorCats:['Supplier','Distributor','Manufacturer','Wholesaler','Service Provider','Other'];
+    var cur=document.getElementById('ev-cat')?document.getElementById('ev-cat').value:vc[0];
+    if(document.getElementById('ev-cat-wrap')) _mkSearchSelect('ev-cat-wrap',vc.map(function(c){return{val:c,label:c};}),cur||vc[0],function(v){var h=document.getElementById('ev-cat');if(h)h.value=v;},'Vendor category…');
+  },60);
 }
 
 function _saveEditVendor(id){
@@ -7604,7 +7621,7 @@ function pgExp(){const _ui=_L();
 
 
 async function mAddExp(){
-  if(D.expCats.length <= 4 && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
+  if(D.expCats.length === 0 && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
     try{
       var _ec = await _sb.from('categories').select('*').eq('biz_id',SESSION.bizId).eq('type','exp');
       if(_ec.data && _ec.data.length) D.expCats = _ec.data.map(function(r){return r.name;});
@@ -7618,7 +7635,7 @@ async function mAddExp(){
     <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="ae-dt" value="${today}"/></div>
     <div class="fg"><label class="fl">Category</label>
       <div style="display:flex;gap:6px;align-items:center">
-        <div id="ae-cat-wrap" style="position:relative;flex:1"></div><input type="hidden" id="ae-cat" value=""/>
+        <div id="ae-cat-wrap" style="position:relative;flex:1"></div><input type="hidden" id="ae-cat" value="${_esc(D.expCats[0]||'Rent & Lease')}"/>
         <button type="button" class="btn btn-g btn-xs" style="white-space:nowrap;padding:0 10px;height:34px" onclick="
           var row=document.getElementById('ae-newcat-row');
           row.style.display=row.style.display==='none'?'flex':'none';
@@ -7687,6 +7704,12 @@ async function mAddExp(){
     nav('expenses');
    })()">💾 Record Expense</button>`);
 }
+  // Init expense category dropdown explicitly after modal renders
+  setTimeout(function(){
+    var expC=D.expCats.length?D.expCats:['Rent & Lease','Salaries & Wages','Utilities','Internet & Phone','Marketing & Advertising','Transport & Fuel','Packaging & Supplies','Repairs & Maintenance','Insurance','Staff Bonus','Cleaning','Photography','Bank Charges','Taxes & Duties','Miscellaneous','Other'];
+    var cur=document.getElementById('ae-cat')?document.getElementById('ae-cat').value:expC[0];
+    if(document.getElementById('ae-cat-wrap')) _mkSearchSelect('ae-cat-wrap',expC.map(function(c){return{val:c,label:c};}),cur||expC[0],function(v){var h=document.getElementById('ae-cat');if(h)h.value=v;},'Expense category…');
+  },60);
 function mViewExp(id){
   const e=D.exp.find(x=>x.id===id); if(!e) return;
   const uid='view-exp-'+id;
@@ -14158,19 +14181,19 @@ function _initModalSearchSelects(context){
 
   // Expense category
   if(document.getElementById('ae-cat-wrap')){
-    var expCats=(D.expCats||['Rent','Payroll','Utilities','Marketing','COGS','Shipping','Misc']);
-    var cur=document.getElementById('ae-cat')?document.getElementById('ae-cat').value:expCats[0];
+    var expCats=D.expCats.length?D.expCats:['Rent & Lease','Salaries & Wages','Utilities','Internet & Phone','Marketing & Advertising','Transport & Fuel','Packaging & Supplies','Repairs & Maintenance','Insurance','Staff Bonus','Cleaning','Photography','Bank Charges','Taxes & Duties','Miscellaneous','Other'];
+    var cur=document.getElementById('ae-cat')?document.getElementById('ae-cat').value:'';
     _mkSearchSelect('ae-cat-wrap', catOpts(expCats,''), cur||expCats[0], function(val){ document.getElementById('ae-cat').value=val; }, 'Expense category…');
   }
   // Edit expense category
   if(document.getElementById('edit-exp-cat-wrap')){
-    var editExpCats=(D.expCats||['Rent','Payroll','Utilities','Marketing','COGS','Shipping','Misc']);
+    var editExpCats=D.expCats.length?D.expCats:['Rent & Lease','Salaries & Wages','Utilities','Internet & Phone','Marketing & Advertising','Transport & Fuel','Packaging & Supplies','Repairs & Maintenance','Insurance','Staff Bonus','Cleaning','Photography','Bank Charges','Taxes & Duties','Miscellaneous','Other'];
     var editExpCur=document.getElementById('edit-exp-cat')?document.getElementById('edit-exp-cat').value:'';
     _mkSearchSelect('edit-exp-cat-wrap', catOpts(editExpCats,''), editExpCur||editExpCats[0]||'', function(val){ document.getElementById('edit-exp-cat').value=val; }, 'Expense category…');
   }
   // Service category (new + edit)
   if(document.getElementById('sv-cat-wrap')){
-    var svCats2=(D.svcCats||['Consultation','Training','Other']);
+    var svCats2=D.svcCats&&D.svcCats.length?D.svcCats:['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
     var svCatCur=document.getElementById('sv-cat')?document.getElementById('sv-cat').value:'';
     _mkSearchSelect('sv-cat-wrap', [{val:'',label:'— No category —'}].concat(catOpts(svCats2,'')), svCatCur||'', function(val){ document.getElementById('sv-cat').value=val; }, 'Service category…');
   }
@@ -19822,7 +19845,7 @@ function mEditExp(id){
    <button class="btn btn-p" onclick="saveExpEdit('${id}')">💾 Save Changes</button>`);
   // Init category searchable select with live D.expCats
   setTimeout(function(){
-    var expCats = D.expCats || ['Rent','Utilities','Salaries','Marketing','Other'];
+    var expCats = D.expCats.length ? D.expCats : ['Rent & Lease','Salaries & Wages','Utilities','Internet & Phone','Marketing & Advertising','Transport & Fuel','Packaging & Supplies','Repairs & Maintenance','Insurance','Staff Bonus','Cleaning','Photography','Bank Charges','Taxes & Duties','Miscellaneous','Other'];
     var catOpts = expCats.map(function(c){ return {val:c, label:c}; });
     _mkSearchSelect('edit-exp-cat-wrap', catOpts, e.cat||expCats[0]||'', function(val){
       var h = document.getElementById('edit-exp-cat'); if(h) h.value = val;
