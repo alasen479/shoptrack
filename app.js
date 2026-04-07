@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775605901");
+console.log("ShopTrack v2.5 - build:1775606274");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -13386,7 +13386,7 @@ function _saleToDB(s, bizId){ return {
   items:s.items, amount:s.amt||0, total:s.total||s.amt||0,
   paid:s.paid||0, cost:s.cost||0,
   freight:s.freight||0, taxes:s.taxes||0, other:s.other||0,
-  profit:((s.total||s.amount||0)-(s.cost||0)), // always recompute: profit = revenue - COGS
+    profit:s.profit!=null?s.profit:((s.total||s.amt||0)-(s.cost||0)),
   _storedProfit:s.profit||0, status:s.st||'Unpaid',
   method:s.method||'Cash', notes:s.notes||'',
   line_items: s.lineItems ? JSON.stringify(s.lineItems) : null
@@ -18609,33 +18609,93 @@ function previewBrandColors(){
 function mEditSale(id){
   if(!requireRight('edit_sales','Edit Sales')) return;
   const s=D.sales.find(x=>x.id===id);if(!s)return;
-  modal(`✏️ Edit Sale — ${s.id}`,`
+  const r=CUR.rate;
+  modal(`\u270f\ufe0f Edit Sale \u2014 ${s.id}`,`
   <div class="fg-2">
     <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="es-dt" value="${s.dt}"/></div>
-    <div class="fg"><label class="fl">Customer</label><select class="fs" id="es-cust">${D.cust.map(c=>`<option${c.name===s.cust?' selected':''}>${c.name}</option>`).join('')}</select></div>
-    <div class="fg"><label class="fl">Amount</label><input class="fi" type="number" id="es-amt" value="${Math.round((s.amt||0)*CUR.rate)}"/></div>
-    <div class="fg"><label class="fl">Amount Paid</label><input class="fi" type="number" id="es-paid" value="${Math.round((s.paid||0)*CUR.rate)}"/></div>
-    <div class="fg"><label class="fl">Profit</label><input class="fi" type="number" id="es-profit" value="${Math.round((s.profit||0)*CUR.rate)}"/></div>
-    <div class="fg"><label class="fl">Status</label><select class="fs" id="es-st"><option${s.st==='Paid'?' selected':''}>Paid</option><option${s.st==='Unpaid'?' selected':''}>Unpaid</option><option${s.st==='Partial'?' selected':''}>Partial</option></select></div>
+    <div class="fg"><label class="fl">Customer</label>
+      <select class="fs" id="es-cust">${D.cust.map(c=>`<option value="${c.id}"${(c.id===s.custId||c.name===s.cust)?' selected':''}>${_esc(c.name)}</option>`).join('')}</select>
+    </div>
+    <div class="fg"><label class="fl">Total Amount (${CUR.symbol})</label>
+      <input class="fi" type="number" id="es-total" value="${Math.round((s.total||s.amt||0)*r)}" oninput="_esAutoStatus()"/>
+    </div>
+    <div class="fg"><label class="fl">Amount Paid (${CUR.symbol})</label>
+      <input class="fi" type="number" id="es-paid" value="${Math.round((s.paid||0)*r)}" oninput="_esAutoStatus()"/>
+    </div>
+    <div class="fg"><label class="fl">COGS / Cost (${CUR.symbol})</label>
+      <input class="fi" type="number" id="es-cost" value="${Math.round((s.cost||0)*r)}" placeholder="Cost of goods sold"/>
+    </div>
+    <div class="fg"><label class="fl">Status</label>
+      <select class="fs" id="es-st">
+        <option${s.st==='Paid'?' selected':''}>Paid</option>
+        <option${s.st==='Unpaid'?' selected':''}>Unpaid</option>
+        <option${s.st==='Partial'?' selected':''}>Partial</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Payment Method</label>
+      <select class="fs" id="es-method">
+        ${['Cash','Card','Bank Transfer','Mobile Money (MTN)','Orange Money','On Account','Cheque','Other'].map(m=>'<option'+(s.method===m?' selected':'')+'>'+m+'</option>').join('')}
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Freight (${CUR.symbol})</label>
+      <input class="fi" type="number" id="es-freight" value="${Math.round((s.freight||0)*r)}" placeholder="0"/>
+    </div>
+    <div class="fg"><label class="fl">Taxes (${CUR.symbol})</label>
+      <input class="fi" type="number" id="es-taxes" value="${Math.round((s.taxes||0)*r)}" placeholder="0"/>
+    </div>
   </div>
-  <div class="fg"><label class="fl">Items</label><textarea class="ft" id="es-items" style="min-height:55px">${s.items}</textarea></div>`,
-  `<button class="btn btn-d btn-sm" onclick="closeModal();deleteSale('${id}')">🗑 Delete</button>
+  <div class="fg"><label class="fl">Items / Description</label>
+    <textarea class="ft" id="es-items" style="min-height:55px">${_esc(s.items)}</textarea>
+  </div>
+  <div class="fg"><label class="fl">Notes</label>
+    <textarea class="ft" id="es-notes" style="min-height:40px">${_esc(s.notes||'')}</textarea>
+  </div>`,
+  `<button class="btn btn-d btn-sm" onclick="closeModal();deleteSale('${id}')">\uD83D\uDDD1 Delete</button>
    <button class="btn btn-s" onclick="closeModal()">Cancel</button>
-   <button class="btn btn-p" onclick="saveEditSale('${id}')">💾 Save</button>`);
+   <button class="btn btn-p" onclick="saveEditSale('${id}')">\uD83D\uDCBE Save Changes</button>`);
 }
 function saveEditSale(id){
   const s=D.sales.find(x=>x.id===id);if(!s)return;
-  const dt=document.getElementById('es-dt')?.value; if(dt) s.dt=dt;
-  const cust=document.getElementById('es-cust')?.value; if(cust) s.cust=cust;
-  var rSE=CUR.rate;
-  const amt=document.getElementById('es-amt')?.value; if(amt!==undefined&&amt!=='') s.amt=(parseFloat(amt)||0)/rSE||s.amt;
-  const paid=document.getElementById('es-paid')?.value; if(paid!==undefined&&paid!=='') s.paid=(parseFloat(paid)||0)/rSE;
-  const profit=document.getElementById('es-profit')?.value; if(profit!==undefined&&profit!=='') s.profit=(parseFloat(profit)||0)/rSE;
-  const st=document.getElementById('es-st')?.value; if(st) s.st=st;
-  const items=document.getElementById('es-items')?.value; if(items) s.items=items;
-  addAudit('Sale edited',id);
-  _dbSaveSale(D.sales.find(x=>x.id===id));
-  closeModal();toast('Sale updated','success');nav('sales');
+  const r=CUR.rate;
+  const prevPaid=(s.paid||0);
+  const prevTotal=(s.total||s.amt||0);
+  // Read all fields
+  const dtV=document.getElementById('es-dt')?.value;       if(dtV) s.dt=dtV;
+  const custSel=document.getElementById('es-cust');
+  if(custSel){const cu=D.cust.find(c=>c.id===custSel.value);if(cu){s.cust=cu.name;s.custId=cu.id;}}
+  const totalV=parseFloat(document.getElementById('es-total')?.value); if(!isNaN(totalV)){s.total=totalV/r;s.amt=s.total;}
+  const paidV =parseFloat(document.getElementById('es-paid')?.value);  if(!isNaN(paidV))  s.paid=paidV/r;
+  const costV =parseFloat(document.getElementById('es-cost')?.value);  if(!isNaN(costV))  s.cost=costV/r;
+  const methodV=document.getElementById('es-method')?.value; if(methodV) s.method=methodV;
+  const frV=parseFloat(document.getElementById('es-freight')?.value);  if(!isNaN(frV)) s.freight=frV/r;
+  const txV=parseFloat(document.getElementById('es-taxes')?.value);    if(!isNaN(txV)) s.taxes=txV/r;
+  const itemsV=document.getElementById('es-items')?.value;  if(itemsV!==undefined) s.items=itemsV;
+  const notesV=document.getElementById('es-notes')?.value;  if(notesV!==undefined) s.notes=notesV;
+  const stV=document.getElementById('es-st')?.value;
+  s.st=stV||(s.paid>=(s.total||s.amt||0)?'Paid':s.paid>0?'Partial':'Unpaid');
+  s.profit=(s.total||0)-(s.cost||0);
+  // Update customer AR if balances changed
+  const newBal=Math.max(0,(s.total||s.amt||0)-(s.paid||0));
+  const prevBal=Math.max(0,prevTotal-prevPaid);
+  const balDiff=prevBal-newBal;
+  const paidDiff=(s.paid||0)-prevPaid;
+  if(balDiff!==0||paidDiff!==0){
+    const cu=D.cust.find(c=>c.id===s.custId||c.name===s.cust);
+    if(cu){
+      if(paidDiff>0){cu.spent=(cu.spent||0)+paidDiff;cu.spend=cu.spent;}
+      cu.bal=Math.max(0,(cu.bal||0)-balDiff);
+      _dbSaveCust(cu);
+    }
+  }
+  _dbSaveSale(s);
+  refreshLiveKpis();
+  addAudit('Sale edited',id+' \u2014 '+fmt(s.total||s.amt)+' paid:'+fmt(s.paid));
+  closeModal();toast('Sale '+id+' updated \u2713','success');nav('sales');
+}
+function _esAutoStatus(){
+  var t=parseFloat(document.getElementById('es-total')?.value)||0;
+  var p=parseFloat(document.getElementById('es-paid')?.value)||0;
+  var el=document.getElementById('es-st');if(el) el.value=p>=t?'Paid':p>0?'Partial':'Unpaid';
 }
 function mDuplicateSale(id){
   if(!requireRight('edit_sales','Duplicate Sale')) return;
@@ -20828,7 +20888,7 @@ function downloadCSV(filename, rows, headers){
 function _fmtRaw(v){ return v!=null?Math.round(v*CUR.rate*100)/100:''; }
 
 function exportSalesCSV(){
-  const headers=['Sale #','Date','Customer','Description','Selling Price','Freight','Taxes','Other','Total','Paid','Balance','COGS','Profit','Status','Method'];
+  const headers=['Sale #','Date','Customer','Description','Selling Price','Freight','Taxes','Other','Total','Paid','Balance','COGS','Profit','Status','Method','Notes','Terms'];
   const rows=D.sales.map(s=>[
     s.id, s.dt, s.cust, s.items,
     _fmtRaw(s.amt), _fmtRaw(s.freight||0), _fmtRaw(s.taxes||0), _fmtRaw(s.other||0),
