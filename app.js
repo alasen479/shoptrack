@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775528314");
+console.log("ShopTrack v2.5 - build:1775599221");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -10615,8 +10615,13 @@ async function _doPermDelete(bizId, bizName, reason){
 function mManageBiz(bizId){
   const b = D.adminBiz.find(x=>x.id===bizId); if(!b) return;
 
-  const planOptions = ['Trial (30 Days)','Starter','Professional','Enterprise','Demo Test']
-    .map(p=>`<option value="${p}"${(b.plan||'')==p?' selected':''}>${p}</option>`).join('');
+  const planOptions = ['free','trial','premium']
+    .map(function(p){
+      var labels={'free':'Free','trial':'Trial (30 Days)','premium':'Premium'};
+      var curPlan=(b.plan||'').toLowerCase();
+      var isSel=curPlan===p||(p==='trial'&&curPlan.includes('trial'))||(p==='premium'&&(curPlan==='pro'||curPlan==='professional'||curPlan==='starter'));
+      return '<option value="'+p+'"'+(isSel?' selected':'')+'>'+labels[p]+'</option>';
+    }).join('');
   const statusOptions = ['Active','Pending','Suspended','Inactive']
     .map(s=>`<option value="${s}"${b.st===s?' selected':''}>${s}</option>`).join('');
 
@@ -10780,6 +10785,10 @@ async function _mbSave(bizId){
   var type    = document.getElementById('mb-type')?.value?.trim()   || b.type||'';
   var status  = document.getElementById('mb-status')?.value         || b.st;
   var plan    = document.getElementById('mb-plan')?.value           || b.plan;
+  // Normalize plan value to canonical form
+  if(plan==='trial') plan='Trial (30 Days)';
+  if(plan==='free') plan='Free';
+  if(plan==='premium') plan='Premium';
   var cycle   = document.getElementById('mb-cycle')?.value          || 'monthly';
   var expiry  = document.getElementById('mb-expiry')?.value         || '';
 
@@ -11882,12 +11891,18 @@ function pgAdminAnalytics(){
 
 // Plan prices in XAF
 const BILLING_PLANS = {
-  'Free':         { monthly: 0,     yearly: 0      },
-  'Premium':      { monthly: 8900,  yearly: 89000  },
-  
-  
-  'Demo Test':    { monthly: 10,  yearly: 10 },  // CamPay demo — max 25 XAF
-  'Trial (30 Days)': { monthly: 0, yearly: 0 },
+  'free':             { monthly: 0,     yearly: 0      },
+  'Free':             { monthly: 0,     yearly: 0      },
+  'premium':          { monthly: 8900,  yearly: 89000  },
+  'Premium':          { monthly: 8900,  yearly: 89000  },
+  'trial':            { monthly: 0,     yearly: 0      },
+  'Trial (30 Days)':  { monthly: 0,     yearly: 0      },
+  // Legacy aliases
+  'Starter':          { monthly: 8900,  yearly: 89000  },
+  'Pro':              { monthly: 8900,  yearly: 89000  },
+  'Professional':     { monthly: 8900,  yearly: 89000  },
+  'Enterprise':       { monthly: 8900,  yearly: 89000  },
+  'Demo Test':        { monthly: 10,    yearly: 10     },
 };
 
 function _billingAmtXAF(biz){
