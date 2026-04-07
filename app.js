@@ -14375,7 +14375,7 @@ async function _submitSignup(){
     try {
       const resp = await fetch('/.netlify/functions/send-verify', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({email, name:ownerName.split(' ')[0], bizName, token, userId, bizId})
+        body: JSON.stringify({email, name:ownerName.split(' ')[0], bizName, token, userId, bizId, lang:selectedLang||'en'})
       });
       // success:true = delivered | {success:false,emailDelivered:false} = fallback logged
       // resp.ok=false = hard failure
@@ -14615,17 +14615,65 @@ async function _confirmVerifyToken(){
     _track('Signup Completed');
     closeModal();
     _pendingVerify = null;
-    toast('✔ Email verified! Logging you in…','success');
     try{ sessionStorage.removeItem('st_pending_signup'); }catch(e){}
 
-    // Auto-login — keep login screen hidden, doLogin() handles everything
-    setTimeout(()=>{
-      const loginEl = document.getElementById('login-screen');
-      if(loginEl) loginEl.style.display='none';
-      const le = document.getElementById('ln-email'); if(le) le.value = email;
-      const lp = document.getElementById('ln-pass');  if(lp) lp.value = pwd;
-      doLogin();
-    }, 400);
+    // ── Direct session setup — no re-login needed, we already have all the data ──
+    // This avoids the blank screen caused by doLogin() hitting Supabase again
+    // and failing silently when the new account isn't fully propagated yet.
+    setTimeout(async ()=>{
+      try {
+        // Hide login screen immediately
+        const loginEl = document.getElementById('login-screen');
+        if(loginEl){ loginEl.style.display='none'; loginEl.style.opacity='0'; }
+
+        // Set SESSION from signup data we already have
+        SESSION.userId       = userId;
+        SESSION.bizId        = bizId;
+        SESSION.level        = 'owner';
+        SESSION.isSuperAdmin = false;
+        SESSION.name         = sp.ownerName || '';
+
+        // Set BIZ from signup payload
+        BIZ.id       = bizId;
+        BIZ.name     = sp.bizName    || '';
+        BIZ.owner    = sp.ownerName  || '';
+        BIZ.email    = email;
+        BIZ.type     = sp.bizType    || 'General Retail';
+        BIZ.country  = sp.country    || 'CM';
+        BIZ.currency = sp.currency   || 'XAF';
+        BIZ.language = sp.lang       || 'en';
+        BIZ.plan     = 'trial';
+        BIZ.trialEnd = (function(){ var d=new Date(); d.setDate(d.getDate()+30); return d.toISOString().slice(0,10); })();
+
+        // Reset data stores
+        D.inv=[]; D.cust=[]; D.rentals=[]; D.sales=[]; D.exp=[];
+        D.vendors=[]; D.purchases=[]; D.audit=[]; D.services=[]; D.appointments=[];
+        D.kpis={rev:0,saleRev:0,rentRev:0,cogs:0,gp:0,np:0,ar:0,ap:0,invVal:0,oh:0,cashIn:0,cashOut:0};
+        D.invCats=['General','Equipment','Accessories','Other'];
+
+        // Show app
+        const appEl = document.getElementById('app');
+        if(appEl){ appEl.style.display=''; appEl.style.opacity='1'; }
+
+        // Load business data from Supabase if available
+        if(_sb && bizId) {
+          _dbLoadBizData(bizId).catch(e=>console.warn('[auto-login] DB load error:', e.message));
+        }
+
+        // Navigate to dashboard
+        nav('dashboard');
+        toast('✔ Email verified — welcome to ShopTrack! 🎉','success');
+
+      } catch(autoLoginErr){
+        console.error('[auto-login] error:', autoLoginErr);
+        // Fallback: show login screen with credentials pre-filled
+        const loginEl = document.getElementById('login-screen');
+        if(loginEl){ loginEl.style.display='flex'; loginEl.style.opacity='1'; }
+        const le = document.getElementById('ln-email'); if(le) le.value = email;
+        const lp = document.getElementById('ln-pass');  if(lp) lp.value = pwd;
+        toast('Email verified! Please sign in.','success');
+      }
+    }, 300);
   } catch(e){
     console.error('Confirm verify error:', e);
     showErr('Verification error — '+e.message);
