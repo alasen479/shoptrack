@@ -14505,7 +14505,7 @@ async function _resendVerifyToken(){
     const firstName = _pendingVerify.firstName || email.split('@')[0];
     const _rvResp = await fetch('/.netlify/functions/send-verify', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email, name:firstName, bizName, token:newToken, userId, bizId})
+      body: JSON.stringify({email, name:firstName, bizName, token:newToken, userId, bizId, lang:_pendingVerify?.lang||'en'})
     });
     if(_rvResp.ok){
       toast('New code sent to '+email,'success');
@@ -14629,6 +14629,9 @@ async function _confirmVerifyToken(){
         // Clear any previous session (e.g. SA was logged in during signup testing)
         try{ localStorage.removeItem('st_session'); sessionStorage.removeItem('st_session'); }catch(_){}
 
+        // Clear any previous session (e.g. SA was logged in during signup testing)
+        try{ localStorage.removeItem('st_session'); sessionStorage.removeItem('st_session'); }catch(_){}
+
         // Set SESSION from signup data we already have
         SESSION.userId       = userId;
         SESSION.bizId        = bizId;
@@ -14677,6 +14680,10 @@ async function _confirmVerifyToken(){
         // Navigate to dashboard
         nav('dashboard');
         toast('✔ Email verified — welcome to ShopTrack! 🎉','success');
+        // Re-render sidebar and show setup popup
+        ['sb-user-name','sb-user-role','sb-user-avatar'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent='';});
+        if(typeof updateSidebarForRole==='function') updateSidebarForRole();
+        setTimeout(_checkOnboarding, 1200);
 
       } catch(autoLoginErr){
         console.error('[auto-login] error:', autoLoginErr);
@@ -14712,25 +14719,47 @@ function _getSetupState(){
   var completed=Object.values(done).filter(Boolean).length;
   return{done:done,total:total,completed:completed,isActivated:done.inv&&done.sale&&done.cust};
 }
+function _goToProfileForWA(){
+  nav('settings');
+  setTimeout(function(){
+    var profileBtn=document.querySelector('#settingsTabs .stab[onclick*="tab-profile"]');
+    if(profileBtn) switchSettingsTab(profileBtn,'tab-profile');
+    setTimeout(function(){
+      var waField=document.getElementById('biz-whatsapp');
+      if(waField) waField.scrollIntoView({behavior:'smooth',block:'center'});
+    },200);
+  },300);
+}
+
+function _setupSteps(){
+  var st=_getSetupState();
+  var waExtraBtn=!(st.done.wa&&st.done.waTest)
+    ?'<button class="btn btn-xs" onclick="closeModal();_goToNotifTab()" style="background:rgba(37,211,102,.15);color:#25d366;border:1px solid rgba(37,211,102,.3);font-size:11px;padding:4px 9px;border-radius:6px;cursor:pointer;white-space:nowrap">Notifications \u2192</button>'
+    :'';
+  return [
+    {icon:'\uD83C\uDFEA',key:'profile', label:'Complete your business profile', desc:'Add your name, address, logo and business details',                              done:st.done.profile,            action:"closeModal();_goToProfileForWA()"},
+    {icon:'\uD83D\uDCF1',key:'wa',      label:'Add your WhatsApp number',        desc:'Required for sale alerts, stock warnings and rental notifications',             done:st.done.wa&&st.done.waTest, action:"closeModal();_goToProfileForWA()", extraBtn:waExtraBtn},
+    {icon:'\uD83D\uDCE6',key:'inv',     label:'Add your first product',          desc:'Add at least one item to your inventory',                                      done:st.done.inv,                action:"closeModal();nav('inventory')"},
+    {icon:'\uD83D\uDCB3',key:'sale',    label:'Record your first sale',          desc:'Create a sale and send a receipt',                                             done:st.done.sale,               action:"closeModal();mCreateSale()"},
+    {icon:'\uD83D\uDC65',key:'cust',    label:'Add your first customer',         desc:'Build your customer database',                                                 done:st.done.cust,               action:"closeModal();mAddCustomer()"},
+    {icon:'\uD83D\uDCB8',key:'expense', label:'Record your first expense',       desc:'Track every business cost',                                                    done:st.done.expense,            action:"closeModal();nav('expenses')"},
+  ];
+}
+
 function _setupScoreBar(){
   if(SESSION.isSuperAdmin||SESSION.bizId==='BIZ-001'||SESSION.bizId==='BIZ-107') return '';
   var st=_getSetupState();
   if(st.completed>=st.total) return '';
   var pct=Math.round(st.completed/st.total*100);
-  var steps=[
-    {icon:'\uD83D\uDCF1',label:'Add WhatsApp + send test alert (Settings \u2192 Notifications)', action:"_goToNotifTab()", done:st.done.wa && st.done.waTest},
-    {icon:'\uD83C\uDFEA',label:'Complete business profile',              action:"nav('settings')", done:st.done.profile},
-    {icon:'\uD83D\uDCE6',label:'Add your first product',                action:"nav('inventory')",done:st.done.inv},
-    {icon:'\uD83D\uDCB3',label:'Record your first sale',                action:"mCreateSale()",   done:st.done.sale},
-    {icon:'\uD83D\uDC65',label:'Add your first customer',               action:"mAddCustomer()",  done:st.done.cust},
-    {icon:'\uD83D\uDCB8',label:'Record your first expense',             action:"nav('expenses')", done:st.done.expense},
-  ];
+  var steps=_setupSteps();
   var rows=steps.map(function(s){
+    var goBtn=!s.done?'<button class="btn btn-p btn-xs" onclick="var _d=document.getElementById(\'setup-bar-detail\');if(_d)_d.style.display=\'none\';'+s.action+'">Go \u2192</button>':'';
+    var extra=(!s.done&&s.extraBtn)?('<span style="margin-right:4px">'+s.extraBtn+'</span>'):'';
+    var sk=s.done?'text-decoration:line-through;color:var(--text2)':'color:var(--ink)';
     return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">'
       +'<span style="font-size:15px">'+(s.done?'\u2705':s.icon)+'</span>'
-      +'<span style="flex:1;font-size:12px;'+(s.done?'text-decoration:line-through;color:var(--text2)':'color:var(--ink)')+'">'+s.label+'</span>'
-      +(!s.done?'<button class="btn btn-p btn-xs" onclick="var _d=document.getElementById(\'setup-bar-detail\');if(_d)_d.style.display=\'none\';'+s.action+'">Go \u2192</button>':'')
-      +'</div>';
+      +'<span style="flex:1;font-size:12px;'+sk+'">'+s.label+'</span>'
+      +extra+goBtn+'</div>';
   }).join('');
   return '<div id="setup-score-bar" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r8);padding:12px 16px;margin-bottom:14px">'
     +'<div style="display:flex;align-items:center;gap:12px">'
@@ -14746,7 +14775,48 @@ function _setupScoreBar(){
     +'<div id="setup-bar-detail" style="display:none;margin-top:10px">'+rows+'</div>'
   +'</div>';
 }
-function _checkOnboarding(){ }
+
+function _checkOnboarding(){
+  if(SESSION.isSuperAdmin) return;
+  var st=_getSetupState();
+  if(st.completed>=st.total) return;
+  var _popupKey='st_setup_popup_shown_'+(SESSION.bizId||'');
+  try{ if(sessionStorage.getItem(_popupKey)) return; sessionStorage.setItem(_popupKey,'1'); }catch(e){}
+  var pct=Math.round(st.completed/st.total*100);
+  var steps=_setupSteps();
+  var rows=steps.map(function(s){
+    var aHtml=!s.done
+      ?'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+(s.extraBtn?s.extraBtn:'')+'<button class="btn btn-p btn-xs" onclick="'+s.action+'">Go \u2192</button></div>'
+      :'<span style="color:var(--g);font-size:16px">\u2705</span>';
+    var ns=s.done?'font-size:13px;font-weight:700;color:var(--text2);text-decoration:line-through':'font-size:13px;font-weight:700;color:var(--ink)';
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border2)">'
+      +'<div style="width:36px;height:36px;border-radius:10px;background:'+(s.done?'var(--g-dim)':'var(--a-dim)')+';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">'+(s.done?'\u2705':s.icon)+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="'+ns+'">'+s.label+'</div>'
+        +'<div style="font-size:11px;color:var(--text2);margin-top:1px">'+s.desc+'</div>'
+      +'</div>'
+      +aHtml+'</div>';
+  }).join('');
+  var html='<div style="text-align:center;margin-bottom:20px">'
+    +'<div style="font-size:32px;margin-bottom:8px">\uD83D\uDE80</div>'
+    +'<div style="font-size:18px;font-weight:900;color:var(--ink);margin-bottom:4px">Let\u2019s get you set up!</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px">Complete these steps to get the most out of ShopTrack.</div>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'
+      +'<div style="flex:1;background:var(--bg3);border-radius:4px;height:8px;overflow:hidden">'
+        +'<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--a),var(--g));border-radius:4px"></div>'
+      +'</div>'
+      +'<span style="font-size:14px;font-weight:800;color:var(--a);font-family:var(--mono)">'+pct+'%</span>'
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--text2);margin-bottom:4px">'+st.completed+' of '+st.total+' steps completed</div>'
+  +'</div>'
+  +'<div>'+rows+'</div>'
+  +'<div style="margin-top:16px;text-align:center">'
+    +'<button class="btn btn-s btn-sm" onclick="closeModal()" style="font-size:12px;color:var(--text2)">Remind me later \u2014 I\u2019ll continue from the dashboard</button>'
+  +'</div>';
+  setTimeout(function(){ modal('\uD83D\uDE80 Set up your account', html, 'md'); }, 800);
+}
+
+
 
 function _markWATestDone(){
   var key='st_wa_tested_'+(SESSION.bizId||'');
@@ -15900,7 +15970,7 @@ function pgSettings(){
     <div class="fg-2">
       <div class="fg"><label class="fl">Email</label><input class="fi" id="biz-email" type="email" value="${BIZ.email}"/></div>
       <div class="fg"><label class="fl">Phone</label><input class="fi" id="biz-phone" value="${BIZ.phone}"/></div>
-      <div class="fg"><label class="fl">WhatsApp</label><input class="fi" id="biz-whatsapp" value="${BIZ.whatsapp||''}"/></div>
+      <div class="fg"><label class="fl">WhatsApp</label><div style="display:flex;gap:8px;align-items:center"><input class="fi" id="biz-whatsapp" value="${BIZ.whatsapp||''}" style="flex:1"/><button type="button" onclick="_goToNotifTab()" style="flex-shrink:0;background:rgba(37,211,102,.12);border:1.5px solid rgba(37,211,102,.35);color:#25d366;border-radius:var(--r6);padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">WhatsApp Notifications →</button></div></div>
       <div class="fg"><label class="fl">Website</label><input class="fi" id="biz-website" value="${BIZ.website||''}"/></div>
     </div>
     <div class="fg"><label class="fl">Address</label><textarea class="ft" id="biz-address" style="min-height:55px">${BIZ.address}</textarea></div>
