@@ -303,7 +303,7 @@ footer a:hover{color:var(--a)}
     <div class="d-card">
       <div class="d-ttl" id="t-dash-check">Check your performance</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input class="fi" type="email" id="dash-email" placeholder="your@email.com" autocomplete="email" style="flex:1;min-width:180px"/>
+        <input class="fi" type="email" id="dash-email" placeholder="Enter your email address" autocomplete="email" style="flex:1;min-width:180px"/>
         <button class="btn-p" id="dash-btn" onclick="_loadDash()">View Stats &rarr;</button>
       </div>
       <p class="fh" id="t-dash-hint" style="margin-top:8px">Enter the email you applied with. Your data loads instantly.</p>
@@ -368,7 +368,7 @@ footer a:hover{color:var(--a)}
       <form id="aff-form" novalidate>
         <div class="fg-row">
           <div class="fg"><label for="aff-name" id="t-lbl-name">Full name *</label><input class="fi" id="aff-name" type="text" placeholder="Susan Messa" autocomplete="name"/></div>
-          <div class="fg"><label for="aff-email" id="t-lbl-email">Email address *</label><input class="fi" id="aff-email" type="email" placeholder="you@email.com" autocomplete="email"/></div>
+          <div class="fg"><label for="aff-email" id="t-lbl-email">Email address *</label><input class="fi" id="aff-email" type="email" placeholder="Enter your email address" autocomplete="email"/></div>
         </div>
         <div class="fg">
           <label for="aff-country" id="t-lbl-country">Country *</label>
@@ -467,7 +467,7 @@ footer a:hover{color:var(--a)}
     </div>
   </div>
 </div>
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script>
 var SB='https://kjuxnigeexoynmvdzeyl.supabase.co';
 var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqdXhuaWdlZXhveW5tdmR6ZXlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODQyNzMsImV4cCI6MjA4OTc2MDI3M30.bQ_KBLcKTgI5qko9m0Rxjt8KLXl89Ow7jS1CH_csbHY';
 var _lang='en', _aff=null;
@@ -844,4 +844,24 @@ document.getElementById('aff-form').addEventListener('submit',async function(e){
         document.getElementById('suc-ref').style.display='inline-flex';
         document.getElementById('suc-ref').innerHTML='&#x1F4E7; '+L.sucEmail+email;
       } else {
-        document.getElementById('suc-ref').style.d
+        document.getElementById('suc-ref').style.display='none';
+      }
+      document.getElementById('aff-form').parentElement.scrollIntoView({behavior:'smooth',block:'start'});
+    } else if(res.status===409){
+      setErr('aff-email', T[_lang].errDuplicate||'This email is already registered as an affiliate.');
+      btn.disabled=false; btn.textContent=T[_lang].submitBtn||'Submit application →';
+    } else {
+      var errBody=await res.json().catch(function(){return{};});
+      console.error('[aff-submit] error:', res.status, errBody);
+      toast(T[_lang].toastErr||'Submission failed. Please try again.','error');
+      btn.disabled=false; btn.textContent=T[_lang].submitBtn||'Submit application →';
+    }
+  } catch(e){
+    console.error('[aff-submit] exception:', e.message);
+    toast(T[_lang].toastErr||'Network error. Please check your connection and try again.','error');
+    btn.disabled=false; btn.textContent=T[_lang].submitBtn||'Submit application →';
+  }
+});
+</script>
+</body>
+</html>
