@@ -6522,7 +6522,7 @@ async function _dbSeedSuperAdmin(){
   if(data) return; // already exists
   await _sb.from('platform_users').insert({
     id:'SA-001', biz_id:null, name:'Super Admin',
-    email:'admin@shoptrack.work', password_hash:'ShopTrack@2025!',
+    email:'admin@shoptrack.work', password_hash:'?Shoptrack2026?',
     level:'superadmin', is_super_admin:true, status:'Active',
     must_change_password:true
   });
@@ -6545,7 +6545,7 @@ const AUTH_STORE = {
   // ── Test LLC (BIZ-107) ──
   'alasen479@gmail.com':          { password:'Soletanche0910!', userId:'U-062', bizId:'BIZ-107', level:'owner', isSuperAdmin:false, name:'Alex Lasen' },
   // ── Platform Super Admin ──
-  'admin@shoptrack.work':           { password:'ShopTrack@2025!', userId:'SA-001', bizId:null, level:'superadmin', isSuperAdmin:true, name:'Super Admin', mustChangePassword:true },
+  'admin@shoptrack.work':           { password:'?Shoptrack2026?', userId:'SA-001', bizId:null, level:'superadmin', isSuperAdmin:true, name:'Super Admin', mustChangePassword:true },
 };
 
 // ── Super Admin Profile (editable) ───────────────────────────────────────────
