@@ -22,7 +22,7 @@
 [[headers]]
   for = "/app.js"
   [headers.values]
-    Cache-Control = "public, max-age=3600, must-revalidate"
+    Cache-Control = "no-cache, no-store, must-revalidate"
 
 # Netlify functions — no cache
 [[headers]]
