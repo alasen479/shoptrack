@@ -1415,12 +1415,52 @@ const BIZ_ONLY_PAGES   = new Set(['dashboard','inventory','sales','rentals','pur
 // ═══════════════════════════════════════════════════════════════
 
 const FREE_LIMITS = {
-  inv:     30,   // max inventory items
-  cust:    30,   // max customers
-  vendors: 10,   // max vendors
-  invoices:30,   // max invoices/month (sales)
+  inv:     30,   // max NEW items can be added; existing data always retained
+  cust:    30,   // max NEW customers
+  vendors: 10,   // max NEW vendors
+  invoices:30,   // sales always allowed regardless of plan
   staff:   1,    // max staff users
 };
+
+// Returns true if business is over free plan limits (from trial data retention)
+// Over-limit businesses: all existing data kept, new adds blocked
+function _freePlanOverLimit(checkType){
+  if(_activePlan()!=='free') return false;
+  if(checkType==='inv')    return D.inv.length > FREE_LIMITS.inv;
+  if(checkType==='cust')   return D.cust.length > FREE_LIMITS.cust;
+  if(checkType==='vendor') return D.vendors.length > FREE_LIMITS.vendors;
+  return false;
+}
+
+// Render a persistent over-limit banner on inventory/customers/vendors pages
+function _overLimitBanner(type){
+  if(_activePlan()!=='free') return '';
+  var count, limit, noun, icon;
+  if(type==='inv'){    count=D.inv.length;     limit=FREE_LIMITS.inv;     noun='products';  icon='📦'; }
+  else if(type==='cust'){  count=D.cust.length;    limit=FREE_LIMITS.cust;    noun='customers'; icon='👥'; }
+  else if(type==='vendor'){ count=D.vendors.length; limit=FREE_LIMITS.vendors; noun='vendors';   icon='🏪'; }
+  else return '';
+  if(count <= limit) return ''; // within limits
+  var over = count - limit;
+  return '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);'
+    +'border-radius:var(--r8);padding:12px 16px;margin-bottom:14px;display:flex;'
+    +'align-items:center;gap:12px;flex-wrap:wrap">'
+    +'<span style="font-size:22px">⚠️</span>'
+    +'<div style="flex:1;min-width:200px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px">'
+        +'Free plan limit: '+limit+' '+noun
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--text2)">'
+        +'You have '+count+' '+noun+' ('+over+' over the free limit). '
+        +'<strong>All '+count+' are kept and fully accessible.</strong> '
+        +'You cannot add new '+noun+' until you upgrade or reduce to '+limit+'.'
+      +'</div>'
+    +'</div>'
+    +'<button class="btn btn-p btn-sm" onclick="mChangePlan()" style="white-space:nowrap">'
+      +'🚀 Upgrade to Premium'
+    +'</button>'
+  +'</div>';
+}
 
 // Canonical plan resolution — always call this, never read BIZ.plan raw
 function _activePlan(){
@@ -1469,15 +1509,25 @@ function _freePlanBlocked(actionLabel, checkType){
   // Free plan limits
   var blocked = false;
   var reason = '';
+  // Block ADDING new items beyond limit — existing data is always retained
   if(checkType==='inv' && D.inv.length >= FREE_LIMITS.inv){
     blocked = true;
-    reason = 'Free plan is limited to '+FREE_LIMITS.inv+' products. Upgrade to Premium for unlimited inventory.';
+    var _over = D.inv.length - FREE_LIMITS.inv;
+    reason = _over > 0
+      ? 'You have '+D.inv.length+' products from your trial. The Free plan allows adding up to '+FREE_LIMITS.inv+' — all '+D.inv.length+' are kept, but you cannot add more until you upgrade.'
+      : 'Free plan allows up to '+FREE_LIMITS.inv+' products. Upgrade to Premium for unlimited inventory.';
   } else if(checkType==='cust' && D.cust.length >= FREE_LIMITS.cust){
     blocked = true;
-    reason = 'Free plan is limited to '+FREE_LIMITS.cust+' customers. Upgrade to Premium for unlimited customers.';
+    var _over = D.cust.length - FREE_LIMITS.cust;
+    reason = _over > 0
+      ? 'You have '+D.cust.length+' customers from your trial. All are kept, but you cannot add more on the Free plan.'
+      : 'Free plan allows up to '+FREE_LIMITS.cust+' customers. Upgrade to Premium for unlimited.';
   } else if(checkType==='vendor' && D.vendors.length >= FREE_LIMITS.vendors){
     blocked = true;
-    reason = 'Free plan is limited to '+FREE_LIMITS.vendors+' vendors. Upgrade to Premium for unlimited vendors.';
+    var _over = D.vendors.length - FREE_LIMITS.vendors;
+    reason = _over > 0
+      ? 'You have '+D.vendors.length+' vendors from your trial. All are kept, but you cannot add more on the Free plan.'
+      : 'Free plan allows up to '+FREE_LIMITS.vendors+' vendors. Upgrade to Premium for unlimited.';
   }
   if(blocked){
     modal('🔒 Upgrade Required',
@@ -1522,6 +1572,47 @@ function _planWriteBlocked(actionLabel, checkType){
 }
 
 // Dashboard trial countdown widget (injected at top of dashboard)
+function _renderFreePlanNotice(){
+  // Remove any existing notice
+  var ex = document.getElementById('free-plan-notice');
+  if(ex) ex.remove();
+  if(_activePlan() !== 'free') return;
+
+  // Check if any resource is over-limit
+  var overInv  = D.inv.length > FREE_LIMITS.inv;
+  var overCust = D.cust.length > FREE_LIMITS.cust;
+  var overVend = D.vendors.length > FREE_LIMITS.vendors;
+  if(!overInv && !overCust && !overVend) return;
+
+  var items = [];
+  if(overInv)  items.push('<strong>'+D.inv.length+'</strong> products (limit '+FREE_LIMITS.inv+')');
+  if(overCust) items.push('<strong>'+D.cust.length+'</strong> customers (limit '+FREE_LIMITS.cust+')');
+  if(overVend) items.push('<strong>'+D.vendors.length+'</strong> vendors (limit '+FREE_LIMITS.vendors+')');
+
+  var notice = document.createElement('div');
+  notice.id = 'free-plan-notice';
+  notice.style.cssText = 'background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:var(--r10);padding:14px 16px;margin-bottom:14px;display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap';
+  notice.innerHTML =
+    '<div style="font-size:22px;flex-shrink:0">⚠️</div>'
+   +'<div style="flex:1;min-width:200px">'
+     +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:3px">Your data is safe — but some limits apply</div>'
+     +'<div style="font-size:12px;color:var(--text2);line-height:1.6">'
+       +'You have '+items.join(', ')+'. '
+       +'<strong>All existing data is fully accessible and editable.</strong> '
+       +'You just cannot add new items until you upgrade or reduce to within the Free plan limits.'
+     +'</div>'
+   +'</div>'
+   +'<button class="btn btn-p btn-sm" onclick="mChangePlan()" style="white-space:nowrap;flex-shrink:0">🚀 Upgrade to Premium</button>';
+
+  var page = document.getElementById('page');
+  if(!page) return;
+  var setupBar = page.querySelector('#setup-score-bar');
+  var trialWidget = page.querySelector('#trial-countdown-widget');
+  var anchor = trialWidget || setupBar;
+  if(anchor) anchor.after(notice);
+  else page.insertBefore(notice, page.firstChild);
+}
+
 function _renderTrialCountdown(){
   var existing = document.getElementById('trial-countdown-widget');
   if(existing) existing.remove();
@@ -2707,6 +2798,7 @@ function pgDash(){
   const k=refreshLiveKpis();
   // Render trial countdown after next tick so DOM is ready
   setTimeout(_renderTrialCountdown, 100);
+  setTimeout(_renderFreePlanNotice, 150);
   const DC=_getDashConfig();
   return `
 <div class="ph">
@@ -2913,8 +3005,9 @@ function initDash(){
 let _invFilterQ='', _invFilterCat='', _invFilterSt='', _invFilterCond='';
 
 function pgInv(){const _ui=_L();
+  var _invOverBanner = _overLimitBanner('inv');
   return `
-<div class="ph">
+${_invOverBanner}<div class="ph">
   <div class="bc">ShopTrack / <span>${_ui.nav_inventory}</span></div>
   <div class="ph-row">
     <h1>${_ui.nav_inventory}</h1>
@@ -6723,6 +6816,7 @@ function mViewPurchaseDocs(id){
 
 
 function pgCust(){const _ui=_L();
+  var _custOverBanner = _overLimitBanner('cust');
   const totalAR     = D.cust.filter(c=>c.bal>0).reduce((a,c)=>a+c.bal,0);
   const totalSpend  = D.cust.reduce((a,c)=>a+(c.spend||c.spent||0),0);
   const vipCount    = D.cust.filter(c=>c.type==='VIP'||c.tier==='VIP'||c.vip).length;
@@ -6766,7 +6860,7 @@ function pgCust(){const _ui=_L();
   }).join('');
 
   return `
-<div class="ph">
+${_custOverBanner}<div class="ph">
   <div class="bc">ShopTrack / <span>${_ui.nav_customers}</span></div>
   <div class="ph-row"><h1>${_ui.nav_customers}</h1>
     <div class="btn-row">
@@ -7393,6 +7487,7 @@ function mRecordVendorPayment(vendorId){
 
 
 function pgVendors(){const _ui=_L();
+  var _vendOverBanner = _overLimitBanner('vendor');
   const cats      = [...new Set(D.vendors.map(v=>v.cat).filter(Boolean))].sort();
   const countries = [...new Set(D.vendors.map(v=>v.country).filter(Boolean))].sort();
   const totalAP   = D.vendors.reduce((a,v)=>a+(v.bal||0), 0);
@@ -7441,7 +7536,7 @@ function pgVendors(){const _ui=_L();
   }).join('');
 
   return `
-<div class="ph">
+${_vendOverBanner}<div class="ph">
   <div class="bc">ShopTrack / <span>${_ui.nav_vendors}</span></div>
   <div class="ph-row"><h1>${_ui.nav_vendors}</h1>
     <div class="btn-row">
