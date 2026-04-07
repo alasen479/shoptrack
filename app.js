@@ -1668,6 +1668,51 @@ const PLAN_GATE_PAGES = new Set([
   'vendors','expenses','accounting','reports','catalog','ai-studio',
   'auditlog','appointments','services'
 ]);
+// Pages/features only available on Premium or active Trial
+// Free plan users are redirected with an upgrade prompt
+const PREMIUM_ONLY_PAGES = new Set([
+  'rentals',          // Rental management
+  'appointments',     // Appointments & bookings
+  'services',         // Service management
+  'ai-studio',        // AI Studio assistant
+  'booking-settings', // Booking configuration
+]);
+
+function _showPremiumUpgradePrompt(page){
+  var pageLabels = {
+    'rentals':          {icon:'\uD83D\uDD50', name:'Rental Management',        desc:'Track rentals, deposits, late fees, contracts and overdue returns.'},
+    'appointments':     {icon:'\uD83D\uDCC5', name:'Appointments & Bookings',  desc:'Online booking page, multi-staff scheduling, appointment reminders.'},
+    'services':         {icon:'\u2702\uFE0F',  name:'Service Management',       desc:'Create services, set pricing models, manage your service catalog.'},
+    'ai-studio':        {icon:'\uD83E\uDD16', name:'AI Studio',                desc:'AI-powered content generation, product descriptions, and business insights.'},
+    'booking-settings': {icon:'\u2699\uFE0F',  name:'Booking Settings',         desc:'Configure your online booking page, availability and policies.'},
+  };
+  var info = pageLabels[page] || {icon:'\uD83D\uDE80', name:'This Feature', desc:'This feature is available on the Premium plan.'};
+  var html =
+    '<div style="text-align:center;padding:8px 0 20px">'
+    +'<div style="font-size:48px;margin-bottom:12px">'+info.icon+'</div>'
+    +'<div style="font-size:18px;font-weight:900;color:var(--ink);margin-bottom:6px">'+info.name+' — Premium</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6">'+info.desc+'</div>'
+    +'<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r10);padding:16px;margin-bottom:20px;text-align:left">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">Included in Premium (8,900 Frs/mo)</div>'
+      +'<div style="display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--ink)">'
+        +'<span>\u2705 Rental management \u2014 deposits, contracts, late fees</span>'
+        +'<span>\u2705 Appointments & multi-staff booking page</span>'
+        +'<span>\u2705 AI Studio assistant</span>'
+        +'<span>\u2705 Full reports \u2014 PDF & CSV export</span>'
+        +'<span>\u2705 WhatsApp automation for owners & customers</span>'
+        +'<span>\u2705 No watermark + custom branding</span>'
+        +'<span>\u2705 Up to 5 staff users + unlimited inventory</span>'
+      +'</div>'
+    +'</div>'
+    +'<div style="font-size:13px;font-weight:800;color:var(--a)">8,900 Frs / month</div>'
+    +'<div style="font-size:11px;color:var(--text2);margin-top:3px">Cancel anytime \u00b7 No contract \u00b7 All data retained</div>'
+  +'</div>';
+  modal('\uD83D\uDD12 Premium Feature', html,
+    '<button class="btn btn-s" onclick="closeModal();nav(\'dashboard\')">&#8592; Back to Dashboard</button>'
+    +'<button class="btn btn-p" onclick="closeModal();mChangePlan()">\uD83D\uDE80 Upgrade to Premium \u2014 8,900 Frs/mo</button>'
+  );
+}
+
 
 // Returns true when the business has any plan (free, trial, or premium)
 function _hasPlan(){
@@ -1706,6 +1751,10 @@ function nav(p){
   // Rule 3: Plan gate
   if(!SESSION.isSuperAdmin && PLAN_GATE_PAGES.has(p) && !_hasPlan()){
     _showPlanSelectionModal(); return;
+  }
+  // Rule 4: Premium-only pages -- Free plan users see upgrade prompt
+  if(!SESSION.isSuperAdmin && PREMIUM_ONLY_PAGES.has(p) && _isFreePlan()){
+    _showPremiumUpgradePrompt(p); return;
   }
   curPage=p;
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.toggle('on',el.dataset.p===p));
@@ -5756,7 +5805,8 @@ async function mCreateRental(startDate){
     var notes=document.getElementById('cr-notes').value;
     var method=document.getElementById('cr-method').value;
     // Create one rental record per item
-    if(_trialWriteBlocked('Creating a rental')) return;
+    if(_isFreePlan()){ _showPremiumUpgradePrompt('rentals'); return; }
+    if(_planWriteBlocked('Creating a rental')) return;
     crItems.forEach(function(itemObj,idx){
       itemObj.rented=(itemObj.rented||0)+1;
       var _maxRNum=D.rentals.reduce(function(m,r){var n=parseInt((r.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
@@ -13719,6 +13769,11 @@ function updateSidebarForRole(){
   // Platform Admin section: visible ONLY for Super Admin
   const adminSect = document.getElementById('sb-sect-admin');
   if(adminSect){ adminSect.style.display = isSA ? '' : 'none'; }
+  var _isFreePln = !isSA && _isFreePlan();
+  ['rentals','appointments','services','ai-studio'].forEach(function(pg){
+    var _si = document.querySelector('.sb-item[data-p="'+pg+'"]');
+    if(_si){ _si.style.opacity = _isFreePln ? '0.4' : ''; _si.title = _isFreePln ? 'Premium feature' : ''; }
+  });
   // Hide the prev dividers to avoid orphaned lines — only show dividers that have visible content below
   const dividers = document.querySelectorAll('#sb .sb-div');
   dividers.forEach((d,i) => {
@@ -24394,7 +24449,8 @@ function refreshNotifPanel(){
 }
 
 function _saveAppt(){
-  if(_trialWriteBlocked('Booking an appointment')) return;
+  if(_isFreePlan()){ _showPremiumUpgradePrompt('appointments'); return; }
+  if(_planWriteBlocked('Booking an appointment')) return;
   const date=document.getElementById('na-d')?.value;
   if(!date){ toast('Select a date','error'); return; }
   const svcId=_ssGetVal('na-s-wrap')||(document.getElementById('na-s')||{}).value||'';
