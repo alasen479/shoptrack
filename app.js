@@ -7944,13 +7944,14 @@ function initAccounting(){
 // REPORTS
 // ============================================================
 function pgReports(){const _ui=_L();
-  // Compute real revenue breakdown — dynamic by actual inventory categories
-  const lk=refreshLiveKpis();
+  // Use same period as Accounting page for consistency
+  const _rptRange = PERIOD_RANGES[_acctPeriod] || PERIOD_RANGES.month;
+  const lk = computeKPIs(_rptRange);
   const totalRev=lk.rev;
-  const rRev=lk.rentRev; // rental revenue pre-computed
-  // Build revenue map by inventory category from actual line items
+  const rRev=lk.rentRev; // rental revenue pre-computed (period-filtered)
+  // Build revenue map by inventory category — PERIOD-FILTERED
   var _catRevMap={};
-  D.sales.forEach(function(s){
+  lk.sales.forEach(function(s){
     var rev=s.total||s.amt||0; if(!rev) return;
     var matched=false;
     if(s.lineItems&&s.lineItems.length){
@@ -7965,7 +7966,7 @@ function pgReports(){const _ui=_L();
     }
     if(!matched) _catRevMap['Other']=(_catRevMap['Other']||0)+rev;
   });
-  // Add service revenue
+  // Add service revenue (already period-filtered in lk)
   if(lk.apptRev>0) _catRevMap['Services']=(_catRevMap['Services']||0)+lk.apptRev;
   // Sort categories by revenue, take top 3
   var _catArr=Object.entries(_catRevMap).sort(function(a,b){return b[1]-a[1];});
@@ -8072,7 +8073,7 @@ function pgReports(){const _ui=_L();
 
 // ── REPORT FUNCTIONS ─────────────────────────────────────────
 function rptSales(){
-  const range = PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month;
+  const range = PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const periodSales = D.sales.filter(s=>inRange(s.dt,range));
   const rows=periodSales.map(s=>{const tot=s.total||s.amt; return `<tr>
     <td>${mono(s.id)}</td><td>${s.dt}</td>
@@ -8084,7 +8085,7 @@ function rptSales(){
   const total   = periodSales.reduce((a,s)=>a+(s.total||s.amt||0),0);
   const paid    = periodSales.reduce((a,s)=>a+(s.paid||0),0);
   const arTotal = D.cust.filter(c=>c.bal>0).reduce((a,c)=>a+c.bal,0);
-  modal('📊 Sales Report',`
+  modal('📊 Sales Report — '+range.label,`
   <div class="kpi-grid" style="margin-bottom:14px">
     <div class="kpi g"><div class="kpi-lbl">Period Revenue</div><div class="kpi-val g">${fmtKpi(total)}</div></div>
     <div class="kpi b"><div class="kpi-lbl">Cash Collected</div><div class="kpi-val b">${fmtKpi(paid)}</div></div>
@@ -8096,11 +8097,13 @@ function rptSales(){
 }
 
 function rptRevProduct(){
+  const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const byProd={};
-  D.sales.forEach(s=>{const k=s.items.split(' ×')[0].split('+')[0].trim().split(',')[0];byProd[k]=(byProd[k]||0)+(s.total||s.amt);});
+  D.sales.filter(s=>inRange(s.dt,_rng)).forEach(s=>{const k=s.items.split(' ×')[0].split('+')[0].trim().split(',')[0];byProd[k]=(byProd[k]||0)+(s.total||s.amt);});
   const sorted=Object.entries(byProd).sort((a,b)=>b[1]-a[1]);
   const max=sorted[0]?.[1]||1;
-  modal('📊 Revenue by Product',`
+  const _rpPeriodLbl=(PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label;
+  modal('📊 Revenue by Product — '+_rpPeriodLbl,`
   <div class="tbl-wrap"><table><thead><tr><th>Product</th><th>Revenue</th><th>Share</th></tr></thead><tbody>
   ${sorted.map(([p,v])=>`<tr><td>${p}</td><td>${mono(fmt(v),'g')}</td><td><div class="pbar" style="width:120px;display:inline-block"><div class="pfill b" style="width:${Math.round(v/max*100)}%"></div></div></td></tr>`).join('')}
   </tbody></table></div>`,
@@ -8108,16 +8111,29 @@ function rptRevProduct(){
 }
 
 function rptRevCat(){
+  const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const cats={};
-  D.sales.forEach(s=>{
-    const inv=D.inv.find(i=>i.id===s.invId) || D.inv.find(i=>s.items.includes(i.name.split(' ')[0]));
-    const cat=inv?inv.cat:'Other';
-    cats[cat]=(cats[cat]||0)+(s.total||s.amt);
+  D.sales.filter(s=>inRange(s.dt,_rng)).forEach(s=>{
+    // Use line items for accurate category attribution
+    var matched=false;
+    if(s.lineItems&&s.lineItems.length){
+      s.lineItems.forEach(function(li){
+        if(!li.invId||li.invId==='__custom__') return;
+        var inv=D.inv.find(i=>i.id===li.invId);
+        if(inv&&inv.cat){ cats[inv.cat]=(cats[inv.cat]||0)+((li.price||0)*(li.qty||1)); matched=true; }
+      });
+    }
+    if(!matched){
+      const inv=D.inv.find(i=>i.id===s.invId)||D.inv.find(i=>s.items.includes(i.name.split(' ')[0]));
+      const cat=inv?inv.cat:'Other';
+      cats[cat]=(cats[cat]||0)+(s.total||s.amt);
+    }
   });
-  D.rentals.filter(r=>r.st==='Returned'||r.st==='Checked Out').forEach(r=>{cats['Rental Revenue']=(cats['Rental Revenue']||0)+r.fee;});
+  D.rentals.filter(r=>inRange(r.start,_rng)&&(r.st==='Returned'||r.st==='Checked Out'||r.st==='Overdue')).forEach(r=>{cats['Rental Revenue']=(cats['Rental Revenue']||0)+r.fee;});
   const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
   const total=sorted.reduce((a,[,v])=>a+v,0);
-  modal('📊 Revenue by Category',`
+  const _rcPeriodLbl=(PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label;
+  modal('📊 Revenue by Category — '+_rcPeriodLbl,`
   <div class="tbl-wrap"><table><thead><tr><th>Category</th><th>Revenue</th><th>%</th></tr></thead><tbody>
   ${sorted.map(([c,v])=>`<tr><td>${c}</td><td>${mono(fmt(v),'g')}</td><td style="color:var(--text2)">${Math.round(v/total*100)}%</td></tr>`).join('')}
   </tbody></table></div>`,
@@ -8125,10 +8141,12 @@ function rptRevCat(){
 }
 
 function rptRevCust(){
+  const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const byCust={};
-  D.sales.forEach(s=>{byCust[s.cust]=(byCust[s.cust]||0)+(s.total||s.amt);});
+  D.sales.filter(s=>inRange(s.dt,_rng)).forEach(s=>{byCust[s.cust]=(byCust[s.cust]||0)+(s.total||s.amt);});
   const sorted=Object.entries(byCust).sort((a,b)=>b[1]-a[1]);
-  modal('📊 Revenue by Customer',`
+  const _rcustLbl=(PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label;
+  modal('📊 Revenue by Customer — '+_rcustLbl,`
   <div class="tbl-wrap"><table><thead><tr><th>Customer</th><th>Total Purchases</th><th>Outstanding</th></tr></thead><tbody>
   ${sorted.map(([c,v])=>{const cust=D.cust.find(x=>x.name===c);return`<tr><td><strong style="color:var(--ink)">${c}</strong></td><td>${mono(fmt(v),'g')}</td><td>${mono(fmt(cust?.bal||0),'y')}</td></tr>`;}).join('')}
   </tbody></table></div>`,
@@ -8136,14 +8154,32 @@ function rptRevCust(){
 }
 
 function rptProfit(){
-  const rows=D.sales.map(s=>{const tot=s.total||s.amt;const gp=s.profit!==undefined?s.profit:(tot-s.cost);return`<tr>
-    <td>${mono(s.id)}</td><td>${_esc(s.cust)}</td>
+  const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
+  const periodSales=D.sales.filter(s=>inRange(s.dt,_rng));
+  const totRevP=periodSales.reduce((a,s)=>a+(s.total||s.amt||0),0);
+  const totCostP=periodSales.reduce((a,s)=>a+(s.cost||0),0);
+  const totProfP=totRevP-totCostP;
+  const rows=periodSales.map(s=>{
+    const tot=s.total||s.amt||0;
+    const cost=s.cost||0;
+    const gp=tot-cost; // always recompute — don't rely on stale s.profit field
+    const margin=tot>0?Math.round(gp/tot*100):0;
+    return`<tr>
+    <td>${mono(s.id)}</td><td>${s.dt}</td><td>${_esc(s.cust)}</td>
     <td style="font-size:12px">${_esc(s.items)}</td>
-    <td>${mono(fmt(tot))}</td><td>${mono(fmt(gp),'g')}</td>
-    <td style="color:var(--p)">${tot>0?Math.round(gp/tot*100):0}%</td>
+    <td>${mono(fmt(tot))}</td><td>${mono(fmt(cost),'r')}</td>
+    <td>${mono(fmt(gp),gp>=0?'g':'r')}</td>
+    <td style="color:var(--${margin>=0?'g':'r'})">${margin}%</td>
   </tr>`;}).join('');
-  modal('📊 Product Profitability',`
-  <div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>Customer</th><th>Item</th><th>Revenue</th><th>Profit</th><th>Margin</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+  const _profitLabel = (PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label;
+  modal('📊 Product Profitability — '+_profitLabel,`
+  <div class="kpi-grid" style="margin-bottom:12px">
+    <div class="kpi g"><div class="kpi-lbl">Revenue</div><div class="kpi-val g">${fmtKpi(totRevP)}</div></div>
+    <div class="kpi r"><div class="kpi-lbl">COGS</div><div class="kpi-val r">${fmtKpi(totCostP)}</div></div>
+    <div class="kpi ${totProfP>=0?'g':'r'}"><div class="kpi-lbl">Gross Profit</div><div class="kpi-val ${totProfP>=0?'g':'r'}">${fmtKpi(totProfP)}</div></div>
+    <div class="kpi p"><div class="kpi-lbl">Margin</div><div class="kpi-val p">${totRevP>0?Math.round(totProfP/totRevP*100):0}%</div></div>
+  </div>
+  <div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>Date</th><th>Customer</th><th>Items</th><th>Revenue</th><th>COGS</th><th>Gross Profit</th><th>Margin</th></tr></thead><tbody>${rows}</tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptProfitPDF()">⬇ PDF</button>`);
 }
 
@@ -12745,7 +12781,8 @@ function _saleToDB(s, bizId){ return {
   items:s.items, amount:s.amt||0, total:s.total||s.amt||0,
   paid:s.paid||0, cost:s.cost||0,
   freight:s.freight||0, taxes:s.taxes||0, other:s.other||0,
-  profit:s.profit||0, status:s.st||'Unpaid',
+  profit:((s.total||s.amount||0)-(s.cost||0)), // always recompute: profit = revenue - COGS
+  _storedProfit:s.profit||0, status:s.st||'Unpaid',
   method:s.method||'Cash', notes:s.notes||'',
   line_items: s.lineItems ? JSON.stringify(s.lineItems) : null
 }; }
@@ -12819,6 +12856,29 @@ function _reconcileCustomerTotals(){
     }
   });
   if(changed > 0) console.log('[reconcile] Updated', changed, 'customer totals');
+}
+
+function _reconcileVendorTotals(){
+  // Recompute AP (vendor balances) from purchases
+  // AP = sum of unpaid purchases per vendor
+  if(!D.vendors||!D.vendors.length) return;
+  const poMap  = {}; // vendorId → total ordered
+  const paidMap= {}; // vendorId → total paid
+  D.purchases.forEach(function(p){
+    const vid = p.vendorId || p.vendor;
+    if(!vid) return;
+    poMap[vid]   = (poMap[vid]   ||0) + (p.total||0);
+    if(p.st==='Paid') paidMap[vid] = (paidMap[vid]||0) + (p.total||0);
+  });
+  D.vendors.forEach(function(v){
+    const vid = v.id;
+    const ordered = poMap[vid] || poMap[v.name] || 0;
+    const paid    = paidMap[vid] || paidMap[v.name] || 0;
+    const newBal  = Math.max(0, ordered - paid);
+    if(Math.abs((v.bal||0)-newBal)>0.5){
+      v.bal = newBal;
+    }
+  });
 }
 
 async function _dbSaveInv(item){
@@ -18230,8 +18290,21 @@ function computeKPIs(range){
   const np       = gp - oh;
 
   // ── Balance sheet snapshots (point-in-time, not period-filtered) ─
-  const ar       = D.cust.filter(c=>c.bal>0).reduce((a,c)=>a+c.bal,0);
-  const ap       = D.vendors.filter(v=>v.bal>0).reduce((a,v)=>a+v.bal,0);
+  // AR: recompute live from sales (total invoiced - total paid), never trust stale c.bal
+  const _arMap = {};
+  D.sales.forEach(function(s){
+    const cid=s.custId||s.cust; if(!cid) return;
+    _arMap[cid] = (_arMap[cid]||0) + ((s.total||s.amt||0)-(s.paid||0));
+  });
+  const ar = Object.values(_arMap).filter(v=>v>0.01).reduce((a,v)=>a+v,0);
+  // AP: recompute live from unpaid purchases
+  const _apMap = {};
+  D.purchases.forEach(function(p){
+    if(p.st==='Paid') return;
+    const vid=p.vendorId||p.vendor; if(!vid) return;
+    _apMap[vid] = (_apMap[vid]||0) + (p.total||0);
+  });
+  const ap = Object.values(_apMap).filter(v=>v>0.01).reduce((a,v)=>a+v,0);
 
   // ── Cash flow (cash basis) ────────────────────────────────────
   // Cash in = actual cash collected (paid amounts on sales) + rental fees received
@@ -18681,10 +18754,16 @@ let _acctPeriod = 'month';
 
 function refreshLiveKpis(){
   const range=PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month;
+  // Reconcile customer balances from live sales data before computing KPIs
+  // This ensures AR is always in sync after payments are recorded in-session
+  _reconcileCustomerTotals();
+  // Reconcile vendor balances from purchases
+  _reconcileVendorTotals();
   const k=computeKPIs(range);
   D.kpis.saleRev=k.saleRev;D.kpis.rentRev=k.rentRev;D.kpis.apptRev=k.apptRev||0;D.kpis.rev=k.rev;
   D.kpis.cogs=k.cogs;D.kpis.gp=k.gp;D.kpis.np=k.np;D.kpis.oh=k.oh;
   D.kpis.ar=k.ar;D.kpis.ap=k.ap;D.kpis.cashIn=k.cashIn;D.kpis.cashOut=k.cashOut;
+  // Inventory value = cost × qty for all items (rented items still owned at cost)
   D.kpis.invVal=D.inv.reduce(function(a,i){return a+(i.cost||0)*(i.qty||0);},0);
   return k;
 }
@@ -18904,6 +18983,8 @@ function setAcctPeriod(el, period){
 function setReportPeriod(el, period){
   el.closest('.dtabs').querySelectorAll('.dtab').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
+  // Keep _acctPeriod in sync so all report modal functions use the correct period
+  if(period !== 'custom') _acctPeriod = period;
   if(period==='custom'){
     modal('Custom Date Range',`
     <div class="fg-2">
@@ -18915,11 +18996,8 @@ function setReportPeriod(el, period){
     return;
   }
   _applyReportPeriod(period, PERIOD_RANGES[period]);
-  var _rk=computeKPIs(PERIOD_RANGES[period]||PERIOD_RANGES.month);
-  var _e;_e=document.getElementById('rpt-kpi-rev');if(_e)_e.innerHTML=fmtKpi(_rk.rev);
-  _e=document.getElementById('rpt-kpi-gp');if(_e)_e.innerHTML=fmtKpi(_rk.gp);
-  _e=document.getElementById('rpt-kpi-np');if(_e)_e.innerHTML=fmtKpi(_rk.np);
-  _e=document.getElementById('rpt-kpi-ar');if(_e)_e.innerHTML=fmtKpi(_rk.ar);
+  // _applyReportPeriod handles KPI update + chart rebuild
+  _applyReportPeriod(period, PERIOD_RANGES[period]||PERIOD_RANGES.month);
 }
 
 function applyCustomReportRange(){
@@ -19005,12 +19083,15 @@ function _buildPerfBuckets(range, period){
 }
 
 function _applyReportPeriod(period, range){
+  // Store custom range so report modals can access it
+  if(period === 'custom') PERIOD_RANGES.custom = range;
+  _acctPeriod = period;
   const k = computeKPIs(range);
   const r = CUR.rate;
   // Update KPI tiles in reports page
   ['rpt-kpi-rev','rpt-kpi-gp','rpt-kpi-np','rpt-kpi-ar'].forEach((id,i)=>{
     const el2=document.getElementById(id);
-    if(el2) el2.textContent=fmt([k.rev,k.gp,k.np,k.ar][i]);
+    if(el2) el2.innerHTML=fmtKpi([k.rev,k.gp,k.np,k.ar][i]);
   });
   // Rebuild charts from real data
   destroyCharts();
@@ -20170,7 +20251,7 @@ function exportAllDataXLSX(){
       return [safe(s.id),safe(s.dt),safe(s.cust),safe(s.items),
         money(s.amt),money(s.freight||0),money(s.taxes||0),money(s.other||0),
         money(tot),money(s.paid||0),money(tot-(s.paid||0)),
-        money(s.cost||0),money(s.profit!==undefined?s.profit:tot-(s.cost||0)),
+        money(s.cost||0),money(tot-(s.cost||0)), // always recompute profit = revenue - COGS
         safe(s.st),safe(s.method),safe(s.notes)];
     });
     XLSX.utils.book_append_sheet(wb, makeSheet(saleH, saleR), 'Sales');
