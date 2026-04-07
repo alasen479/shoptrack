@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775602288");
+console.log("ShopTrack v2.5 - build:1775604573");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -11591,10 +11591,15 @@ function _showUpsell(reason){
 }
 function mAddBizUser(){
   if(!can('manage_users')){ toast('⛔ Manage Users — permission denied','error'); return; }
-  // Free plan: max 1 user
+  // Free plan: max 1 user (owner only) -- Premium allows up to 5
   if(!SESSION.isSuperAdmin && _isFreePlan()){
-    var _curU=BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId&&u.st==='Active';}).length+1;
-    if(_curU>=5){ _showUpsell('users'); return; }
+    var _curU=BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId&&u.st==='Active';}).length;
+    if(_curU>=1){
+      modal('\uD83D\uDD12 Multiple Users \u2014 Premium Only',
+        '<div class="alrt alrt-b" style="margin-bottom:14px">The Free plan supports 1 user (owner only). Upgrade to Premium for up to 5 staff accounts.</div>',
+        '<button class="btn btn-s" onclick="closeModal()">OK</button>'
+        +'<button class="btn btn-p" onclick="closeModal();mChangePlan()">\uD83D\uDE80 Upgrade to Premium</button>'
+      ); return; }
   }
   // Super Admins can assign users to any active business.
   // Business owners always add users to their own business only — no cross-business visibility.
@@ -14301,6 +14306,57 @@ function doLogout(){
 }
 
 // Manage passwords from Settings → Security tab
+function _updatePwdStrength(pwd){
+  var el=document.getElementById('pwd-strength-bar');
+  var lbl=document.getElementById('pwd-strength-lbl');
+  if(!el||!lbl) return;
+  var score=0;
+  if(pwd.length>=8) score++;
+  if(/[0-9]/.test(pwd)) score++;
+  if(/[A-Z]/.test(pwd)) score++;
+  if(/[^A-Za-z0-9]/.test(pwd)) score++;
+  var colors=['#ef4444','#f59e0b','#3b82f6','#22c55e'];
+  var labels=['Weak','Fair','Good','Strong'];
+  el.style.width=(score*25)+'%';
+  el.style.background=colors[score-1]||'var(--border)';
+  lbl.textContent=score?labels[score-1]:'';
+  lbl.style.color=colors[score-1]||'var(--text2)';
+}
+function _savePasswordFromTab(){
+  var cur  = (document.getElementById('biz-sec-cur')?.value||'').trim();
+  var nw   = (document.getElementById('biz-sec-new')?.value||'').trim();
+  var conf = (document.getElementById('biz-sec-conf')?.value||'').trim();
+  if(!cur){ toast('Enter your current password','error'); document.getElementById('biz-sec-cur')?.focus(); return; }
+  if(nw.length<8){ toast('New password must be at least 8 characters','error'); return; }
+  if(!/[0-9]/.test(nw)){ toast('Password must include at least 1 number','error'); return; }
+  if(nw!==conf){ toast('Passwords do not match','error'); return; }
+  _doChangePasswordDirect(cur, nw);
+}
+async function _doChangePasswordDirect(cur, nw){
+  var btn=document.querySelector('#tab-security button.btn-p');
+  if(btn){btn.disabled=true;btn.textContent='Changing\u2026';}
+  try{
+    // Fetch current hash
+    var curHash='';
+    if(_sb){
+      var {data:ud}=await _sb.from('platform_users').select('password_hash').eq('id',SESSION.userId).single();
+      curHash=ud?.password_hash||'';
+    }
+    var matched=await _pwdMatch(cur,curHash);
+    if(!matched){toast('Current password is incorrect','error');return;}
+    // Hash new password
+    var enc=new TextEncoder().encode(nw);
+    var buf=await crypto.subtle.digest('SHA-256',enc);
+    var hash=Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+    if(_sb){await _sb.from('platform_users').update({password_hash:hash}).eq('id',SESSION.userId);}
+    ['biz-sec-cur','biz-sec-new','biz-sec-conf'].forEach(function(id){
+      var el=document.getElementById(id);if(el)el.value='';
+    });
+    addAudit('Password changed',SESSION.name);
+    toast('Password changed successfully \u2713','success');
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{if(btn){btn.disabled=false;btn.textContent='\uD83D\uDD12 Change Password';}}
+}
 function mChangePassword(){
   modal('🔑 Change Password',`
   <div class="alrt alrt-b" style="margin-bottom:14px">Changing password for <strong>${SESSION.name}</strong> (${SESSION.isSuperAdmin?'Super Admin':USER_LEVEL_LABELS[SESSION.level]})</div>
@@ -14308,7 +14364,7 @@ function mChangePassword(){
   <div class="fg"><label class="fl">New Password</label><input class="fi" id="cp-new" type="password" placeholder="At least 8 characters"/></div>
   <div class="fg"><label class="fl">Confirm New Password</label><input class="fi" id="cp-conf" type="password" placeholder="Repeat new password"/></div>
   <div style="margin-top:8px;font-size:11px;color:var(--text2)">
-    Password requirements: min 8 chars, at least 1 number, 1 special character
+      Requirements: min 8 chars · at least 1 number · at least 1 special character (!@#$%)
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
    <button class="btn btn-p" onclick="_doChangePassword()">Update Password</button>`);
@@ -16482,7 +16538,8 @@ function pgSettings(){
       +'<td style="color:var(--text2);font-size:12px">'+(u.last||'Never')+'</td>'
       +'<td>'
         +'<button class="btn btn-s btn-xs" onclick="mEditBizUser(\''+u.id+'\')">&#9999; Edit</button> '
-        +'<button class="btn btn-xs" style="background:var(--y-dim);color:var(--y)" onclick="mResetUserPwd(\''+u.id+'\')">&#128273;</button>'
+        +'<button class="btn btn-xs" style="background:var(--y-dim);color:var(--y)" onclick="mResetUserPwd(\''+u.id+'\')">&#128273;</button> '
+        +(u.id!==SESSION.userId?'<button class="btn btn-d btn-xs" onclick="mRemoveUser(\''+u.id+'\')">\u26ab Remove</button>':'')
       +'</td></tr>';
   }).join('');
 
@@ -16519,6 +16576,9 @@ function pgSettings(){
     {key:'waOwnerMinBlock',   label:'Below-min price blocked',   desc:'Instant alert when staff attempts a sale below your minimum price'},
     {key:'waOwnerPayment',    label:'Payment received',          desc:'Alert when a customer pays an invoice or settles a balance'},
     {key:'waOwnerLowStock',   label:'Low / out of stock',        desc:'Alert when a sale reduces stock to or below the minimum threshold'},
+    {key:'waOwnerWeeklySummary', label:'Weekly performance summary', desc:'WhatsApp digest every Monday: top products, revenue, customer count'},
+    {key:'waOwnerNewBooking', label:'New appointment booking',   desc:'Alert when a client books an appointment \u2014 see name, service, date, time'},
+
     {key:'waOwnerNewBooking', label:'New appointment booking',   desc:'Alert when a client books an appointment — see name, service, date, time'},
     {section:'💬 WhatsApp Messages to Customers',hint:'Pre-drafted messages that open WhatsApp so you can review before sending.'},
     {key:'waApptConfirm',  label:'Appointment confirmation', desc:'Prompt to send WA confirmation to client when appointment is booked'},
@@ -16608,7 +16668,7 @@ function pgSettings(){
     +'<div class="fg"><label class="fl">Bank / Payment Details <span style="font-size:10px;color:var(--text2)">(shown on invoice)</span></label>'
     +'<textarea class="ft" id="doc-bank-details" rows="4" placeholder="Bank name, account name, account number...">'+_esc(BIZ.bankDetails||'')+'</textarea></div>'
     +'<div class="fg"><label class="fl">Invoice Footer Note</label>'
-    +'<textarea class="ft" id="biz-invoice-note" rows="2" placeholder="e.g. Thank you for your business!">'+_esc(BIZ.invoiceNote||'')+'</textarea></div>'
+    +'<textarea class="ft" id="biz-invoice-note" rows="2" placeholder="e.g. Thank you for your business! Payment due within 7 days.">'+_esc(BIZ.invoiceNote||'')+'</textarea></div>'
     +'<div class="fg"><label class="fl">Default Tax Rate (%)</label>'
     +'<input class="fi" id="biz-tax" type="number" value="'+(BIZ.taxRate||0)+'" placeholder="0" oninput="BIZ.taxRate=parseFloat(this.value)||0"/></div>'
     +'<button class="btn btn-p btn-sm" onclick="saveDocSettings()">&#128190; Save Document Settings</button>'
@@ -16837,13 +16897,22 @@ function pgSettings(){
 
 <div id="tab-security" style="display:none">
 <div class="card">
-  <div class="card-hd"><div class="card-ttl">Security</div></div>
+  <div class="card-hd">
+    <div class="card-ttl">&#x1F512; Change Password</div>
+    <button class="btn btn-p btn-sm" onclick="_savePasswordFromTab()">&#x1F512; Save New Password</button>
+  </div>
   <div class="fg-2">
     <div>
       <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">Change Password</div>
-      <div class="fg"><label class="fl">Current Password</label><input class="fi" type="password" id="biz-sec-cur" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"/></div>
-      <div class="fg"><label class="fl">New Password</label><input class="fi" type="password" id="biz-sec-new" placeholder="Min 8 characters"/></div>
-      <div class="fg"><label class="fl">Confirm New Password</label><input class="fi" type="password" id="biz-sec-conf" placeholder="Repeat new password"/></div>
+      <div class="fg"><label class="fl">Current Password</label><input class="fi" type="password" id="biz-sec-cur" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"/></div>
+      <div class="fg"><label class="fl">New Password</label><input class="fi" type="password" id="biz-sec-new" autocomplete="new-password" oninput="_updatePwdStrength(this.value)" placeholder="Min 8 characters"/></div>
+      <div class="fg"><label class="fl">Confirm New Password</label><input class="fi" type="password" id="biz-sec-conf" autocomplete="new-password" placeholder="Repeat new password"/></div>
+    <div style='margin-top:4px;display:flex;align-items:center;gap:8px'>
+      <div style='flex:1;height:4px;background:var(--border);border-radius:2px'>
+        <div id='pwd-strength-bar' style='height:100%;border-radius:2px;width:0;transition:width .3s,background .3s'></div>
+      </div>
+      <span id='pwd-strength-lbl' style='font-size:10px;font-weight:700;min-width:40px'></span>
+    </div>
       <button class="btn btn-p btn-sm" onclick="(function(){
         var c=document.getElementById('biz-sec-cur').value,
             n=document.getElementById('biz-sec-new').value,
@@ -18316,6 +18385,9 @@ function saveBizProfile(){
   BIZ.twitter   = document.getElementById('biz-twitter')?.value   || BIZ.twitter;
   BIZ.primaryColor = document.getElementById('biz-primary')?.value || BIZ.primaryColor;
   BIZ.accentColor  = document.getElementById('biz-accent')?.value  || BIZ.accentColor;
+  // Apply immediately to CSS variables
+  document.documentElement.style.setProperty('--p',BIZ.primaryColor);
+  document.documentElement.style.setProperty('--a',BIZ.accentColor);
   // Country — auto-set currency when country changes
   var newCountry = document.getElementById('biz-country')?.value || BIZ.country;
   if(newCountry !== BIZ.country){
@@ -18344,10 +18416,17 @@ function saveBizProfile(){
   BIZ.aiKey = document.getElementById('biz-ai-key')?.value !== undefined
     ? document.getElementById('biz-ai-key').value
     : BIZ.aiKey;
+  var _oaEl=document.getElementById('biz-openai-key');
+  if(_oaEl&&_oaEl.value!==undefined) BIZ.openAiKey=_oaEl.value.trim();
   addAudit('Business profile updated', BIZ.name+' — profile saved');
   _dbSaveBizProfile(SESSION.bizId);
   _showSaved();
-  toast('Business profile saved ✓','success');
+  // Update topbar name immediately
+  var _tnEl=document.getElementById('topbar-biz-name');
+  if(_tnEl) _tnEl.textContent=BIZ.name;
+  // Update document title
+  document.title=BIZ.name+' — ShopTrack';
+  toast('Business profile saved \u2713','success');
 }
 
 // ============================================================
@@ -18431,6 +18510,31 @@ function saveDocSettings(){
   toast('Document settings saved ✓','success');
 }
 
+function mRemoveUser(uid){
+  var u=BIZ_USERS.find(function(x){return x.id===uid;});
+  if(!u) return;
+  if(u.id===SESSION.userId){ toast('You cannot remove your own account','error'); return; }
+  modal('\u26ab Remove User',
+    '<div class="alrt alrt-r" style="margin-bottom:12px">Remove <strong>'+_esc(u.name)+'</strong> ('+_esc(u.email)+') from your account?<br>They will no longer be able to log in to ShopTrack.</div>',
+    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    +'<button class="btn btn-d" onclick="closeModal();_doRemoveUser(\''+uid+'\')">\u26ab Remove User</button>'
+  );
+}
+async function _doRemoveUser(uid){
+  var u=BIZ_USERS.find(function(x){return x.id===uid;});
+  if(!u) return;
+  if(_sb){
+    var r=await _sb.from('platform_users').update({status:'Inactive'}).eq('id',uid);
+    if(r&&r.error){ toast('Could not remove: '+r.error.message,'error'); return; }
+  }
+  u.st='Inactive';
+  // Also mark in BIZ_USERS so the table re-renders correctly
+  var _bu=BIZ_USERS.find(function(x){return x.id===uid;});
+  if(_bu) _bu.st='Inactive';
+  addAudit('User removed',u.name+' ('+u.email+')');
+  toast(u.name+' removed from account','success');
+  setTimeout(function(){ nav('settings'); },300);
+}
 function switchSession(uid){
   const u=BIZ_USERS.find(x=>x.id===uid);if(!u)return;
   SESSION.userId=u.id;SESSION.level=u.level;SESSION.name=u.name;SESSION.isSuperAdmin=false;
@@ -22633,32 +22737,22 @@ function _delSvc(id){
 
 // ── Country change handler — auto-sets currency + tax in Financial tab ────────
 function _bizCountryChanged(country){
-  var autoCur = COUNTRY_CURRENCY[country];
-  if(autoCur && autoCur !== CUR.code){
-    var flagMap4 = {XAF:'🇨🇲',NGN:'🇳🇬',GHS:'🇬🇭',USD:'🇺🇸',GBP:'🇬🇧',EUR:'🇪🇺'};
-    setCurrency(autoCur, flagMap4[autoCur]||'');
-    // Update the currency dropdown in Financial tab if open
-    var curSel = document.getElementById('cur-settings-sel');
-    if(curSel) curSel.value = autoCur;
-    toast(country+' selected — currency auto-set to '+autoCur,'info');
-  }
-  // Apply tax defaults — update Financial tab fields if visible
+  // Update tax defaults for new country
   var taxDef = COUNTRY_TAX_DEFAULTS[country];
   if(taxDef){
-    var trEl  = document.getElementById('fin-tax-rate');
-    var tnEl  = document.getElementById('fin-tax-name');
-    var rlEl  = document.getElementById('fin-tax-reg-lbl');
-    var prevEl= document.getElementById('fin-tax-preview');
-    if(trEl)  trEl.value = taxDef.rate;
-    if(tnEl)  tnEl.value = taxDef.name;
-    if(rlEl)  rlEl.childNodes[0].textContent = (taxDef.reg||'Tax Registration Number')+' ';
-    if(prevEl) prevEl.textContent = taxDef.rate>0 ? taxDef.name+' ('+taxDef.rate+'%)' : 'No tax applied';
-    BIZ.taxRate = taxDef.rate;
-    BIZ.taxName = taxDef.name;
+    BIZ.taxRate = taxDef.rate; BIZ.taxName = taxDef.name;
+    var taxEl=document.getElementById('biz-tax'); if(taxEl) taxEl.value=taxDef.rate;
+    var nameEl=document.getElementById('fin-tax-name'); if(nameEl) nameEl.value=taxDef.name;
   }
-  BIZ.country = country;
-  _applyLocaleToForms(CUR.code);
-  _updateCurPreview(CUR.code);
+  // Auto-set currency
+  var autoCur=COUNTRY_CURRENCY[country];
+  if(autoCur&&autoCur!==CUR.code){
+    var fm={XAF:'\uD83C\uDDE8\uD83C\uDDF2',NGN:'\uD83C\uDDF3\uD83C\uDDEC',GHS:'\uD83C\uDDEC\uD83C\uDDED',USD:'\uD83C\uDDFA\uD83C\uDDF8',GBP:'\uD83C\uDDEC\uD83C\uDDE7',EUR:'\uD83C\uDDEA\uD83C\uDDFA'};
+    setCurrency(autoCur,fm[autoCur]||'');
+    toast('Currency updated to '+autoCur+' for '+country,'info');
+  }
+  // Apply locale to all form placeholders
+  _applyLocaleToForms(autoCur||CUR.code);
 }
 
 // ── Language application is handled by _applyLanguage() above ──
