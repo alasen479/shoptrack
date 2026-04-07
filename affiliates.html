@@ -105,6 +105,19 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 .rtbl tr:last-child td{border-bottom:none}
 .badge-g{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;background:var(--g-dim);color:var(--g)}
 #d-link{font-family:var(--mono);font-size:12px;color:var(--a);word-break:break-all;flex:1}
+/* REFERRAL TABLE */
+.ref-table{width:100%;border-collapse:collapse;font-size:13px}
+.ref-table th{padding:10px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);border-bottom:2px solid var(--border)}
+.ref-table td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.ref-table tr:last-child td{border-bottom:none}
+.ref-table tr:hover td{background:var(--bg3)}
+.badge-trial{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;background:rgba(245,158,11,.12);color:#f59e0b}
+.badge-paying{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;background:rgba(45,212,160,.12);color:#2dd4a0}
+.badge-free{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;background:rgba(148,163,184,.12);color:var(--text2)}
+.payout-row{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r8);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:6px}
+.commission-log{max-height:200px;overflow-y:auto;}
+.progress-bar-wrap{background:var(--bg4);border-radius:3px;height:5px;width:80px;display:inline-block;vertical-align:middle;margin-left:6px}
+.progress-bar{height:100%;border-radius:3px;background:var(--a);transition:width .3s}
 /* FORM */
 .f-wrap{max-width:600px;margin:0 auto}
 .f-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r16);padding:36px;position:relative;overflow:hidden}
@@ -316,37 +329,81 @@ footer a:hover{color:var(--a)}
         <span id="t-suspended">&#x26D4; Your affiliate account is suspended. Contact <strong>info&#64;shoptrack.work</strong>.</span>
       </div>
       <div id="d-approved" style="display:none">
+
+        <!-- Affiliate Link Card -->
         <div class="d-card">
-          <div class="d-ttl" id="t-link-ttl">&#x1F517; Your affiliate link</div>
+          <div class="d-ttl">&#x1F517; Your affiliate link</div>
           <div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);padding:11px 14px;margin-bottom:12px">
-            <span id="d-link">shoptrack.org/?aff=...</span>
-            <button class="btn-g" style="padding:6px 12px;font-size:12px;flex-shrink:0" onclick="_cpLink()"><span id="t-copy">&#x1F4CB; Copy</span></button>
+            <span id="d-link" style="font-family:var(--mono);font-size:12px;color:var(--a);word-break:break-all;flex:1">shoptrack.org/?aff=...</span>
+            <button class="btn-g" style="padding:6px 12px;font-size:12px;flex-shrink:0" onclick="_cpLink()">&#x1F4CB; Copy</button>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn-p" style="font-size:12px;padding:8px 14px" onclick="_waShare()"><span id="t-wa">&#x1F4AC; Share on WhatsApp</span></button>
-            <button class="btn-g" style="font-size:12px;padding:8px 14px" onclick="_cpMsg()"><span id="t-cp-msg">&#x1F4E4; Copy message</span></button>
+            <button class="btn-p" style="font-size:12px;padding:8px 14px" onclick="_waShare()">&#x1F4AC; Share on WhatsApp</button>
+            <button class="btn-g" style="font-size:12px;padding:8px 14px" onclick="_cpMsg()">&#x1F4E4; Copy message</button>
           </div>
         </div>
+
+        <!-- KPI Summary -->
         <div class="d-card">
-          <div class="d-ttl" id="t-stats-ttl">&#x1F4C8; Your stats</div>
+          <div class="d-ttl">&#x1F4C8; Your earnings at a glance</div>
           <div class="stat-grid">
-            <div class="sbox"><div class="sbox-n" id="d-clicks">&mdash;</div><div class="sbox-l" id="t-clicks">Link clicks</div></div>
-            <div class="sbox"><div class="sbox-n" id="d-conv">&mdash;</div><div class="sbox-l" id="t-conv">Conversions</div></div>
-            <div class="sbox"><div class="sbox-n" id="d-earned" style="color:var(--g)">&mdash;</div><div class="sbox-l" id="t-earned-lbl">Total earned</div></div>
-            <div class="sbox"><div class="sbox-n" id="d-unpaid" style="color:var(--a)">&mdash;</div><div class="sbox-l" id="t-unpaid-lbl">Unpaid balance</div></div>
+            <div class="sbox">
+              <div class="sbox-n" id="d-clicks">&mdash;</div>
+              <div class="sbox-l">Link clicks</div>
+            </div>
+            <div class="sbox">
+              <div class="sbox-n" id="d-conv">&mdash;</div>
+              <div class="sbox-l">Paid conversions</div>
+            </div>
+            <div class="sbox">
+              <div class="sbox-n" style="color:var(--g)" id="d-earned">&mdash;</div>
+              <div class="sbox-l">Total earned</div>
+            </div>
+            <div class="sbox">
+              <div class="sbox-n" style="color:var(--a)" id="d-unpaid">&mdash;</div>
+              <div class="sbox-l">Unpaid balance</div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding:10px 14px;background:var(--bg3);border-radius:var(--r8);font-size:12px;color:var(--text2);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">
+            <span>Commission: <strong id="d-rate" style="color:var(--ink)">20% mo.1 &middot; 10% mo.2&ndash;12</strong></span>
+            <span>Next payout: <strong id="d-payout" style="color:var(--ink)">&mdash;</strong></span>
+            <span>Questions: <a href="mailto:info@shoptrack.work" style="color:var(--a)">info&#64;shoptrack.work</a></span>
           </div>
         </div>
+
+        <!-- Referral Pipeline -->
         <div class="d-card">
-          <div class="d-ttl" id="t-comm-ttl">&#x1F4B3; Commission details</div>
-          <table class="rtbl"><thead><tr>
-            <th id="t-th1">Rate</th><th id="t-th2">Status</th><th id="t-th3">Next payout</th><th id="t-th4">Contact</th>
-          </tr></thead><tbody><tr>
-            <td style="font-family:var(--mono)" id="t-rate">20% mo.1 &middot; 10% mo.2&ndash;12</td>
-            <td><span class="badge-g" id="t-status-badge">Approved</span></td>
-            <td id="d-payout" style="color:var(--text2)">&mdash;</td>
-            <td><a href="mailto:info@shoptrack.work" style="color:var(--a)">info&#64;shoptrack.work</a></td>
-          </tr></tbody></table>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+            <div class="d-ttl" style="margin:0">&#x1F465; Your referrals</div>
+            <div style="display:flex;gap:6px;font-size:11px">
+              <span id="d-ref-trial-count" style="background:rgba(245,158,11,.12);color:#f59e0b;padding:2px 8px;border-radius:8px;font-weight:700"></span>
+              <span id="d-ref-paying-count" style="background:rgba(45,212,160,.12);color:#2dd4a0;padding:2px 8px;border-radius:8px;font-weight:700"></span>
+              <span id="d-ref-free-count" style="background:rgba(148,163,184,.12);color:var(--text2);padding:2px 8px;border-radius:8px;font-weight:700"></span>
+            </div>
+          </div>
+          <div id="d-referrals-empty" style="display:none;text-align:center;padding:24px;color:var(--text2);font-size:13px">
+            No referrals yet &mdash; share your link to start earning!
+          </div>
+          <div style="overflow-x:auto" id="d-referrals-wrap">
+            <table class="ref-table" id="d-referrals-table">
+              <thead><tr>
+                <th>Business</th>
+                <th>Status</th>
+                <th>Trial / Subscription</th>
+                <th>Payments</th>
+                <th>You earned</th>
+              </tr></thead>
+              <tbody id="d-referrals-body"></tbody>
+            </table>
+          </div>
         </div>
+
+        <!-- Payout History -->
+        <div class="d-card" id="d-payouts-card" style="display:none">
+          <div class="d-ttl">&#x1F4B0; Payout history</div>
+          <div id="d-payouts-body"></div>
+        </div>
+
       </div>
     </div>
     <div id="d-notfound" style="display:none;text-align:center;padding:20px;color:var(--text2);font-size:13px">
@@ -718,9 +775,10 @@ async function _loadDash(){
     var res=await fetch('/.netlify/functions/aff-lookup?email='+encodeURIComponent(email));
     var data=await res.json().catch(function(){return[];});
     ['d-pending','d-suspended','d-approved','d-notfound'].forEach(function(id){
-      document.getElementById(id).style.display='none';
+      var el=document.getElementById(id); if(el) el.style.display='none';
     });
     document.getElementById('dash-result').style.display='';
+
     if(!data||!data.length){
       document.getElementById('d-notfound').style.display='';
     } else {
@@ -732,21 +790,116 @@ async function _loadDash(){
       } else {
         document.getElementById('d-approved').style.display='';
         var link='https://shoptrack.org/?aff='+(af.affiliate_code||'');
+        var fx=function(n){return n?(Math.round(n)).toLocaleString()+' XAF':'0 XAF';};
+        var fxUSD=function(n){return n?('~$'+Math.round(n/620))+' / '+Math.round(n).toLocaleString()+' XAF':'0 XAF';};
+
+        // Link
         document.getElementById('d-link').textContent=link;
+
+        // KPIs
         document.getElementById('d-clicks').textContent=(af.clicks||0).toLocaleString();
         document.getElementById('d-conv').textContent=(af.conversions||0).toLocaleString();
-        var fx=function(n){return n?Math.round(n).toLocaleString()+' XAF':'0 XAF';};
-        document.getElementById('d-earned').textContent=fx(af.total_earned_xaf);
+        document.getElementById('d-earned').textContent=fxUSD(af.total_earned_xaf);
         document.getElementById('d-unpaid').textContent=fx(af.unpaid_xaf);
+
+        // Commission rate from DB
+        var pct=af.commission_pct||20;
+        var rateEl=document.getElementById('d-rate');
+        if(rateEl) rateEl.textContent=pct+'% mo.1 · '+Math.round(pct/2)+'% mo.2–12';
+
+        // Next payout date (1st of next month)
         var nm=new Date(new Date().getFullYear(),new Date().getMonth()+1,1);
         var loc=_lang==='fr'?'fr-FR':'en-GB';
-        document.getElementById('d-payout').textContent=nm.toLocaleDateString(loc,{day:'numeric',month:'long',year:'numeric'});
+        var payoutEl=document.getElementById('d-payout');
+        if(payoutEl) payoutEl.textContent=nm.toLocaleDateString(loc,{day:'numeric',month:'long',year:'numeric'});
+
+        // Referral pipeline
+        var refs=af.referrals||[];
+        var tbody=document.getElementById('d-referrals-body');
+        var wrap=document.getElementById('d-referrals-wrap');
+        var empty=document.getElementById('d-referrals-empty');
+        var trialCount=refs.filter(function(r){return r.status==='trial';}).length;
+        var payingCount=refs.filter(function(r){return r.status==='paying';}).length;
+        var freeCount=refs.filter(function(r){return r.status==='free';}).length;
+
+        var tc=document.getElementById('d-ref-trial-count');
+        var pc=document.getElementById('d-ref-paying-count');
+        var fc=document.getElementById('d-ref-free-count');
+        if(tc) tc.textContent=trialCount?'⏳ '+trialCount+' in trial':'';
+        if(pc) pc.textContent=payingCount?'✅ '+payingCount+' paying':'';
+        if(fc) fc.textContent=freeCount?'○ '+freeCount+' on free':'';
+
+        if(!refs.length){
+          if(empty) empty.style.display='';
+          if(wrap) wrap.style.display='none';
+        } else {
+          if(empty) empty.style.display='none';
+          if(wrap) wrap.style.display='';
+          if(tbody) tbody.innerHTML=refs.map(function(r){
+            var statusBadge, timeInfo;
+            if(r.status==='trial'){
+              var pct2=r.daysLeft>0?Math.round((30-r.daysLeft)/30*100):100;
+              statusBadge='<span class="badge-trial">⏳ Trial</span>';
+              timeInfo='<div style="font-size:12px;margin-top:4px">'
+                +(r.daysLeft>0
+                  ?'<strong style="color:#f59e0b">'+r.daysLeft+' days left</strong> (ends '+r.trialEnd+')'
+                  :'<span style="color:var(--text2)">Trial ended</span>'
+                )
+                +'<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+pct2+'%;background:#f59e0b"></div></div>'
+                +'</div>';
+            } else if(r.status==='paying'){
+              statusBadge='<span class="badge-paying">✅ Premium</span>';
+              timeInfo='<div style="font-size:12px;color:var(--text2);margin-top:4px">'
+                +(r.subExpires?'Renews '+r.subExpires:'Active subscriber')
+                +'&nbsp;&nbsp;<span style="color:var(--g);font-weight:700">'+r.commPayments+'/12 payments</span>'
+                +'<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+Math.round(r.commPayments/12*100)+'%"></div></div>'
+                +'</div>';
+            } else {
+              statusBadge='<span class="badge-free">○ Free</span>';
+              timeInfo='<div style="font-size:12px;color:var(--text2);margin-top:4px">Trial ended &mdash; no commission yet</div>';
+            }
+            var earnedStr=r.earnedXaf>0?('<strong style="color:var(--g)">'+Math.round(r.earnedXaf).toLocaleString()+' XAF</strong><div style="font-size:11px;color:var(--text2)">~$'+Math.round(r.earnedXaf/620)+'</div>'):'<span style="color:var(--text2)">&mdash;</span>';
+            var paymentsStr=r.status==='paying'
+              ?('<strong>'+r.commPayments+'</strong><span style="color:var(--text2)">/12</span>')
+              :'<span style="color:var(--text2)">0</span>';
+            var joined=r.joined?(new Date(r.joined)).toLocaleDateString(_lang==='fr'?'fr-FR':'en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+            return '<tr>'
+              +'<td><div style="font-weight:600;color:var(--ink)">'+(r.name||'Business')+'</div>'
+              +(joined?'<div style="font-size:11px;color:var(--text2)">Joined '+joined+'</div>':'')
+              +'</td>'
+              +'<td>'+statusBadge+timeInfo+'</td>'
+              +'<td style="max-width:200px">'+timeInfo.replace(statusBadge,'')+'</td>'
+              +'<td style="text-align:center">'+paymentsStr+'</td>'
+              +'<td>'+earnedStr+'</td>'
+              +'</tr>';
+          }).join('');
+        }
+
+        // Payout history
+        var pays=af.payment_history||[];
+        var payCard=document.getElementById('d-payouts-card');
+        var payBody=document.getElementById('d-payouts-body');
+        if(pays.length&&payCard&&payBody){
+          payCard.style.display='';
+          payBody.innerHTML=pays.map(function(p){
+            return '<div class="payout-row">'
+              +'<div><strong style="color:var(--g)">'+Math.round(p.amount||0).toLocaleString()+' XAF</strong>'
+              +'<span style="font-size:11px;color:var(--text2);margin-left:8px">via '+_esc(p.method||'Mobile Money')+'</span></div>'
+              +'<div style="font-size:12px;color:var(--text2)">'+(p.paid_at||'').slice(0,10)+'</div>'
+              +'</div>';
+          }).join('');
+        } else if(payCard) payCard.style.display='none';
       }
       document.getElementById('dash-result').scrollIntoView({behavior:'smooth',block:'start'});
     }
-  } catch(e){toast(T[_lang].toastErr,'error');}
-  finally{btn.disabled=false; btn.textContent=T[_lang].dashBtn;}
+  } catch(e){
+    console.error('[_loadDash]',e.message);
+    toast(T[_lang].toastErr||'Error loading stats','error');
+  }
+  finally{btn.disabled=false; btn.textContent=T[_lang].dashBtn||'View Stats →';}
 }
+
+function _esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 document.getElementById('dash-email').addEventListener('keydown',function(e){
   if(e.key==='Enter') _loadDash();
 });
