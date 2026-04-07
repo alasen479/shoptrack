@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775604573");
+console.log("ShopTrack v2.5 - build:1775605042");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -21442,21 +21442,36 @@ function mPayVendor(vendorId){
 // ── Keyboard shortcuts ───────────────────────────────────────────────────
 document.addEventListener('keydown', function(e){
   if(!SESSION.userId) return; // not logged in
-  // Ignore when typing in inputs
-  if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
-  // Ctrl/Cmd + shortcuts
+
+  // Never intercept when user is typing in a form field or contenteditable
+  var tag = e.target.tagName;
+  if(['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+  if(e.target.isContentEditable) return;
+
+  // Never block native browser Ctrl/Cmd shortcuts
+  // c=copy  x=cut  v=paste  a=select-all  z=undo  y=redo
+  // p=print  f=find  w=close-tab  t=new-tab  l=address-bar
+  var BROWSER_RESERVED = new Set(['c','x','v','a','z','y','p','f','w','t','l','d','u','n','j','b']);
+
   if((e.ctrlKey||e.metaKey) && !e.shiftKey){
+    // Hard block: if it's a browser key, always let it through
+    if(BROWSER_RESERVED.has(e.key.toLowerCase())) return;
+
+    // Safety: if user has selected text, let the browser handle it
+    if(window.getSelection && window.getSelection().toString()) return;
+
     switch(e.key){
       case 'i': e.preventDefault(); nav('inventory'); break;
-      case 's': e.preventDefault(); nav('sales'); break;
-      case 'r': e.preventDefault(); nav('rentals'); break;
-      case 'e': e.preventDefault(); nav('expenses'); break;
-      case 'c': e.preventDefault(); nav('customers'); break;
+      case 's': e.preventDefault(); nav('sales');     break;
+      case 'r': e.preventDefault(); nav('rentals');   break;
+      case 'e': e.preventDefault(); nav('expenses');  break;
       case 'k': e.preventDefault(); document.getElementById('global-search')?.focus(); break;
-      case 'a': e.preventDefault(); nav('appointments'); break;
+      // NOTE: 'c' (customers) removed — conflicts with Ctrl+C copy
+      // NOTE: 'a' (appointments) removed — conflicts with Ctrl+A select-all
     }
   }
-  // Escape closes top modal
+
+  // Escape closes the top modal
   if(e.key==='Escape' && _mStack.length>0){ closeModal(); }
 });
 
