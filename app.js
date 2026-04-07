@@ -1528,7 +1528,7 @@ function _renderTrialCountdown(){
 
   var plan = _activePlan();
   var daysLeft = _trialDaysLeft();
-  if(plan !== 'trial' || daysLeft === null) return;
+  if(plan !== 'trial' || daysLeft === null || daysLeft < 0) return; // only during active trial
 
   var widget = document.createElement('div');
   widget.id = 'trial-countdown-widget';
@@ -2213,7 +2213,7 @@ function _subDaysLeft(){
 
 function _subAmtXAF(){
   var activePl=_activePlan(); if(activePl==='trial'||activePl==='free') return 0;
-  var p=SUB_PLAN_XAF['Premium']||SUB_PLAN_XAF['Pro']||{monthly:8900,yearly:89000};
+  var p=SUB_PLAN_XAF['Premium']||SUB_PLAN_XAF['Pro']||SUB_PLAN_XAF['Starter']||{monthly:8900,yearly:89000};
   return (BIZ.billingCycle||'monthly')==='yearly'?p.yearly:p.monthly;
 }
 
@@ -2331,7 +2331,7 @@ function _showPlanSelectionModal(){
   modal('\ud83d\ude80 Choose Your Plan',
     '<div style="text-align:center;margin-bottom:18px">'
       +'<div style="font-size:15px;font-weight:700;color:var(--ink)">Choose Your Plan</div>'
-      +'<div style="font-size:12px;color:var(--text2);margin-top:4px">Free plan is always available. Premium at 8,900 Frs/month &mdash; cancel anytime.</div>'
+      +'<div style="font-size:12px;color:var(--text2);margin-top:4px">You have a 30-day free trial with full Premium access. After trial: Free (with limits) or upgrade to Premium.</div>'
     +'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px">'+cards+'</div>'
     +enterprise
@@ -2342,8 +2342,9 @@ function _showPlanSelectionModal(){
 }
 
 function _pgSelectPlan(planId){
-  var colors = {Free:'45,212,160', Premium:'91,127,255', Starter:'45,212,160', Pro:'91,127,255'};
-  var borders = {Free:'#2dd4a0', Premium:'#5b7fff', Starter:'#2dd4a0', Pro:'#5b7fff'};
+  var _curActivePlan = _activePlan();
+  var colors = {Free:'45,212,160', Premium:'91,127,255', Starter:'45,212,160', Pro:'91,127,255', free:'45,212,160', premium:'91,127,255'};
+  var borders = {Free:'#2dd4a0', Premium:'#5b7fff', Starter:'#2dd4a0', Pro:'#5b7fff', free:'#2dd4a0', premium:'#5b7fff'};
   document.querySelectorAll('[id^="pgc-"]').forEach(function(c){
     c.style.border='2px solid var(--border2)';
     c.style.background='var(--bg3)';
@@ -2365,6 +2366,9 @@ async function _pgConfirmPlan(){
   // Normalize plan IDs
   if(planId==='Starter'||planId==='starter') planId='Free';
   if(planId==='Pro'||planId==='pro') planId='Premium';
+  // Update BIZ.plan locally immediately so UI refreshes
+  BIZ.plan = planId.toLowerCase();
+  if(planId==='Free') window._trialReadOnly=false, window._trialHardBlock=false;
   var btn = document.getElementById('pg-confirm-btn');
   if(btn){ btn.textContent='Saving\u2026'; btn.disabled=true; }
   try{
@@ -20890,26 +20894,34 @@ function _checkPlanExpiry(){
     if(page && page.parentNode) page.parentNode.insertBefore(banner, page);
     else document.body.insertBefore(banner, document.body.firstChild);
   }
-  if(daysLeft > 7){ banner.style.display='none'; return; }
-  if(daysLeft > 0){
-    banner.style.display='flex'; banner.style.background=''; banner.style.borderColor='';
-    var msgEl=banner.querySelector('.peb-msg');
-    if(msgEl) msgEl.textContent='\u23f0 Your trial expires in '+daysLeft+' day'+(daysLeft!==1?'s':'')+'. Upgrade now to keep all your data.';
-    var btnEl=banner.querySelector('.peb-upgrade-btn');
-    if(btnEl){ btnEl.style.display=''; btnEl.onclick=function(){ _showTrialPaywall(daysLeft,false); }; }
+  // During trial: show banner only in last 7 days
+  var activePln = _activePlan();
+  if(activePln === 'premium') { banner.style.display='none'; return; }
+  if(activePln === 'trial'){
+    // Trial still active
+    if(daysLeft > 7){ banner.style.display='none'; return; }
+    if(daysLeft > 0){
+      banner.style.display='flex';
+      var msgEl=banner.querySelector('.peb-msg');
+      if(msgEl) msgEl.textContent='\u23f0 Free trial expires in '+daysLeft+' day'+(daysLeft!==1?'s':'')+' \u2014 upgrade to keep full access.';
+      var btnEl=banner.querySelector('.peb-upgrade-btn');
+      if(btnEl){ btnEl.style.display=''; btnEl.onclick=function(){ mChangePlan(); }; }
+      return;
+    }
+  }
+  // Trial EXPIRED or on Free plan — no paywall, just a gentle upgrade banner
+  // Free plan users retain access with limits; paywall is NOT shown
+  window._trialReadOnly  = false;
+  window._trialHardBlock = false;
+  if(activePln === 'free'){
+    banner.style.display='flex';
+    banner.style.background='rgba(99,102,241,.07)'; banner.style.borderColor='rgba(99,102,241,.25)';
+    var msgFree=banner.querySelector('.peb-msg');
+    if(msgFree) msgFree.textContent='\uD83C\uDF31 You are on the Free plan \u2014 '+FREE_LIMITS.inv+' products, '+FREE_LIMITS.cust+' customers. Upgrade anytime.';
+    var btnFree=banner.querySelector('.peb-upgrade-btn');
+    if(btnFree){ btnFree.style.display=''; btnFree.textContent='\u25b6 Upgrade to Premium'; btnFree.onclick=function(){ mChangePlan(); }; }
     return;
   }
-  // EXPIRED
-  banner.style.display='flex';
-  banner.style.background='rgba(220,38,38,.08)'; banner.style.borderColor='rgba(220,38,38,.25)';
-  var msgEl2=banner.querySelector('.peb-msg');
-  var ago = daysLeft===0?'today':Math.abs(daysLeft)+' day'+(Math.abs(daysLeft)!==1?'s':'')+' ago';
-  if(msgEl2) msgEl2.textContent='\u26a0\ufe0f Your trial ended '+ago+'. Your data is safe \u2014 upgrade to continue.';
-  var btnEl2=banner.querySelector('.peb-upgrade-btn');
-  if(btnEl2){ btnEl2.style.display=''; btnEl2.onclick=function(){ _showTrialPaywall(daysLeft,true); }; }
-  window._trialReadOnly  = (daysLeft >= -7);
-  window._trialHardBlock = (daysLeft < -7);
-  _showTrialPaywall(daysLeft, window._trialHardBlock);
 }
 
 // ── Full-screen paywall modal ──────────────────────────────────
