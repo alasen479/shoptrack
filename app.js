@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775608769");
+console.log("ShopTrack v2.5 - build:1775609050");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4470,9 +4470,8 @@ async function _refreshCustomers(){
   try{
     var res = await _sb.from('customers').select('*').eq('biz_id',SESSION.bizId);
     if(res.data && res.data.length){
-      var dbIds = new Set(res.data.map(function(r){return r.id;}));
-      var localOnly = D.cust.filter(function(cu){return !dbIds.has(cu.id);});
-      D.cust = res.data.map(_dbToCust).concat(localOnly);
+      // DB is authoritative — do not merge local-only (prevents stale deleted records)
+      D.cust = res.data.map(_dbToCust);
       // Rebuild any open customer dropdowns
       if(typeof window._rebuildCsSel === 'function') window._rebuildCsSel();
       if(typeof window._rebuildCrSel === 'function') window._rebuildCrSel();
@@ -4484,9 +4483,8 @@ async function _refreshVendors(){
   try{
     var res = await _sb.from('vendors').select('*').eq('biz_id',SESSION.bizId);
     if(res.data && res.data.length){
-      var dbIds = new Set(res.data.map(function(r){return r.id;}));
-      var localOnly = D.vendors.filter(function(v){return !dbIds.has(v.id);});
-      D.vendors = res.data.map(_dbToVendor).concat(localOnly);
+      // DB is authoritative — do not merge local-only
+      D.vendors = res.data.map(_dbToVendor);
       if(typeof window._rebuildPoVendorSel === 'function') window._rebuildPoVendorSel();
     }
   }catch(e){ console.warn('[_refreshVendors]', e.message); }
@@ -13003,13 +13001,12 @@ async function _dbLoadBizData(bizId){
       // (Supabase may have individual items saved — merge by id)
     }
     var _dbCusts = (cust.data||[]).map(_dbToCust);
-    console.log('[_dbLoadBizData] customers from DB:', _dbCusts.length, '| local D.cust:', D.cust.length, '| error:', cust.error?.message||'none');
     if(!_is107 || _dbCusts.length){
-      // Merge: DB records are authoritative, but preserve any local-only records
-      // (customers added but not yet confirmed in DB) to avoid race condition
-      var _dbIds = new Set(_dbCusts.map(function(cu){ return cu.id; }));
-      var _localOnly = D.cust.filter(function(cu){ return !_dbIds.has(cu.id); });
-      D.cust = _dbCusts.concat(_localOnly);
+      // DB is authoritative on full load — do NOT merge local-only records.
+      // The _localOnly merge was causing deleted customers to reappear:
+      // stale localStorage cache put them in D.cust, then they were preserved
+      // as "local-only" even though they were correctly deleted from Supabase.
+      D.cust = _dbCusts;
     }
       _cacheCust(); // update cache with fresh DB data
     if(!_is107 || (sales.data||[]).length)     D.sales     = (sales.data||[]).map(_dbToSale);
@@ -13603,6 +13600,9 @@ function _loadCustCache(){
 async function _dbDelCust(id){
   if(!_sb||!SESSION.bizId) return;
   await _sb.from('customers').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  // Immediately update localStorage cache so stale deleted customer cannot
+  // be restored by _loadCustCache on the next page refresh
+  _cacheCust();
 }
 async function _dbSaveSale(s){
   if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
