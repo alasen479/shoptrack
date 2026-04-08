@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775610012");
+console.log("ShopTrack v2.5 - build:1775610382");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -9264,7 +9264,7 @@ function pgCatalog(){
     var imgHtml = s.imgDataUrl
       ? '<img loading="lazy" src="'+s.imgDataUrl+'" style="width:100%;height:100%;object-fit:cover;display:block"/>'
       : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;background:'+s.color+'18">✂️</div>';
-    itemCards += '<div class="icard" data-cat="'+_esc(s.cat||'')+'" onclick="mEditSvc(\''+s.id+'\')"><div class="icard-img" style="height:140px;overflow:hidden">'+imgHtml+'</div><div class="icard-body"><div class="icard-name">'+_esc(s.name)+'</div><div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(s.cat||'')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;font-weight:700;color:'+ptColor+'">'+_esc(priceLabel)+'</span><span style="font-size:10px;color:var(--text3)">· '+_esc(durLabel)+'</span></div></div></div>';
+    itemCards += '<div class="icard" data-cat="'+_esc(s.cat||'')+'" onclick="mNewAppt();setTimeout(function(){var el=document.getElementById(\'na-s\');if(el){el.value=\''+s.id+'\';_naSync();}},100)" title="Book this service"><div class="icard-img" style="height:140px;overflow:hidden">'+imgHtml+'</div><div class="icard-body"><div class="icard-name">'+_esc(s.name)+'</div><div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(s.cat||'')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;font-weight:700;color:'+ptColor+'">'+_esc(priceLabel)+'</span><span style="font-size:10px;color:var(--text3)">· '+_esc(durLabel)+'</span></div></div></div>';
   });
 
   if(!itemCards){
@@ -9285,11 +9285,11 @@ function pgCatalog(){
     +'<div class="fg"><label class="fl">Catalog Name</label><input class="fi" id="cat-name-input" value="'+_esc(catName)+'"/></div>'
     +'<div class="fg"><label class="fl">Cover Tagline</label><input class="fi" id="cat-tagline-input" value="'+_esc(catTagline)+'"/></div>'
     +'<div class="fg-2">'
-    +'<div class="fg"><label class="fl">Show Prices</label><select class="fs"><option>Show All Prices</option><option>Sale Only</option><option>Rental Only</option><option>Hide Prices</option></select></div>'
-    +'<div class="fg"><label class="fl">Filter Status</label><select class="fs"><option>Both Sale &amp; Rent</option><option>For Sale Only</option><option>For Rent Only</option></select></div>'
+    +'<div class="fg"><label class="fl">Show Prices</label><select class="fs" id="cat-show-prices"><option value="all">Show All Prices</option><option value="sale">Sale Only</option><option value="rent">Rental Only</option><option value="hide">Hide Prices</option></select></div>'
+    +'<div class="fg"><label class="fl">Filter Status</label><select class="fs" id="cat-filter-status"><option value="both">Both Sale &amp; Rent</option><option value="sale">For Sale Only</option><option value="rent">For Rent Only</option></select></div>'
     +'</div>'
     +'<div class="fg"><label class="fl">Contact Info</label><input class="fi" id="cat-contact" value="'+_esc((BIZ.email||'')+(BIZ.phone?' | '+BIZ.phone:''))+'"/></div>'
-    +'<button class="btn btn-p" onclick="BIZ.catalogName=document.getElementById(\'cat-name-input\')?.value||BIZ.catalogName||\''+_esc(defaultCatName)+'\';BIZ.catalogTagline=document.getElementById(\'cat-tagline-input\')?.value||\'\';_dbSaveBizProfile(SESSION.bizId);toast(\'Catalog settings saved \u2713\',\'success\')">Save Settings</button>'
+    +'<button class="btn btn-p" onclick="BIZ.catalogContact=document.getElementById(\'cat-contact\')?.value||BIZ.catalogContact||\'\';BIZ.catalogPrices=document.getElementById(\'cat-show-prices\')?.value||BIZ.catalogPrices||\'\';BIZ.catalogStatus=document.getElementById(\'cat-filter-status\')?.value||BIZ.catalogStatus||\'\';BIZ.catalogName=document.getElementById(\'cat-name-input\')?.value||BIZ.catalogName||\''+_esc(defaultCatName)+'\';BIZ.catalogTagline=document.getElementById(\'cat-tagline-input\')?.value||\'\';_dbSaveBizProfile(SESSION.bizId);toast(\'Catalog settings saved \u2713\',\'success\')">Save Settings</button>'
     +'</div>'
     +'<div class="card" style="background:linear-gradient(135deg,var(--bg3),var(--bg4));border-style:dashed;text-align:center;padding:28px">'
     +'<div style="font-size:44px;margin-bottom:10px">📋</div>'
@@ -16428,13 +16428,24 @@ function genCatalogDoc(){
   const primary  = BIZ.primaryColor  || '#e8667a';
   const accent   = BIZ.accentColor   || '#f5a623';
   const p        = primary;
-  const invItems = D.inv.filter(i=>(i.sp||i.rp) && i.st!=='Archived');
+  // Read catalog settings saved by Save Settings
+  var _catPrices = BIZ.catalogPrices || 'all'; // all | sale | rent | hide
+  var _catStatus = BIZ.catalogStatus || 'both'; // both | sale | rent
+  // Apply status filter to inventory
+  var invItems = D.inv.filter(function(i){
+    if(i.st==='Archived') return false;
+    if(_catStatus==='sale') return i.st==='For Sale'||i.st==='Both';
+    if(_catStatus==='rent') return i.st==='For Rent'||i.st==='Both';
+    return i.sp||i.rp; // both: show anything priced
+  });
   const svcItems = (D.services||[]).filter(s=>s.active!==false);
   const catName  = BIZ.catalogName   || ((BIZ.name||'Our') + ' Service Catalog');
   const tagline  = BIZ.catalogTagline|| BIZ.tagline || '';
   const totalCount = invItems.length + svcItems.length;
 
-  const footerContact = [BIZ.phone, BIZ.email, BIZ.website].filter(Boolean).join('  |  ');
+  const footerContact = (BIZ.catalogContact && BIZ.catalogContact.trim())
+    ? BIZ.catalogContact
+    : [BIZ.phone, BIZ.email, BIZ.website].filter(Boolean).join('  |  ');
   const footerSocials = [
     BIZ.whatsapp  ? '\u{1F4AC} '+BIZ.whatsapp  : '',
     BIZ.instagram ? '\u{1F4F8} @'+BIZ.instagram : '',
@@ -16463,7 +16474,7 @@ function genCatalogDoc(){
         +'<div class="cat-card-name">'+_esc(s.name)+'</div>'
         +'<div class="cat-card-meta">'+_esc(dur)+(pt!=='flat'?' · '+_ptLabel(pt):'')+'</div>'
         +(s.desc?'<div class="cat-card-desc">'+_esc(s.desc.substring(0,110))+(s.desc.length>110?'…':'')+'</div>':'')
-        +'<div class="cat-card-prices"><div><span class="cat-price-sale">'+_esc(priceDisp)+'</span></div></div>'
+        +(_catPrices!=='hide'?'<div class="cat-card-prices"><div><span class="cat-price-sale">'+_esc(priceDisp)+'</span></div></div>':'')
         +'</div></div>';
     });
     svcSections += '</div>';
@@ -16471,10 +16482,16 @@ function genCatalogDoc(){
 
   // Build inventory sections
   var invSections = '';
-  const invCats = [...new Set(invItems.map(i=>i.cat).filter(Boolean))];
+  // Include items with no category under 'Uncategorized'
+  var _invNoCat = invItems.filter(function(i){return !i.cat;});
+  const invCats = [...new Set(invItems.map(function(i){return i.cat||null;}).filter(Boolean))];
+  if(_invNoCat.length) invCats.push('__uncategorized__');
   invCats.forEach(function(cat){
-    var catItems = invItems.filter(i=>i.cat===cat);
-    invSections += '<div class="cat-section-hd">'+_esc(cat)+' <span style="font-weight:400;opacity:.6">('+catItems.length+' item'+(catItems.length>1?'s':'')+')</span></div>';
+    var catItems = cat==='__uncategorized__'
+      ? invItems.filter(function(i){return !i.cat;})
+      : invItems.filter(function(i){return i.cat===cat;});
+    var catLabel = cat==='__uncategorized__' ? 'Other Items' : cat;
+    invSections += '<div class="cat-section-hd">'+_esc(catLabel)+' <span style="font-weight:400;opacity:.6">('+catItems.length+' item'+(catItems.length>1?'s':'')+')</span></div>';
     invSections += '<div class="cat-grid">';
     catItems.forEach(function(it){
       var avail=(it.qty||0)-(it.rented||0);
@@ -16490,8 +16507,8 @@ function genCatalogDoc(){
         +(meta?'<div class="cat-card-meta">'+_esc(meta)+'</div>':'')
         +(it.desc?'<div class="cat-card-desc">'+_esc(it.desc.substring(0,110))+(it.desc.length>110?'…':'')+'</div>':'')
         +'<div class="cat-card-prices">'
-        +(it.sp?'<div><span class="cat-price-sale">'+fmtDoc(it.sp)+'</span> <span class="cat-price-label">Buy</span></div>':'')
-        +(it.rp?'<div><span class="cat-price-rent">'+fmtDoc(it.rp)+'<span style="font-size:9px">/day</span></span> <span class="cat-price-label">Rent</span></div>':'')
+        +(_catPrices!=='rent'&&_catPrices!=='hide'&&it.sp?'<div><span class="cat-price-sale">'+fmtDoc(it.sp)+'</span> <span class="cat-price-label">Buy</span></div>':'')
+        +(_catPrices!=='sale'&&_catPrices!=='hide'&&it.rp?'<div><span class="cat-price-rent">'+fmtDoc(it.rp)+'<span style="font-size:9px">/day</span></span> <span class="cat-price-label">Rent</span></div>':'')
         +(avail>0?'<span class="cat-avail-badge" style="margin-left:auto">'+avail+' avail</span>':'')
         +'</div></div></div>';
     });
