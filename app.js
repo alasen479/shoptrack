@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775609050");
+console.log("ShopTrack v2.5 - build:1775609650");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -22087,8 +22087,15 @@ function _apptCheckout(id){
   }
   refreshLiveKpis();
   addAudit('Appointment checkout',a.id+' → Sale '+sid+' '+fmt(a.totalAmt));
-  toast('Sale '+sid+' created for '+a.custName,'success');
-  setTimeout(()=>{ if(confirm('Generate receipt for '+a.custName+'?')) genReceiptDoc(sid); },300);
+  toast('Sale '+sid+' created for '+a.custName+' ✓','success');
+  closeModal();
+  setTimeout(function(){
+    modal('Receipt Ready',
+      '<div class="alrt alrt-g" style="margin-bottom:12px">Payment of <strong>'+fmt(a.totalAmt)+'</strong> recorded for '+_esc(a.custName)+'.</div>',
+      '<button class="btn btn-s" onclick="closeModal()">Done</button>'
+      +'<button class="btn btn-p" onclick="closeModal();genReceiptDoc(\''+sid+'\')">🧾 Generate Receipt</button>'
+    );
+  }, 300);
 }
 
 function _apptWA(id){
@@ -22104,7 +22111,7 @@ function _updAppt(id){
   const a=D.appointments.find(x=>x.id===id); if(!a) return;
   a.st=document.getElementById('va-st')?.value||a.st;
   a.notes=document.getElementById('va-n')?.value||'';
-  _dbSaveAppt(a); _updateApptBadge();
+  _dbSaveAppt(a); refreshLiveKpis(); _updateApptBadge();
   addAudit('Appointment updated',id+' → '+a.st);
   closeModal(); toast('Saved','success'); nav('appointments');
 }
@@ -22627,6 +22634,7 @@ function _saveEditAppt(id){
   a.st=(document.getElementById('ea-status')||{}).value||a.st;
   a.notes=(document.getElementById('ea-notes')||{}).value||'';
   _dbSaveAppt(a);
+  refreshLiveKpis(); _updateApptBadge();
   addAudit('Appt edited',id+' \u2014 '+a.custName+' '+a.date);
   toast('Appointment updated \u2713','success'); closeModal(); nav('appointments');
 }
@@ -22648,7 +22656,7 @@ function mCancelAppt(id){
     +'var rs=(document.getElementById(\'ca-reason\')||{}).value||\'\';'
     +'var a2=D.appointments.find(function(x){return x.id===\''+id+'\';});'
     +'if(a2){a2.st=ns?\'No-Show\':\'Cancelled\';a2.notes=(a2.notes?a2.notes+\' | \':\'\')+(rs||\'Cancelled\');'
-    +'_dbSaveAppt(a2);addAudit(\'Appt \'+(ns?\'no-show\':\'cancelled\'),\''+id+'\');'
+    +'_dbSaveAppt(a2);refreshLiveKpis();_updateApptBadge();addAudit(\'Appt \'+(ns?\'no-show\':\'cancelled\'),\''+id+'\');'
     +'toast(a2.custName+\' \u2014 \'+(ns?\'No-Show\':\'Cancelled\'),\'success\');}'
     +'closeModal();nav(\'appointments\');'
     +'})()">&#10060; Confirm</button>','sm');
@@ -22701,6 +22709,7 @@ function _saveReschedule(id){
   var reason=(document.getElementById('rs-reason')||{}).value||'Rescheduled';
   a.notes=(a.notes?a.notes+' | ':'')+('Rescheduled from '+oldDate+' '+_timeLabel(oldTime)+': '+reason);
   a.st='Confirmed'; _dbSaveAppt(a);
+  refreshLiveKpis(); _updateApptBadge();
   addAudit('Appt rescheduled',id+' \u2192 '+a.date+' '+a.startTime);
   if(a.custPhone){
     var ph=a.custPhone.replace(/[^0-9]/g,'');
@@ -22718,6 +22727,7 @@ function _apptBulkConfirm(){
   if(!reserved.length){toast('No pending appointments to confirm','info');return;}
   confirmDo('Confirm all <strong>'+reserved.length+'</strong> pending appointments?',function(){
     reserved.forEach(function(a){a.st='Confirmed';_dbSaveAppt(a);});
+    refreshLiveKpis(); _updateApptBadge();
     toast(reserved.length+' appointments confirmed ✓','success'); nav('appointments');
   }, 'Confirm All', 'btn-p');
 }
@@ -24919,6 +24929,7 @@ function _saveAppt(){
   const a={id:_newApptId(),serviceId:svc?.id||'',serviceName:svc?.name||'Custom',custId:cId,custName:cName,custPhone:ph,staffId:stfId,staffName:stfName,date,startTime:st,endTime:et,st:'Reserved',notes,walkIn:wi,totalAmt:amt/CUR.rate,createdAt:localDateStr()};
   D.appointments.unshift(a);
   _dbSaveAppt(a);
+  refreshLiveKpis();
   _updateApptBadge();
   addAudit('Appointment booked',a.id+' — '+cName+' — '+a.serviceName+' '+date);
   _notifEvent('newAppointment',{cust:a.custName,svc:a.serviceName,date:a.date});
@@ -24999,6 +25010,7 @@ function _saveApptEdit(id){
   a.notes     = newNotes;
   a.payMethod = newMeth;
   _dbSaveAppt(a);
+  refreshLiveKpis();
   // Sync linked sale if present
   if(a.saleId){
     var sale = D.sales.find(function(s){return s.id===a.saleId;});
