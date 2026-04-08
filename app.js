@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775609650");
+console.log("ShopTrack v2.5 - build:1775610012");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -21750,9 +21750,9 @@ function filterLedger(el, type){
 // ============================================================
 
 // ── DB helpers ──────────────────────────────────────────────
-async function _dbToService(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null}; }
+function _dbToService(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null,costLines:r.cost_lines?JSON.parse(r.cost_lines):null}; }
 function _dbToAppt(r){ return {id:r.id,serviceId:r.service_id||'',serviceName:r.service_name||'',custId:r.customer_id||'',custName:r.customer_name||'',custPhone:r.customer_phone||'',staffId:r.staff_id||'',staffName:r.staff_name||'',date:r.date||'',startTime:r.start_time||'',endTime:r.end_time||'',st:r.status||'Reserved',notes:r.notes||'',walkIn:r.walk_in||false,totalAmt:r.total_amount||0,payMethod:r.pay_method||'Cash',saleId:r.sale_id||'',createdAt:r.created_at||''}; }
-function _serviceDB(s,bizId){ return {id:s.id,biz_id:bizId,name:s.name,duration_mins:s.duration,price:s.price||0,price_type:s.priceType||'flat',category:s.cat||'',color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null}; }
+function _serviceDB(s,bizId){ return {id:s.id,biz_id:bizId,name:s.name,duration_mins:s.duration,price:s.price||0,price_type:s.priceType||'flat',category:s.cat||'',color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null,cost_lines:s.costLines?JSON.stringify(s.costLines):null}; }
 function _apptDB(a,bizId){ return {id:a.id,biz_id:bizId,service_id:a.serviceId,service_name:a.serviceName,customer_id:a.custId,customer_name:a.custName,customer_phone:a.custPhone,staff_id:a.staffId,staff_name:a.staffName,date:a.date,start_time:a.startTime,end_time:a.endTime,status:a.st,notes:a.notes,walk_in:a.walkIn,total_amount:a.totalAmt,pay_method:a.payMethod||'',sale_id:a.saleId||''}; }
 async function _dbSaveService(s){
   if(!_sb) return;
@@ -22744,6 +22744,7 @@ function mEditService(id){ mEditSvc(id); }
 
 async function mNewService(){
   await _syncCatsFromDB();
+  window._svcImgData = undefined; window._svcExistingImg = undefined; // fresh modal
   const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId).map(u=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="${u.id}" style="accent-color:var(--a)"/> ${u.name}</label>`).join('');
   const ptOpts=_PRICE_TYPES.map(pt=>`<option value="${pt.value}">${pt.label}</option>`).join('');
   if(!D.svcCats||!D.svcCats.length) D.svcCats=['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
@@ -22800,6 +22801,9 @@ async function mNewService(){
 async function mEditSvc(id){
   await _syncCatsFromDB();
   const s=D.services.find(x=>x.id===id); if(!s) return;
+  // Track existing photo so _getSvcData can preserve it if user doesn't upload a new one
+  window._svcImgData = undefined; // reset any previous upload
+  window._svcExistingImg = s.imgDataUrl || null;
   const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId).map(u=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="${u.id}" ${(s.staffIds||[]).includes(u.id)?'checked':''} style="accent-color:var(--a)"/> ${u.name}</label>`).join('');
   const pt=s.priceType||'flat';
   const ptOpts=_PRICE_TYPES.map(p=>`<option value="${p.value}"${p.value===pt?' selected':''}>${p.label}</option>`).join('');
@@ -22907,19 +22911,25 @@ function _getSvcData(){
   const priceType = document.getElementById('sv-pt')?.value || 'flat';
   const cat = document.getElementById('sv-cat')?.value || '';
   // Use newly uploaded image, or preserve existing (set by edit modal)
-  const imgDataUrl = window._svcImgData !== undefined ? window._svcImgData : (window._svcImgData || null);
+  // If user uploaded a new photo, use it; otherwise preserve existing (set by edit modal) or null
   const result = {name:nm,cat,duration:parseInt(document.getElementById('sv-du')?.value)||0,price:(parseFloat(document.getElementById('sv-pr')?.value)||0)/CUR.rate,priceType,color:document.getElementById('sv-cl')?.value||'#4361ee',desc:document.getElementById('sv-ds')?.value||'',active:document.getElementById('sv-ac')?.checked!==false,staffIds:[...document.querySelectorAll('#sv-stl input:checked')].map(e=>e.value),costLines:_cbReadLines('cs')};
-  if(window._svcImgData !== undefined) result.imgDataUrl = window._svcImgData;
+  if(window._svcImgData !== undefined && window._svcImgData !== null) {
+    result.imgDataUrl = window._svcImgData; // new upload
+  } else if(window._svcExistingImg !== undefined) {
+    result.imgDataUrl = window._svcExistingImg; // preserve existing from edit
+  }
   window._svcImgData = undefined; // reset after use
   return result;
 }
 async function _saveSvc(){
+  if(_planWriteBlocked('Adding a service','services')) return;
   const d=_getSvcData(); if(!d) return;
   const s={id:_newSvcId(),...d};
   D.services.push(s);
   closeModal();
   toast(s.name+' saving to cloud…','info');
   await _dbSaveService(s);
+  refreshLiveKpis();
   addAudit('Service added',s.id+' '+s.name);
   toast(s.name+' added & synced to booking page ✓','success');
   nav('services');
@@ -22931,6 +22941,7 @@ async function _saveSvcEdit(id){
   closeModal();
   toast(s.name+' saving to cloud…','info');
   await _dbSaveService(s);
+  refreshLiveKpis();
   addAudit('Service updated',id+' '+s.name);
   toast(s.name+' updated & synced ✓','success');
   nav('services');
@@ -22963,6 +22974,7 @@ function _delSvc(id){
     if(btn) btn.onclick=function(){
       D.services=D.services.filter(function(x){return x.id!==mid;});
       _dbDelService(mid);
+      refreshLiveKpis();
       addAudit('Service deleted',mid+' — '+mname);
       closeModal();
       toast(mname+' deleted','success');
