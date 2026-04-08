@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775606897");
+console.log("ShopTrack v2.5 - build:1775607470");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5685,7 +5685,7 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
 <div class="card">
   <div class="tbl-wrap"><table>
     <thead><tr><th>Rental #</th><th>Customer</th><th>Item</th><th>Start</th><th>Due</th><th>Status</th><th>Fee</th><th>Deposit</th><th>Late Fee</th><th>Condition</th><th>Docs</th><th>Actions</th></tr></thead>
-    <tbody id="rentals-tbody">${D.rentals.map(r=>`<tr data-status="${r.st}" data-start="${r.start}" data-date="${r.start}">
+    <tbody id="rentals-tbody">${D.rentals.map(r=>`<tr data-status="${r.st}" data-start="${r.start}" data-date="${r.start}" data-cust="${(r.cust||'')}" data-item="${(r.item||'')}" data-id="${r.id}">
       <td>${mono(r.id,'a')}</td>
       <td><strong style="color:var(--ink)">${r.cust}</strong></td>
       <td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis">${r.item}</td>
@@ -5696,6 +5696,7 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
       <td>${mono(fmt(r.dep),'y')}</td>
       <td>${mono(r.lf>0?fmt(r.lf):'—',r.lf>0?'r':'text3')}</td>
       <td><div class="cond ${cc(r.cb)}" style="font-size:10px"><div class="cdot"></div>${r.cb}${r.ca?` → ${r.ca}`:''}</div></td>
+        <button class="btn btn-p btn-xs" onclick="mRecordPayment('${r.id}')" title="Record Payment">&#x1F4B0;</button>
       <td>${r.docs&&r.docs.length?`<span style="display:inline-flex;align-items:center;gap:3px;background:var(--a-dim);color:var(--a);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer" onclick="mRentalDetail('${r.id}')">📎 ${r.docs.length}</span>`:`<button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')" style="opacity:.6">+ Doc</button>`}</td>
       <td><div class="btn-row">
         ${r.st==='Overdue'?`<button class="btn btn-g btn-xs" onclick="_rentalWARemind('${r.id}')" title="Send WhatsApp reminder">💬</button>`:''}        ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-xs" onclick="mReturn('${r.id}')">↩ Return</button>`:''}
@@ -5847,9 +5848,10 @@ async function mCreateRental(startDate){
     var cond=document.getElementById('cr-cond').value;
     var notes=document.getElementById('cr-notes').value;
     var method=document.getElementById('cr-method').value;
-    // Create one rental record per item
+    // Plan gate before creating records
     if(_isFreePlan()){ _showPremiumUpgradePrompt('rentals'); return; }
-    if(_planWriteBlocked('Creating a rental')) return;
+    if(_planWriteBlocked('Creating a rental','rentals')) return;
+    // Create one rental record per item
     crItems.forEach(function(itemObj,idx){
       itemObj.rented=(itemObj.rented||0)+1;
       var _maxRNum=D.rentals.reduce(function(m,r){var n=parseInt((r.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
@@ -6161,10 +6163,15 @@ function processReturn(rid){
   // ── Restore rented count and persist to Supabase ──────────
   var inv2=D.inv.find(function(i){return i.id===rental.itemId;});
   if(inv2&&inv2.rented>0){ inv2.rented--; _dbSaveInv(inv2); }
-  // ── Clear customer AR balance for this rental ─────────────
-  if(unpaidFee>0){
-    var _custR=D.cust.find(function(c){return c.id===rental.custId||c.name===rental.cust;});
-    if(_custR){ _custR.bal=Math.max(0,(_custR.bal||0)-unpaidFee); _dbSaveCust(_custR); }
+  // \u2500\u2500 Update customer: clear AR, record spend \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  var _custR=D.cust.find(function(c){return c.id===rental.custId||c.name===rental.cust;});
+  if(_custR){
+    if(unpaidFee>0){
+      _custR.bal=Math.max(0,(_custR.bal||0)-unpaidFee);
+      _custR.spent=(_custR.spent||0)+unpaidFee;
+      _custR.spend=_custR.spent;
+    }
+    _dbSaveCust(_custR);
   }
   refreshLiveKpis();
   addAudit('Rental returned',rid+' - '+rental.cust+' - '+cond+(dmg>0?' - dmg:'+fmt(dmg):''));
@@ -13418,6 +13425,10 @@ function _rentalToDB(r, bizId){ return {
   status:r.st||'Reserved',
   condition_before:r.cb||'Good', condition_after:r.ca||'',
   late_fee:r.lf||0, return_date:r.returnDate||null,
+    return_notes:r.returnNotes||null,
+    dmg_deduction:r.dmgDeduction||0,
+    refund:r.refund||0,
+    notes:r.notes||'',
   contract_signed:r.contractSigned||false,
   contract_sig_url:r.contractSigUrl||null,
   contract_signed_date:r.contractSignedDate||null,
@@ -18962,6 +18973,7 @@ function mEditRental(id){
    <button class="btn btn-p" onclick="saveEditRental('${id}')">💾 Save</button>`);
 }
 function saveEditRental(id){
+  var _erPrevPaid=D.rentals.find(function(x){return x.id===id;})?.paid||0;
   const r=D.rentals.find(x=>x.id===id);if(!r)return;
   const custSel=document.getElementById('er-cust');
   if(custSel&&custSel.value){
@@ -18979,6 +18991,16 @@ function saveEditRental(id){
   const st=document.getElementById('er-st')?.value; if(st) r.st=st;
   const notes=document.getElementById('er-notes')?.value; if(notes!==undefined) r.notes=notes;
   if(typeof r.paid==='undefined') r.paid=0;
+  // Update customer AR if paid amount changed
+  if(typeof _erPrevPaid!=='undefined'){
+    var _erPaidDiff=(r.paid||0)-_erPrevPaid;
+    var _erCu=D.cust.find(function(c){return c.id===r.custId||c.name===r.cust;});
+    if(_erCu&&_erPaidDiff!==0){
+      if(_erPaidDiff>0){_erCu.spent=(_erCu.spent||0)+_erPaidDiff;_erCu.spend=_erCu.spent;}
+      _erCu.bal=Math.max(0,(_erCu.bal||0)-_erPaidDiff);
+      _dbSaveCust(_erCu);
+    }
+  }
   addAudit('Rental edited',id+' — '+r.cust);
   _dbSaveRental(D.rentals.find(x=>x.id===id));
   refreshLiveKpis();
@@ -19603,8 +19625,24 @@ let _acctPeriod = 'month';
 
 function refreshLiveKpis(){
   const range=PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month;
+  // Auto-update overdue status and calculate daily late fees
+  var _today=localDateStr();
+  var _dailyLFRate=(BIZ.lateFeeRate||0)/CUR.rate; // daily late fee in base currency
+  D.rentals.forEach(function(r){
+    if(r.st==='Checked Out'||r.st==='Overdue'||r.st==='Reserved'){
+      if(r.due && r.due<_today && r.st!=='Returned'&&r.st!=='Closed'){
+        r.st='Overdue';
+        // Calculate late fee: days overdue × daily rate (if rate configured)
+        if(_dailyLFRate>0){
+          var _daysOver=Math.ceil((new Date(_today+'T00:00:00')-new Date(r.due+'T00:00:00'))/86400000);
+          r.lf=Math.round(_daysOver*_dailyLFRate*100)/100;
+        }
+      } else if(r.due && r.due>=_today && r.st==='Overdue'){
+        r.st='Checked Out'; // Due date extended - no longer overdue
+      }
+    }
+  });
   // Reconcile customer balances from live sales data before computing KPIs
-  // This ensures AR is always in sync after payments are recorded in-session
   _reconcileCustomerTotals();
   // Reconcile vendor balances from purchases
   _reconcileVendorTotals();
@@ -20137,14 +20175,17 @@ function _rentalsFilter(){
   const q      = (document.getElementById('rent-search')?.value||'').toLowerCase();
   const status = (document.getElementById('rent-status-sel')?.value||'') || _rentalsCurrentStatus;
   const range  = _rentalsCurrentRange;
-
   let visible = 0;
   document.querySelectorAll('#rentals-tbody tr').forEach(function(row){
-    const dt  = row.dataset.start || row.dataset.date || '';
-    const rst = row.dataset.status || '';
-    const inR = !range  || inRange(dt, range);
-    const inS = !status || rst === status;
-    const inQ = !q      || row.textContent.toLowerCase().includes(q);
+    const dt   = row.dataset.start || row.dataset.date || '';
+    const rst  = row.dataset.status || '';
+    const rcust= (row.dataset.cust  || '').toLowerCase();
+    const ritem= (row.dataset.item  || '').toLowerCase();
+    const rid  = (row.dataset.id    || '').toLowerCase();
+    const inR  = !range  || inRange(dt, range);
+    const inS  = !status || rst === status;
+    const inQ  = !q || rcust.includes(q) || ritem.includes(q) || rid.includes(q)
+                     || row.textContent.toLowerCase().includes(q);
     const show = inR && inS && inQ;
     row.style.display = show ? '' : 'none';
     if(show) visible++;
@@ -23275,6 +23316,7 @@ function _updateCurPreview(code){
 }
 
 // ── Save financial settings properly ─────────────────────────────────────────
+// Late fee rate stored on BIZ object; editable in Settings > Financial
 function _saveFinancialSettings(){
   const taxRate = parseFloat(document.getElementById('fin-tax-rate')?.value)||0;
   const taxName = (document.getElementById('fin-tax-name')?.value||'VAT').trim();
