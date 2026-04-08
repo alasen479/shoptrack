@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775608302");
+console.log("ShopTrack v2.5 - build:1775608769");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -6933,7 +6933,7 @@ function pgCust(){const _ui=_L();
     const phone   = c.ph||c.phone||'';
     const type    = c.type||c.tier||'Regular';
     const spend   = c.spend||c.spent||0;
-    return '<tr data-name="'+(name).toLowerCase()+'" data-email="'+(c.email||'').toLowerCase()+'" data-type="'+type+'" data-bal="'+(c.bal>0?'outstanding':'cleared')+'"'
+    return '<tr data-name="'+(name).toLowerCase()+'" data-email="'+(c.email||'').toLowerCase()+'" data-type="'+type+'" data-bal="'+(c.bal>0?'outstanding':'cleared')+'" data-phone="'+((c.ph||c.phone||'').toLowerCase())+'" data-id="'+c.id+'"'
       +' style="cursor:pointer" onclick="mViewCustomer(\''+c.id+'\')">'
       +'<td>'
         +'<div style="display:flex;align-items:center;gap:9px">'
@@ -7018,18 +7018,18 @@ function filterCustTable(){
   var q    = (document.getElementById('cust-search')?.value||'').toLowerCase();
   var type = document.getElementById('cust-type-filter')?.value||'';
   var bal  = document.getElementById('cust-bal-filter')?.value||'';
-  var visible=0, visibleAR=0;
+  var visible=0, visibleAR=0, visibleSpend=0;
   document.querySelectorAll('#cust-tbody tr').forEach(function(row){
-    var nameMatch  = !q || (row.dataset.name||'').includes(q) || (row.dataset.email||'').includes(q) || row.textContent.toLowerCase().includes(q);
+    var nameMatch  = !q || (row.dataset.name||'').includes(q) || (row.dataset.email||'').includes(q)
+                       || (row.dataset.phone||'').includes(q) || row.textContent.toLowerCase().includes(q);
     var typeMatch  = !type || row.dataset.type === type;
     var balMatch   = !bal  || row.dataset.bal  === bal;
     var show = nameMatch && typeMatch && balMatch;
     row.style.display = show ? '' : 'none';
     if(show){
       visible++;
-      // Sum AR for visible rows
-      const custId = row.querySelector('[onclick*="mViewCustomer"]')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
-      if(custId){ const c=D.cust.find(x=>x.id===custId); if(c) visibleAR+=c.bal||0; }
+      var custId = row.dataset.id;
+      if(custId){ var c=D.cust.find(function(x){return x.id===custId;}); if(c){ visibleAR+=(c.bal||0); visibleSpend+=(c.spend||c.spent||0); } }
     }
   });
   const emptyEl = document.getElementById('cust-empty');
@@ -7040,6 +7040,13 @@ function filterCustTable(){
   const arEl    = document.getElementById('cust-footer-ar');
   if(countEl) countEl.textContent = visible+' customer'+(visible!==1?'s':'');
   if(arEl)    arEl.textContent    = fmt(visibleAR);
+  // Also update listing KPI tiles with filtered totals
+  var _custKpiAR  = document.getElementById('cust-kpi-ar');
+  var _custKpiSp  = document.getElementById('cust-kpi-spend');
+  var _custKpiCnt = document.getElementById('cust-kpi-count');
+  if(_custKpiAR)  _custKpiAR.textContent  = fmt(visibleAR);
+  if(_custKpiSp)  _custKpiSp.textContent  = fmt(visibleSpend);
+  if(_custKpiCnt) _custKpiCnt.textContent = visible;
 }
 
 function mAddCustomer(_returnSelectId){
@@ -7078,6 +7085,7 @@ function mAddCustomer(_returnSelectId){
       visits:0, orders:0, last:localDateStr()
     });
     _dbSaveCust(D.cust[0]);
+    refreshLiveKpis();
     addAudit('Customer added',nid+' — '+name);
     if(D.cust.length===1&&D.inv.length>0&&D.sales.length>0) _track('Activated');
     toast(name+' added','success');
@@ -7146,6 +7154,7 @@ function _saveEditCustomer(id){
   c.dob      = document.getElementById('ec-dob')?.value||c.dob||'';
   c.vip      = c.type==='VIP';
   _dbSaveCust(D.cust.find(x=>x.id===id));
+    refreshLiveKpis();
   addAudit('Customer updated', id+' — '+name);
   toast(name+' updated','success');
   closeModal();
@@ -7208,6 +7217,7 @@ function mViewCustomer(id){
    <button class="btn btn-s" onclick="closeModal()">Close</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mEditCustomer('${c.id}')">✏ Edit</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mCustomerStatement('${c.id}')">📄 Statement</button>
+   ${phone?`<button class="btn btn-g btn-sm" onclick="_arSendWA('${c.id}')">&#x1F4AC; WhatsApp</button>`:''}
    ${c.bal>0?`<button class="btn btn-p btn-sm" onclick="closeModal();mCollectBalance('${c.id}')">💰 Collect Balance</button>`:''}
    `,'lg');
 }
@@ -7242,6 +7252,7 @@ function mDeleteCustomer(id){
     if(btn) btn.onclick=function(){
       D.cust=D.cust.filter(function(x){return x.id!==mid;});
       _dbDelCust(mid);
+        refreshLiveKpis();
       addAudit('Customer deleted',mid+' — '+mname);
       closeModal(); toast(mname+' removed','success'); nav('customers');
     };
@@ -7253,8 +7264,12 @@ function mCustomerStatement(id){
   // Match by both custId and name to catch all records
   const custSales = D.sales.filter(s=>s.custId===c.id||s.cust===c.name)
     .sort((a,b)=>b.dt.localeCompare(a.dt));
-  const totalCharged = custSales.reduce((a,s)=>a+(s.total||s.amt||0),0);
-  const totalPaid    = custSales.reduce((a,s)=>a+(s.paid||0),0);
+  const custRentals = D.rentals.filter(r=>r.custId===c.id||r.cust===c.name)
+    .sort((a,b)=>b.start.localeCompare(a.start));
+  const totalCharged = custSales.reduce((a,s)=>a+(s.total||s.amt||0),0)
+                     + custRentals.filter(r=>r.st==='Returned').reduce((a,r)=>a+(r.fee||0),0);
+  const totalPaid    = custSales.reduce((a,s)=>a+(s.paid||0),0)
+                     + custRentals.filter(r=>r.st==='Returned').reduce((a,r)=>a+(r.paid||r.fee||0),0);
   const phone = c.ph||c.phone||'';
 
   modal(`📄 Statement — ${_esc(c.name)}`,`
@@ -7490,6 +7505,8 @@ function mCollectBalance(custId){
      var cobj=D.cust.find(x=>x.id==='${custId}');
      if(!cobj)return;
      cobj.bal=Math.max(0,(cobj.bal||0)-amtBase);
+     cobj.spent=(cobj.spent||0)+amtBase;
+     cobj.spend=cobj.spent;
      // Find the oldest unpaid sale and apply payment to it first
      var unpaid=D.sales.filter(function(s){return (s.custId===cobj.id||s.cust===cobj.name)&&s.st!=='Paid';})
        .sort(function(a,b){return a.dt.localeCompare(b.dt);});
@@ -13410,8 +13427,9 @@ function _custToDB(c, bizId){ return {
   vip:c.vip||false, notes:c.notes||'',
   spent:c.spent||0, orders:c.orders||0,
   visits:c.visits||c.orders||0, last_visit:c.last||'',
-  balance:c.bal||0, status:c.st||'Active', tier:c.tier||'Regular'
-  // dob/birthday: stored in notes or not persisted — column does not exist in schema
+    tier:c.tier||'Regular',
+    dob:c.dob||c.birthday||'',
+    birthday:c.dob||c.birthday||''
 }; }
 function _saleToDB(s, bizId){ return {
   id:s.id, biz_id:bizId, date:s.dt, customer:s.cust,
