@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775607470");
+console.log("ShopTrack v2.5 - build:1775608302");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -6838,6 +6838,7 @@ function mRecordPurchase(){
 
 function savePO(){
   if(_trialWriteBlocked('Creating a purchase order')) return;
+  if(_planWriteBlocked('Creating a purchase order','purchases')) return;
   var vendorId=(document.getElementById('po-vendor-sel')||{}).value||document.getElementById('po-vendor')?.value||(document.getElementById('po-vendor-sel')||{}).value||document.getElementById('po-vendor')?.value||_ssGetVal('po-vendor-wrap')||'';
   if(!vendorId){toast('Please select a vendor','error');return;}
   var rr=CUR.rate;
@@ -6867,16 +6868,20 @@ function savePO(){
   var poRef=document.getElementById('po-ref').value.trim();
   var _mxPN=D.purchases.reduce(function(m,p){var n=parseInt((p.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0);
   var newId=poRef||('P-'+String(_mxPN+1).padStart(4,'0'));
-  // Update inventory stock for all linked items
-  poLines.forEach(function(li){
-    if(li.invId&&li.invId!=='__custom__'){
-      var invObj=D.inv.find(function(x){return x.id===li.invId;});
-      if(invObj){
-        invObj.qty=(invObj.qty||0)+li.qty;
-        if(poSt==='Paid'&&li.uc) invObj.cost=Math.round((li.uc/rr)*10000)/10000;
+  // Update inventory stock only when PO is marked Received or Paid
+  // Pending/Partial POs do NOT increment stock — goods not yet received
+  if(poSt==='Received'||poSt==='Paid'){
+    poLines.forEach(function(li){
+      if(li.invId&&li.invId!=='__custom__'){
+        var invObj=D.inv.find(function(x){return x.id===li.invId;});
+        if(invObj){
+          invObj.qty=(invObj.qty||0)+li.qty;
+          if(li.uc) invObj.cost=Math.round((li.uc/rr)*10000)/10000;
+          _dbSaveInv(invObj);
+        }
       }
-    }
-  });
+    });
+  }
   var invId=(poLines.find(function(r){return r.invId&&r.invId!=='__custom__';})||{invId:''}).invId;
   var qty=totalQty;
   if(vendorObj){vendorObj.orders=(vendorObj.orders||0)+1;vendorObj.total=(vendorObj.total||0)+total;} // v.bal recomputed by _reconcileVendorTotals in refreshLiveKpis
@@ -7775,6 +7780,7 @@ async function mAddVendor(_returnSelectId){
       st:'Active',bal:0,orders:0
     });
     _dbSaveVendor(D.vendors.find(x=>x.id===nid));
+      refreshLiveKpis();
   addAudit('Vendor added',nid+' — '+name);
     toast(name+' added','success');
     if(window._retSelAV){ _mPopAndSelect(window._retSelAV,nid,name); window._retSelAV=null; }
@@ -7848,6 +7854,7 @@ function _saveEditVendor(id){
   v.method  = v.payment;
   v.notes   = document.getElementById('ev-notes').value.trim();
   _dbSaveVendor(D.vendors.find(x=>x.id===id));
+    refreshLiveKpis();
   addAudit('Vendor updated', id+' — '+name);
   toast(name+' updated','success');
   closeModal();
@@ -18895,6 +18902,20 @@ function saveEditPurchase(id){
   p.notes    = document.getElementById('ep-notes')?.value??p.notes;
   p.st       = newSt;
 
+    // \u2500\u2500 Persist inventory: add stock if newly transitioned to Received/Paid
+    if(wasUnpaid && nowPaid && p.lines && p.lines.length){
+      var _rr=CUR.rate;
+      p.lines.forEach(function(li){
+        if(li.invId && li.invId!=='__custom__'){
+          var _inv=D.inv.find(function(x){return x.id===li.invId;});
+          if(_inv){
+            _inv.qty=(_inv.qty||0)+(li.qty||1);
+            if(li.uc) _inv.cost=Math.round((li.uc/_rr)*10000)/10000;
+            _dbSaveInv(_inv);
+          }
+        }
+      });
+    }
   // ── Fix vendor AP when status changes ──────────────────────
   // If transitioning FROM an unpaid state TO paid/received → reduce AP
   const wasUnpaid = oldSt==='Pending'||oldSt==='Partial'||oldSt==='Unpaid';
@@ -20263,7 +20284,9 @@ function _poFilter(){
   const kTotal   = matching.reduce(function(a,p){return a+(p.total||0);},0);
   const kPending = matching.filter(function(p){return p.st==='Pending'||p.st==='Partial';}).length;
   const kPaid    = matching.filter(function(p){return p.st==='Paid'||p.st==='Received';}).length;
+    var kAP=matching.filter(function(p){return p.st==='Pending'||p.st==='Partial'||p.st==='Unpaid';}).reduce(function(a,p){return a+(p.total||0);},0);
   _setKpiVal('po-kpi-total',   fmtKpi(kTotal));
+    _setKpiVal('po-kpi-ap',      fmtKpi(kAP));
   _setKpiVal('po-kpi-pending', String(kPending));
   _setKpiVal('po-kpi-paid',    String(kPaid));
 
