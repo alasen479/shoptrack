@@ -13277,6 +13277,16 @@ async function _affManage(action, id, record){
 }
 
 async function _affApprove(id){
+  // Re-fetch from DB first to get freshest affiliate_code (avoids stale in-memory state after set-code)
+  if(_sb){
+    try{
+      var {data:fresh} = await _sb.from('affiliates').select('*').eq('id',id).single();
+      if(fresh){
+        var idx=_affiliates.findIndex(function(x){return x.id===id;});
+        if(idx>=0) _affiliates[idx]=fresh; else _affiliates.push(fresh);
+      }
+    }catch(e){ /* fall through to in-memory */ }
+  }
   var a=_affiliates.find(function(x){return x.id===id;});
   if(!a) return;
   var isReactivate = a.status==='suspended';
@@ -13288,9 +13298,9 @@ async function _affApprove(id){
   }
   var r=await _affManage('approve',id);
   if(r.ok){
-    if(a) a.status='approved';
+    a.status='approved';
     _affUpdateKPIs(); _affRenderTable();
-    toast((isReactivate?'Affiliate reactivated':'Affiliate approved \u2713 Code: '+code),'success');
+    toast((isReactivate?'Affiliate reactivated':'Affiliate approved ✓ Code: '+code),'success');
     // Send approval email (only on first approval, not reactivation)
     if(!isReactivate && a.email){
       _affSendApprovalEmail(a);
@@ -13311,15 +13321,16 @@ async function _affSendApprovalEmail(a){
       })
     });
     var rb = await res.json().catch(function(){return{};});
-    if(res.ok){
-      toast('Approval email sent to '+a.email+' \u2713','success');
+    if(res.ok && rb.success){
+      toast('Approval email sent to '+a.email+' ✓','success');
     } else {
-      console.warn('[aff-approve-email] Failed:',rb.error||res.status);
-      toast('Approved, but email failed: '+(rb.error||'check Brevo config'),'warn');
+      var errMsg = rb.error||('HTTP '+res.status);
+      console.warn('[aff-approve-email] Failed:',errMsg, rb.brevo||'');
+      toast('Email failed — '+errMsg,'error');
     }
   }catch(e){
     console.warn('[aff-approve-email] Error:',e.message);
-    toast('Approved \u2713 — email could not be sent','warn');
+    toast('Email could not be sent: '+e.message,'error');
   }
 }
 

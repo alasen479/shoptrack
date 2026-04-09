@@ -180,7 +180,7 @@ exports.handler = async function(event) {
     sender:      { name: 'ShopTrack Affiliates', email: 'support@shoptrack.work' },
     to:          [{ email, name: name || firstName }],
     replyTo:     { email: 'support@shoptrack.work' },
-    subject:     `🎉 You're approved — here's your ShopTrack referral link`,
+    subject:     `Congratulations! Your ShopTrack affiliate link is ready`,
     htmlContent: buildHtml(firstName, affiliate_code, affiliateLink, social_handle || ''),
     textContent: buildText(firstName, affiliate_code, affiliateLink),
   };
@@ -196,7 +196,8 @@ exports.handler = async function(event) {
 
     if (!response.ok) {
       console.error('[aff-approve-email] Brevo error:', response.status, JSON.stringify(data));
-      return { statusCode: response.status, headers, body: JSON.stringify({ error: data.message || 'Brevo API error' }) };
+      // Return full Brevo error details to client for easier debugging
+      return { statusCode: response.status, headers, body: JSON.stringify({ error: data.message || data.code || 'Brevo API error', brevo: data }) };
     }
 
     console.log('[aff-approve-email] Approval email sent to', email, '| code:', affiliate_code, '| messageId:', data.messageId);
