@@ -9318,8 +9318,15 @@ function pgCatalog(){
 // ============================================================
 function pgAI(){
   const contentGroups = [
+    {group:'📊 Business Insights', items:[
+      {id:'Monthly Business Review',  icon:'📈', desc:'AI analysis of your revenue, profit, top products & recommendations'},
+      {id:'Low Stock Alert Strategy', icon:'📦', desc:'AI reviews your low-stock items and suggests reorder & promo actions'},
+      {id:'Customer Retention Tips',  icon:'👥', desc:'AI analyzes your customer base and suggests engagement strategies'},
+      {id:'Expense Health Check',     icon:'💰', desc:'AI reviews your expenses and flags savings opportunities'},
+    ]},
     {group:'📱 Social Media',    items:[
       {id:'Instagram Caption',   icon:'📸', desc:'Engaging post for Instagram feed'},
+      {id:'TikTok Hook & Caption', icon:'🎵', desc:'Attention-grabbing hook + caption + trending sound suggestion'},
       {id:'New Arrival Post',    icon:'🆕', desc:'Announce a new product or service'},
       {id:'Flash Sale Post',     icon:'⚡', desc:'Limited-time offer with urgency'},
       {id:'Back-in-Stock Announcement', icon:'🙌', desc:'Re-engage customers who missed out'},
@@ -9327,13 +9334,14 @@ function pgAI(){
     {group:'💬 WhatsApp & Messaging', items:[
       {id:'WhatsApp Promo Message',   icon:'💬', desc:'Direct promo to send to contacts'},
       {id:'Customer Follow-up Message',icon:'🤝', desc:'Re-engage past customers'},
+      {id:'AI Customer Message Draft', icon:'🧠', desc:'Pick a customer — AI drafts the perfect WhatsApp message for their situation'},
     ]},
     {group:'🎨 Branded Documents',   items:[
       {id:'Branded Flyer',       icon:'🖼️', desc:'Full-color flyer with your logo & colors — save as PNG or PDF'},
       {id:'Email Campaign',      icon:'📧', desc:'Subject line + formatted email body ready to send'},
     ]},
     {group:'🤖 AI Image Generation', items:[
-      {id:'AI Product Photo',    icon:'🎨', desc:'Generate a professional product image with DALL-E (requires OpenAI key in Settings)'},
+      {id:'AI Product Photo',    icon:'🎨', desc:'Generate a professional product image with AI — no setup required'},
     ]},
     {group:'📝 Product & Business',  items:[
       {id:'Product Description', icon:'📦', desc:'Compelling description for any item'},
@@ -9344,6 +9352,7 @@ function pgAI(){
       {id:'Seasonal Campaign',   icon:'🌟', desc:'Season or month-themed promotion'},
       {id:'Promotional Offer',   icon:'🎁', desc:'Special deal or discount announcement'},
       {id:'Seasonal Campaign Planner', icon:'📅', desc:'AI-planned week of posts, captions & hashtags for a campaign'},
+      {id:'Bulk Content Calendar', icon:'📆', desc:'Generate captions for up to 5 products at once — download as text file'},
     ]},
   ];
 
@@ -9371,7 +9380,7 @@ function pgAI(){
   <div class="ph-row"><h1>✨ AI Content Studio</h1>
     <span style="font-size:11px;background:var(--g-dim);color:var(--g);padding:3px 10px;border-radius:10px;font-weight:600">✓ Powered by ShopTrack</span>
   </div>
-  <p>Generate ready-to-post social content, branded flyers, email campaigns, and more — in seconds</p>
+  <p>Generate social content, branded flyers, email campaigns, and AI-powered business insights — all from your real data</p>
 </div>
 
 <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start" id="ai-layout">
@@ -9477,7 +9486,7 @@ function pgAI(){
           <div style="text-align:center;color:var(--text2);padding:40px">
             <div style="font-size:40px;margin-bottom:12px">🎨</div>
             <div style="font-size:14px;font-weight:600;margin-bottom:6px">AI Product Photo Generator</div>
-            <div style="font-size:12px">Enter your product and click Generate.<br>Requires OpenAI key in Settings.</div>
+            <div style="font-size:12px">Select a product and click Generate.<br>Professional AI-generated product images.</div>
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap" id="ai-img-actions" style="display:none">
@@ -9487,8 +9496,74 @@ function pgAI(){
         </div>
       </div>
 
-      <!-- Text output area -->
-      <div id="ai-text-panel">
+      <!-- Bulk Content Calendar panel -->
+      <div id="ai-bulk-panel" style="display:none;margin-bottom:14px">
+        <div style="margin-bottom:12px">
+          <div style="font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:8px">Select up to 5 products:</div>
+          <div style="display:flex;flex-direction:column;gap:6px" id="ai-bulk-product-list">
+            ${[0,1,2,3,4].map(i=>`
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:11px;font-weight:700;color:var(--text2);min-width:16px">${i+1}.</span>
+                <select class="fs ai-bulk-prod-sel" style="flex:1;font-size:12px">
+                  <option value="">— Skip —</option>
+                  ${Object.entries(D.inv.reduce((m,i)=>{if(!m[i.cat])m[i.cat]=[];m[i.cat].push(i);return m},{})).map(([cat,items])=>
+                    `<optgroup label="${cat}">${items.map(it=>`<option value="${it.name}">${it.name}</option>`).join('')}</optgroup>`
+                  ).join('')}
+                  ${(D.services||[]).filter(s=>s.active).length?`<optgroup label="— Services —">${(D.services||[]).filter(s=>s.active).map(s=>`<option value="${s.name}">${s.name}</option>`).join('')}</optgroup>`:''}
+                </select>
+              </div>`).join('')}
+          </div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:4px">Content type per product:</div>
+          <select class="fs" id="ai-bulk-type-sel" style="font-size:12px">
+            <option value="Instagram Caption">Instagram Caption</option>
+            <option value="TikTok Hook & Caption">TikTok Hook & Caption</option>
+            <option value="WhatsApp Promo Message">WhatsApp Promo Message</option>
+            <option value="New Arrival Post">New Arrival Post</option>
+            <option value="Product Description">Product Description</option>
+          </select>
+        </div>
+        <div id="ai-bulk-output" style="display:none;margin-top:12px">
+          <div style="border:1px solid var(--border2);border-radius:var(--r8);background:var(--bg2);padding:14px;max-height:400px;overflow-y:auto;font-size:12.5px;white-space:pre-wrap;line-height:1.6;color:var(--ink)" id="ai-bulk-text"></div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-p" style="flex:1" onclick="_aiBulkDownload()">⬇ Download as Text File</button>
+            <button class="btn btn-s btn-sm" onclick="genAI()">🔄 Regenerate</button>
+          </div>
+        </div>
+        <div id="ai-bulk-loading" style="display:none;text-align:center;padding:20px;color:var(--text2)">
+          <div class="ai-dots"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>
+          <div style="margin-top:10px;font-size:13px" id="ai-bulk-status">Generating content…</div>
+        </div>
+      </div>
+
+      <!-- AI Customer Message Draft panel -->
+      <div id="ai-cust-draft-panel" style="display:none;margin-bottom:14px">
+        <div style="margin-bottom:10px">
+          <div style="font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:6px">Select a customer:</div>
+          <select class="fs" id="ai-cust-draft-sel" style="font-size:12px" onchange="_aiCustDraftPreview()">
+            <option value="">— Choose a customer —</option>
+            ${D.cust.filter(c=>c.bal>0).length ? '<optgroup label="💰 Outstanding Balance">' +
+              D.cust.filter(c=>c.bal>0).map(c=>`<option value="${c.id}" data-situation="balance" data-bal="${c.bal||0}" data-name="${_esc(c.name)}">${_esc(c.name)} — ${fmt(c.bal)} outstanding</option>`).join('') + '</optgroup>' : ''}
+            ${(D.appointments||[]).filter(a=>{const d=new Date(a.date);const t=new Date();return d>t&&a.st!=='Cancelled';}).length ? '<optgroup label="📅 Upcoming Appointment">' +
+              (D.appointments||[]).filter(a=>{const d=new Date(a.date);const t=new Date();return d>t&&a.st!=='Cancelled';}).slice(0,10).map(a=>`<option value="${a.custId||a.id}" data-situation="appointment" data-date="${a.date}" data-time="${a.startTime||''}" data-service="${_esc(a.serviceName||'')}" data-name="${_esc(a.custName)}">${_esc(a.custName)} — ${a.serviceName||'Appt'} on ${a.date}</option>`).join('') + '</optgroup>' : ''}
+            <optgroup label="👤 All Customers">
+              ${D.cust.map(c=>`<option value="${c.id}" data-situation="general" data-name="${_esc(c.name)}">${_esc(c.name)}</option>`).join('')}
+            </optgroup>
+          </select>
+        </div>
+        <div id="ai-cust-draft-context" style="display:none;background:var(--a-dim);border-radius:var(--r8);padding:10px 12px;font-size:12px;color:var(--ink);margin-bottom:10px;line-height:1.5"></div>
+        <div id="ai-cust-draft-output" style="display:none">
+          <div style="border:1px solid var(--border2);border-radius:var(--r8);background:var(--bg2);padding:14px;font-size:12.5px;white-space:pre-wrap;line-height:1.6;color:var(--ink)" id="ai-cust-draft-text"></div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-p btn-sm" style="flex:1" onclick="_aiCustDraftCopy()">📋 Copy</button>
+            <button class="btn btn-g btn-sm" style="flex:1" onclick="_aiCustDraftWhatsApp()">💬 Open in WhatsApp</button>
+            <button class="btn btn-s btn-sm" onclick="genAI()">🔄 Redraft</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Text output area -->\n      <div id="ai-text-panel">
         <div class="ai-out" id="aiOut" style="min-height:200px"><span style="color:var(--text2);font-style:italic;font-size:13px">Configure your settings on the left and click Generate. Content appears here ready to copy and post.</span></div>
         <div id="ai-char-count" class="ai-char-count" style="display:none"></div>
         <div id="ai-action-bar" style="display:none;margin-top:14px">
@@ -9533,14 +9608,20 @@ function _selAiType(el, type){
   const badge = document.getElementById('ai-type-badge');
   if(badge) badge.textContent = type;
   // Toggle panels
-  const flyerPanel = document.getElementById('ai-flyer-panel');
-  const imagePanel = document.getElementById('ai-image-panel');
-  const textPanel  = document.getElementById('ai-text-panel');
-  const isFlyer    = type === 'Branded Flyer';
-  const isImage    = type === 'AI Product Photo';
-  if(flyerPanel) flyerPanel.style.display = isFlyer ? 'block' : 'none';
-  if(imagePanel) imagePanel.style.display = isImage ? 'block' : 'none';
-  if(textPanel)  textPanel.style.display  = (isFlyer||isImage) ? 'none' : 'block';
+  const flyerPanel  = document.getElementById('ai-flyer-panel');
+  const imagePanel  = document.getElementById('ai-image-panel');
+  const textPanel   = document.getElementById('ai-text-panel');
+  const bulkPanel   = document.getElementById('ai-bulk-panel');
+  const custDraft   = document.getElementById('ai-cust-draft-panel');
+  const isFlyer     = type === 'Branded Flyer';
+  const isImage     = type === 'AI Product Photo';
+  const isBulk      = type === 'Bulk Content Calendar';
+  const isCustDraft = type === 'AI Customer Message Draft';
+  if(flyerPanel) flyerPanel.style.display  = isFlyer ? 'block' : 'none';
+  if(imagePanel) imagePanel.style.display  = isImage ? 'block' : 'none';
+  if(bulkPanel)  bulkPanel.style.display   = isBulk  ? 'block' : 'none';
+  if(custDraft)  custDraft.style.display   = isCustDraft ? 'block' : 'none';
+  if(textPanel)  textPanel.style.display   = (isFlyer||isImage||isBulk||isCustDraft) ? 'none' : 'block';
   if(window.innerWidth < 768) document.getElementById('aiOut')?.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
@@ -9893,15 +9974,38 @@ function _aiSaveToHistory(){
   const text = out?.textContent||'';
   if(!text || text.includes('Configure your settings')) { toast('Nothing to save','error'); return; }
   const prod = _aiGetProd();
-  _aiHistory.unshift({type:_aiType, prod, tone:_tone, text, ts: new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'})});
-  if(_aiHistory.length > 10) _aiHistory.pop(); // keep last 10
+  const entry = {type:_aiType, prod, tone:_tone, text, ts: new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}), saved_at: new Date().toISOString()};
+  _aiHistory.unshift(entry);
+  if(_aiHistory.length > 20) _aiHistory.pop();
   _aiRenderHistory();
-  toast('Saved to history ✓','success');
-  // Also save to localStorage for persistence
-  try{ localStorage.setItem('shoptrack_ai_history', JSON.stringify(_aiHistory.slice(0,10))); }catch(e){}
+  toast('Saved ✓','success');
+  // Persist to Supabase if available, else localStorage
+  _aiPersistHistory();
 }
 
-function _aiLoadHistory(){
+async function _aiPersistHistory(){
+  const slice = _aiHistory.slice(0,20);
+  // Try Supabase first
+  if(_sb && SESSION.bizId && SESSION.bizId!=='BIZ-001' && SESSION.bizId!=='BIZ-107'){
+    try{
+      await _sb.from('biz_settings')
+        .upsert({biz_id: SESSION.bizId, key: 'ai_history', value: JSON.stringify(slice)}, {onConflict:'biz_id,key'});
+      return;
+    }catch(e){ /* fall through to localStorage */ }
+  }
+  try{ localStorage.setItem('shoptrack_ai_history', JSON.stringify(slice)); }catch(e){}
+}
+
+async function _aiLoadHistory(){
+  _aiHistory = [];
+  // Try Supabase first
+  if(_sb && SESSION.bizId && SESSION.bizId!=='BIZ-001' && SESSION.bizId!=='BIZ-107'){
+    try{
+      const {data} = await _sb.from('biz_settings').select('value').eq('biz_id', SESSION.bizId).eq('key','ai_history').single();
+      if(data?.value){ _aiHistory = JSON.parse(data.value); _aiRenderHistory(); return; }
+    }catch(e){ /* fall through */ }
+  }
+  // Fallback to localStorage
   try{
     const saved = localStorage.getItem('shoptrack_ai_history');
     if(saved) _aiHistory = JSON.parse(saved);
@@ -9914,7 +10018,7 @@ function _aiRenderHistory(){
   const clearBtn = document.getElementById('ai-clear-hist-btn');
   if(!el) return;
   if(!_aiHistory.length){
-    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text2);font-size:13px"><div style="font-size:28px;margin-bottom:8px">📋</div>Your saved generations appear here.</div>';
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text2);font-size:13px"><div style="font-size:28px;margin-bottom:8px">📋</div>Your saved generations appear here.<br>Click Save on any generation to keep it.</div>';
     if(clearBtn) clearBtn.style.display='none';
     return;
   }
@@ -9924,7 +10028,7 @@ function _aiRenderHistory(){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="min-width:0">
           <div style="font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:2px">${h.type}</div>
-          <div style="font-size:11px;color:var(--text2)">${h.prod} · ${h.tone} · ${h.ts}</div>
+          <div style="font-size:11px;color:var(--text2)">${h.prod||'—'} · ${h.tone||''} · ${h.ts||''}</div>
           <div style="font-size:12px;color:var(--text);margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${h.text.replace(/\n/g,' ')}</div>
         </div>
         <button onclick="event.stopPropagation();_aiDeleteHistItem(${i})" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;flex-shrink:0;padding:0 2px" title="Remove">×</button>
@@ -9940,20 +10044,22 @@ function _aiLoadHistItem(i){
   if(out){ typewrite(out, h.text); out.classList.add('has-content'); }
   _aiShowActionBar();
   _aiUpdateCharCount(h.text);
-  // Scroll to output
   out?.scrollIntoView({behavior:'smooth', block:'nearest'});
   toast('Loaded from history','success');
 }
 
 function _aiDeleteHistItem(i){
   _aiHistory.splice(i,1);
-  try{ localStorage.setItem('shoptrack_ai_history', JSON.stringify(_aiHistory)); }catch(e){}
   _aiRenderHistory();
+  _aiPersistHistory();
 }
 
-function _aiClearHistory(){
+async function _aiClearHistory(){
   if(!confirm('Clear all saved generations?')) return;
   _aiHistory = [];
+  if(_sb && SESSION.bizId && SESSION.bizId!=='BIZ-001' && SESSION.bizId!=='BIZ-107'){
+    try{ await _sb.from('biz_settings').delete().eq('biz_id', SESSION.bizId).eq('key','ai_history'); }catch(e){}
+  }
   try{ localStorage.removeItem('shoptrack_ai_history'); }catch(e){}
   _aiRenderHistory();
   toast('History cleared','success');
@@ -10035,6 +10141,26 @@ const _aiTpls={
     const month=new Date().toLocaleString('en',{month:'long'});
     return `📅 7-DAY CONTENT PLAN — ${month.toUpperCase()}\n\nDAY 1 — Monday: Instagram — Open the week with ${prod}. #${b.replace(/\s/g,'')} #MondayMotivation\n\nDAY 2 — Tuesday: WhatsApp blast to contacts. #ExclusiveOffer\n\nDAY 3 — Wednesday: Product detail / behind-the-scenes. #${prod.replace(/\s/g,'')}\n\nDAY 4 — Thursday: Customer story or review. #HappyCustomers\n\nDAY 5 — Friday: Flash Friday deal. #FridayDeal\n\nDAY 6 — Saturday: Weekend promo post. #Weekend\n\nDAY 7 — Sunday: Gratitude + soft CTA. #SundayVibes`;
   },
+  'TikTok Hook & Caption':(prod,tone,biz,cats)=>{
+    const b=biz||'us'; const tag=(biz||'ShopTrack').replace(/\s+/g,'').substring(0,20);
+    return `HOOK (first 3 seconds): POV: You just found the best ${prod} in ${b} 👀\n\nCAPTION:\nYou need to see this ${prod} from ${b} ✨\n\n✅ Premium quality\n💰 Amazing price\n📲 DM to order NOW\n\n#${tag} #${(prod.replace(/\s+/g,'')).substring(0,15)} #fyp #smallbusiness #musthave\n\nTRENDING SOUND SUGGESTION: Upbeat Afrobeats or viral trending audio\n\nVIDEO IDEA: Show the product close-up, then reveal the price with a reaction shot.`;
+  },
+  'Monthly Business Review':(prod,tone,biz,cats)=>{
+    const b=biz||'our business';
+    return `📊 MONTHLY BUSINESS REVIEW — ${b}\n\nEnable AI in Settings to get a real data-driven analysis of your revenue, profit, top products, and personalized action plan for this month.`;
+  },
+  'Low Stock Alert Strategy':(prod,tone,biz,cats)=>{
+    const b=biz||'our business';
+    return `📦 LOW STOCK ALERT — ${b}\n\nEnable AI in Settings to get specific reorder priorities, promo ideas, and WhatsApp messages for your low-stock items.`;
+  },
+  'Customer Retention Tips':(prod,tone,biz,cats)=>{
+    const b=biz||'our business';
+    return `👥 CUSTOMER RETENTION — ${b}\n\nEnable AI in Settings to get personalized retention strategies, re-engagement messages, and collections reminders based on your real customer data.`;
+  },
+  'Expense Health Check':(prod,tone,biz,cats)=>{
+    const b=biz||'our business';
+    return `💰 EXPENSE HEALTH CHECK — ${b}\n\nEnable AI in Settings to get a full analysis of your expenses, savings opportunities, and profit improvement plan based on your real numbers.`;
+  },
   'Customer Follow-up Message':(prod,tone,biz,cats)=>{
     const b=biz||'us';
     return `👋 Hi [Name],\n\nFriendly follow-up from ${b}! 😊\n\nWe noticed you were interested in *${prod}* — it's still available!\n\nAny questions? We'd love to help.\n\n📲 Just reply to this message!\n\nThank you for choosing ${b} 🙏\n— The Team`;
@@ -10096,6 +10222,309 @@ function _aiCall(payload){
   });
 }
 
+// ── Bulk Content Calendar Generator ──────────────────────────
+async function _genAIBulk(btn, btnTxt, btnIco){
+  const sels = Array.from(document.querySelectorAll('.ai-bulk-prod-sel')).map(s=>s.value).filter(Boolean);
+  if(!sels.length){ toast('Select at least one product','error'); return; }
+  const bulkType = document.getElementById('ai-bulk-type-sel')?.value || 'Instagram Caption';
+  const loading  = document.getElementById('ai-bulk-loading');
+  const output   = document.getElementById('ai-bulk-output');
+  const statusEl = document.getElementById('ai-bulk-status');
+  if(loading) loading.style.display='block';
+  if(output)  output.style.display='none';
+  if(btn){ btn.disabled=true; }
+  if(btnTxt) btnTxt.textContent='Generating…';
+  if(btnIco) btnIco.textContent='⏳';
+
+  const bizName  = BIZ.name||'our business';
+  const bizType  = D.adminBiz.find(b=>b.id===SESSION.bizId)?.type||'business';
+  const location = BIZ.address?BIZ.address.split(',').slice(-2).join(',').trim():'Cameroon';
+  const instaHandle = BIZ.instagram||('@'+(bizName.replace(/\s+/g,'').toLowerCase())).substring(0,20);
+
+  const results = [];
+  for(let i=0;i<sels.length;i++){
+    const p = sels[i];
+    if(statusEl) statusEl.textContent = `Generating ${i+1} of ${sels.length}: ${p}…`;
+    const prodObj = (D.inv||[]).find(x=>x.name===p);
+    const prodData = prodObj ? `(price: ${fmt(prodObj.sp||0)}, stock: ${prodObj.qty??'?'})` : '';
+    try{
+      const d = await _aiCall({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:500,
+        messages:[{role:'user',content:`You are a marketing writer for "${bizName}", a ${bizType} in ${location}. Instagram: ${instaHandle}.\nWrite a ${bulkType} for: "${p}" ${prodData}.\nTone: ${_tone}. Output content ONLY — no intro or preamble.`}]
+      });
+      const text = d.content&&d.content[0]&&d.content[0].text||'';
+      results.push(`${'═'.repeat(50)}\n📦 ${p.toUpperCase()}\n${'═'.repeat(50)}\n${text}`);
+    }catch(e){
+      results.push(`${'═'.repeat(50)}\n📦 ${p.toUpperCase()}\n${'═'.repeat(50)}\n[Error: ${e.message||'Failed'}]`);
+    }
+  }
+
+  const final = `✨ BULK CONTENT CALENDAR — ${bizName.toUpperCase()}\n📅 Generated: ${new Date().toLocaleDateString()}\n\n${results.join('\n\n')}`;
+  window._lastBulkContent = final;
+  const textEl = document.getElementById('ai-bulk-text');
+  if(textEl) textEl.textContent = final;
+  if(loading) loading.style.display='none';
+  if(output)  output.style.display='block';
+  if(btn){ btn.disabled=false; }
+  if(btnTxt) btnTxt.textContent='Generate Content';
+  if(btnIco) btnIco.textContent='✨';
+  toast(`${results.length} pieces of content generated ✓`,'success');
+}
+
+function _aiBulkDownload(){
+  const content = window._lastBulkContent;
+  if(!content){ toast('Generate content first','error'); return; }
+  const blob = new Blob([content], {type:'text/plain'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = (BIZ.name||'shoptrack').replace(/\s+/g,'_')+'_content_calendar_'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Content calendar downloaded ✓','success');
+}
+
+// ── AI Customer Message Draft ─────────────────────────────────
+function _aiCustDraftPreview(){
+  const sel = document.getElementById('ai-cust-draft-sel');
+  const opt = sel?.options[sel.selectedIndex];
+  if(!opt||!opt.value) return;
+  const ctx = document.getElementById('ai-cust-draft-context');
+  const situation = opt.dataset.situation||'general';
+  let preview = '';
+  if(situation==='balance'){
+    preview = `💰 Outstanding balance: ${fmt(parseFloat(opt.dataset.bal||0))} — AI will draft a polite payment reminder.`;
+  } else if(situation==='appointment'){
+    preview = `📅 Upcoming appointment: ${opt.dataset.service||'Service'} on ${opt.dataset.date||''}${opt.dataset.time?' at '+opt.dataset.time:''} — AI will draft a confirmation/reminder message.`;
+  } else {
+    preview = `👤 General customer — AI will draft a re-engagement message.`;
+  }
+  if(ctx){ ctx.textContent=preview; ctx.style.display='block'; }
+  document.getElementById('ai-cust-draft-output').style.display='none';
+}
+
+async function _genAICustDraft(btn, btnTxt, btnIco){
+  const sel = document.getElementById('ai-cust-draft-sel');
+  const opt = sel?.options[sel?.selectedIndex];
+  if(!opt||!opt.value){ toast('Select a customer first','error'); return; }
+
+  const custName  = opt.dataset.name||opt.text;
+  const situation = opt.dataset.situation||'general';
+  const bizName   = BIZ.name||'our business';
+  const phone     = BIZ.whatsapp||BIZ.phone||'';
+
+  if(btn){ btn.disabled=true; }
+  if(btnTxt) btnTxt.textContent='Drafting…';
+  if(btnIco) btnIco.textContent='⏳';
+
+  let prompt = '';
+  if(situation==='balance'){
+    const bal = fmt(parseFloat(opt.dataset.bal||0));
+    prompt = `Write a polite but firm WhatsApp payment reminder for ${bizName} to send to customer "${custName}" who has an outstanding balance of ${bal}.\n\nRules:\n- Warm and professional tone\n- Address them by first name\n- State the amount clearly\n- Make it easy to respond (e.g. "just reply YES to confirm")\n- Keep it under 100 words\n- Use *bold* for key info\n- End with the business name\n\nWrite the message ONLY — no intro.`;
+  } else if(situation==='appointment'){
+    const date=opt.dataset.date||''; const time=opt.dataset.time||''; const svc=opt.dataset.service||'your appointment';
+    prompt = `Write a friendly WhatsApp appointment reminder for ${bizName} to send to "${custName}".\n\nAppointment: ${svc} on ${date}${time?' at '+time:''}\n\nRules:\n- Warm and friendly tone\n- Confirm the appointment details clearly\n- Ask them to reply to confirm or reschedule\n- Keep it under 80 words\n- Use *bold* for date/time\n- End with the business name\n\nWrite the message ONLY — no intro.`;
+  } else {
+    const custObj = D.cust.find(c=>c.id===opt.value);
+    const lastBuy = custObj?.last ? `Last purchase: ${custObj.last}` : '';
+    const spent   = custObj?.spend||custObj?.spent ? `Total spent: ${fmt(custObj.spend||custObj.spent||0)}` : '';
+    prompt = `Write a warm WhatsApp re-engagement message for ${bizName} to send to loyal customer "${custName}".\n${lastBuy}\n${spent}\n\nRules:\n- Warm, personal tone — make them feel valued\n- Mention they've been missed\n- Soft call to action (visit, browse new arrivals, DM)\n- Keep it under 80 words\n- End with the business name and a smile emoji\n\nWrite the message ONLY — no intro.`;
+  }
+
+  try{
+    const d = await _aiCall({model:'claude-sonnet-4-6', max_tokens:400, messages:[{role:'user',content:prompt}]});
+    const text = d.content&&d.content[0]&&d.content[0].text||'';
+    window._lastCustDraftText = text;
+    window._lastCustDraftPhone = (D.cust.find(c=>c.id===opt.value)||{}).ph || (D.cust.find(c=>c.id===opt.value)||{}).phone || '';
+    const textEl = document.getElementById('ai-cust-draft-text');
+    if(textEl) textEl.textContent = text;
+    document.getElementById('ai-cust-draft-output').style.display='block';
+    toast('Message drafted ✓','success');
+  }catch(e){
+    toast('Draft failed: '+(e.message||'Error'),'error');
+  }finally{
+    if(btn){ btn.disabled=false; }
+    if(btnTxt) btnTxt.textContent='Generate Content';
+    if(btnIco) btnIco.textContent='✨';
+  }
+}
+
+function _aiCustDraftCopy(){
+  const text = window._lastCustDraftText||'';
+  if(!text){ toast('Generate a draft first','error'); return; }
+  navigator.clipboard?.writeText(text).then(()=>toast('Copied ✓','success')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Copied ✓','success');
+  });
+}
+
+function _aiCustDraftWhatsApp(){
+  const text  = window._lastCustDraftText||'';
+  const phone = (window._lastCustDraftPhone||'').replace(/[^0-9]/g,'');
+  if(!text){ toast('Generate a draft first','error'); return; }
+  const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url,'_blank');
+}
+
+// ── AI Business Insights Generator ───────────────────────────
+function _genAIInsight(type, data, btn, btnTxt, btnIco, out){
+  if(!out) return;
+  out.innerHTML=`<div class="ai-dots"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span style="margin-left:10px;color:var(--text2);font-size:13px">Analyzing your business data…</span></div>`;
+  out.classList.remove('has-content');
+  document.getElementById('ai-action-bar').style.display='none';
+  document.getElementById('ai-char-count').style.display='none';
+  if(btn){ btn.disabled=true; }
+  if(btnTxt) btnTxt.textContent='Analyzing…';
+  if(btnIco) btnIco.textContent='⏳';
+
+  const {bizName,bizType,location,monthName,lastMonthName,revThis,revLast,revChange,profThis,profLast,topProducts,lowStockStr,lowStock,custTotal,custNew,arTotal,expTotal,topExpCats,allOfferings,ctx} = data;
+
+  var prompt = '';
+
+  if(type==='Monthly Business Review'){
+    const revDir = revChange===null ? 'no prior data' : (revChange>=0?`up ${revChange}%`:`down ${Math.abs(revChange)}%`);
+    prompt = `You are a sharp business advisor analyzing real data for "${bizName}", a ${bizType} in ${location}.
+
+REAL BUSINESS DATA FOR ${monthName.toUpperCase()}:
+- Revenue: ${fmt(revThis)} (${revDir} vs ${lastMonthName})
+- Profit: ${fmt(profThis)} (${lastMonthName} profit: ${fmt(profLast)})
+- Top selling products: ${topProducts||'no sales recorded yet'}
+- Total customers: ${custTotal}, New this month: ${custNew}
+- Outstanding receivables (unpaid): ${fmt(arTotal)}
+- Total expenses: ${fmt(expTotal)} | By category: ${topExpCats||'none'}
+- Products offered: ${allOfferings}
+${ctx?'Additional context: '+ctx:''}
+
+Write a concise, plain-language Monthly Business Review. Use this exact structure:
+
+📊 ${monthName} BUSINESS REVIEW — ${bizName}
+
+REVENUE & PROFIT
+[2-3 sentences analyzing the numbers. Be specific. If revenue is down, say why it likely happened. If up, acknowledge what's working.]
+
+🏆 WHAT'S WORKING
+[Top 2-3 positives based on the data]
+
+⚠️ WATCH OUT FOR
+[Top 2-3 risks or concerns — e.g. high AR, low profit margin, expense spikes]
+
+💡 THIS MONTH'S ACTION PLAN
+[3 specific, actionable recommendations numbered 1, 2, 3 — tailored to this exact business and its data]
+
+Keep it direct. A busy small business owner should be able to read this in 60 seconds and know exactly what to do.`;
+  }
+
+  else if(type==='Low Stock Alert Strategy'){
+    prompt = `You are a smart inventory advisor for "${bizName}", a ${bizType} in ${location}.
+
+LOW STOCK ITEMS RIGHT NOW:
+${lowStockStr || 'No items currently below minimum stock levels.'}
+
+Products offered: ${allOfferings}
+${ctx?'Additional context: '+ctx:''}
+
+Write a practical Low Stock Action Plan using this structure:
+
+📦 LOW STOCK ALERT — ${bizName}
+
+REORDER URGENCY
+[Rank the low-stock items by urgency — which to restock first and why]
+
+💸 WHILE STOCK LASTS — PROMO IDEAS
+[2-3 specific promotion ideas to sell remaining stock fast, e.g. bundle deals, flash sales]
+
+📲 CUSTOMER ALERT MESSAGES
+[Write 2 short WhatsApp messages to send to customers about limited availability — make them feel urgency without being pushy]
+
+📋 REORDER CHECKLIST
+[Simple numbered list of what to reorder and suggested quantities]
+
+Be specific to these actual products. Make it immediately actionable.`;
+  }
+
+  else if(type==='Customer Retention Tips'){
+    prompt = `You are a customer success advisor for "${bizName}", a ${bizType} in ${location}.
+
+CUSTOMER DATA:
+- Total customers: ${custTotal}
+- New customers this month: ${custNew}
+- Outstanding balances (unpaid invoices): ${fmt(arTotal)}
+- Products & services: ${allOfferings}
+${ctx?'Additional context: '+ctx:''}
+
+Write a practical Customer Retention Strategy using this structure:
+
+👥 CUSTOMER RETENTION REPORT — ${bizName}
+
+YOUR CUSTOMER SNAPSHOT
+[1-2 sentences analyzing the customer base — growth rate, loyalty signals, AR concern if applicable]
+
+🔁 TOP 5 RETENTION ACTIONS
+[5 specific, ranked actions this business can take THIS WEEK to retain and re-engage customers — reference actual products/services]
+
+💬 READY-TO-SEND MESSAGES
+[2 WhatsApp message templates — one for re-engaging quiet customers, one for thanking loyal ones]
+
+⚠️ COLLECTIONS REMINDER
+[If AR is significant, write a polite but firm payment reminder message they can send to customers with outstanding balances]
+
+Make every suggestion specific to this business. Avoid generic advice.`;
+  }
+
+  else if(type==='Expense Health Check'){
+    prompt = `You are a financial advisor reviewing expenses for "${bizName}", a ${bizType} in ${location}.
+
+EXPENSE DATA FOR ${monthName.toUpperCase()}:
+- Total expenses: ${fmt(expTotal)}
+- Revenue this month: ${fmt(revThis)}
+- Profit this month: ${fmt(profThis)}
+- Expense breakdown: ${topExpCats||'no expenses recorded'}
+- Products/services: ${allOfferings}
+${ctx?'Additional context: '+ctx:''}
+
+Write a clear Expense Health Check using this structure:
+
+💰 EXPENSE HEALTH CHECK — ${bizName}
+
+EXPENSE SNAPSHOT
+[1-2 sentences on overall expense picture — expense-to-revenue ratio, whether margins look healthy]
+
+🔍 CATEGORY BREAKDOWN
+[Comment on each expense category — which are reasonable, which look high, which could be optimized]
+
+✂️ SAVINGS OPPORTUNITIES
+[3 specific, actionable ways to reduce costs without hurting the business — be direct and realistic]
+
+📈 PROFIT IMPROVEMENT PLAN
+[2-3 specific suggestions to improve profit margin — either cut costs or increase revenue on existing products]
+
+Keep it honest and direct. Small business owners need clarity, not corporate speak.`;
+  }
+
+  _aiCall({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1500,
+    messages: [{ role: 'user', content: prompt }]
+  })
+  .then(function(d){
+    var text = d.content&&d.content[0]&&d.content[0].text||'';
+    if(!text) throw new Error('Empty response');
+    typewrite(out, text);
+    out.classList.add('has-content');
+    _aiShowActionBar();
+    _aiUpdateCharCount(text);
+    window._lastAiText = text;
+  })
+  .catch(function(e){
+    out.innerHTML='<span style="color:var(--r)">Could not generate insights: '+(e&&e.message?e.message:String(e))+'</span>';
+  })
+  .finally(function(){
+    if(btn){ btn.disabled=false; }
+    if(btnTxt) btnTxt.textContent='Generate Content';
+    if(btnIco) btnIco.textContent='✨';
+  });
+}
+
 function genAI(){
   const type  = _aiType || 'Instagram Caption';
   const prod  = _aiGetProd();
@@ -10108,6 +10537,10 @@ function genAI(){
   if(type === 'Branded Flyer') { _genAIFlyer(prod, ctx, btn, btnTxt, btnIco); return; }
   // Route AI image generation to DALL-E handler
   if(type === 'AI Product Photo') { _genDALLEImage(prod, ctx, btn, btnTxt, btnIco); return; }
+  // Route bulk calendar
+  if(type === 'Bulk Content Calendar') { _genAIBulk(btn, btnTxt, btnIco); return; }
+  // Route customer message draft
+  if(type === 'AI Customer Message Draft') { _genAICustDraft(btn, btnTxt, btnIco); return; }
 
   const out   = document.getElementById('aiOut');
   if(!out) return;
@@ -10121,7 +10554,7 @@ function genAI(){
   if(btnTxt) btnTxt.textContent='Generating…';
   if(btnIco) btnIco.textContent='⏳';
 
-  // Build rich business context
+  // ── Build rich business context ───────────────────────────────
   const bizName    = BIZ.name || 'our business';
   const bizTagline = BIZ.tagline || '';
   const bizType    = D.adminBiz.find(b=>b.id===SESSION.bizId)?.type || 'business';
@@ -10135,6 +10568,63 @@ function genAI(){
   const whatsapp   = BIZ.whatsapp || BIZ.phone || '';
   const instaHandle= BIZ.instagram || ('@'+(bizName.replace(/\s+/g,'').toLowerCase())).substring(0,20);
 
+  // ── Real-time data context (injected into prompts) ────────────
+  const now = new Date();
+  const thisMonth = now.getMonth(); const thisYear = now.getFullYear();
+  const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+  const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+  const monthName = now.toLocaleString('en',{month:'long'});
+  const lastMonthName = new Date(lastMonthYear, lastMonth, 1).toLocaleString('en',{month:'long'});
+
+  // Sales this month vs last month
+  const salesThisMonth = (D.sales||[]).filter(s=>{ const d=new Date(s.dt); return d.getMonth()===thisMonth&&d.getFullYear()===thisYear; });
+  const salesLastMonth = (D.sales||[]).filter(s=>{ const d=new Date(s.dt); return d.getMonth()===lastMonth&&d.getFullYear()===lastMonthYear; });
+  const revThis  = salesThisMonth.reduce((a,s)=>a+(s.amt||0),0);
+  const revLast  = salesLastMonth.reduce((a,s)=>a+(s.amt||0),0);
+  const profThis = salesThisMonth.reduce((a,s)=>a+(s.prof||0),0);
+  const profLast = salesLastMonth.reduce((a,s)=>a+(s.prof||0),0);
+  const revChange = revLast>0 ? Math.round(((revThis-revLast)/revLast)*100) : null;
+
+  // Top 5 selling products this month by quantity
+  const soldQtyMap = {};
+  salesThisMonth.forEach(s=>{ const n=s.invId||s.items||'Unknown'; soldQtyMap[n]=(soldQtyMap[n]||0)+1; });
+  const topProducts = Object.entries(soldQtyMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,q])=>n+' (×'+q+')').join(', ');
+
+  // Low stock items
+  const lowStock = (D.inv||[]).filter(i=>i.qty!==undefined && i.minQty!==undefined && i.qty<=i.minQty && i.qty>=0).slice(0,8);
+  const lowStockStr = lowStock.map(i=>`${i.name} (${i.qty} left, min ${i.minQty})`).join(', ');
+
+  // Expenses this month
+  const expThisMonth = (D.expenses||[]).filter(e=>{ const d=new Date(e.dt); return d.getMonth()===thisMonth&&d.getFullYear()===thisYear; });
+  const expTotal = expThisMonth.reduce((a,e)=>a+(e.amt||0),0);
+  const expBycat = {};
+  expThisMonth.forEach(e=>{ expBycat[e.cat]=(expBycat[e.cat]||0)+(e.amt||0); });
+  const topExpCats = Object.entries(expBycat).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([c,a])=>`${c}: ${fmt(a)}`).join(', ');
+
+  // Customers — total, new this month, with outstanding balances
+  const custTotal = (D.cust||[]).length;
+  const custNew   = (D.cust||[]).filter(c=>{ const d=new Date(c.created||c.dt||0); return d.getMonth()===thisMonth&&d.getFullYear()===thisYear; }).length;
+  const outstanding = (D.sales||[]).filter(s=>s.st==='Partial'||(s.paid!==undefined&&s.amt!==undefined&&s.paid<s.amt));
+  const arTotal = outstanding.reduce((a,s)=>a+((s.amt||0)-(s.paid||0)),0);
+
+  // Selected product details
+  const selProdObj = (D.inv||[]).find(i=>i.name===prod);
+  const prodDetail = selProdObj ? `(stock: ${selProdObj.qty??'?'}, price: ${fmt(selProdObj.sp||0)}, cost: ${fmt(selProdObj.cost||0)}, sold this month: ${soldQtyMap[selProdObj.id]||soldQtyMap[selProdObj.name]||0})` : '';
+
+  // ── Business Insights: route to dedicated handler ─────────────
+  const insightTypes = ['Monthly Business Review','Low Stock Alert Strategy','Customer Retention Tips','Expense Health Check'];
+  if(insightTypes.includes(type)){
+    _genAIInsight(type, {
+      bizName, bizType, location, monthName, lastMonthName,
+      revThis, revLast, revChange, profThis, profLast,
+      topProducts, lowStockStr, lowStock,
+      custTotal, custNew, arTotal,
+      expTotal, topExpCats, expThisMonth,
+      allOfferings, ctx
+    }, btn, btnTxt, btnIco, out);
+    return;
+  }
+
   const systemPrompt = `You are a creative marketing content writer for "${bizName}"${bizTagline?` ("${bizTagline}")`:''}. This is a ${bizType} based in ${location} offering ${offerStr} of: ${allOfferings}.${whatsapp?` WhatsApp: ${whatsapp}.`:''} Instagram: ${instaHandle}.
 
 RULES (follow exactly):
@@ -10145,22 +10635,29 @@ RULES (follow exactly):
 - Use emojis naturally (not excessively)
 - Keep hashtags relevant to the actual business and products`;
 
-  // Email Campaign: structured subject + body
+  // ── Type-specific instructions ────────────────────────────────
   const emailInstructions = type==='Email Campaign'
     ? '\n\nFormat the email exactly as:\nSUBJECT: [subject line here]\n\n[full email body here]'
     : '';
 
-  // Seasonal Campaign Planner: 7 days of content
   const plannerInstructions = (type==='Seasonal Campaign Planner'||type==='Weekly Content Plan')
-    ? '\n\nCreate a 7-day social media content plan. For each day write:\nDAY X — [Day name]: [Platform] — [Post idea 1-2 sentences] + [2 relevant hashtags]\n\nMake it specific to the product/topic and season. Include mix of Instagram, WhatsApp, and Facebook.'
+    ? `\n\nCreate a REAL, specific 7-day social media content plan for "${bizName}" for ${monthName}. For each day write:\nDAY X — [Day name]: [Platform] — [Specific post idea using actual products/services] + [2 relevant hashtags]\n\nUse actual product names and business details. Include mix of Instagram, WhatsApp, TikTok, and Facebook. Make every day feel fresh and distinct.`
     : '';
 
-  const maxTokens = (type==='Seasonal Campaign Planner'||type==='Weekly Content Plan') ? 1400 : 900;
+  const tiktokInstructions = type==='TikTok Hook & Caption'
+    ? '\n\nFormat exactly as:\nHOOK (first 3 seconds): [Attention-grabbing spoken line]\n\nCAPTION:\n[caption text with emojis and hashtags]\n\nTRENDING SOUND SUGGESTION: [suggest a style of sound/music that fits, e.g. "upbeat Afrobeats", "satisfying ASMR", "viral trending audio"]\n\nVIDEO IDEA: [1-2 sentence description of what to film]'
+    : '';
+
+  // ── Data-aware product context ────────────────────────────────
+  const dataCtx = prodDetail ? `\nProduct data: ${prodDetail}` : '';
+  const salesCtx = revThis > 0 ? `\nThis month: ${fmt(revThis)} revenue, ${topProducts ? 'top sellers: '+topProducts : ''}` : '';
+
+  const maxTokens = (type==='Seasonal Campaign Planner'||type==='Weekly Content Plan') ? 1500 : type==='TikTok Hook & Caption' ? 700 : 900;
 
   _aiCall({
       model:'claude-sonnet-4-6',
       max_tokens:maxTokens,
-      messages:[{role:'user',content:systemPrompt+'\n\nWrite a '+type+' for: "'+prod+'"'+(ctx?'\nAdditional context: '+ctx:'')+emailInstructions+plannerInstructions+'\n\nWrite now:'}]
+      messages:[{role:'user',content:systemPrompt+dataCtx+salesCtx+'\n\nWrite a '+type+' for: "'+prod+'"'+(ctx?'\nAdditional context: '+ctx:'')+emailInstructions+plannerInstructions+tiktokInstructions+'\n\nWrite now:'}]
   })
   .then(function(d){
     var text = d.content&&d.content[0]&&d.content[0].text||'';
