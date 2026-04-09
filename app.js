@@ -9415,13 +9415,14 @@ function pgAI(){
           <div class="card-ttl">Product or Topic</div>
         </div>
       </div>
-      <select class="fs" id="ctProd" style="margin-bottom:8px">
-        <option value="">— Select or type below —</option>
+      <select class="fs" id="ctProd" style="margin-bottom:8px" onchange="if(this.value) document.getElementById('ctProdCustom').value=''">
+        <option value="">— Select a product —</option>
         ${hasSvcContent}
         ${invOptions}
         <option value="general">General Business Promotion</option>
       </select>
-      <input class="fi" id="ctProdCustom" placeholder="Or type a custom topic…" style="font-size:12.5px" oninput="if(this.value) document.getElementById('ctProd').value=''"/>
+      <input class="fi" id="ctProdCustom" placeholder="Or type topic(s) — separate multiple with commas" style="font-size:12.5px" oninput="if(this.value) document.getElementById('ctProd').value=''"/>
+      <div style="font-size:10.5px;color:var(--text2);margin-top:4px">💡 Tip: type multiple products separated by commas for richer content</div>
     </div>
 
     <div class="card" style="margin-bottom:12px">
@@ -9919,10 +9920,17 @@ function _aiImgWhatsApp(){
 }
 
 function _aiGetProd(){
+  // Returns comma-separated string if multiple topics entered
   const custom = document.getElementById('ctProdCustom')?.value?.trim();
-  if(custom) return custom;
+  if(custom) return custom; // may be "Product A, Product B, Product C"
   const sel = document.getElementById('ctProd');
   return sel?.value || 'our featured product';
+}
+
+function _aiGetProdLabel(){
+  // Returns a clean label for display/history (first item if multiple)
+  const prod = _aiGetProd();
+  return prod.split(',')[0].trim() || 'our featured product';
 }
 
 // ── Copy with formatting preserved ──────────────────────────
@@ -9973,7 +9981,7 @@ function _aiSaveToHistory(){
   const out = document.getElementById('aiOut');
   const text = out?.textContent||'';
   if(!text || text.includes('Configure your settings')) { toast('Nothing to save','error'); return; }
-  const prod = _aiGetProd();
+  const prod = _aiGetProdLabel();
   const entry = {type:_aiType, prod, tone:_tone, text, ts: new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}), saved_at: new Date().toISOString()};
   _aiHistory.unshift(entry);
   if(_aiHistory.length > 20) _aiHistory.pop();
@@ -10168,8 +10176,25 @@ const _aiTpls={
 };
 
 // ── Central AI API call helper ────────────────────────────────
+function _aiCallProxy(payload){
+  // ── Route through secure server-side proxy (platform key) ──
+  var bizPlan2 = (D.adminBiz.find(function(b){return b.id===SESSION.bizId;})||{}).plan || 'Trial';
+  return fetch('/.netlify/functions/ai-proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ payload: payload, bizId: SESSION.bizId||'', bizPlan: bizPlan2, userId: SESSION.userId||'' })
+  })
+  .then(function(r){
+    if(!r.ok) return r.json().then(function(e){ throw new Error(e.error||('Request failed: '+r.status)); })
+      .catch(function(pe){ if(pe.message&&pe.message!=='Unexpected end of JSON input') throw pe; throw new Error('AI service unavailable ('+r.status+')'); });
+    return r.json();
+  })
+  .then(function(d){ if(d.error) throw new Error(d.error); return d; });
+}
+
 function _aiCall(payload){
-  // ── If the business has their own API key, call directly (Pro/Enterprise perk) ──
+  // ── If the business has their own API key, try directly first ──
+  // On 401 (invalid/expired key), automatically fall back to platform proxy
   var ownKey = BIZ.aiKey || '';
   if(ownKey){
     return fetch('https://api.anthropic.com/v1/messages', {
@@ -10183,6 +10208,11 @@ function _aiCall(payload){
       body: JSON.stringify(payload)
     })
     .then(function(r){
+      // On auth failure, fall back to platform proxy silently
+      if(r.status===401||r.status===403){
+        console.warn('[_aiCall] Custom key rejected ('+r.status+') — falling back to platform proxy');
+        return _aiCallProxy(payload);
+      }
       if(!r.ok) return r.text().then(function(t){
         var msg=t; try{ msg=JSON.parse(t).error.message; }catch(e){}
         throw new Error('API '+r.status+': '+msg);
@@ -10196,30 +10226,7 @@ function _aiCall(payload){
   }
 
   // ── Route through secure server-side proxy (platform key, plan-limited) ──
-  var bizPlan = (D.adminBiz.find(function(b){return b.id===SESSION.bizId;})||{}).plan || 'Trial';
-  return fetch('/.netlify/functions/ai-proxy', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      payload:  payload,
-      bizId:    SESSION.bizId || '',
-      bizPlan:  bizPlan,
-      userId:   SESSION.userId || ''
-    })
-  })
-  .then(function(r){
-    if(!r.ok) return r.json().then(function(e){
-      throw new Error(e.error || ('Request failed: '+r.status));
-    }).catch(function(parseErr){
-      if(parseErr.message&&parseErr.message!=='Unexpected end of JSON input') throw parseErr;
-      throw new Error('AI service unavailable ('+r.status+')');
-    });
-    return r.json();
-  })
-  .then(function(d){
-    if(d.error) throw new Error(d.error);
-    return d;
-  });
+  return _aiCallProxy(payload);
 }
 
 // ── Bulk Content Calendar Generator ──────────────────────────
@@ -10657,7 +10664,10 @@ RULES (follow exactly):
   _aiCall({
       model:'claude-sonnet-4-6',
       max_tokens:maxTokens,
-      messages:[{role:'user',content:systemPrompt+dataCtx+salesCtx+'\n\nWrite a '+type+' for: "'+prod+'"'+(ctx?'\nAdditional context: '+ctx:'')+emailInstructions+plannerInstructions+tiktokInstructions+'\n\nWrite now:'}]
+      messages:[{role:'user',content:systemPrompt+dataCtx+salesCtx+'\n\nWrite a '+type+' for: "'+prod+'"'
+        +(prod.includes(',')?' — cover all of these products/topics in a single cohesive piece':'')
+        +(ctx?'\nAdditional context: '+ctx:'')
+        +emailInstructions+plannerInstructions+tiktokInstructions+'\n\nWrite now:'}]
   })
   .then(function(d){
     var text = d.content&&d.content[0]&&d.content[0].text||'';
