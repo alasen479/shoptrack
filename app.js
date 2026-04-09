@@ -13245,7 +13245,8 @@ function _affRenderTable(){
         (a.status==='approved'?
           '<button class="btn btn-p btn-xs" onclick="_affPayPartial(\''+a.id+'\')">&#x1F4B3; Pay</button>'+
           (a.unpaid_xaf>0?'<button class="btn btn-g btn-xs" onclick="_affMarkPaid(\''+a.id+'\')">&#x2714; All Paid</button>':'')+
-          '<button class="btn btn-s btn-xs" onclick="_affViewHistory(\''+a.id+'\')">&#x1F4CB; History</button>'
+          '<button class="btn btn-s btn-xs" onclick="_affViewHistory(\''+a.id+'\')">&#x1F4CB; History</button>'+
+          (a.email?'<button class="btn btn-b btn-xs" onclick="_affResendApprovalEmail(\''+a.id+'\')" title="Resend approval email with affiliate link">&#x1F4E7; Send Link</button>':'')
         :'')+
         (a.status==='suspended'?
           '<button class="btn btn-g btn-xs" onclick="_affApprove(\''+a.id+'\')">&#x21BA; Reactivate</button>':
@@ -13290,7 +13291,45 @@ async function _affApprove(id){
     if(a) a.status='approved';
     _affUpdateKPIs(); _affRenderTable();
     toast((isReactivate?'Affiliate reactivated':'Affiliate approved \u2713 Code: '+code),'success');
+    // Send approval email (only on first approval, not reactivation)
+    if(!isReactivate && a.email){
+      _affSendApprovalEmail(a);
+    }
   } else toast('Error: '+r.error,'error');
+}
+
+async function _affSendApprovalEmail(a){
+  try{
+    var res = await fetch('/.netlify/functions/aff-approve-email',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        name:           a.name||'',
+        email:          a.email||'',
+        affiliate_code: a.affiliate_code||'',
+        social_handle:  a.social_handle||''
+      })
+    });
+    var rb = await res.json().catch(function(){return{};});
+    if(res.ok){
+      toast('Approval email sent to '+a.email+' \u2713','success');
+    } else {
+      console.warn('[aff-approve-email] Failed:',rb.error||res.status);
+      toast('Approved, but email failed: '+(rb.error||'check Brevo config'),'warn');
+    }
+  }catch(e){
+    console.warn('[aff-approve-email] Error:',e.message);
+    toast('Approved \u2713 — email could not be sent','warn');
+  }
+}
+
+// Allow SA to manually resend the approval email from the table
+async function _affResendApprovalEmail(id){
+  var a=_affiliates.find(function(x){return x.id===id;});
+  if(!a||!a.email){ toast('No email on file for this affiliate','error'); return; }
+  if(a.status!=='approved'){ toast('Affiliate must be approved first','error'); return; }
+  toast('Sending approval email…','info');
+  await _affSendApprovalEmail(a);
 }
 
 async function _affSuspend(id){
