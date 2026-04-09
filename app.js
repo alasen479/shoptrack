@@ -9415,14 +9415,17 @@ function pgAI(){
           <div class="card-ttl">Product or Topic</div>
         </div>
       </div>
-      <select class="fs" id="ctProd" style="margin-bottom:8px" onchange="if(this.value) document.getElementById('ctProdCustom').value=''">
-        <option value="">— Select a product —</option>
+      <!-- Selected chips display -->
+      <div id="ai-prod-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;min-height:0"></div>
+      <!-- Dropdown to add products -->
+      <select class="fs" id="ctProd" style="margin-bottom:8px" onchange="_aiAddProdChip(this)">
+        <option value="">+ Add a product or service…</option>
         ${hasSvcContent}
         ${invOptions}
         <option value="general">General Business Promotion</option>
       </select>
-      <input class="fi" id="ctProdCustom" placeholder="Or type topic(s) — separate multiple with commas" style="font-size:12.5px" oninput="if(this.value) document.getElementById('ctProd').value=''"/>
-      <div style="font-size:10.5px;color:var(--text2);margin-top:4px">💡 Tip: type multiple products separated by commas for richer content</div>
+      <input class="fi" id="ctProdCustom" placeholder="Or type a custom topic and press Enter" style="font-size:12.5px" onkeydown="if(event.key==='Enter'){event.preventDefault();_aiAddCustomChip();}"/>
+      <div style="font-size:10.5px;color:var(--text2);margin-top:4px">Select multiple products — each gets included in the generated content</div>
     </div>
 
     <div class="card" style="margin-bottom:12px">
@@ -9601,6 +9604,7 @@ function pgAI(){
 let _aiType = 'Instagram Caption';
 let _tone   = 'Professional';
 let _aiHistory = [];
+var _aiSelectedProds = []; // multi-product chip state — declared here as fallback (also in _aiGetProd block)
 
 function _selAiType(el, type){
   _aiType = type;
@@ -9919,18 +9923,66 @@ function _aiImgWhatsApp(){
   }, 800);
 }
 
+// ── Multi-product chip selector ──────────────────────────────
+var _aiSelectedProds = [];
+
+function _aiAddProdChip(sel){
+  const val = sel.value;
+  if(!val) return;
+  if(!_aiSelectedProds.includes(val)){
+    _aiSelectedProds.push(val);
+    _aiRenderProdChips();
+  }
+  sel.value = ''; // reset dropdown
+}
+
+function _aiAddCustomChip(){
+  const inp = document.getElementById('ctProdCustom');
+  const val = (inp?.value||'').trim();
+  if(!val) return;
+  // Support comma-separated entries
+  val.split(',').map(v=>v.trim()).filter(Boolean).forEach(function(v){
+    if(!_aiSelectedProds.includes(v)) _aiSelectedProds.push(v);
+  });
+  if(inp) inp.value = '';
+  _aiRenderProdChips();
+}
+
+function _aiRemoveProdChip(idx){
+  _aiSelectedProds.splice(idx,1);
+  _aiRenderProdChips();
+}
+
+function _aiRenderProdChips(){
+  const box = document.getElementById('ai-prod-chips');
+  if(!box) return;
+  if(!_aiSelectedProds.length){
+    box.innerHTML = '';
+    box.style.marginBottom = '0';
+    return;
+  }
+  box.style.marginBottom = '8px';
+  box.innerHTML = _aiSelectedProds.map((p,i)=>
+    `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--a-dim);color:var(--a);border:1px solid var(--a);border-radius:20px;padding:3px 10px 3px 12px;font-size:12px;font-weight:600;max-width:200px">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p}</span>
+      <button onclick="_aiRemoveProdChip(${i})" style="background:none;border:none;color:var(--a);cursor:pointer;font-size:14px;line-height:1;padding:0;flex-shrink:0">&times;</button>
+    </span>`
+  ).join('');
+}
+
 function _aiGetProd(){
-  // Returns comma-separated string if multiple topics entered
+  // Return chips first, then custom input fallback
+  if(_aiSelectedProds.length) return _aiSelectedProds.join(', ');
   const custom = document.getElementById('ctProdCustom')?.value?.trim();
-  if(custom) return custom; // may be "Product A, Product B, Product C"
-  const sel = document.getElementById('ctProd');
-  return sel?.value || 'our featured product';
+  if(custom) return custom;
+  return 'our featured product';
 }
 
 function _aiGetProdLabel(){
-  // Returns a clean label for display/history (first item if multiple)
-  const prod = _aiGetProd();
-  return prod.split(',')[0].trim() || 'our featured product';
+  // Clean label for history display
+  if(_aiSelectedProds.length) return _aiSelectedProds[0];
+  const custom = document.getElementById('ctProdCustom')?.value?.trim();
+  return (custom||'').split(',')[0].trim() || 'our featured product';
 }
 
 // ── Copy with formatting preserved ──────────────────────────
