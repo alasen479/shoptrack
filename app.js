@@ -13694,6 +13694,298 @@ async function _dbLoadBizData(bizId){
   }
 }
 
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  ShopTrack — Phase 2, Step 1: Read Cache (IndexedDB)        ║
+// ║  Strategy: show cached data instantly, sync from Supabase   ║
+// ║  in background, update silently when fresh data arrives.    ║
+// ║  Writes always go directly to Supabase — cache is read-only.║
+// ╚══════════════════════════════════════════════════════════════╝
+
+var _idb = null; // IndexedDB instance (set once on open)
+var _IDB_NAME    = 'shoptrack-cache';
+var _IDB_VERSION = 1;
+var _IDB_STORE   = 'biz-data';
+
+// ── Open (or upgrade) the IndexedDB database ─────────────────
+function _idbOpen(){
+  return new Promise(function(resolve, reject){
+    if(_idb){ resolve(_idb); return; }
+    var req = indexedDB.open(_IDB_NAME, _IDB_VERSION);
+    req.onupgradeneeded = function(e){
+      var db = e.target.result;
+      if(!db.objectStoreNames.contains(_IDB_STORE)){
+        db.createObjectStore(_IDB_STORE, { keyPath: 'key' });
+      }
+    };
+    req.onsuccess = function(e){
+      _idb = e.target.result;
+      resolve(_idb);
+    };
+    req.onerror = function(e){
+      console.warn('[IDB] Open error:', e.target.error);
+      reject(e.target.error);
+    };
+  });
+}
+
+// ── Save a dataset to IndexedDB ───────────────────────────────
+async function _idbSave(bizId, key, data){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx  = db.transaction(_IDB_STORE, 'readwrite');
+      var st  = tx.objectStore(_IDB_STORE);
+      st.put({ key: bizId + ':' + key, data: data, ts: Date.now() });
+      tx.oncomplete = resolve;
+      tx.onerror    = function(){ resolve(); }; // never reject — cache is best-effort
+    });
+  }catch(e){
+    console.warn('[IDB] Save error:', key, e.message);
+  }
+}
+
+// ── Load a dataset from IndexedDB ─────────────────────────────
+async function _idbLoad(bizId, key){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx  = db.transaction(_IDB_STORE, 'readonly');
+      var st  = tx.objectStore(_IDB_STORE);
+      var req = st.get(bizId + ':' + key);
+      req.onsuccess = function(){ resolve(req.result ? req.result.data : null); };
+      req.onerror   = function(){ resolve(null); };
+    });
+  }catch(e){
+    console.warn('[IDB] Load error:', key, e.message);
+    return null;
+  }
+}
+
+// ── Load a cache timestamp ────────────────────────────────────
+async function _idbTs(bizId, key){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx  = db.transaction(_IDB_STORE, 'readonly');
+      var st  = tx.objectStore(_IDB_STORE);
+      var req = st.get(bizId + ':' + key);
+      req.onsuccess = function(){ resolve(req.result ? req.result.ts : 0); };
+      req.onerror   = function(){ resolve(0); };
+    });
+  }catch(e){ return 0; }
+}
+
+// ── Clear all cached data for a business (on logout) ─────────
+async function _idbClear(bizId){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx  = db.transaction(_IDB_STORE, 'readwrite');
+      var st  = tx.objectStore(_IDB_STORE);
+      var req = st.getAllKeys();
+      req.onsuccess = function(){
+        var keys = req.result.filter(function(k){ return k.startsWith(bizId + ':'); });
+        keys.forEach(function(k){ st.delete(k); });
+        tx.oncomplete = resolve;
+      };
+      req.onerror = function(){ resolve(); };
+    });
+  }catch(e){ console.warn('[IDB] Clear error:', e.message); }
+}
+
+// ── Write the current D object to IDB (called after Supabase load) ──
+async function _idbWriteAll(bizId){
+  if(!bizId || bizId === 'BIZ-001' || bizId === 'BIZ-107') return; // skip demo businesses
+  try{
+    await Promise.all([
+      _idbSave(bizId, 'inv',       D.inv),
+      _idbSave(bizId, 'cust',      D.cust),
+      _idbSave(bizId, 'sales',     D.sales),
+      _idbSave(bizId, 'rentals',   D.rentals),
+      _idbSave(bizId, 'exp',       D.exp),
+      _idbSave(bizId, 'vendors',   D.vendors),
+      _idbSave(bizId, 'purchases', D.purchases),
+      _idbSave(bizId, 'audit',     D.audit),
+      _idbSave(bizId, 'services',  D.services),
+      _idbSave(bizId, 'appts',     D.appointments),
+      _idbSave(bizId, 'invCats',   D.invCats),
+      _idbSave(bizId, 'expCats',   D.expCats),
+      _idbSave(bizId, 'vendorCats',D.vendorCats),
+      _idbSave(bizId, 'svcCats',   D.svcCats),
+      _idbSave(bizId, 'biz',       BIZ),
+    ]);
+    console.log('[IDB] Cache written for', bizId);
+  }catch(e){ console.warn('[IDB] WriteAll error:', e.message); }
+}
+
+// ── Restore D and BIZ from IDB cache (instant, before Supabase) ──
+async function _idbRestoreAll(bizId){
+  if(!bizId || bizId === 'BIZ-001' || bizId === 'BIZ-107') return false;
+  try{
+    var [inv,cust,sales,rentals,exp,vendors,purchases,audit,services,appts,
+         invCats,expCats,vendorCats,svcCats,biz] = await Promise.all([
+      _idbLoad(bizId, 'inv'),
+      _idbLoad(bizId, 'cust'),
+      _idbLoad(bizId, 'sales'),
+      _idbLoad(bizId, 'rentals'),
+      _idbLoad(bizId, 'exp'),
+      _idbLoad(bizId, 'vendors'),
+      _idbLoad(bizId, 'purchases'),
+      _idbLoad(bizId, 'audit'),
+      _idbLoad(bizId, 'services'),
+      _idbLoad(bizId, 'appts'),
+      _idbLoad(bizId, 'invCats'),
+      _idbLoad(bizId, 'expCats'),
+      _idbLoad(bizId, 'vendorCats'),
+      _idbLoad(bizId, 'svcCats'),
+      _idbLoad(bizId, 'biz'),
+    ]);
+
+    var hasCache = !!(inv || sales || cust);
+    if(!hasCache) return false; // no cache yet — first visit
+
+    // Restore data arrays — only override if cache has content
+    if(inv)       D.inv          = inv;
+    if(cust)      D.cust         = cust;
+    if(sales)     D.sales        = sales;
+    if(rentals)   D.rentals      = rentals;
+    if(exp)       D.exp          = exp;
+    if(vendors)   D.vendors      = vendors;
+    if(purchases) D.purchases    = purchases;
+    if(audit)     D.audit        = audit;
+    if(services)  D.services     = services;
+    if(appts)     D.appointments = appts;
+
+    // Restore categories
+    if(invCats && invCats.length)    D.invCats    = invCats;
+    if(expCats && expCats.length)    D.expCats    = expCats;
+    if(vendorCats && vendorCats.length) D.vendorCats = vendorCats;
+    if(svcCats && svcCats.length)    D.svcCats    = svcCats;
+
+    // Restore BIZ profile fields (non-destructive — only set what cache has)
+    if(biz){
+      Object.keys(biz).forEach(function(k){
+        if(biz[k] !== undefined && biz[k] !== null) BIZ[k] = biz[k];
+      });
+      // Apply cached theme immediately
+      if(biz.theme) _applyTheme(biz.theme);
+      // Update topbar name immediately
+      var topBizEl = document.getElementById('topbar-biz-name');
+      if(topBizEl && BIZ.name) topBizEl.textContent = BIZ.name;
+    }
+
+    console.log('[IDB] Cache restored for', bizId,
+      '— inv:', (inv||[]).length, 'sales:', (sales||[]).length, 'cust:', (cust||[]).length);
+    return true;
+  }catch(e){
+    console.warn('[IDB] RestoreAll error:', e.message);
+    return false;
+  }
+}
+
+// ── Offline-aware data loader ─────────────────────────────────
+// Called from all the same places as _dbLoadBizData.
+// 1) Instantly renders cached data (if any)
+// 2) Fetches fresh data from Supabase in background
+// 3) Silently updates the UI when fresh data arrives
+var _idbLoadInProgress = false;
+
+async function _dbLoadBizDataCached(bizId){
+  if(!bizId) return;
+
+  // Step 1: Restore from IDB cache instantly
+  var hadCache = await _idbRestoreAll(bizId);
+  if(hadCache){
+    // Render the page with cached data right away
+    try{ refreshLiveKpis(); }catch(_e){}
+    try{
+      var _mcEl = document.getElementById('mc');
+      var _modalOpen = _mcEl && _mcEl.innerHTML && _mcEl.innerHTML.trim().length > 0;
+      if(!_modalOpen && typeof curPage !== 'undefined' && curPage && curPage !== 'login'){
+        nav(curPage);
+      }
+    }catch(_e){}
+    _idbShowCacheBanner(bizId);
+  }
+
+  // Step 2: If offline, stop here — cached data is all we have
+  if(!navigator.onLine){
+    if(!hadCache){
+      // No cache and no internet — show a clear message
+      console.warn('[IDB] Offline with no cache for', bizId);
+    }
+    return;
+  }
+
+  // Step 3: Fetch fresh from Supabase (original function)
+  if(_idbLoadInProgress) return;
+  _idbLoadInProgress = true;
+  try{
+    await _dbLoadBizData(bizId);
+    // Step 4: Write fresh data back to IDB for next offline visit
+    await _idbWriteAll(bizId);
+    _idbHideCacheBanner();
+  }catch(e){
+    console.warn('[IDB] Background sync error:', e.message);
+  }finally{
+    _idbLoadInProgress = false;
+  }
+}
+
+// ── Cache-age banner ──────────────────────────────────────────
+// Shows a subtle banner when cached data is displayed,
+// disappears automatically once fresh data arrives.
+var _idbBanner = null;
+
+function _idbShowCacheBanner(bizId){
+  // Get cache timestamp to show how old the data is
+  _idbTs(bizId, 'sales').then(function(ts){
+    if(!ts) return;
+    var age  = Date.now() - ts;
+    var mins = Math.floor(age / 60000);
+    var hrs  = Math.floor(mins / 60);
+    var label = hrs > 0
+      ? (hrs === 1 ? '1 hour ago' : hrs + ' hours ago')
+      : (mins < 2 ? 'just now' : mins + ' minutes ago');
+
+    if(_idbBanner) return; // already showing
+    _idbBanner = document.createElement('div');
+    _idbBanner.id = 'idb-cache-banner';
+    _idbBanner.style.cssText = [
+      'position:fixed;top:0;left:0;right:0;z-index:88888',
+      'background:#1e293b;border-bottom:1px solid #334155',
+      'padding:6px 16px;display:flex;align-items:center;gap:8px',
+      'font-family:var(--font,sans-serif);font-size:12px;color:#94a3b8',
+      'transform:translateY(-100%);transition:transform .25s ease',
+    ].join(';');
+    _idbBanner.innerHTML =
+      '<span style="color:#f59e0b;font-size:13px">⏱</span>'
+      + '<span>Showing cached data from <strong style="color:#cbd5e1">' + label + '</strong> — syncing…</span>'
+      + '<div style="margin-left:auto;width:10px;height:10px;border:2px solid #4f46e5;border-top-color:transparent;border-radius:50%;animation:idb-spin 0.8s linear infinite"></div>';
+
+    // Inject keyframe animation
+    if(!document.getElementById('idb-spin-style')){
+      var st = document.createElement('style');
+      st.id = 'idb-spin-style';
+      st.textContent = '@keyframes idb-spin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(st);
+    }
+
+    document.body.appendChild(_idbBanner);
+    setTimeout(function(){ _idbBanner.style.transform = 'translateY(0)'; }, 80);
+  });
+}
+
+function _idbHideCacheBanner(){
+  if(_idbBanner){
+    _idbBanner.style.transform = 'translateY(-100%)';
+    setTimeout(function(){
+      if(_idbBanner && _idbBanner.parentNode) _idbBanner.parentNode.removeChild(_idbBanner);
+      _idbBanner = null;
+    }, 300);
+  }
+}
+
 // ── Load all businesses for SA ────────────────────────────────
 async function _dbLoadAdminBiz(){
   if(!_sb) return;
@@ -13818,6 +14110,10 @@ async function _dbLoadBizProfile(bizId){
     BIZ.subPhone        = data.phone||data.whatsapp||'';
     BIZ.pendingPlan     = data.pending_plan||null;
     BIZ.pendingPlanFrom = data.pending_plan_from||null;
+    // Cache the BIZ profile to IDB for offline use
+    if(bizId && bizId !== 'BIZ-001' && bizId !== 'BIZ-107'){
+      _idbSave(bizId, 'biz', BIZ).catch(function(){});
+    }
     // Restore notification prefs from DB (overrides localStorage with server truth)
     if(data.notif_prefs) _restoreNotifPrefsFromDB(data.notif_prefs);
     // Cache API key locally so it survives refresh even before Supabase loads
@@ -14809,7 +15105,7 @@ function doLogin(){
       } else {
         _showDataLoading('Loading your business data…');
         await _dbLoadBizProfile(cred.bizId);
-        await _dbLoadBizData(cred.bizId);
+        await _dbLoadBizDataCached(cred.bizId);
         _hideDataLoading();
         // Update last login
         if(_sb) _sb.from('platform_users').update({last_login:localDateStr()}).eq('id',cred.userId);
@@ -15015,6 +15311,10 @@ async function doResetPwd(email, btn){
 
 function doLogout(){
   addAudit('Logout', (SESSION.name||SESSION.email||'User')+' signed out');
+  // Clear IDB cache for this business on logout (security — next user starts fresh)
+  if(SESSION.bizId && SESSION.bizId !== 'BIZ-001' && SESSION.bizId !== 'BIZ-107'){
+    _idbClear(SESSION.bizId).catch(function(){});
+  }
   try{ localStorage.removeItem('st_session'); sessionStorage.removeItem('st_session'); }catch(e){}
   const ls = document.getElementById('login-screen');
   if(ls){ ls.style.opacity='1'; ls.style.transition='none'; ls.style.display='flex'; }
@@ -16147,7 +16447,7 @@ async function _confirmVerifyToken(){
 
         // Load business data from Supabase if available
         if(_sb && bizId) {
-          _dbLoadBizData(bizId).catch(e=>console.warn('[auto-login] DB load error:', e.message));
+          _dbLoadBizDataCached(bizId).catch(e=>console.warn('[auto-login] DB load error:', e.message));
         }
 
         // Force-clear sidebar user chip so it re-renders with new session (not SA's)
@@ -16473,7 +16773,7 @@ function bootApp(){
               }catch(_se){}
               // Now load data with correct bizId
               _showDataLoading('Loading your data…');
-              Promise.all([_dbLoadBizProfile(SESSION.bizId), _dbLoadBizData(SESSION.bizId)])
+              Promise.all([_dbLoadBizProfile(SESSION.bizId), _dbLoadBizDataCached(SESSION.bizId)])
                 .then(function(){ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); refreshLiveKpis(); })
                 .catch(function(){ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); });
             }
@@ -16525,7 +16825,7 @@ function bootApp(){
         } else {
           // Show loading indicator during restore
           _showDataLoading('Restoring your data…');
-          Promise.all([_dbLoadBizProfile(SESSION.bizId), _dbLoadBizData(SESSION.bizId)])
+          Promise.all([_dbLoadBizProfile(SESSION.bizId), _dbLoadBizDataCached(SESSION.bizId)])
             .then(()=>{ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); refreshLiveKpis(); })
             .catch(err=>{ _hideDataLoading(); updateSidebarForRole(); console.error('Data restore error:',err); nav('dashboard'); });
         }
@@ -22127,7 +22427,7 @@ window.addEventListener('offline', function(){
 window.addEventListener('online', function(){
   toast('✅ Back online — syncing data…','success');
   if(SESSION.bizId && SESSION.bizId !== 'BIZ-001' && SESSION.bizId !== 'BIZ-107'){
-    _dbLoadBizData(SESSION.bizId);
+    _dbLoadBizDataCached(SESSION.bizId);
   }
 });
 
@@ -22407,7 +22707,7 @@ function _syncDataFromCloud(){
   if(!SESSION.bizId||SESSION.isSuperAdmin||!_sb){ toast('Not connected to cloud','info'); return; }
   var syncBtn = document.getElementById('topbar-sync-btn');
   if(syncBtn){ syncBtn.textContent='↻'; syncBtn.style.animation='spin .8s linear infinite'; }
-  Promise.all([_dbLoadBizProfile(SESSION.bizId), _dbLoadBizData(SESSION.bizId)])
+  Promise.all([_dbLoadBizProfile(SESSION.bizId), _dbLoadBizDataCached(SESSION.bizId)])
     .then(function(){
       refreshLiveKpis();
       if(syncBtn){ syncBtn.textContent='↻'; syncBtn.style.animation=''; }
