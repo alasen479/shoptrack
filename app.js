@@ -16594,21 +16594,106 @@ try {
   if(_ml) _ml.href = URL.createObjectURL(_mb);
 } catch(e){}
 
-// Kill ALL service workers and caches — prevents stale file serving
+// ── Service Worker: Phase 1 Offline Support ──────────────────
+// Registers sw.js which caches the app shell for offline use.
+// Supabase / API calls always go to network — never cached.
 try {
   if('serviceWorker' in navigator){
-    // Unregister every registered SW
-    navigator.serviceWorker.getRegistrations().then(function(regs){
-      regs.forEach(function(r){ r.unregister(); });
-    });
-    // Wipe every cache store
-    if('caches' in window){
-      caches.keys().then(function(keys){
-        keys.forEach(function(k){ caches.delete(k); });
+    navigator.serviceWorker.register('/sw.js').then(function(reg){
+      // Check for updates in the background
+      reg.addEventListener('updatefound', function(){
+        var newWorker = reg.installing;
+        if(!newWorker) return;
+        newWorker.addEventListener('statechange', function(){
+          if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
+            // New version available — show update toast
+            _swShowUpdateBanner();
+          }
+        });
       });
-    }
+      console.log('[SW] Registered:', reg.scope);
+    }).catch(function(err){
+      console.warn('[SW] Registration failed:', err.message);
+    });
+
+    // When SW takes control, reload once so the cached version is used
+    var _swRefreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(_swRefreshing) return;
+      _swRefreshing = true;
+    });
   }
-} catch(e){}
+} catch(e){ console.warn('[SW] Error:', e.message); }
+
+// ── Online / Offline banner ───────────────────────────────────
+(function(){
+  var _offlineBanner = null;
+
+  function _createOfflineBanner(){
+    if(_offlineBanner) return;
+    _offlineBanner = document.createElement('div');
+    _offlineBanner.id = 'sw-offline-banner';
+    _offlineBanner.style.cssText = [
+      'position:fixed;bottom:0;left:0;right:0;z-index:99999',
+      'background:#1e293b;border-top:2px solid #ef4444',
+      'padding:10px 16px;display:flex;align-items:center;gap:10px',
+      'font-family:var(--font,sans-serif);font-size:13px;color:#f1f5f9',
+      'transform:translateY(100%);transition:transform .3s ease',
+    ].join(';');
+    _offlineBanner.innerHTML = '<span style="font-size:16px">📡</span>'
+      + '<span style="flex:1"><strong>No internet connection</strong> — ShopTrack is running in read-only mode. New data cannot be saved until you reconnect.</span>'
+      + '<button onclick="this.closest(\'#sw-offline-banner\').style.transform=\'translateY(100%)\';" '
+      + 'style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:18px;padding:0 4px">&times;</button>';
+    document.body.appendChild(_offlineBanner);
+  }
+
+  function showOfflineBanner(){
+    _createOfflineBanner();
+    setTimeout(function(){ _offlineBanner.style.transform = 'translateY(0)'; }, 100);
+  }
+
+  function hideOfflineBanner(){
+    if(_offlineBanner) _offlineBanner.style.transform = 'translateY(100%)';
+  }
+
+  window.addEventListener('offline', function(){
+    showOfflineBanner();
+    console.warn('[ShopTrack] Gone offline');
+  });
+
+  window.addEventListener('online', function(){
+    hideOfflineBanner();
+    console.log('[ShopTrack] Back online');
+    // Show a brief "reconnected" toast if toast function is available
+    if(typeof toast === 'function') toast('Back online ✓', 'success');
+  });
+
+  // Show immediately if already offline on load
+  if(!navigator.onLine) showOfflineBanner();
+})();
+
+// ── SW Update Banner ─────────────────────────────────────────
+function _swShowUpdateBanner(){
+  var b = document.createElement('div');
+  b.style.cssText = [
+    'position:fixed;bottom:0;left:0;right:0;z-index:99999',
+    'background:#1e293b;border-top:2px solid #4f46e5',
+    'padding:10px 16px;display:flex;align-items:center;gap:10px',
+    'font-family:var(--font,sans-serif);font-size:13px;color:#f1f5f9',
+  ].join(';');
+  b.innerHTML = '<span style="font-size:16px">⬆️</span>'
+    + '<span style="flex:1"><strong>Update available</strong> — A new version of ShopTrack is ready.</span>'
+    + '<button onclick="_swApplyUpdate()" style="background:#4f46e5;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:700">Update Now</button>'
+    + '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:18px;padding:0 4px">&times;</button>';
+  document.body.appendChild(b);
+}
+
+function _swApplyUpdate(){
+  if(navigator.serviceWorker && navigator.serviceWorker.controller){
+    navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
+  }
+  window.location.reload();
+}
 
 // Install prompt
 var _deferredPrompt = null;

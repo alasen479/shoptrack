@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#0a0c12"/>
+<title>ShopTrack — No Connection</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#0d0f17;
+    color:#e2e8f0;
+    font-family:'Segoe UI',Arial,sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .wrap{
+    max-width:400px;
+    width:100%;
+    text-align:center;
+  }
+  .logo{
+    font-size:28px;
+    font-weight:900;
+    color:#4f46e5;
+    letter-spacing:-.5px;
+    margin-bottom:32px;
+  }
+  .icon{
+    font-size:64px;
+    margin-bottom:24px;
+    opacity:.8;
+  }
+  h1{
+    font-size:20px;
+    font-weight:700;
+    color:#f1f5f9;
+    margin-bottom:10px;
+  }
+  p{
+    font-size:14px;
+    color:#94a3b8;
+    line-height:1.7;
+    margin-bottom:28px;
+  }
+  .btn{
+    display:inline-block;
+    background:#4f46e5;
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    padding:12px 28px;
+    border-radius:10px;
+    border:none;
+    cursor:pointer;
+    text-decoration:none;
+    margin-bottom:12px;
+    width:100%;
+  }
+  .btn:active{opacity:.85}
+  .btn-sec{
+    background:transparent;
+    border:1px solid #2a2e45;
+    color:#94a3b8;
+    font-size:13px;
+  }
+  .tip{
+    margin-top:32px;
+    background:#13151f;
+    border:1px solid #1e2236;
+    border-radius:12px;
+    padding:16px;
+    text-align:left;
+  }
+  .tip-title{
+    font-size:11px;
+    font-weight:700;
+    color:#4f46e5;
+    text-transform:uppercase;
+    letter-spacing:.8px;
+    margin-bottom:10px;
+  }
+  .tip-item{
+    font-size:13px;
+    color:#64748b;
+    line-height:1.7;
+    padding:3px 0;
+  }
+  .tip-item::before{content:'• ';color:#4f46e5;}
+  .status{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:#64748b;
+    margin-top:20px;
+  }
+  .dot{
+    width:8px;height:8px;
+    border-radius:50%;
+    background:#ef4444;
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">ShopTrack</div>
+  <div class="icon">📡</div>
+  <h1>No Internet Connection</h1>
+  <p>ShopTrack needs an internet connection to load your business data. Connect to Wi-Fi or mobile data and try again.</p>
+
+  <button class="btn" onclick="tryReload()">↻ Try Again</button>
+  <button class="btn btn-sec" onclick="window.history.back()">← Go Back</button>
+
+  <div class="tip">
+    <div class="tip-title">While you wait</div>
+    <div class="tip-item">Check your Wi-Fi or mobile data</div>
+    <div class="tip-item">Move closer to your router or window</div>
+    <div class="tip-item">ShopTrack will reload automatically when you reconnect</div>
+    <div class="tip-item">Your data is safe — nothing is lost</div>
+  </div>
+
+  <div class="status">
+    <div class="dot" id="dot"></div>
+    <span id="status-text">Waiting for connection…</span>
+  </div>
+</div>
+
+<script>
+function tryReload(){
+  window.location.href = '/';
+}
+
+// Auto-reload when connection returns
+window.addEventListener('online', function(){
+  document.getElementById('dot').style.background = '#10b981';
+  document.getElementById('status-text').textContent = 'Connection restored — reloading…';
+  setTimeout(function(){ window.location.href = '/'; }, 800);
+});
+
+window.addEventListener('offline', function(){
+  document.getElementById('dot').style.background = '#ef4444';
+  document.getElementById('status-text').textContent = 'Still offline…';
+});
+
+// Check every 5 seconds
+setInterval(function(){
+  if(navigator.onLine){
+    document.getElementById('dot').style.background = '#10b981';
+    document.getElementById('status-text').textContent = 'Connection restored — reloading…';
+    setTimeout(function(){ window.location.href = '/'; }, 500);
+  }
+}, 5000);
+</script>
+</body>
+</html>

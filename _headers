@@ -1,4 +1,4 @@
-# HTML — never cache (always fresh, contains no hash in filename)
+# HTML — never cache (always fresh)
 /index.html
   Cache-Control: no-cache, no-store, must-revalidate
   Pragma: no-cache
@@ -9,7 +9,20 @@
   Pragma: no-cache
   Expires: 0
 
-# JS — cache for 1 year; deploy a new filename or append ?v=BUILD to bust
+# Offline fallback — allow SW to cache it, but always fetch fresh from network
+/offline.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+# Service Worker — MUST be no-cache so browser always checks for updates
+# SW scope is determined by its location (/sw.js = controls all of /)
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Content-Type: application/javascript; charset=utf-8
+  Service-Worker-Allowed: /
+
+# JS — no cache (SW handles caching internally)
 /app.js
   Cache-Control: no-cache, no-store, must-revalidate
   Content-Type: application/javascript; charset=utf-8
@@ -18,6 +31,6 @@
 /.netlify/functions/*
   Cache-Control: no-store
 
-# Default for everything else (images, fonts, etc.)
+# Default for everything else (images, fonts, PDFs etc.)
 /*
   Cache-Control: public, max-age=86400, stale-while-revalidate=3600
