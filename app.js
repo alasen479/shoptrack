@@ -14585,7 +14585,11 @@ async function _dbLoadBizProfile(bizId){
     BIZ.bookingNote     = data.booking_note||'';
     BIZ.bookingsEnabled = data.bookings_enabled!==false;
     BIZ.country         = data.country||'Cameroon';
-    BIZ.language        = data.language||'en';
+    BIZ.language        = data.language || _loginLanguage || 'en';
+    // If language came from login toggle (DB had no preference), mark for apply after nav
+    if(!data.language && _loginLanguage && _loginLanguage !== 'en'){
+      window._pendingLangApply = _loginLanguage;
+    }
     try{BIZ.costCats=data.cost_cats?(typeof data.cost_cats==='string'?JSON.parse(data.cost_cats):data.cost_cats)||[]:[];}catch(_e){BIZ.costCats=[];}
     // Subscription fields — needed for dashboard banner and Pay Now flow
     BIZ.plan            = data.plan||'';
@@ -15668,8 +15672,18 @@ function _updateAIBadge(){
 
 
 
+// ── Login screen language helper ─────────────────────────────
+// Flushes any language set via the login toggle after the first nav() call,
+// so sidebar, mobile nav and all chrome render in the correct language.
+function _flushPendingLang(){
+  if(window._pendingLangApply){
+    var lang = window._pendingLangApply;
+    window._pendingLangApply = null;
+    setTimeout(function(){ _applyLanguage(lang); }, 50);
+  }
+}
+
 // ── Login screen language toggle ──────────────────────────────
-// Sets the pre-login language so French speakers see FR before signing in.
 // After login, language is controlled by BIZ.language in Settings.
 var _loginLanguage = (function(){
   try{ return localStorage.getItem('st_login_lang') || 'en'; }catch(e){ return 'en'; }
@@ -15917,6 +15931,12 @@ function doLogin(){const _s=_L();
       setTimeout(() => loginEl.style.display = 'none', 360);
     }
     nav(cred.isSuperAdmin ? 'admin-biz' : 'dashboard');
+    // Apply login-toggle language to chrome (sidebar, mobile nav) if DB had no saved preference
+    if(window._pendingLangApply){
+      var _pla = window._pendingLangApply;
+      window._pendingLangApply = null;
+      setTimeout(function(){ _applyLanguage(_pla); }, 50);
+    }
     setTimeout(_checkPlanExpiry, 1000);
 
     // Force password change on first login
@@ -17199,7 +17219,10 @@ async function _confirmVerifyToken(){
         BIZ.type     = sp.bizType    || 'General Retail';
         BIZ.country  = sp.country    || 'CM';
         BIZ.currency = sp.currency   || 'XAF';
-        BIZ.language = sp.lang       || 'en';
+        BIZ.language = sp.lang || _loginLanguage || 'en';
+        if(!sp.lang && _loginLanguage && _loginLanguage !== 'en'){
+          window._pendingLangApply = _loginLanguage;
+        }
         BIZ.plan     = 'trial';
         BIZ.trialEnd = (function(){ var d=new Date(); d.setDate(d.getDate()+30); return d.toISOString().slice(0,10); })();
 
@@ -17231,6 +17254,12 @@ async function _confirmVerifyToken(){
 
         // Navigate to dashboard
         nav('dashboard');
+        // Apply login-toggle language to chrome if no DB preference was saved
+        if(window._pendingLangApply){
+          var _pla2 = window._pendingLangApply;
+          window._pendingLangApply = null;
+          setTimeout(function(){ _applyLanguage(_pla2); }, 50);
+        }
         toast('✔ Email verified — welcome to ShopTrack! 🎉','success');
         // Re-render sidebar and show setup popup
         ['sb-user-name','sb-user-role','sb-user-avatar'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent='';});
@@ -17542,8 +17571,8 @@ function bootApp(){
               // Now load data with correct bizId
               _showDataLoading('Loading your data…');
               Promise.all([_dbLoadBizProfile(SESSION.bizId), _dbLoadBizDataCached(SESSION.bizId)])
-                .then(function(){ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); refreshLiveKpis(); })
-                .catch(function(){ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); });
+                .then(function(){ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); refreshLiveKpis(); _flushPendingLang(); })
+                .catch(function(){ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); _flushPendingLang(); });
             }
           }).catch(function(){});
       }
@@ -17588,14 +17617,14 @@ function bootApp(){
           _loadDemoDataForTestLLC();
           _showDataLoading('Restoring your data…');
           Promise.all([_dbLoadBizProfile('BIZ-107'), _dbLoadBizData('BIZ-107')])
-            .then(()=>{ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); })
-            .catch(()=>{ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); });
+            .then(()=>{ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); _flushPendingLang(); })
+            .catch(()=>{ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); _flushPendingLang(); });
         } else {
           // Show loading indicator during restore
           _showDataLoading('Restoring your data…');
           Promise.all([_dbLoadBizProfile(SESSION.bizId), _dbLoadBizDataCached(SESSION.bizId)])
-            .then(()=>{ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); refreshLiveKpis(); })
-            .catch(err=>{ _hideDataLoading(); updateSidebarForRole(); console.error('Data restore error:',err); nav('dashboard'); });
+            .then(()=>{ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); refreshLiveKpis(); _flushPendingLang(); })
+            .catch(err=>{ _hideDataLoading(); updateSidebarForRole(); console.error('Data restore error:',err); nav('dashboard'); _flushPendingLang(); });
         }
       } else {
         updateSidebarForRole();
