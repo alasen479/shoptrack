@@ -2834,6 +2834,7 @@ function _subPaymentConfirmed(newExpiry, amtXAF){
 }
 
 function pgDash(){
+  const _s=_L();
   const k=refreshLiveKpis();
   // Render trial countdown after next tick so DOM is ready
   setTimeout(_renderTrialCountdown, 100);
@@ -2844,21 +2845,21 @@ function pgDash(){
   <div class="bc">${_esc(BIZ.name)||'ShopTrack'}</div>
   <div class="ph-row">
     <div>
-      <h1>Dashboard</h1>
-      <p id="dash-period-label">${PERIOD_RANGES[_dashPeriod]?.label||''} — Business performance at a glance</p>
+      <h1>${_s.dash_title}</h1>
+      <p id="dash-period-label">${PERIOD_RANGES[_dashPeriod]?.label||''} — ${_s.dash_subtitle}</p>
     </div>
     <div class="btn-row">
       <div class="dtabs" id="dash-period-tabs">
-        <button class="dtab${_dashPeriod==='today'?' on':''}" onclick="setDashPeriod(this,'today')">Today</button>
-        <button class="dtab${_dashPeriod==='yesterday'?' on':''}" onclick="setDashPeriod(this,'yesterday')">Yesterday</button>
-        <button class="dtab${_dashPeriod==='week'?' on':''}" onclick="setDashPeriod(this,'week')">This Week</button>
-        <button class="dtab${_dashPeriod==='lastweek'?' on':''}" onclick="setDashPeriod(this,'lastweek')">Last Week</button>
-        <button class="dtab${_dashPeriod==='month'?' on':''}" onclick="setDashPeriod(this,'month')">This Month</button>
-        <button class="dtab${_dashPeriod==='lastmonth'?' on':''}" onclick="setDashPeriod(this,'lastmonth')">Last Month</button>
-        <button class="dtab${_dashPeriod==='quarter'?' on':''}" onclick="setDashPeriod(this,'quarter')">Quarter</button>
-        <button class="dtab${_dashPeriod==='ytd'?' on':''}" onclick="setDashPeriod(this,'ytd')">YTD</button>
+        <button class="dtab${_dashPeriod==='today'?' on':''}" onclick="setDashPeriod(this,'today')">${_s.dash_today}</button>
+        <button class="dtab${_dashPeriod==='yesterday'?' on':''}" onclick="setDashPeriod(this,'yesterday')">${_s.dash_yesterday}</button>
+        <button class="dtab${_dashPeriod==='week'?' on':''}" onclick="setDashPeriod(this,'week')">${_s.dash_this_week}</button>
+        <button class="dtab${_dashPeriod==='lastweek'?' on':''}" onclick="setDashPeriod(this,'lastweek')">${_s.dash_last_week}</button>
+        <button class="dtab${_dashPeriod==='month'?' on':''}" onclick="setDashPeriod(this,'month')">${_s.dash_this_month}</button>
+        <button class="dtab${_dashPeriod==='lastmonth'?' on':''}" onclick="setDashPeriod(this,'lastmonth')">${_s.dash_last_month}</button>
+        <button class="dtab${_dashPeriod==='quarter'?' on':''}" onclick="setDashPeriod(this,'quarter')">${_s.dash_quarter}</button>
+        <button class="dtab${_dashPeriod==='ytd'?' on':''}" onclick="setDashPeriod(this,'ytd')">${_s.dash_ytd}</button>
       </div>
-      <button class="btn btn-s btn-sm" onclick="mCustomizeDash()" title="Customise dashboard">⚙ Customise</button>
+      <button class="btn btn-s btn-sm" onclick="mCustomizeDash()" title="${_s.dash_cust_title}">${_s.dash_customise}</button>
     </div>
   </div>
 </div>
@@ -2869,34 +2870,34 @@ ${_subExpiryBanner()}
 ${_setupScoreBar()}
 
 <div class="kpi-grid" id="dash-kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(185px,1fr))">
-  ${DC.kpis.includes('rev')?`<div class="kpi b" onclick="_navWithPeriod('reports',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">Total Revenue ↗</div><div id="dash-kpi-rev" class="kpi-val b">${fmtKpi(k.rev)}</div><div class="kpi-sub" id="dash-kpi-rev-sub"></div></div>`:''}
-  ${DC.kpis.includes('saleRev')?`<div class="kpi g" onclick="_navWithPeriod('sales',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">Sales Revenue ↗</div><div id="dash-kpi-sale" class="kpi-val g">${fmtKpi(k.saleRev)}</div><div class="kpi-sub" id="dash-kpi-sale-sub"></div></div>`:''}
-  ${DC.kpis.includes('rentRev')?`<div class="kpi c" onclick="_navWithPeriod('rentals',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">Rental Revenue ↗</div><div id="dash-kpi-rent" class="kpi-val c">${fmtKpi(k.rentRev)}</div><div class="kpi-sub" id="dash-kpi-rent-sub"></div></div>`:''}
-  ${DC.kpis.includes('apptRev')?`<div class="kpi p" onclick="mServicesRevenue()" style="cursor:pointer" title="View completed appointments revenue"><div class="kpi-lbl">Services Revenue ↗</div><div id="dash-kpi-appt" class="kpi-val p">${fmtKpi(k.apptRev||0)}</div><div class="kpi-sub" id="dash-kpi-appt-sub">From completed appts</div></div>`:''}
-  ${DC.kpis.includes('gp')?`<div class="kpi p"><div class="kpi-lbl">Gross Profit</div><div id="dash-kpi-gp" class="kpi-val p">${fmtKpi(k.gp)}</div><div class="kpi-sub">Margin: <strong id="dash-kpi-gp-pct" style="color:var(--p)">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</strong></div></div>`:''}
-  ${DC.kpis.includes('np')?`<div class="kpi g"><div class="kpi-lbl">Net Profit</div><div id="dash-kpi-np" class="kpi-val g">${fmtKpi(k.np)}</div><div class="kpi-sub">Margin: <strong id="dash-kpi-np-pct" style="color:var(--g)">${k.rev>0?Math.round(k.np/k.rev*100):0}%</strong></div></div>`:''}
-  ${DC.kpis.includes('ar')?`<div class="kpi r" onclick="mARDetail()" style="cursor:pointer" title="View & manage accounts receivable"><div class="kpi-lbl">AR Outstanding ↗</div><div id="dash-kpi-ar" class="kpi-val r">${fmtKpi(k.ar)}</div><div class="kpi-sub" id="dash-kpi-ar-sub">${D.cust.filter(c=>c.bal>0).length} customer${D.cust.filter(c=>c.bal>0).length!==1?'s':''} owe</div></div>`:''}
-  ${DC.kpis.includes('ap')?`<div class="kpi r" onclick="mAPDetail()" style="cursor:pointer" title="View & manage accounts payable"><div class="kpi-lbl">AP Outstanding ↗</div><div id="dash-kpi-ap" class="kpi-val r">${fmtKpi(k.ap)}</div><div class="kpi-sub" id="dash-kpi-ap-sub">${D.vendors.filter(v=>v.bal>0).length} vendor${D.vendors.filter(v=>v.bal>0).length!==1?'s':''} to pay</div></div>`:''}
-  ${DC.kpis.includes('invVal')?`<div class="kpi b" onclick="nav('inventory')" style="cursor:pointer" title="View inventory"><div class="kpi-lbl">Inventory Value</div><div id="dash-kpi-inv" class="kpi-val b">${fmtKpi(k.invVal)}</div><div class="kpi-sub">${D.inv.length} active item${D.inv.length!==1?'s':''}</div></div>`:''}
+  ${DC.kpis.includes('rev')?`<div class="kpi b" onclick="_navWithPeriod('reports',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">${_s.dash_kpi_rev}</div><div id="dash-kpi-rev" class="kpi-val b">${fmtKpi(k.rev)}</div><div class="kpi-sub" id="dash-kpi-rev-sub"></div></div>`:''}
+  ${DC.kpis.includes('saleRev')?`<div class="kpi g" onclick="_navWithPeriod('sales',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">${_s.dash_kpi_sale}</div><div id="dash-kpi-sale" class="kpi-val g">${fmtKpi(k.saleRev)}</div><div class="kpi-sub" id="dash-kpi-sale-sub"></div></div>`:''}
+  ${DC.kpis.includes('rentRev')?`<div class="kpi c" onclick="_navWithPeriod('rentals',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">${_s.dash_kpi_rent}</div><div id="dash-kpi-rent" class="kpi-val c">${fmtKpi(k.rentRev)}</div><div class="kpi-sub" id="dash-kpi-rent-sub"></div></div>`:''}
+  ${DC.kpis.includes('apptRev')?`<div class="kpi p" onclick="mServicesRevenue()" style="cursor:pointer" title="${_s.dash_kpi_appt_title}"><div class="kpi-lbl">${_s.dash_kpi_appt}</div><div id="dash-kpi-appt" class="kpi-val p">${fmtKpi(k.apptRev||0)}</div><div class="kpi-sub" id="dash-kpi-appt-sub">${_s.dash_kpi_appt_sub}</div></div>`:''}
+  ${DC.kpis.includes('gp')?`<div class="kpi p"><div class="kpi-lbl">${_s.dash_kpi_gp}</div><div id="dash-kpi-gp" class="kpi-val p">${fmtKpi(k.gp)}</div><div class="kpi-sub">Margin: <strong id="dash-kpi-gp-pct" style="color:var(--p)">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</strong></div></div>`:''}
+  ${DC.kpis.includes('np')?`<div class="kpi g"><div class="kpi-lbl">${_s.dash_kpi_np}</div><div id="dash-kpi-np" class="kpi-val g">${fmtKpi(k.np)}</div><div class="kpi-sub">Margin: <strong id="dash-kpi-np-pct" style="color:var(--g)">${k.rev>0?Math.round(k.np/k.rev*100):0}%</strong></div></div>`:''}
+  ${DC.kpis.includes('ar')?`<div class="kpi r" onclick="mARDetail()" style="cursor:pointer" title="${_s.dash_kpi_ar_title}"><div class="kpi-lbl">${_s.dash_kpi_ar}</div><div id="dash-kpi-ar" class="kpi-val r">${fmtKpi(k.ar)}</div><div class="kpi-sub" id="dash-kpi-ar-sub">${D.cust.filter(c=>c.bal>0).length} ${_s.dash_cust_owe}</div></div>`:''}
+  ${DC.kpis.includes('ap')?`<div class="kpi r" onclick="mAPDetail()" style="cursor:pointer" title="${_s.dash_kpi_ap_title}"><div class="kpi-lbl">${_s.dash_kpi_ap}</div><div id="dash-kpi-ap" class="kpi-val r">${fmtKpi(k.ap)}</div><div class="kpi-sub" id="dash-kpi-ap-sub">${D.vendors.filter(v=>v.bal>0).length} ${_s.dash_vend_pay}</div></div>`:''}
+  ${DC.kpis.includes('invVal')?`<div class="kpi b" onclick="nav('inventory')" style="cursor:pointer" title="${_s.dash_kpi_inv_title}"><div class="kpi-lbl">${_s.dash_kpi_inv}</div><div id="dash-kpi-inv" class="kpi-val b">${fmtKpi(k.invVal)}</div><div class="kpi-sub">${D.inv.length} ${_s.dash_items}</div></div>`:''}
 </div>
 
 ${_buildDashQA(DC)}
 
 <div class="g2" style="margin-bottom:16px">
-  <div class="card"><div class="card-hd"><div class="card-ttl">Revenue Trend</div><span style="font-size:11px;color:var(--text2)">6 months</span></div><div class="ch-wrap" style="height:190px"><canvas id="revChart"></canvas></div></div>
-  <div class="card"><div class="card-hd"><div class="card-ttl">Profit Breakdown</div><span style="font-size:11px;color:var(--text2)">This month</span></div><div class="ch-wrap" style="height:190px"><canvas id="donutChart"></canvas></div></div>
+  <div class="card"><div class="card-hd"><div class="card-ttl">${_s.dash_rev_trend}</div><span style="font-size:11px;color:var(--text2)">${_s.dash_6months}</span></div><div class="ch-wrap" style="height:190px"><canvas id="revChart"></canvas></div></div>
+  <div class="card"><div class="card-hd"><div class="card-ttl">${_s.dash_profit_break}</div><span style="font-size:11px;color:var(--text2)">${_s.dash_this_month_lbl}</span></div><div class="ch-wrap" style="height:190px"><canvas id="donutChart"></canvas></div></div>
 </div>
 
 <div class="g2" style="margin-bottom:14px">
   ${DC.sections.includes('recentSales')?`<div class="card">
-    <div class="card-hd"><div class="card-ttl">Recent Sales</div><button class="btn btn-g btn-sm" onclick="nav('sales')">View All</button></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>Customer</th><th>Amount</th><th>Status</th></tr></thead>
+    <div class="card-hd"><div class="card-ttl">${_s.dash_recent_sales}</div><button class="btn btn-g btn-sm" onclick="nav('sales')">${_s.dash_view_all}</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th>${_s.dash_col_sale_id}</th><th>${_s.dash_col_cust}</th><th>${_s.dash_col_amount}</th><th>${_s.dash_col_status}</th></tr></thead>
     <tbody id="dash-recent-sales-body">${_buildRecentSalesRows(PERIOD_RANGES[_dashPeriod])}</tbody></table></div>
   </div>`:'<div></div>'}
 
   ${DC.sections.includes('recentRentals')?`<div class="card">
-    <div class="card-hd"><div class="card-ttl">Recent Rentals</div><button class="btn btn-g btn-sm" onclick="nav('rentals')">View All</button></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Rental ID</th><th>Customer</th><th>Item</th><th>Status</th></tr></thead>
+    <div class="card-hd"><div class="card-ttl">${_s.dash_recent_rents}</div><button class="btn btn-g btn-sm" onclick="nav('rentals')">${_s.dash_view_all}</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th>${_s.dash_col_rent_id}</th><th>${_s.dash_col_cust}</th><th>${_s.dash_col_item}</th><th>${_s.dash_col_status}</th></tr></thead>
     <tbody id="dash-recent-rentals-body">${_buildRecentRentalsRows(PERIOD_RANGES[_dashPeriod])}</tbody></table></div>
   </div>`:'<div></div>'}
 </div>
@@ -2904,9 +2905,9 @@ ${_buildDashQA(DC)}
 ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
 <div class="g2" style="margin-bottom:14px">
   <div class="card">
-    <div class="card-hd"><div class="card-ttl">Recent Services / Appointments</div><button class="btn btn-g btn-sm" onclick="nav('appointments')">View All</button></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Ref</th><th>Customer</th><th>Service</th><th>Date</th><th>Status</th></tr></thead><tbody>
-    ${(D.appointments||[]).slice(0,5).map(a=>`<tr style="cursor:pointer" onclick="genApptInvoice('${a.id}')" title="View invoice">
+    <div class="card-hd"><div class="card-ttl">${_s.dash_recent_appts}</div><button class="btn btn-g btn-sm" onclick="nav('appointments')">${_s.dash_view_all}</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th>${_s.dash_col_ref}</th><th>${_s.dash_col_cust}</th><th>${_s.dash_col_service}</th><th>${_s.dash_col_date}</th><th>${_s.dash_col_status}</th></tr></thead><tbody>
+    ${(D.appointments||[]).slice(0,5).map(a=>`<tr style="cursor:pointer" onclick="genApptInvoice('${a.id}')" title="${_s.dash_view_invoice}">
       <td>${mono(a.id,'a')}</td><td><strong>${_esc(a.custName)}</strong></td>
       <td style="font-size:11px">${_esc(a.serviceName||'—')}</td>
       <td style="font-size:11px;color:var(--text2)">${a.date}</td>
@@ -2915,7 +2916,7 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
     </tbody></table></div>
   </div>
   <div class="card">
-    <div class="card-hd"><div class="card-ttl">📅 Today's Schedule</div><button class="btn btn-p btn-sm" onclick="nav('appointments')">View All</button></div>
+    <div class="card-hd"><div class="card-ttl">${_s.dash_today_sched}</div><button class="btn btn-p btn-sm" onclick="nav('appointments')">${_s.dash_view_all}</button></div>
     ${(()=>{
       const todayA=(D.appointments||[]).filter(a=>a.date===localDateStr()&&a.st!=='Cancelled').sort((a,b)=>a.startTime>b.startTime?1:-1);
       if(!todayA.length) return '<div style="text-align:center;padding:16px;color:var(--text2);font-size:13px">No appointments today<br><button class="btn btn-p btn-sm" style="margin-top:8px" onclick="mNewAppt()">+ Book Now</button></div>';
@@ -2931,40 +2932,40 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
 
 <div class="g2" style="margin-bottom:14px">
   ${DC.sections.includes('overdueRentals')?`<div class="card">
-    <div class="card-hd"><div class="card-ttl" style="color:var(--r)">⚠ Overdue Rentals</div><button class="btn btn-g btn-sm" onclick="nav('rentals')">View All</button></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Rental</th><th>Customer</th><th>Late Fee</th><th>Status</th></tr></thead><tbody>
+    <div class="card-hd"><div class="card-ttl" style="color:var(--r)">${_s.dash_overdue}</div><button class="btn btn-g btn-sm" onclick="nav('rentals')">${_s.dash_view_all}</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th>${_s.dash_col_rental}</th><th>${_s.dash_col_cust}</th><th>${_s.dash_col_late}</th><th>${_s.dash_col_status}</th></tr></thead><tbody>
     ${D.rentals.filter(r=>r.st==='Overdue').map(r=>`<tr style="cursor:pointer" onclick="mRentalDetail('${r.id}')"><td>${mono(r.id,'a')}</td><td><strong>${_esc(r.cust)}</strong></td><td>${mono(fmt(r.lf),'r')}</td><td>${badge(r.st)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--g);padding:12px">✅ No overdue rentals</td></tr>'}
     </tbody></table></div>
   </div>`:'<div></div>'}
 
   ${DC.sections.includes('topProducts')?`<div class="card" id="dash-top-products">
-    <div class="card-hd"><div class="card-ttl">Top Products</div><button class="btn btn-g btn-sm" onclick="nav('inventory')">View All</button></div>
+    <div class="card-hd"><div class="card-ttl">${_s.dash_top_prod}</div><button class="btn btn-g btn-sm" onclick="nav('inventory')">${_s.dash_view_all}</button></div>
     <div id="dash-top-products-body">${_buildTopProducts(PERIOD_RANGES[_dashPeriod])}</div>
   </div>`:'<div></div>'}
 </div>
 
 <div class="g2" style="margin-bottom:14px">
   ${DC.sections.includes('plSummary')?`<div class="card">
-    <div class="card-hd"><div class="card-ttl">P&amp;L Summary</div><button class="btn btn-g btn-sm" onclick="nav('accounting')">Full View</button></div>
-    ${[['Revenue',k.rev,'b'],['COGS',k.cogs,'r'],['Gross Profit',k.gp,'g'],['Overhead',k.oh,'y'],['Net Profit',k.np,'p']].map(([lbl,val,col])=>`
+    <div class="card-hd"><div class="card-ttl">${_s.dash_pl}</div><button class="btn btn-g btn-sm" onclick="nav('accounting')">${_s.dash_pl_full}</button></div>
+    ${[[_s.dash_pl_rev,k.rev,'b'],[_s.dash_pl_cogs,k.cogs,'r'],[_s.dash_pl_gp,k.gp,'g'],[_s.dash_pl_oh,k.oh,'y'],[_s.dash_pl_np,k.np,'p']].map(function(row){var lbl=row[0],val=row[1],col=row[2];return`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:13px;color:var(--text)">${lbl}</span>
       <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--${col})">${fmt(val)}</span>
-    </div>`).join('')}
+    </div>`;}).join('')}
     <div style="margin-top:10px;display:flex;gap:8px">
       <div style="flex:1;background:var(--g-dim);border-radius:6px;padding:8px 10px;text-align:center">
-        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Gross Margin</div>
+        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">${_s.dash_margin_gross}</div>
         <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--g)">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</div>
       </div>
       <div style="flex:1;background:var(--p-dim);border-radius:6px;padding:8px 10px;text-align:center">
-        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Net Margin</div>
+        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">${_s.dash_margin_net}</div>
         <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--p)">${k.rev>0?Math.round(k.np/k.rev*100):0}%</div>
       </div>
     </div>
   </div>`:'<div></div>'}
 
   ${DC.sections.includes('lowStock')?`<div class="card">
-    <div class="card-hd"><div class="card-ttl">⚡ Low Stock Alert</div><button class="btn btn-g btn-sm" onclick="nav('inventory')">Manage</button></div>
+    <div class="card-hd"><div class="card-ttl">${_s.dash_low_stock}</div><button class="btn btn-g btn-sm" onclick="nav('inventory')">${_s.dash_manage}</button></div>
     ${(()=>{
       const low=D.inv.filter(function(i){
         const avail=(i.qty||0)-(i.rented||0);
@@ -2974,7 +2975,7 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
       const outOfStock=D.inv.filter(function(i){
         return (i.qty||0)-(i.rented||0)<=0 && (i.qty||0)>=0;
       });
-      if(!low.length&&!outOfStock.length) return '<div style="color:var(--text2);font-size:13px;padding:8px 0">✅ All items well stocked</div>';
+      if(!low.length&&!outOfStock.length) return '<div style="color:var(--text2);font-size:13px;padding:8px 0">'+_s.dash_all_stocked+'</div>';
       const items=[...outOfStock.map(i=>({...i,_oos:true})),...low].slice(0,5);
       return items.map(i=>{
         const avail=(i.qty||0)-(i.rented||0);
@@ -2983,22 +2984,22 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
         return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
           <div>
             <div style="font-size:13px;font-weight:500;color:var(--ink)">${_esc(i.name)}</div>
-            <div style="font-size:10px;color:var(--text2)">${_esc(i.sku||i.cat||'')}${min>0?' · threshold: '+min:''}</div>
+            <div style="font-size:10px;color:var(--text2)">${_esc(i.sku||i.cat||'')}${min>0?_s.dash_threshold+min:''}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-family:var(--mono);font-size:12px;color:${isOOS?'var(--r)':'var(--y)'};font-weight:700">${isOOS?'Out of stock':avail+' left'}</span>
-            <button class="btn btn-xs btn-p" onclick="nav('purchases')">Reorder</button>
+            <span style="font-family:var(--mono);font-size:12px;color:${isOOS?'var(--r)':'var(--y)'};font-weight:700">${isOOS?_s.dash_out_of_stock:avail+' '+_s.dash_left}</span>
+            <button class="btn btn-xs btn-p" onclick="nav('purchases')">${_s.dash_reorder}</button>
           </div>
         </div>`;
       }).join('')
-      +(low.length+outOfStock.length>5?`<div style="font-size:11px;color:var(--text2);padding-top:6px;text-align:center">${low.length+outOfStock.length-5} more — <button class="btn btn-g btn-xs" onclick="nav('inventory')">View All</button></div>`:'');
+      +(low.length+outOfStock.length>5?`<div style="font-size:11px;color:var(--text2);padding-top:6px;text-align:center">${low.length+outOfStock.length-5} ${_s.dash_more} <button class="btn btn-g btn-xs" onclick="nav('inventory')">${_s.dash_view_all}</button></div>`:'');
     })()}
   </div>`:'<div></div>'}
 </div>
 
 <div class="g2" style="margin-bottom:14px">
   ${DC.sections.includes('recentActivity')?`<div class="card" id="dash-todays-schedule">
-    <div class="card-hd"><div class="card-ttl">📋 Recent Activity</div><button class="btn btn-g btn-sm" onclick="nav('auditlog')">Full Log</button></div>
+    <div class="card-hd"><div class="card-ttl">${_s.dash_recent_act}</div><button class="btn btn-g btn-sm" onclick="nav('auditlog')">${_s.dash_full_log}</button></div>
     ${D.audit.slice(0,6).map(l=>`<div style="display:flex;gap:9px;padding:6px 0;border-bottom:1px solid var(--border)">
       <div style="width:28px;height:28px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;font-weight:700;color:var(--a)">${l.user.split(' ').map(n=>n[0]).join('').slice(0,2)}</div>
       <div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.action}</div><div style="font-size:10px;color:var(--text2);margin-top:1px">${l.user} · ${l.ts}</div></div>
@@ -3034,7 +3035,7 @@ function initDash(){
   // Donut chart — use CSS-aware label color
   var _isLight = document.body.classList.contains('light');
   var _chartTextColor = _isLight ? '#374151' : '#c8cee8';
-  mkChart('donutChart',{type:'doughnut',data:{labels:['Net Profit','COGS','Overhead'],datasets:[{data:[D.kpis.np*CUR.rate,D.kpis.cogs*CUR.rate,D.kpis.oh*CUR.rate].map(Math.round),backgroundColor:['#2dd4a0','#ff5f7a','#f5c842'],borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:_chartTextColor,font:{size:11},boxWidth:10,padding:10}}},cutout:'66%'}});
+  mkChart('donutChart',{type:'doughnut',data:{labels:[_L().dash_pl_np,_L().dash_pl_cogs,_L().dash_pl_oh],datasets:[{data:[D.kpis.np*CUR.rate,D.kpis.cogs*CUR.rate,D.kpis.oh*CUR.rate].map(Math.round),backgroundColor:['#2dd4a0','#ff5f7a','#f5c842'],borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:_chartTextColor,font:{size:11},boxWidth:10,padding:10}}},cutout:'66%'}});
 }
 
 // ============================================================
@@ -25229,6 +25230,93 @@ function _L(){
     set_copy:          fr ? 'Copier'                      : 'Copy',
     set_click_copy:    fr ? 'Cliquer pour copier'         : 'Click to copy',
     set_optional:      fr ? 'optionnel'                   : 'Optional',
+
+    // ── Dashboard page ─────────────────────────────────────────
+dash_title:        fr ? 'Tableau de bord'             : 'Dashboard',
+dash_subtitle:     fr ? 'Performance de l\'entreprise en un coup d\'œil' : 'Business performance at a glance',
+dash_customise:    fr ? '⚙ Personnaliser'             : '⚙ Customise',
+dash_cust_title:   fr ? 'Personnaliser le tableau de bord' : 'Customise dashboard',
+// Period tabs
+dash_today:        fr ? 'Aujourd\'hui'                : 'Today',
+dash_yesterday:    fr ? 'Hier'                        : 'Yesterday',
+dash_this_week:    fr ? 'Cette Semaine'               : 'This Week',
+dash_last_week:    fr ? 'Semaine Passée'              : 'Last Week',
+dash_this_month:   fr ? 'Ce Mois'                     : 'This Month',
+dash_last_month:   fr ? 'Mois Passé'                  : 'Last Month',
+dash_quarter:      fr ? 'Trimestre'                   : 'Quarter',
+dash_ytd:          fr ? 'Depuis Jan.'                 : 'YTD',
+// KPI labels
+dash_kpi_rev:      fr ? 'Chiffre d\'Affaires Total ↗' : 'Total Revenue ↗',
+dash_kpi_sale:     fr ? 'CA Ventes ↗'                 : 'Sales Revenue ↗',
+dash_kpi_rent:     fr ? 'CA Locations ↗'              : 'Rental Revenue ↗',
+dash_kpi_appt:     fr ? 'CA Services ↗'               : 'Services Revenue ↗',
+dash_kpi_appt_sub: fr ? 'RDV complétés'               : 'From completed appts',
+dash_kpi_appt_title:fr? 'Voir le CA des RDV complétés' : 'View completed appointments revenue',
+dash_kpi_gp:       fr ? 'Marge Brute'                 : 'Gross Profit',
+dash_kpi_np:       fr ? 'Bénéfice Net'                : 'Net Profit',
+dash_kpi_ar:       fr ? 'Créances Clients ↗'          : 'AR Outstanding ↗',
+dash_kpi_ar_title: fr ? 'Voir et gérer les créances'  : 'View & manage accounts receivable',
+dash_kpi_ap:       fr ? 'Dettes Fournisseurs ↗'       : 'AP Outstanding ↗',
+dash_kpi_ap_title: fr ? 'Voir et gérer les dettes'    : 'View & manage accounts payable',
+dash_kpi_inv:      fr ? 'Valeur du Stock'              : 'Inventory Value',
+dash_kpi_inv_title:fr ? 'Voir l\'inventaire'           : 'View inventory',
+dash_margin_gross: fr ? 'Marge Brute'                  : 'Gross Margin',
+dash_margin_net:   fr ? 'Marge Nette'                  : 'Net Margin',
+dash_cust_owe:     fr ? 'client(s) doivent'            : 'customer(s) owe',
+dash_vend_pay:     fr ? 'fournisseur(s) à payer'       : 'vendor(s) to pay',
+dash_items:        fr ? 'article(s) actif(s)'          : 'active item(s)',
+// Charts
+dash_rev_trend:    fr ? 'Évolution du CA'              : 'Revenue Trend',
+dash_6months:      fr ? '6 mois'                       : '6 months',
+dash_profit_break: fr ? 'Répartition des Bénéfices'   : 'Profit Breakdown',
+dash_this_month_lbl: fr ? 'Ce mois'                   : 'This month',
+// P&L Summary
+dash_pl:           fr ? 'Résumé C.R.'                  : 'P&L Summary',
+dash_pl_full:      fr ? 'Vue complète'                 : 'Full View',
+dash_pl_rev:       fr ? 'Chiffre d\'Affaires'          : 'Revenue',
+dash_pl_cogs:      fr ? 'Coût des Ventes'              : 'COGS',
+dash_pl_gp:        fr ? 'Marge Brute'                  : 'Gross Profit',
+dash_pl_oh:        fr ? 'Charges Générales'            : 'Overhead',
+dash_pl_np:        fr ? 'Bénéfice Net'                 : 'Net Profit',
+// Tables
+dash_col_sale_id:  fr ? 'N° Vente'                    : 'Sale ID',
+dash_col_rent_id:  fr ? 'N° Location'                 : 'Rental ID',
+dash_col_cust:     fr ? 'Client'                      : 'Customer',
+dash_col_amount:   fr ? 'Montant'                     : 'Amount',
+dash_col_status:   fr ? 'Statut'                      : 'Status',
+dash_col_item:     fr ? 'Article'                     : 'Item',
+dash_col_late:     fr ? 'Pén. de Retard'              : 'Late Fee',
+dash_col_ref:      fr ? 'Réf.'                        : 'Ref',
+dash_col_service:  fr ? 'Service'                     : 'Service',
+dash_col_date:     fr ? 'Date'                        : 'Date',
+dash_col_rental:   fr ? 'Location'                   : 'Rental',
+dash_view_all:     fr ? 'Voir Tout'                   : 'View All',
+dash_view_inv:     fr ? 'Voir Tout'                   : 'View All',
+dash_manage:       fr ? 'Gérer'                       : 'Manage',
+dash_full_log:     fr ? 'Journal Complet'             : 'Full Log',
+dash_view_invoice: fr ? 'Voir la facture'             : 'View invoice',
+// Recent sections
+dash_recent_sales: fr ? 'Ventes Récentes'             : 'Recent Sales',
+dash_recent_rents: fr ? 'Locations Récentes'          : 'Recent Rentals',
+dash_recent_appts: fr ? 'Services / RDV Récents'      : 'Recent Services / Appointments',
+dash_today_sched:  fr ? '📅 Planning du Jour'         : '📅 Today\'s Schedule',
+dash_no_appt:      fr ? 'Aucun RDV aujourd\'hui'      : 'No appointments today',
+dash_book_now:     fr ? '+ Réserver'                  : '+ Book Now',
+// Overdue & Low stock
+dash_overdue:      fr ? '⚠ Locations en Retard'       : '⚠ Overdue Rentals',
+dash_overdue_none: fr ? '✅ Aucune location en retard' : '✅ No overdue rentals',
+dash_overdue_alert:fr ? 'retard(s) — frais en cours → ' : 'overdue rental(s) accumulating late fees — ',
+dash_view_now:     fr ? 'Voir maintenant →'           : 'View now →',
+dash_low_stock:    fr ? '⚡ Alerte Stock Faible'       : '⚡ Low Stock Alert',
+dash_all_stocked:  fr ? '✅ Tous les articles bien approvisionnés' : '✅ All items well stocked',
+dash_out_of_stock: fr ? 'Rupture de stock'            : 'Out of stock',
+dash_left:         fr ? 'restant(s)'                  : 'left',
+dash_threshold:    fr ? '· seuil : '                  : '· threshold: ',
+dash_reorder:      fr ? 'Commander'                   : 'Reorder',
+dash_more:         fr ? 'de plus —'                   : 'more —',
+dash_top_prod:     fr ? 'Top Produits'                : 'Top Products',
+dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activity',
+
   };
 }
 
