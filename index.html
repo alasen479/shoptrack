@@ -825,42 +825,49 @@ window.addEventListener('unhandledrejection', function(e){
 <div id="login-screen" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0d0f1c 0%,#131626 50%,#0f1120 100%);display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;overflow-y:auto">
   <div style="width:100%;max-width:440px;padding:24px;box-sizing:border-box;margin:auto">
 
+    <!-- Language toggle + brand header -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+      <div style="display:flex;background:rgba(255,255,255,.08);border-radius:20px;padding:3px;gap:2px">
+        <button id="ln-lang-en" onclick="_loginLang('en')" style="background:rgba(91,127,255,.9);color:#fff;border:none;border-radius:16px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">🇬🇧 EN</button>
+        <button id="ln-lang-fr" onclick="_loginLang('fr')" style="background:transparent;color:#94a3b8;border:none;border-radius:16px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">🇫🇷 FR</button>
+      </div>
+    </div>
+
     <!-- Platform brand header -->
     <div style="text-align:center;margin-bottom:28px">
       <div style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:16px;margin-bottom:14px;background:linear-gradient(135deg,var(--a),var(--p));box-shadow:0 8px 24px rgba(91,127,255,.3)">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       </div>
       <div style="font-size:26px;font-weight:900;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.5px">ShopTrack</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:4px;letter-spacing:.3px">Business Management Platform</div>
+      <div id="ln-tagline" style="font-size:12px;color:var(--text2);margin-top:4px;letter-spacing:.3px">Business Management Platform</div>
     </div>
 
     <!-- Login card -->
     <div style="background:#1a1d2e;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.6)">
-      <div style="font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:4px">Welcome back 👋</div>
-      <div style="font-size:12px;color:#94a3b8;margin-bottom:22px">Sign in with your business account credentials</div>
+      <div id="ln-welcome" style="font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:4px">Welcome back 👋</div>
+      <div id="ln-subtitle" style="font-size:12px;color:#94a3b8;margin-bottom:22px">Sign in with your business account credentials</div>
       <div style="margin-bottom:14px">
-        <label style="display:block;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Email Address</label>
+        <label id="ln-email-lbl" style="display:block;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Email Address</label>
         <input id="ln-email" type="email" placeholder="Enter your email address" style="width:100%;background:#0f1120;border:1px solid rgba(255,255,255,.12);color:#e2e8f0;padding:10px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .15s" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='rgba(255,255,255,.12)'" onkeydown="if(event.key==='Enter')document.getElementById('ln-pass').focus()"/>
       </div>
       <div style="margin-bottom:6px">
-        <label style="display:block;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Password</label>
+        <label id="ln-pass-lbl" style="display:block;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Password</label>
         <div style="position:relative">
           <input id="ln-pass" type="password" placeholder="••••••••" style="width:100%;background:#0f1120;border:1px solid rgba(255,255,255,.12);color:#e2e8f0;padding:10px 40px 10px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .15s" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='rgba(255,255,255,.12)'" onkeydown="if(event.key==='Enter')doLogin()"/>
           <button onclick="toggleLoginPwd()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3)" title="Show/hide">👁</button>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;margin-top:10px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8;cursor:pointer"><input type="checkbox" id="ln-remember" style="accent-color:#5b7fff"> Remember me</label>
-        <button onclick="showForgotPwd()" style="background:none;border:none;font-size:12px;color:var(--a);cursor:pointer;font-family:inherit;padding:0">Forgot password?</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8;cursor:pointer"><input type="checkbox" id="ln-remember" style="accent-color:#5b7fff"> <span id="ln-remember-lbl">Remember me</span></label>
+        <button onclick="showForgotPwd()" id="ln-forgot" style="background:none;border:none;font-size:12px;color:var(--a);cursor:pointer;font-family:inherit;padding:0">Forgot password?</button>
       </div>
       <div id="ln-error" style="display:none;background:rgba(255,95,122,.12);border:1px solid rgba(255,95,122,.3);border-radius:8px;padding:9px 12px;font-size:12px;color:#ff5f7a;margin-bottom:14px"></div>
       <button onclick="doLogin()" id="ln-btn" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--a),var(--p));border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:opacity .15s;box-shadow:0 4px 16px rgba(91,127,255,.25)" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">Sign In →</button>
     </div>
 
-
     <div style="text-align:center;margin-top:20px">
-      <div style="font-size:13px;color:#94a3b8;margin-bottom:10px">Don&apos;t have an account?</div>
-      <button onclick="showSignup()" style="width:100%;padding:12px;background:transparent;border:1px solid var(--a);border-radius:8px;color:var(--a);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(91,127,255,.1)'" onmouseout="this.style.background='transparent'">
+      <div id="ln-no-acct" style="font-size:13px;color:#94a3b8;margin-bottom:10px">Don&apos;t have an account?</div>
+      <button onclick="showSignup()" id="ln-trial-btn" style="width:100%;padding:12px;background:transparent;border:1px solid var(--a);border-radius:8px;color:var(--a);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(91,127,255,.1)'" onmouseout="this.style.background='transparent'">
         🚀 Start Your Free 30-Day Trial
       </button>
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07);text-align:center"><span style="font-size:12px;color:#64748b">Are you a content creator? </span><a href="https://shoptrack.org/affiliates" target="_blank" style="font-size:12px;font-weight:700;color:#818cf8;text-decoration:none">Join our affiliate program →</a></div>

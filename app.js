@@ -15668,6 +15668,50 @@ function _updateAIBadge(){
 
 
 
+// ── Login screen language toggle ──────────────────────────────
+// Sets the pre-login language so French speakers see FR before signing in.
+// After login, language is controlled by BIZ.language in Settings.
+var _loginLanguage = (function(){
+  try{ return localStorage.getItem('st_login_lang') || 'en'; }catch(e){ return 'en'; }
+})();
+
+function _loginLang(lang){
+  _loginLanguage = lang;
+  try{ localStorage.setItem('st_login_lang', lang); }catch(e){}
+  var fr = lang === 'fr';
+  // Update button states
+  var enBtn = document.getElementById('ln-lang-en');
+  var frBtn = document.getElementById('ln-lang-fr');
+  if(enBtn){ enBtn.style.background = fr ? 'transparent' : 'rgba(91,127,255,.9)'; enBtn.style.color = fr ? '#94a3b8' : '#fff'; }
+  if(frBtn){ frBtn.style.background = fr ? 'rgba(91,127,255,.9)' : 'transparent'; frBtn.style.color = fr ? '#fff' : '#94a3b8'; }
+  // Update all login screen text
+  var set = function(id, text){ var el = document.getElementById(id); if(el) el.textContent = text; };
+  var setHTML = function(id, html){ var el = document.getElementById(id); if(el) el.innerHTML = html; };
+  var setPlaceholder = function(id, text){ var el = document.getElementById(id); if(el) el.placeholder = text; };
+  set('ln-tagline',    fr ? 'Plateforme de Gestion Commerciale' : 'Business Management Platform');
+  set('ln-welcome',    fr ? 'Bon retour 👋' : 'Welcome back 👋');
+  set('ln-subtitle',   fr ? 'Connectez-vous à votre compte entreprise' : 'Sign in with your business account credentials');
+  set('ln-email-lbl',  fr ? 'Adresse E-mail' : 'Email Address');
+  setPlaceholder('ln-email', fr ? 'Entrez votre adresse e-mail' : 'Enter your email address');
+  set('ln-pass-lbl',   fr ? 'Mot de Passe' : 'Password');
+  set('ln-remember-lbl', fr ? 'Se souvenir de moi' : 'Remember me');
+  set('ln-forgot',     fr ? 'Mot de passe oublié ?' : 'Forgot password?');
+  var btn = document.getElementById('ln-btn');
+  if(btn) btn.textContent = fr ? 'Se Connecter →' : 'Sign In →';
+  set('ln-no-acct',    fr ? "Pas encore de compte ?" : "Don't have an account?");
+  var trialBtn = document.getElementById('ln-trial-btn');
+  if(trialBtn) trialBtn.textContent = fr ? '🚀 Essai Gratuit de 30 Jours' : '🚀 Start Your Free 30-Day Trial';
+  // If BIZ isn't loaded yet, pre-set so _L() picks it up on first call
+  if(typeof BIZ !== 'undefined') BIZ.language = lang;
+}
+
+// Apply saved language on page load
+(function(){
+  if(_loginLanguage === 'fr'){
+    setTimeout(function(){ _loginLang('fr'); }, 50);
+  }
+})();
+
 function toggleLoginPwd(){
   const p = document.getElementById('ln-pass');
   if(!p) return;
@@ -26214,6 +26258,19 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     // Settings SA remaining
     sa_active:         fr ? 'Actif'                       : 'Active',
     sa_monthly:        fr ? 'Mensuel'                     : 'Monthly',
+    // ── Missing keys (referenced but not yet defined) ──────────
+    adm_annual:        fr ? 'Annuel'                       : 'Annual',
+    adm_monthly:       fr ? 'Mensuel'                      : 'Monthly',
+    appt_service:      fr ? 'Service'                      : 'Service',
+    appt_staff:        fr ? 'Personnel'                    : 'Staff',
+    set_doc_bank:      fr ? 'Coordonnées Bancaires <span style="font-size:10px;color:var(--text2)">(affiché sur la facture)</span>' : 'Bank / Payment Details <span style="font-size:10px;color:var(--text2)">(shown on invoice)</span>',
+    set_doc_methods:   fr ? 'Modes de Paiement Acceptés <span style="font-size:10px;color:var(--text2)">(affiché sur la facture)</span>' : 'Accepted Payment Methods <span style="font-size:10px;color:var(--text2)">(shown on invoice)</span>',
+    set_fin_tax_name:  fr ? 'Nom de la Taxe <span style="font-size:10px;color:var(--text2)">(ex. TVA, VAT, GST)</span>' : 'Tax Name <span style="font-size:10px;color:var(--text2)">(e.g. VAT, TVA, GST)</span>',
+    set_notif_wa_owner:fr ? 'définissez votre numéro WhatsApp'  : 'Set your WhatsApp number',
+    set_notif_wa_hint: fr ? 'dans Paramètres → Profil Entreprise pour recevoir les alertes.' : 'in Settings → Business Profile to receive owner alerts.',
+    set_openai_lbl:    fr ? 'Clé API OpenAI <span style="font-weight:400;color:var(--text3)">(pour Photo Produit IA — DALL-E 3, ~0,04$/image)</span>' : 'OpenAI API Key <span style="font-weight:400;color:var(--text3)">(for AI Product Photo — DALL-E 3, ~$0.04/image)</span>',
+    set_sub_free:      fr ? 'Vous êtes sur la formule <strong>Gratuite</strong>.' : 'You are on the <strong>Free plan</strong>.',
+    usr_add_title:     fr ? 'Ajouter un Utilisateur'       : 'Add User',
   };
 }
 
