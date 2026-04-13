@@ -1094,7 +1094,7 @@ function _renderSvcCatPills(){
     +(D.svcCats||[]).map(function(c,i){
       return '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:20px;padding:5px 10px 5px 13px">'
         +'<span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c)+'</span>'
-        +'<button type="button" onclick="_delSvcCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="Remove">✕</button>'
+        +'<button type="button" onclick="_delSvcCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="${_s.inv_remove}">✕</button>'
         +'</div>';
     }).join('')+'</div>';
   var el=document.getElementById('svc-cats-list'); if(el) el.outerHTML=html;
@@ -1295,7 +1295,7 @@ function _poAddLine(){
   row.innerHTML='<select class="fs po-inv-sel" onchange="_poLineChange(this)"><option value="">-- Link to inventory --</option>'+invOpts
     +'<option value="__custom__">── Custom item ──</option></select>'
     +'<input class="fi po-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" placeholder="Qty" oninput="_poRecalcTotal()"/>'
-    +'<input class="fi po-line-cost" type="number" placeholder="Unit cost" style="width:90px" oninput="_poRecalcTotal()"/>'
+    +'<input class="fi po-line-cost" type="number" placeholder="${_s.po_unit_cost}" style="width:90px" oninput="_poRecalcTotal()"/>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_poRemoveLine(this)" style="padding:6px 8px">✕</button>';
   var c=document.getElementById('po-line-rows'); if(c) c.appendChild(row);
 }
@@ -1928,7 +1928,7 @@ function _arBulkCollect(){const _s=_L();
     +'<div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--text2)">Selected total</span>'
     +'<strong id="bc-total-display" style="font-family:var(--mono);color:var(--g)">'+fmt(debtors.reduce(function(a,cu){return a+cu.bal;},0))+'</strong></div></div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
-    +'<button class="btn btn-p" onclick="_arBulkCollectSave(\'' + today + '\')" >✅ Record Payments</button>'
+    +'<button class="btn btn-p" onclick="_arBulkCollectSave(\'' + today + '\')" >${_s.sal_ttl_payment}</button>'
   );
   // Update total on check/amount change
   setTimeout(function(){
@@ -2312,7 +2312,7 @@ function _showProductSales(invId){const _s=_L();
         +'<div style="font-size:11px;color:var(--text2)">'+sales.length+' sale'+(sales.length!==1?'s':'')+' &middot; '+PERIOD_RANGES[_dashPeriod].label+'</div>'
       +'</div>'
     +'</div>'
-    +'<div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>${_s.ui_customer}</th><th>${_s.ui_date}</th><th>Revenue</th><th>${_s.ui_status}</th></tr></thead>'
+    +'<div class="tbl-wrap"><table><thead><tr><th>${_s.sal_col_id}</th><th>${_s.ui_customer}</th><th>${_s.ui_date}</th><th>${_s.rpt_revenue}</th><th>${_s.ui_status}</th></tr></thead>'
     +'<tbody>'+rows+'</tbody></table></div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>'
     +'<button class="btn btn-p btn-sm" id="go-inv-btn-sp">View Item</button>');
@@ -2551,7 +2551,7 @@ async function mSubPayNowStripe(){const _s=_L();
     +'<div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Billing</span><span>'+( cycle==='yearly'?'Annual':'Monthly')+'</span></div>'
     +'<div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Renews until</span><strong style="font-family:var(--mono);color:var(--g)">'+newExpiry+'</strong></div>'
     +'<div style="border-top:1px solid var(--border);padding-top:9px;display:flex;justify-content:space-between;align-items:center">'
-    +'<span style="color:var(--text2)">Amount</span>'
+    +'<span style="color:var(--text2)">${_s.ui_amount}</span>'
     +'<strong style="font-size:20px;font-family:var(--mono);color:var(--g)">$'+amtUSD+' USD</strong></div></div>'
     +'<div class="alrt alrt-b">\uD83D\uDD12 Secure card payment via Stripe. You will be redirected to a Stripe checkout page. After payment, your account activates automatically.</div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
@@ -3062,7 +3062,7 @@ ${_invOverBanner}<div class="ph">
 </div>
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr))">
   <div class="kpi b"><div class="kpi-lbl">${_s.inv_total_items}</div><div class="kpi-val b">${D.inv.length}</div><div class="kpi-sub">${_s.inv_skus}</div></div>
-  <div class="kpi g"><div class="kpi-lbl">${_s.inv_available}</div><div class="kpi-val g">${D.inv.filter(i=>(i.qty||0)-(i.rented||0)>0).length}</div><div class="kpi-sub">In stock</div></div>
+  <div class="kpi g"><div class="kpi-lbl">${_s.inv_available}</div><div class="kpi-val g">${D.inv.filter(i=>(i.qty||0)-(i.rented||0)>0).length}</div><div class="kpi-sub">${_s.inv_in_stock}</div></div>
   <div class="kpi c"><div class="kpi-lbl">${_s.inv_rented_out}</div><div class="kpi-val c">${D.inv.reduce((a,i)=>a+(i.rented||0),0)}</div><div class="kpi-sub">${_s.inv_active_rent}</div></div>
   <div class="kpi p" style="cursor:pointer" title="${_s.inv_click_stock_tbl}"><div class="kpi-lbl">${_s.inv_stock_val_cost}</div><div class="kpi-val p">${fmtKpi(D.inv.reduce((a,i)=>a+(i.cost||0)*(i.qty||0),0))}</div><div class="kpi-sub">${_s.inv_at_cost}</div></div>
   <div class="kpi g" style="cursor:pointer" title="Total retail value of all stock"><div class="kpi-lbl">${_s.inv_retail_val}</div><div class="kpi-val g">${fmtKpi(D.inv.reduce((a,i)=>a+(i.sp||0)*(i.qty||0),0))}</div><div class="kpi-sub">${_s.inv_at_sell}</div></div>
@@ -3181,7 +3181,7 @@ function _buildInvGridFiltered(items){const _s=_L();
     var isOutOfStock = avail<=0 && (it.qty||0)>=0;
     var isLowStock   = minQty>0 && avail<=minQty && avail>0;  // only when threshold set AND not zero
     var stockBadge=isOutOfStock
-      ?'<div style="background:var(--r);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">OUT OF STOCK</div>'
+      ?'<div style="background:var(--r);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">${_s.inv_oos}</div>'
       :isLowStock
         ?'<div style="background:var(--y);color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">⚠ LOW STOCK ('+avail+' left)</div>'
         :'';
@@ -3225,7 +3225,7 @@ function switchInvView(el,mode){const _s=_L();
   const v=$('inv-view');
   if(mode==='table'){
     v.style.display='block';
-    v.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>${_s.inv_col_sku}</th><th>Name</th><th>${_s.ui_category}</th><th>${_s.ui_status}</th><th>Qty</th><th>Rented</th><th>${_s.inv_col_avail}</th><th>${_s.inv_col_cost}</th><th>Sell</th><th>${_s.inv_rental_day}</th><th class="num">Stock Value</th><th>${_s.inv_cond_short}</th><th>${_s.ui_actions}</th></tr></thead><tbody>
+    v.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>${_s.inv_col_sku}</th><th>Name</th><th>${_s.ui_category}</th><th>${_s.ui_status}</th><th>Qty</th><th>${_s.inv_rented}</th><th>${_s.inv_col_avail}</th><th>${_s.inv_col_cost}</th><th>Sell</th><th>${_s.inv_rental_day}</th><th class="num">${_s.inv_stock_val}</th><th>${_s.inv_cond_short}</th><th>${_s.ui_actions}</th></tr></thead><tbody>
     ${D.inv.map(i=>{const sv=(i.cost||0)*(i.qty||0); return `<tr>
       <td>${mono(i.sku)}</td><td><strong style="color:var(--ink);cursor:pointer" onclick="mItem('${i.id}')">${i.name}</strong></td><td>${i.cat}</td><td>${badge(i.st)}</td>
       <td>${i.qty}</td><td style="color:var(--c)">${i.rented}</td><td style="color:var(--g)">${i.qty-i.rented}</td>
@@ -3260,7 +3260,7 @@ function switchInvView(el,mode){const _s=_L();
       });
       moves.sort((a,b)=>b.dt.localeCompare(a.dt));
       if(!moves.length) return '<div style="color:var(--text2);font-size:13px;padding:16px 0;text-align:center">No stock movements for '+rng.label+'</div>';
-      return '<div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.rent_item_lbl}</th><th>${_s.ui_type}</th><th>Qty Δ</th><th>Reason</th></tr></thead><tbody>'
+      return '<div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.rent_item_lbl}</th><th>${_s.ui_type}</th><th>Qty Δ</th><th>${_s.inv_reason}</th></tr></thead><tbody>'
         +moves.slice(0,20).map(m=>`<tr><td>${m.dt}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.item}</td><td>${bx(m.type,m.cls)}</td><td style="color:${m.col};font-family:var(--mono)">${m.delta}</td><td>${m.reason}</td></tr>`).join('')
         +'</tbody></table></div>';
     })()
@@ -3424,7 +3424,7 @@ function _mItemDelete(id){const _s=_L();
     var rentalRows=activeRentals.slice(0,4).map(function(r){
       return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><strong>'+r.id+'</strong> — '+_esc(r.cust)+' · Due: '+r.due+'</div>';
     }).join('');
-    modal('Cannot Delete Item',
+    modal(_s.inv_cant_del,
       '<div class="alrt alrt-r" style="margin-bottom:10px"><strong>'+_esc(it.name)+'</strong> is currently rented out ('+it.rented+' unit'+(it.rented!==1?'s':'')+').</div>'+
       '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Return all active rentals before deleting this item.</p>'+
       '<div>'+rentalRows+'</div>',
@@ -3439,7 +3439,7 @@ function _mItemDelete(id){const _s=_L();
   var msg='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(it.name)+'</strong> ('+it.sku+')?</p>';
   if(warnLines.length) msg+='<div class="alrt alrt-y">History will be unlinked: '+warnLines.join(', ')+'. Records are preserved.</div>';
   var mid=id, mname=it.name;
-  modal('Delete Item — '+_esc(it.name), msg,
+  modal(_s.inv_del_title+' '+_esc(it.name), msg,
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
     '<button class="btn btn-d" id="confirm-del-item-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
@@ -3513,7 +3513,7 @@ function _costBreakdownHTML(prefix, existingLines){
 
   var totalDisplay = hasLines
     ? '<span style="font-family:var(--mono);font-size:13px;font-weight:800;color:var(--g)">'+fmt(totalFromLines/CUR.rate)+'</span>'
-    : '<span style="font-size:12px;color:var(--text3)">No lines yet</span>';
+    : '<span style="font-size:12px;color:var(--text3)">${_s.inv_no_lines}</span>';
 
   return ''
     // Collapsible toggle header
@@ -3538,7 +3538,7 @@ function _costBreakdownHTML(prefix, existingLines){
       // Column headers
       +'<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:170px 1fr 70px 80px 90px 30px;gap:6px;align-items:center;margin-bottom:8px;padding:0 2px;min-width:560px">'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">${_s.ui_category}</div>'
-        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Description</div>'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">${_s.ui_description}</div>'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Unit</div>'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Qty</div>'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Unit Cost ('+CUR.symbol+')</div>'
@@ -3586,7 +3586,7 @@ function _costLineRowHTML(prefix, idx, line, catOpts){const _s=_L();
     +'<input class="fi cb-unit" type="text" placeholder="pcs / m / kg…" value="'+unit+'" style="font-size:12px;height:34px;padding:6px 8px"/>'
     +'<input class="fi cb-qty" type="number" value="'+qty+'" min="0.001" step="any" style="font-size:12px;height:34px;padding:6px 8px;text-align:right" oninput="_cbRecalc(\''+prefix+'\')" />'
     +'<input class="fi cb-uc" type="number" placeholder="0.00" value="'+uc+'" min="0" step="any" style="font-size:12px;height:34px;padding:6px 8px;text-align:right" oninput="_cbRecalc(\''+prefix+'\')" />'
-    +'<button type="button" onclick="_cbRemoveLine(this,\''+prefix+'\')" style="width:28px;height:28px;background:var(--r-dim);border:none;border-radius:6px;color:var(--r);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="Remove">✕</button>'
+    +'<button type="button" onclick="_cbRemoveLine(this,\''+prefix+'\')" style="width:28px;height:28px;background:var(--r-dim);border:none;border-radius:6px;color:var(--r);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="${_s.inv_remove}">✕</button>'
     +'</div>';
 }
 
@@ -3804,7 +3804,7 @@ async function _syncCatsFromDB(){const _s=_L();
 
 async function mAddItem(_returnSelectId){const _s=_L();
   await _syncCatsFromDB(); // always get latest user-created categories
-  modal('Add Inventory Item',`
+  modal(_s.inv_add_item,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.inv_name_lbl}</label><input class="fi" id="ai-name" placeholder="e.g. Lace Mermaid Bridal Gown"/></div>
     <div class="fg"><label class="fl">${_s.inv_sku_lbl}</label><input class="fi" id="ai-sku" placeholder="e.g. GW-009"/></div>
@@ -4512,7 +4512,7 @@ async function mCreateSale(){const _s=_L();
     +(invOpts?'<optgroup label="📦 Products">'+invOpts+'</optgroup>':'')
     +(svcOpts?'<optgroup label="✂️ Services">'+svcOpts+'</optgroup>':'')
     +'<option value="__custom__">── Custom item ──</option>';
-  modal('Create New Sale',`
+  modal(_s.sal_create_title,`
   <div class="fg-2">
     <div class="fg">
     ${_newCustBtnHTML('cs')}
@@ -5068,17 +5068,17 @@ function mInvoiceNew(){
         ${D.cust.map(c=>`<option value="${_esc(c.name)}">${_esc(c.name)}</option>`).join('')}
       </select>
     </div>
-    <div class="fg"><label class="fl">Invoice Date</label>
+    <div class="fg"><label class="fl">${_s.inv_modal_date}</label>
       <input class="fi" type="date" id="inv-date" value="${localDateStr()}"/>
     </div>
-    <div class="fg"><label class="fl">Due Date</label>
+    <div class="fg"><label class="fl">${_s.inv_modal_due}</label>
       <input class="fi" type="date" id="inv-due" value="${localDateStr()}"/>
     </div>
-    <div class="fg"><label class="fl">Invoice Type</label>
+    <div class="fg"><label class="fl">${_s.inv_modal_type}</label>
       <select class="fs" id="inv-type" onchange="_invTypeChanged()">
         <option value="Sale">Sale</option>
-        <option value="Rental">Rental</option>
-        <option value="Service">Service</option>
+        <option value="Rental">${_s.inv_modal_rental}</option>
+        <option value="Service">${_s.inv_modal_service}</option>
         <option value="Deposit">${_s.rent_dep_lbl}</option>
       </select>
     </div>
@@ -5104,7 +5104,7 @@ function mInvoiceNew(){
 
   <div style="margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-      <label class="fl" style="margin:0">Line Items</label>
+      <label class="fl" style="margin:0">${_s.inv_modal_lines}</label>
       <button type="button" class="btn btn-g btn-xs" onclick="_invAddRow()">+ Add Row</button>
     </div>
     <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);overflow:hidden">
@@ -5112,8 +5112,8 @@ function mInvoiceNew(){
         <thead><tr style="border-bottom:1px solid var(--border)">
           <th style="padding:7px;font-size:11px;text-align:left;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">${_s.ui_description}</th>
           <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Qty</th>
-          <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Unit Price</th>
-          <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Total</th>
+          <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">${_s.inv_modal_unit}</th>
+          <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">${_s.ui_total}</th>
           <th style="width:28px"></th>
         </tr></thead>
         <tbody id="inv-lines-body"></tbody>
@@ -5150,7 +5150,7 @@ function mInvoiceNew(){
       <select class="fs" id="inv-paid-status">
         <option value="Unpaid">Unpaid — send invoice</option>
         <option value="Paid">Paid — mark as paid</option>
-        <option value="Partial">Partial payment</option>
+        <option value="Partial">${_s.inv_modal_partial}</option>
       </select>
     </div>
   </div>
@@ -5215,11 +5215,11 @@ function _invAddRow(name, price){
   tr.className = 'inv-line-row';
   const descVal  = name  ? String(name).replace(/"/g,'&quot;')  : '';
   const priceVal = price ? (price/CUR.rate).toFixed(2) : '';
-  tr.innerHTML = '<td style="padding:5px 7px"><input class="fi inv-desc" style="font-size:12px;margin:0" placeholder="Item description" value="'+descVal+'"/></td>'
+  tr.innerHTML = '<td style="padding:5px 7px"><input class="fi inv-desc" style="font-size:12px;margin:0" placeholder="${_s.inv_modal_desc}" value="'+descVal+'"/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-qty" type="number" value="1" min="1" style="width:60px;margin:0;text-align:center" oninput="_invUpdateRow(this)"/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-price" type="number" placeholder="0.00" step="any" style="width:90px;margin:0" value="'+priceVal+'" oninput="_invUpdateRow(this)"/></td>'
     +'<td style="padding:5px 7px;font-family:var(--mono);color:var(--g);min-width:70px" class="inv-row-total">'+(priceVal?fmt(parseFloat(priceVal)||0):'—')+'</td>'
-    +'<td style="padding:5px 3px"><button type="button" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px" onclick="this.closest(\'tr\').remove();_invUpdateTotals()" title="Remove row">✕</button></td>';
+    +'<td style="padding:5px 3px"><button type="button" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px" onclick="this.closest(\'tr\').remove();_invUpdateTotals()" title="${_s.photo_remove_row}">✕</button></td>';
   tbody.appendChild(tr);
   if(!name) tr.querySelector('.inv-desc').focus();
   _invUpdateTotals();
@@ -5378,17 +5378,17 @@ function mPhotoUpload(preselectedId, preselectedType){
 
   <!-- Existing photos preview -->
   <div id="photo-existing-wrap" style="margin-bottom:8px;display:none">
-    <div class="fl" style="margin-bottom:4px;font-size:11px">Current Photos</div>
+    <div class="fl" style="margin-bottom:4px;font-size:11px">${_s.photo_current}</div>
     <div id="photo-existing-grid" class="pgrid"></div>
-    <div style="font-size:10px;color:var(--text2);margin-top:3px">Uploading new photos will replace these.</div>
+    <div style="font-size:10px;color:var(--text2);margin-top:3px">${_s.photo_replace}</div>
   </div>
 
   <!-- Upload zone -->
   <div class="fg">
-    <label class="fl">Choose Photos</label>
+    <label class="fl">${_s.photo_choose}</label>
     <label for="photoFileInput" style="display:block;border:2px dashed var(--border2);border-radius:var(--r10);padding:20px;text-align:center;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'">
       <div style="font-size:28px;margin-bottom:6px">📷</div>
-      <div style="font-weight:600;color:var(--ink);margin-bottom:3px">Click to select photos</div>
+      <div style="font-weight:600;color:var(--ink);margin-bottom:3px">${_s.photo_click}</div>
       <div style="font-size:11px;color:var(--text2)">JPG, PNG, WEBP · Multiple allowed · Replaces existing photos</div>
       <input id="photoFileInput" type="file" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(this)"/>
     </label>
@@ -5441,7 +5441,7 @@ function _photoLoadExisting(tab){
   if(urls.length){
     existGrid.innerHTML=urls.map(url=>`<div class="pthumb" style="position:relative">
       <img loading="lazy" src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r6)"/>
-      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);font-size:9px;color:#fff;text-align:center;padding:2px">Current</div>
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);font-size:9px;color:#fff;text-align:center;padding:2px">${_s.rpt_current}</div>
     </div>`).join('');
     existWrap.style.display='';
   } else {
@@ -5522,8 +5522,8 @@ function docChip(d){const _s=_L();
     ? `<button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px" onclick="_docView('${key}')" title="${_s.ui_view}">👁</button>`
     : `<button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px;opacity:.4;cursor:default" title="No preview — file not uploaded in this session">👁</button>`;
   const dlBtn = hasData
-    ? `<button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px" onclick="_docDownload('${key}')" title="Download">⬇</button>`
-    : `<button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px;opacity:.4;cursor:default" title="No file data available">⬇</button>`;
+    ? `<button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px" onclick="_docDownload('${key}')" title="${_s.photo_download}">⬇</button>`
+    : `<button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px;opacity:.4;cursor:default" title="${_s.photo_no_data}">⬇</button>`;
   return `<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--r6);padding:5px 10px;font-size:12px;max-width:240px">
     <span style="font-size:14px">${icon}</span>
     <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)">${d.name}</span>
@@ -5531,7 +5531,7 @@ function docChip(d){const _s=_L();
     <div style="display:flex;gap:3px;flex-shrink:0">
       ${viewBtn}
       ${dlBtn}
-      <button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px" onclick="shareDoc('${d.name}')" title="Share">🔗</button>
+      <button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px" onclick="shareDoc('${d.name}')" title="${_s.photo_share}">🔗</button>
     </div>
   </div>`;
 }
@@ -5684,7 +5684,7 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
 </div>
 <div class="card">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>${_s.rent_col_id}</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Start</th><th>Due</th><th>${_s.ui_status}</th><th>Fee</th><th>${_s.rent_col_dep}</th><th>${_s.rent_col_late}</th><th>Condition</th><th>Docs</th><th>${_s.ui_actions}</th></tr></thead>
+    <thead><tr><th>${_s.rent_col_id}</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.appt_start}</th><th>Due</th><th>${_s.ui_status}</th><th>Fee</th><th>${_s.rent_col_dep}</th><th>${_s.rent_col_late}</th><th>${_s.inv_cond_lbl}</th><th>Docs</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody id="rentals-tbody">${D.rentals.map(r=>`<tr data-status="${r.st}" data-start="${r.start}" data-date="${r.start}" data-cust="${(r.cust||'')}" data-item="${(r.item||'')}" data-id="${r.id}">
       <td>${mono(r.id,'a')}</td>
       <td><strong style="color:var(--ink)">${r.cust}</strong></td>
@@ -5700,8 +5700,8 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
       <td>${r.docs&&r.docs.length?`<span style="display:inline-flex;align-items:center;gap:3px;background:var(--a-dim);color:var(--a);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer" onclick="mRentalDetail('${r.id}')">📎 ${r.docs.length}</span>`:`<button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')" style="opacity:.6">+ Doc</button>`}</td>
       <td><div class="btn-row">
         ${r.st==='Overdue'?`<button class="btn btn-g btn-xs" onclick="_rentalWARemind('${r.id}')" title="${_s.rent_send_wa}">💬</button>`:''}        ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-xs" onclick="mReturn('${r.id}')">↩ Return</button>`:''}
-        ${BIZ.contractEnabled?`<button class="btn btn-c btn-xs" onclick="mRentalContract('${r.id}')" title="Generate Contract">${r.contractSigned?'📋✓':'📋'}</button>`:''}
-        <button class="btn btn-g btn-xs" onclick="genRentalReceiptDoc('${r.id}')" title="Rental Receipt">🧾</button>
+        ${BIZ.contractEnabled?`<button class="btn btn-c btn-xs" onclick="mRentalContract('${r.id}')" title="${_s.rent_btn_contract}">${r.contractSigned?'📋✓':'📋'}</button>`:''}
+        <button class="btn btn-g btn-xs" onclick="genRentalReceiptDoc('${r.id}')" title="${_s.rent_btn_receipt}">🧾</button>
         <button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')">${_s.ui_view}</button>
         <button class="btn btn-g btn-xs" onclick="mEditRental('${r.id}')">✏</button>
         <button class="btn btn-d btn-xs" onclick="deleteRental('${r.id}')" title="${_s.ui_delete}">🗑</button>
@@ -5787,7 +5787,7 @@ async function mCreateRental(startDate){const _s=_L();
   const sym=CUR.symbol;
   const rate=CUR.rate;
   const rentable=D.inv.filter(function(i){return (i.st==='For Rent'||i.st==='Both')&&((i.qty||0)-(i.rented||0))>0;});
-  modal('Create Rental Booking',`
+  modal(_s.rent_create_title,`
   <div class="fg-2">
     <div class="fg">
     ${_newCustBtnHTML('cr')}
@@ -5910,7 +5910,7 @@ function mReturn(id){const _s=_L();
   <div class="fg-2" style="margin-bottom:12px">
     <div><div class="fl">${_s.ui_customer}</div><div>${_esc(r.cust)}</div></div>
     <div><div class="fl">${_s.rent_item_lbl}</div><div style="font-size:12px">${_esc(r.item)}</div></div>
-    <div><div class="fl">Rental Fee</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.fee)}</div></div>
+    <div><div class="fl">${_s.rent_fee_lbl}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.fee)}</div></div>
     <div><div class="fl">${_s.rent_amt_paid}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.paid||0)}</div></div>
     <div><div class="fl">${_s.rent_cond_before2}</div><div>${r.cb}</div></div>
     <div><div class="fl">${_s.rent_dep_held}</div><div style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</div></div>
@@ -5959,7 +5959,7 @@ function deleteSale(id){const _s=_L();
   }
   if(!warnHtml) warnHtml='<p style="font-size:13px;color:var(--text2)">Delete sale <strong>'+id+'</strong> — '+_esc(s.cust)+'?</p>';
   var mid=id;
-  modal('Delete Sale — '+id, warnHtml,
+  modal(_s.rent_del_sale+' '+id, warnHtml,
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
     '<button class="btn btn-d" id="confirm-del-sale-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
@@ -6009,7 +6009,7 @@ function deleteRental(id){const _s=_L();
   if(r.dep>0&&r.st!=='Returned') warnHtml+='<p style="font-size:12px;color:var(--text3);margin-bottom:6px">Deposit of '+fmt(r.dep)+' will be cleared.</p>';
   if(!warnHtml) warnHtml='<p style="font-size:13px;color:var(--text2)">Delete rental <strong>'+id+'</strong> — '+_esc(r.cust)+' / '+_esc(r.item)+'?</p>';
   var mid=id;
-  modal('Delete Rental — '+id, warnHtml,
+  modal(_s.rent_del_title+' '+id, warnHtml,
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
     '<button class="btn btn-d" id="confirm-del-rental-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
@@ -6050,7 +6050,7 @@ function deletePurchase(id){const _s=_L();
   var warnHtml='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete purchase order <strong>'+p.id+'</strong> from <strong>'+_esc(p.vendor)+'</strong>?</p>';
   if(apImpact) warnHtml+='<div class="alrt alrt-y" style="margin-bottom:8px">AP balance of <strong>'+fmt(p.total)+'</strong> owed to '+_esc(p.vendor)+' will be cancelled.</div>';
   var mid=id;
-  modal('Delete PO — '+id, warnHtml,
+  modal(_s.rent_del_po+' '+id, warnHtml,
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
     '<button class="btn btn-d" id="confirm-del-po-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
@@ -6196,12 +6196,12 @@ function mRentalDetail(id){
       <div class="tl-item on"><div class="tl-meta">${r.start} · Created</div><div class="tl-txt">Rental created &amp; reserved. Deposit ${fmt(r.dep)} collected.</div></div>
       <div class="tl-item on"><div class="tl-meta">${r.start} · Item Released</div><div class="tl-txt">Checked out in <strong>${r.cb}</strong> condition. Pre-release photos taken.</div></div>
       ${r.st==='Overdue'?`<div class="tl-item"><div class="tl-meta" style="color:var(--r)">${r.due} · OVERDUE</div><div class="tl-txt" style="color:var(--r)">Not returned by due date. Late fee: ${fmt(r.lf)} accumulating.</div></div>`:''}
-      ${r.st==='Returned'?`<div class="tl-item on"><div class="tl-meta">Returned</div><div class="tl-txt">Returned in <strong>${r.ca}</strong> condition. Deposit settled.</div></div>`:''}
+      ${r.st==='Returned'?`<div class="tl-item on"><div class="tl-meta">${_s.rent_st_returned}</div><div class="tl-txt">Returned in <strong>${r.ca}</strong> condition. Deposit settled.</div></div>`:''}
     </div>
     <div class="fg-2" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
       <div><div class="fl">${_s.rent_item_lbl}</div><div style="font-size:12px">${r.item}</div></div>
       <div><div class="fl">${_s.rent_period}</div><div style="font-size:12px">${r.start} → ${r.due}</div></div>
-      <div><div class="fl">Rental Fee</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.fee)}</div></div>
+      <div><div class="fl">${_s.rent_fee_lbl}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.fee)}</div></div>
       <div><div class="fl">${_s.rent_dep_lbl}</div><div style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</div></div>
     </div>
   </div>
@@ -6359,7 +6359,7 @@ function _buildContractHTML(r, sigDataUrl){
   <div class="sg-cell">${_s.ui_customer}</div><div class="sg-cell">${cust.name||r.cust}${cust.phone?` · ${cust.phone}`:''}</div>
   <div class="sg-cell">${_s.rent_item_lbl}</div><div class="sg-cell">${r.item}</div>
   <div class="sg-cell">${_s.rent_period}</div><div class="sg-cell">${r.start} → ${r.due}</div>
-  <div class="sg-cell">Rental Fee</div><div class="sg-cell"><strong style="color:${accent}">${fmt(r.fee)}</strong></div>
+  <div class="sg-cell">${_s.rent_fee_lbl}</div><div class="sg-cell"><strong style="color:${accent}">${fmt(r.fee)}</strong></div>
   <div class="sg-cell">${_s.rent_sec_dep}</div><div class="sg-cell">${fmt(r.dep)}</div>
   <div class="sg-cell">${_s.rent_cond_release}</div><div class="sg-cell">${r.cb}</div>
 </div>
@@ -6674,7 +6674,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
       +'<td onclick="event.stopPropagation()">'
         +'<div class="btn-row">'
           +'<button class="btn btn-g btn-xs" onclick="mEditPurchase(\''+p.id+'\')" title="${_s.ui_edit}">✏</button>'
-          +'<button class="btn btn-g btn-xs" onclick="genPODoc(\''+p.id+'\')" title="Print PO">🖨</button>'
+          +'<button class="btn btn-g btn-xs" onclick="genPODoc(\''+p.id+'\')" title="${_s.po_print}">🖨</button>'
           +'<button class="btn btn-d btn-xs" onclick="deletePurchase(\''+p.id+'\')" title="Delete">🗑</button>'
         +'</div>'
       +'</td>'
@@ -6731,8 +6731,8 @@ function pgPurchases(){const _s=_L();const _ui=_s;
     <div class="card" style="padding:0">
       <div class="tbl-wrap"><table id="po-table">
         <thead><tr>
-          <th>${_s.po_col_id}</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>Items</th>
-          <th>${_s.ui_subtotal}</th><th>Total Landed</th><th>${_s.ui_status}</th><th>${_s.ui_method}</th><th></th>
+          <th>${_s.po_col_id}</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>${_s.sal_col_items}</th>
+          <th>${_s.ui_subtotal}</th><th>${_s.po_landed}</th><th>${_s.ui_status}</th><th>${_s.ui_method}</th><th></th>
         </tr></thead>
         <tbody id="po-tbody">${rows}</tbody>
       </table></div>
@@ -6777,7 +6777,7 @@ function mRecordPurchase(){const _s=_L();
   const today=localDateStr();
   const delivery=localDateStr(10);
   const sym=CUR.symbol;
-  modal('Record Purchase Order',`
+  modal(_s.po_record_title,`
   <div class="fg-2">
     <div class="fg">
     ${_newVendorBtnHTML('po')}
@@ -6800,7 +6800,7 @@ function mRecordPurchase(){const _s=_L();
           <option value="__custom__">── Custom / not in inventory ──</option>
         </select>
         <input class="fi po-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" placeholder="Qty" oninput="_poRecalcTotal()"/>
-        <input class="fi po-line-cost" type="number" placeholder="Unit cost" style="width:90px" oninput="_poRecalcTotal()"/>
+        <input class="fi po-line-cost" type="number" placeholder="${_s.po_unit_cost}" style="width:90px" oninput="_poRecalcTotal()"/>
         <button type="button" class="btn btn-d btn-xs" onclick="_poRemoveLine(this)" style="padding:6px 8px">✕</button>
       </div>
     </div>
@@ -6956,7 +6956,7 @@ function pgCust(){const _s=_L();const _ui=_s;
         +'<div class="btn-row">'
           +'<button class="btn btn-g btn-xs" onclick="mEditCustomer(\''+c.id+'\')">✏</button>'
           +(c.bal>0?'<button class="btn btn-p btn-xs" onclick="mCollectBalance(\''+c.id+'\')" title="${_s.cust_collect_tip}">💰</button>':'')
-          +'<button class="btn btn-g btn-xs" onclick="mCustomerStatement(\''+c.id+'\')" title="Statement">📄</button>'
+          +'<button class="btn btn-g btn-xs" onclick="mCustomerStatement(\''+c.id+'\')" title="${_s.cust_stmt2}">📄</button>'
           +(phone?'<button class="btn btn-g btn-xs" onclick="_arSendWA(\''+c.id+'\')" title="WhatsApp">💬</button>':'')
           +'<button class="btn btn-d btn-xs" onclick="mDeleteCustomer(\''+c.id+'\')">🗑</button>'
         +'</div>'
@@ -7051,7 +7051,7 @@ function filterCustTable(){const _s=_L();
 
 function mAddCustomer(_returnSelectId){const _s=_L();
   const _retSel=_returnSelectId||null;
-  modal('Add Customer',`
+  modal(_s.cust_add_title,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="ac-name" placeholder="e.g. Jessica Williams"/></div>
     <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="ac-type"><option>${_s.cust_type_reg}</option><option>VIP</option><option>New</option></select></div>
@@ -7114,7 +7114,7 @@ function mEditCustomer(id){const _s=_L();
   if(!requireRight('edit_customers','Edit Customer')) return;
   var c = D.cust.find(function(x){ return x.id===id; });
   if(!c) return;
-  modal('Edit Customer — '+c.name,`
+  modal(_s.cust_edit_title+' '+c.name,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="ec-name" value="${c.name||''}"/></div>
     <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="ec-type">
@@ -7232,7 +7232,7 @@ function mDeleteCustomer(id){const _s=_L();
     var blocking=[];
     if(openSales.length) blocking.push(openSales.length+' unpaid sale'+(openSales.length!==1?'s':''));
     if(activeRentals.length) blocking.push(activeRentals.length+' active rental'+(activeRentals.length!==1?'s':''));
-    modal('Cannot Delete Customer',
+    modal(_s.cust_cant_del,
       '<div class="alrt alrt-r" style="margin-bottom:10px"><strong>'+_esc(c.name)+'</strong> has '+blocking.join(' and ')+'.</div>'+
       '<p style="font-size:13px;color:var(--text2)">${_s.cust_del_warn}</p>',
       '<button class="btn btn-s" onclick="closeModal()">OK</button>'); return;
@@ -7244,7 +7244,7 @@ function mDeleteCustomer(id){const _s=_L();
   var msg='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(c.name)+'</strong>?</p>';
   if(warnLines.length) msg+='<div class="alrt alrt-y">Has '+warnLines.join(', ')+'. Records preserved.</div>';
   var mid=id, mname=c.name;
-  modal('Delete Customer — '+_esc(c.name), msg,
+  modal(_s.cust_del_title+' '+_esc(c.name), msg,
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
     '<button class="btn btn-d" id="confirm-del-cust-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
@@ -7539,7 +7539,7 @@ function mDeleteVendor(id){const _s=_L();
     var blocking=[];
     if(v.bal>0) blocking.push('balance of '+fmt(v.bal));
     if(openPOs.length) blocking.push(openPOs.length+' pending PO'+(openPOs.length!==1?'s':''));
-    modal('Cannot Delete Vendor',
+    modal(_s.vend_cant_del,
       '<div class="alrt alrt-r" style="margin-bottom:10px"><strong>'+_esc(v.name)+'</strong> has '+blocking.join(' and ')+'.</div>'+
       '<p style="font-size:13px;color:var(--text2)">${_s.vend_del_warn}</p>',
       '<button class="btn btn-s" onclick="closeModal()">OK</button>'); return;
@@ -7548,7 +7548,7 @@ function mDeleteVendor(id){const _s=_L();
   var msg='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(v.name)+'</strong>?</p>';
   if(allPOs.length) msg+='<div class="alrt alrt-y">'+allPOs.length+' PO record'+(allPOs.length!==1?'s':'')+' will be preserved.</div>';
   var mid=id, mname=v.name;
-  modal('Delete Vendor — '+_esc(v.name), msg,
+  modal(_s.vend_del_title+' '+_esc(v.name), msg,
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
     '<button class="btn btn-d" id="confirm-del-vendor-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
@@ -7697,7 +7697,7 @@ ${_vendOverBanner}<div class="ph">
 
 <div class="card" style="padding:0">
   <div class="tbl-wrap"><table id="vend-table">
-    <thead><tr><th>${_s.ui_vendor}</th><th>Country</th><th>${_s.ui_category}</th><th>${_s.vend_col_ap}</th><th>${_s.vend_col_spent}</th><th>${_s.ui_contact}</th><th>${_s.ui_actions}</th></tr></thead>
+    <thead><tr><th>${_s.ui_vendor}</th><th>${_s.ui_country}</th><th>${_s.ui_category}</th><th>${_s.vend_col_ap}</th><th>${_s.vend_col_spent}</th><th>${_s.ui_contact}</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody id="vend-tbody">${rows}</tbody>
   </table></div>
   <div id="vend-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--text2)">
@@ -7752,7 +7752,7 @@ async function mAddVendor(_returnSelectId){const _s=_L();
       if(_vc.data && _vc.data.length) D.vendorCats=_vc.data.map(function(r){return r.name;});
     }catch(_e){}
   }
-  modal('Add Vendor',`
+  modal(_s.vend_add,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.vend_name_ph}</label><input class="fi" id="av-name" placeholder="${BIZ.name||'Vendor name'}"/></div>
     <div class="fg"><label class="fl">${_s.ui_category}</label>
@@ -7815,7 +7815,7 @@ async function mEditVendor(id){const _s=_L();
   if(!requireRight('edit_vendors','Edit Vendor')) return;
   var v = D.vendors.find(function(x){ return x.id===id; });
   if(!v) return;
-  modal('Edit Vendor — '+v.name,`
+  modal(_s.vend_edit_title+' '+v.name,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.vend_name_ph}</label><input class="fi" id="ev-name" value="${v.name||''}"/></div>
     <div class="fg"><label class="fl">${_s.ui_category}</label>
@@ -8458,7 +8458,7 @@ function initAccounting(){
 // ============================================================
 // REPORTS
 // ============================================================
-function pgReports(){const _ui=_L();
+function pgReports(){const _s=_L();const _ui=_L();
   // Use same period as Accounting page for consistency
   const _rptRange = PERIOD_RANGES[_acctPeriod] || PERIOD_RANGES.month;
   const lk = computeKPIs(_rptRange);
@@ -8544,22 +8544,22 @@ function pgReports(){const _ui=_L();
   <div class="bc">ShopTrack / <span>${_ui.nav_reports}</span></div>
   <div class="ph-row"><h1>${_ui.nav_reports}</h1>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <div class="dtabs"><button class="dtab on" onclick="setReportPeriod(this,'month')">Month</button><button class="dtab" onclick="setReportPeriod(this,'quarter')">Quarter</button><button class="dtab" onclick="setReportPeriod(this,'ytd')">YTD</button><button class="dtab" onclick="setReportPeriod(this,'custom')">Custom</button></div>
-      <button class="btn btn-p btn-sm" onclick="exportAllDataXLSX()" title="Export all business data to Excel">&#128190; Export All Data (.xlsx)</button>
+      <div class="dtabs"><button class="dtab on" onclick="setReportPeriod(this,'month')">${_s.rpt_month}</button><button class="dtab" onclick="setReportPeriod(this,'quarter')">${_s.rpt_quarter}</button><button class="dtab" onclick="setReportPeriod(this,'ytd')">YTD</button><button class="dtab" onclick="setReportPeriod(this,'custom')">${_s.rpt_custom2}</button></div>
+      <button class="btn btn-p btn-sm" onclick="exportAllDataXLSX()" title="${_s.rpt_export_excel}">&#128190; Export All Data (.xlsx)</button>
     </div>
   </div>
   <p>${_ui.ph_reports}</p>
 </div>
 <div class="kpi-grid" style="margin-bottom:14px">
-  <div class="kpi b"><div class="kpi-lbl">Total Revenue</div><div id="rpt-kpi-rev" class="kpi-val b">${fmtKpi(totalRev)}</div></div>
-  <div class="kpi g"><div class="kpi-lbl">Gross Profit</div><div id="rpt-kpi-gp" class="kpi-val g">${fmtKpi(lk.gp)}</div></div>
-  <div class="kpi p"><div class="kpi-lbl">Net Profit</div><div id="rpt-kpi-np" class="kpi-val p">${fmtKpi(lk.np)}</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.rpt_total_rev}</div><div id="rpt-kpi-rev" class="kpi-val b">${fmtKpi(totalRev)}</div></div>
+  <div class="kpi g"><div class="kpi-lbl">${_s.rpt_gp}</div><div id="rpt-kpi-gp" class="kpi-val g">${fmtKpi(lk.gp)}</div></div>
+  <div class="kpi p"><div class="kpi-lbl">${_s.rpt_np}</div><div id="rpt-kpi-np" class="kpi-val p">${fmtKpi(lk.np)}</div></div>
   <div class="kpi y"><div class="kpi-lbl">${_s.acc_ar}</div><div id="rpt-kpi-ar" class="kpi-val y">${fmtKpi(lk.ar)}</div></div>
 </div>
 <div class="g2" style="margin-bottom:14px">
-  <div class="card"><div class="card-hd"><div class="card-ttl">Monthly Performance</div><button class="btn btn-g btn-sm" onclick="rptMonthly()">View Full</button></div><div class="ch-wrap" style="height:170px"><canvas id="mChart"></canvas></div></div>
+  <div class="card"><div class="card-hd"><div class="card-ttl">${_s.rpt_monthly_perf}</div><button class="btn btn-g btn-sm" onclick="rptMonthly()">${_s.rpt_view_full}</button></div><div class="ch-wrap" style="height:170px"><canvas id="mChart"></canvas></div></div>
   <div class="card">
-    <div class="card-hd"><div class="card-ttl">Revenue by Category</div><button class="btn btn-g btn-sm" onclick="rptRevCat()">View Full</button></div>
+    <div class="card-hd"><div class="card-ttl">${_s.rpt_rev_by_cat}</div><button class="btn btn-g btn-sm" onclick="rptRevCat()">${_s.rpt_view_full}</button></div>
     <div style="display:flex;gap:14px;align-items:center">
       <div class="ch-wrap" style="height:130px;width:130px;flex-shrink:0"><canvas id="catChart"></canvas></div>
       <div style="flex:1">
@@ -8602,12 +8602,12 @@ function rptSales(){const _s=_L();
   const arTotal = D.cust.filter(c=>c.bal>0).reduce((a,c)=>a+c.bal,0);
   modal('📊 Sales Report — '+range.label,`
   <div class="kpi-grid" style="margin-bottom:14px">
-    <div class="kpi g"><div class="kpi-lbl">Period Revenue</div><div class="kpi-val g">${fmtKpi(total)}</div></div>
-    <div class="kpi b"><div class="kpi-lbl">Cash Collected</div><div class="kpi-val b">${fmtKpi(paid)}</div></div>
+    <div class="kpi g"><div class="kpi-lbl">${_s.rpt_period_rev}</div><div class="kpi-val g">${fmtKpi(total)}</div></div>
+    <div class="kpi b"><div class="kpi-lbl">${_s.rpt_cash_coll}</div><div class="kpi-val b">${fmtKpi(paid)}</div></div>
     <div class="kpi r"><div class="kpi-lbl">AR Outstanding (all time)</div><div class="kpi-val r">${fmtKpi(arTotal)}</div></div>
-    <div class="kpi p"><div class="kpi-lbl">Transactions</div><div class="kpi-val p">${periodSales.length}</div></div>
+    <div class="kpi p"><div class="kpi-lbl">${_s.rpt_transactions}</div><div class="kpi-val p">${periodSales.length}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>Items</th><th>${_s.ui_amount}</th><th>Paid</th><th>${_s.ui_balance}</th><th>${_s.ui_status}</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>${_s.sal_col_items}</th><th>${_s.ui_amount}</th><th>Paid</th><th>${_s.ui_balance}</th><th>${_s.ui_status}</th></tr></thead><tbody>${rows}</tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptSalesPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportSalesCSV()">⬇ CSV</button>`);
 }
 
@@ -8619,7 +8619,7 @@ function rptRevProduct(){const _s=_L();
   const max=sorted[0]?.[1]||1;
   const _rpPeriodLbl=(PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label;
   modal('📊 Revenue by Product — '+_rpPeriodLbl,`
-  <div class="tbl-wrap"><table><thead><tr><th>Product</th><th>Revenue</th><th>Share</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.rpt_product}</th><th>${_s.rpt_revenue}</th><th>${_s.rpt_share}</th></tr></thead><tbody>
   ${sorted.map(([p,v])=>`<tr><td>${p}</td><td>${mono(fmt(v),'g')}</td><td><div class="pbar" style="width:120px;display:inline-block"><div class="pfill b" style="width:${Math.round(v/max*100)}%"></div></div></td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRevProductPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Revenue by Product')">⬇ Export CSV</button>`);
@@ -8649,7 +8649,7 @@ function rptRevCat(){const _s=_L();
   const total=sorted.reduce((a,[,v])=>a+v,0);
   const _rcPeriodLbl=(PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label;
   modal('📊 Revenue by Category — '+_rcPeriodLbl,`
-  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_category}</th><th>Revenue</th><th>%</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_category}</th><th>${_s.rpt_revenue}</th><th>%</th></tr></thead><tbody>
   ${sorted.map(([c,v])=>`<tr><td>${c}</td><td>${mono(fmt(v),'g')}</td><td style="color:var(--text2)">${Math.round(v/total*100)}%</td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRevCatPDF()">⬇ PDF</button>`);
@@ -8689,12 +8689,12 @@ function rptProfit(){const _s=_L();
   const _profitLabel = (PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label;
   modal('📊 Product Profitability — '+_profitLabel,`
   <div class="kpi-grid" style="margin-bottom:12px">
-    <div class="kpi g"><div class="kpi-lbl">Revenue</div><div class="kpi-val g">${fmtKpi(totRevP)}</div></div>
+    <div class="kpi g"><div class="kpi-lbl">${_s.rpt_revenue}</div><div class="kpi-val g">${fmtKpi(totRevP)}</div></div>
     <div class="kpi r"><div class="kpi-lbl">COGS</div><div class="kpi-val r">${fmtKpi(totCostP)}</div></div>
-    <div class="kpi ${totProfP>=0?'g':'r'}"><div class="kpi-lbl">Gross Profit</div><div class="kpi-val ${totProfP>=0?'g':'r'}">${fmtKpi(totProfP)}</div></div>
-    <div class="kpi p"><div class="kpi-lbl">Margin</div><div class="kpi-val p">${totRevP>0?Math.round(totProfP/totRevP*100):0}%</div></div>
+    <div class="kpi ${totProfP>=0?'g':'r'}"><div class="kpi-lbl">${_s.rpt_gp}</div><div class="kpi-val ${totProfP>=0?'g':'r'}">${fmtKpi(totProfP)}</div></div>
+    <div class="kpi p"><div class="kpi-lbl">${_s.rpt_margin}</div><div class="kpi-val p">${totRevP>0?Math.round(totProfP/totRevP*100):0}%</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>Items</th><th>Revenue</th><th>COGS</th><th>Gross Profit</th><th>Margin</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.sal_col_id}</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>${_s.sal_col_items}</th><th>${_s.rpt_revenue}</th><th>COGS</th><th>${_s.rpt_gp}</th><th>${_s.rpt_margin}</th></tr></thead><tbody>${rows}</tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptProfitPDF()">⬇ PDF</button>`);
 }
 
@@ -8712,19 +8712,19 @@ function rptRentals(){const _s=_L();
   const totalDep=_rents.reduce((a,r)=>a+r.dep,0);
   modal('📊 Rentals Report',`
   <div class="kpi-grid" style="margin-bottom:14px">
-    <div class="kpi g"><div class="kpi-lbl">Total Fees</div><div class="kpi-val g">${fmtKpi(totalFees)}</div></div>
-    <div class="kpi b"><div class="kpi-lbl">Total Deposits</div><div class="kpi-val b">${fmtKpi(totalDep)}</div></div>
-    <div class="kpi r"><div class="kpi-lbl">Overdue</div><div class="kpi-val r">${D.rentals.filter(r=>r.st==='Overdue').length}</div></div>
-    <div class="kpi c"><div class="kpi-lbl">Active</div><div class="kpi-val c">${D.rentals.filter(r=>r.st==='Checked Out').length}</div></div>
+    <div class="kpi g"><div class="kpi-lbl">${_s.rpt_total_fees}</div><div class="kpi-val g">${fmtKpi(totalFees)}</div></div>
+    <div class="kpi b"><div class="kpi-lbl">${_s.rpt_total_dep}</div><div class="kpi-val b">${fmtKpi(totalDep)}</div></div>
+    <div class="kpi r"><div class="kpi-lbl">${_s.adm_overdue}</div><div class="kpi-val r">${D.rentals.filter(r=>r.st==='Overdue').length}</div></div>
+    <div class="kpi c"><div class="kpi-lbl">${_s.adm_active}</div><div class="kpi-val c">${D.rentals.filter(r=>r.st==='Checked Out').length}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Start</th><th>Due</th><th>Fee</th><th>Deposit</th><th>${_s.ui_status}</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.appt_start}</th><th>Due</th><th>Fee</th><th>${_s.rpt_deposit}</th><th>${_s.ui_status}</th></tr></thead><tbody>${rows}</tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRentalsPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Rentals Report')">⬇ Export CSV</button>`);
 }
 
 function rptRentalUtil(){const _s=_L();
   const util=D.inv.filter(i=>i.rp).map(i=>({name:i.name,qty:i.qty,rented:i.rented,rate:Math.round(i.rented/Math.max(i.qty,1)*100)})).sort((a,b)=>b.rate-a.rate);
   modal('📊 Rental Utilization',`
-  <div class="tbl-wrap"><table><thead><tr><th>${_s.rent_item_lbl}</th><th>Total Qty</th><th>Rented Out</th><th>Utilization</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.rpt_total_qty}</th><th>${_s.inv_rented_out}</th><th>${_s.rpt_utilization}</th></tr></thead><tbody>
   ${util.map(u=>`<tr><td>${u.name}</td><td>${u.qty}</td><td style="color:var(--c)">${u.rented}</td><td><div style="display:flex;align-items:center;gap:8px"><div class="pbar" style="width:80px"><div class="pfill ${u.rate>60?'g':u.rate>30?'y':'r'}" style="width:${u.rate}%"></div></div><span style="font-size:11px;color:var(--text)">${u.rate}%</span></div></td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRentalUtilPDF()">⬇ PDF</button>`);
@@ -8733,9 +8733,9 @@ function rptRentalUtil(){const _s=_L();
 function rptDeposits(){const _s=_L();
   const open=D.rentals.filter(r=>r.st==='Checked Out'||r.st==='Reserved'||r.st==='Overdue');
   modal('📊 Deposit Liability Report',`
-  <div class="tbl-wrap"><table><thead><tr><th>Rental ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Deposit Held</th><th>${_s.ui_status}</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.rent_col_id}</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.rpt_dep_held}</th><th>${_s.ui_status}</th></tr></thead><tbody>
   ${open.map(r=>`<tr><td>${mono(r.id)}</td><td>${r.cust}</td><td style="font-size:12px">${r.item}</td><td>${mono(fmt(r.dep),'y')}</td><td>${badge(r.st)}</td></tr>`).join('')}
-  <tr style="border-top:2px solid var(--border2)"><td colspan="3"><strong>Total Liability</strong></td><td>${mono(fmt(open.reduce((a,r)=>a+r.dep,0)),'r')}</td><td></td></tr>
+  <tr style="border-top:2px solid var(--border2)"><td colspan="3"><strong>${_s.rpt_total_liab}</strong></td><td>${mono(fmt(open.reduce((a,r)=>a+r.dep,0)),'r')}</td><td></td></tr>
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptDepositsPDF()">⬇ PDF</button>`);
 }
@@ -8743,9 +8743,9 @@ function rptDeposits(){const _s=_L();
 function rptLateFees(){const _s=_L();
   const lf=D.rentals.filter(r=>r.lf>0);
   modal('📊 Late Fees Report',`
-  <div class="tbl-wrap"><table><thead><tr><th>Rental ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due Date</th><th>Late Fee</th><th>${_s.ui_status}</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.rent_col_id}</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.rpt_due_date}</th><th>${_s.rpt_late_fee}</th><th>${_s.ui_status}</th></tr></thead><tbody>
   ${lf.map(r=>`<tr><td>${mono(r.id)}</td><td>${r.cust}</td><td style="font-size:12px">${r.item}</td><td style="color:var(--r)">${r.due}</td><td>${mono(fmt(r.lf),'r')}</td><td>${badge(r.st)}</td></tr>`).join('')}
-  <tr style="border-top:2px solid var(--border2)"><td colspan="4"><strong>Total Late Fees</strong></td><td>${mono(fmt(lf.reduce((a,r)=>a+r.lf,0)),'r')}</td><td></td></tr>
+  <tr style="border-top:2px solid var(--border2)"><td colspan="4"><strong>${_s.rpt_total_late}</strong></td><td>${mono(fmt(lf.reduce((a,r)=>a+r.lf,0)),'r')}</td><td></td></tr>
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptLateFeesPDF()">⬇ PDF</button>`);
 }
@@ -8756,7 +8756,7 @@ function rptOverdue(){const _s=_L();
   <div style="background:var(--r-dim);border:1px solid rgba(255,95,122,.3);border-radius:var(--r10);padding:12px;margin-bottom:14px;font-size:13px;color:var(--r)">
     ⚠ ${od.length} rental(s) are currently overdue. Total late fees: ${fmt(od.reduce((a,r)=>a+r.lf,0))}
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due</th><th>Fee</th><th>Late Fee</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due</th><th>Fee</th><th>${_s.rpt_late_fee}</th></tr></thead><tbody>
   ${od.map(r=>`<tr><td>${mono(r.id)}</td><td><strong style="color:var(--r)">${r.cust}</strong></td><td style="font-size:12px">${r.item}</td><td style="color:var(--r);font-weight:600">${r.due}</td><td>${mono(fmt(r.fee))}</td><td>${mono(fmt(r.lf),'r')}</td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptOverduePDF()">⬇ PDF</button><button class="btn btn-r btn-sm" onclick="toast('Reminder SMS sent to all overdue customers','success');closeModal()">📲 Send All Reminders</button>`);
@@ -8773,14 +8773,14 @@ function rptInvVal(){const _s=_L();
   const rentedOut       = rows.reduce((a,i)=>a+(i.rented||0),0);
   modal('📊 Inventory Valuation',`
   <div class="kpi-grid" style="margin-bottom:14px">
-    <div class="kpi"><div class="kpi-lbl">Total SKUs</div><div class="kpi-val">${D.inv.length}</div></div>
+    <div class="kpi"><div class="kpi-lbl">${_s.rpt_total_skus}</div><div class="kpi-val">${D.inv.length}</div></div>
     <div class="kpi r"><div class="kpi-lbl">Cost Value (on hand)</div><div class="kpi-val r">${fmtKpi(totalCostOnHand)}</div></div>
     <div class="kpi y"><div class="kpi-lbl">Cost Value (incl. rented)</div><div class="kpi-val y">${fmtKpi(totalCostAll)}</div></div>
     <div class="kpi g"><div class="kpi-lbl">${_s.inv_retail_val}</div><div class="kpi-val g">${fmtKpi(totalSP)}</div></div>
-    <div class="kpi c"><div class="kpi-lbl">Units Rented Out</div><div class="kpi-val c">${rentedOut}</div></div>
-    <div class="kpi p"><div class="kpi-lbl">Potential Margin</div><div class="kpi-val p">${totalSP>0?Math.round((totalSP-totalCostAll)/totalSP*100):0}%</div></div>
+    <div class="kpi c"><div class="kpi-lbl">${_s.rpt_units_rented}</div><div class="kpi-val c">${rentedOut}</div></div>
+    <div class="kpi p"><div class="kpi-lbl">${_s.rpt_pot_margin}</div><div class="kpi-val p">${totalSP>0?Math.round((totalSP-totalCostAll)/totalSP*100):0}%</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Name</th><th>On Hand</th><th>Rented</th><th>Available</th><th>Unit Cost</th><th>${_s.inv_col_sp}</th><th>Cost Value</th><th>Retail Value</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Name</th><th>${_s.rpt_on_hand}</th><th>${_s.inv_rented}</th><th>${_s.rpt_available}</th><th>${_s.rpt_unit_cost}</th><th>${_s.inv_col_sp}</th><th>${_s.rpt_cost_val}</th><th>${_s.inv_retail_val}</th></tr></thead><tbody>
   ${rows.map(i=>`<tr>
     <td>${mono(i.sku)}</td>
     <td style="font-size:12px">${_esc(i.name)}</td>
@@ -8806,13 +8806,13 @@ function rptLowStock(){const _s=_L();
   const all=[...outOfStock.map(i=>({...i,_oos:true})),...low];
   modal('📊 Low Stock Report',`
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-    <div class="kpi y" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Low Stock</div><div style="font-size:18px;font-weight:700;color:var(--y)">${low.length}</div></div>
-    <div class="kpi r" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Out of Stock</div><div style="font-size:18px;font-weight:700;color:var(--r)">${outOfStock.length}</div></div>
-    <div class="kpi b" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">No Threshold Set</div><div style="font-size:18px;font-weight:700;color:var(--a)">${D.inv.filter(i=>!(i.minStock||i.minQty)).length}</div></div>
+    <div class="kpi y" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.rpt_low_stock}</div><div style="font-size:18px;font-weight:700;color:var(--y)">${low.length}</div></div>
+    <div class="kpi r" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.rpt_out_stock}</div><div style="font-size:18px;font-weight:700;color:var(--r)">${outOfStock.length}</div></div>
+    <div class="kpi b" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.rpt_no_threshold}</div><div style="font-size:18px;font-weight:700;color:var(--a)">${D.inv.filter(i=>!(i.minStock||i.minQty)).length}</div></div>
   </div>
   ${!all.length?'<div style="color:var(--text2);font-size:13px;padding:16px 0;text-align:center">✅ All items with thresholds are well stocked</div>':''}
   ${all.length?`<div class="tbl-wrap"><table>
-    <thead><tr><th>SKU</th><th>Name</th><th>On Hand</th><th>Rented</th><th>Available</th><th>Threshold</th><th>${_s.ui_status}</th></tr></thead>
+    <thead><tr><th>SKU</th><th>Name</th><th>${_s.rpt_on_hand}</th><th>${_s.inv_rented}</th><th>${_s.rpt_available}</th><th>${_s.rpt_threshold}</th><th>${_s.ui_status}</th></tr></thead>
     <tbody>
     ${all.map(i=>{
       const avail=(i.qty||0)-(i.rented||0);
@@ -8846,7 +8846,7 @@ function rptStockCat(){const _s=_L();
   const cats={};
   D.inv.forEach(i=>{if(!cats[i.cat])cats[i.cat]={items:0,qty:0,val:0};cats[i.cat].items++;cats[i.cat].qty+=i.qty;cats[i.cat].val+=i.cost*i.qty;});
   modal('📊 Stock by Category',`
-  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_category}</th><th>SKUs</th><th>Total Units</th><th>Cost Value</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_category}</th><th>SKUs</th><th>${_s.rpt_total_units}</th><th>${_s.rpt_cost_val}</th></tr></thead><tbody>
   ${Object.entries(cats).map(([c,v])=>`<tr><td>${c}</td><td>${v.items}</td><td>${v.qty}</td><td>${mono(fmt(v.val))}</td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptStockCatPDF()">⬇ PDF</button>`);
@@ -8858,15 +8858,15 @@ function rptGP(){const _s=_L();
   const k=computeKPIs(PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month);
   modal('📊 Gross Profit Report',`
   <div class="kpi-grid" style="margin-bottom:14px">
-    <div class="kpi b"><div class="kpi-lbl">Total Revenue</div><div class="kpi-val b">${fmtKpi(k.rev)}</div></div>
-    <div class="kpi r"><div class="kpi-lbl">Cost of Goods Sold</div><div class="kpi-val r">${fmtKpi(k.cogs)}</div></div>
-    <div class="kpi g"><div class="kpi-lbl">Gross Profit</div><div class="kpi-val g">${fmtKpi(k.gp)}</div></div>
-    <div class="kpi p"><div class="kpi-lbl">GP Margin</div><div class="kpi-val p">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</div></div>
+    <div class="kpi b"><div class="kpi-lbl">${_s.rpt_total_rev}</div><div class="kpi-val b">${fmtKpi(k.rev)}</div></div>
+    <div class="kpi r"><div class="kpi-lbl">${_s.rpt_cogs}</div><div class="kpi-val r">${fmtKpi(k.cogs)}</div></div>
+    <div class="kpi g"><div class="kpi-lbl">${_s.rpt_gp}</div><div class="kpi-val g">${fmtKpi(k.gp)}</div></div>
+    <div class="kpi p"><div class="kpi-lbl">${_s.rpt_gp_margin}</div><div class="kpi-val p">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</div></div>
   </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:10px 0;font-size:13px">
-    <div><div class="fl">Sales Revenue</div><div style="font-family:var(--mono);color:var(--a)">${fmt(k.saleRev)}</div></div>
-    <div><div class="fl">Rental Revenue</div><div style="font-family:var(--mono);color:var(--c)">${fmt(k.rentRev)}</div></div>
-    <div><div class="fl">Services Revenue</div><div style="font-family:var(--mono);color:var(--p)">${fmt(k.apptRev)}</div></div>
+    <div><div class="fl">${_s.rpt_sales_rev}</div><div style="font-family:var(--mono);color:var(--a)">${fmt(k.saleRev)}</div></div>
+    <div><div class="fl">${_s.rpt_rental_rev}</div><div style="font-family:var(--mono);color:var(--c)">${fmt(k.rentRev)}</div></div>
+    <div><div class="fl">${_s.rpt_svc_rev}</div><div style="font-family:var(--mono);color:var(--p)">${fmt(k.apptRev)}</div></div>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptGPPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportPnLPDF()">⬇ Full P&L PDF</button>`);
 }
@@ -8876,16 +8876,16 @@ function rptNP(){const _s=_L();
   const r=CUR.rate;
   modal('📊 Net Profit Report',`
   <div class="kpi-grid" style="margin-bottom:14px">
-    <div class="kpi b"><div class="kpi-lbl">Total Revenue</div><div class="kpi-val b">${fmtKpi(k.rev)}</div></div>
-    <div class="kpi g"><div class="kpi-lbl">Gross Profit</div><div class="kpi-val g">${fmtKpi(k.gp)}</div></div>
-    <div class="kpi r"><div class="kpi-lbl">Overhead Expenses</div><div class="kpi-val r">${fmtKpi(k.oh)}</div></div>
-    <div class="kpi p"><div class="kpi-lbl">Net Profit</div><div class="kpi-val p">${fmtKpi(k.np)}</div></div>
-    <div class="kpi b"><div class="kpi-lbl">Net Margin</div><div class="kpi-val b">${k.rev>0?Math.round(k.np/k.rev*100):0}%</div></div>
+    <div class="kpi b"><div class="kpi-lbl">${_s.rpt_total_rev}</div><div class="kpi-val b">${fmtKpi(k.rev)}</div></div>
+    <div class="kpi g"><div class="kpi-lbl">${_s.rpt_gp}</div><div class="kpi-val g">${fmtKpi(k.gp)}</div></div>
+    <div class="kpi r"><div class="kpi-lbl">${_s.rpt_oh_exp}</div><div class="kpi-val r">${fmtKpi(k.oh)}</div></div>
+    <div class="kpi p"><div class="kpi-lbl">${_s.rpt_np}</div><div class="kpi-val p">${fmtKpi(k.np)}</div></div>
+    <div class="kpi b"><div class="kpi-lbl">${_s.rpt_net_margin}</div><div class="kpi-val b">${k.rev>0?Math.round(k.np/k.rev*100):0}%</div></div>
     <div class="kpi r"><div class="kpi-lbl">COGS</div><div class="kpi-val r">${fmtKpi(k.cogs)}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Expense</th><th>${_s.exp_col_payee}</th><th>${_s.ui_amount}</th><th>${_s.ui_type}</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.rpt_expense}</th><th>${_s.exp_col_payee}</th><th>${_s.ui_amount}</th><th>${_s.ui_type}</th></tr></thead><tbody>
   ${k.expenses.filter(e=>e.cat!=='Vendor Payment').map(e=>`<tr><td>${_esc(e.cat)}</td><td style="font-size:12px;color:var(--text)">${_esc(e.payee||'')}</td><td>${mono(fmt(e.amt),'r')}</td><td>${bx(e.type||'','bx-n')}</td></tr>`).join('')}
-  <tr style="border-top:2px solid var(--border2)"><td colspan="2"><strong>Total Overhead</strong></td><td>${mono(fmt(k.oh),'r')}</td><td></td></tr>
+  <tr style="border-top:2px solid var(--border2)"><td colspan="2"><strong>${_s.rpt_total_oh}</strong></td><td>${mono(fmt(k.oh),'r')}</td><td></td></tr>
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptNPPDF()">⬇ PDF</button>`);
 }
@@ -8903,19 +8903,19 @@ function rptCash(){const _s=_L();
   const depHeld   = D.rentals.filter(r=>inRange(r.start,range)&&(r.st==='Checked Out'||r.st==='Reserved'||r.st==='Overdue')).reduce((a,r)=>a+(r.dep||0),0);
   modal('📊 Cash Flow Summary',`
   <div class="kpi-grid" style="margin-bottom:14px">
-    <div class="kpi g"><div class="kpi-lbl">Cash Inflows</div><div class="kpi-val g">${fmtKpi(k.cashIn)}</div></div>
-    <div class="kpi r"><div class="kpi-lbl">Cash Outflows</div><div class="kpi-val r">${fmtKpi(k.cashOut)}</div></div>
+    <div class="kpi g"><div class="kpi-lbl">${_s.rpt_cash_in}</div><div class="kpi-val g">${fmtKpi(k.cashIn)}</div></div>
+    <div class="kpi r"><div class="kpi-lbl">${_s.rpt_cash_out}</div><div class="kpi-val r">${fmtKpi(k.cashOut)}</div></div>
     <div class="kpi b"><div class="kpi-lbl">${_s.acc_net_cash}</div><div class="kpi-val b">${fmtKpi(k.cashIn-k.cashOut)}</div></div>
     <div class="kpi y"><div class="kpi-lbl">Deposits Held (Liability)</div><div class="kpi-val y">${fmtKpi(depHeld)}</div></div>
   </div>
   <div style="padding:10px 0;font-size:13px">
-    <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Inflows</div>
+    <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${_s.rpt_inflows}</div>
     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Sales Receipts (cash collected)</span><span style="color:var(--g);font-family:var(--mono)">${fmt(salePaid)}</span></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Rental Fees Collected</span><span style="color:var(--g);font-family:var(--mono)">${fmt(rentPaid)}</span></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Services Revenue</span><span style="color:var(--g);font-family:var(--mono)">${fmt(k.apptRev)}</span></div>
-    <div style="font-size:11px;font-weight:700;color:var(--r);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px">Outflows</div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Payroll</span><span style="color:var(--r);font-family:var(--mono)">-${fmt(payroll)}</span></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Operating Expenses</span><span style="color:var(--r);font-family:var(--mono)">-${fmt(otherExp)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>${_s.rpt_rent_fees}</span><span style="color:var(--g);font-family:var(--mono)">${fmt(rentPaid)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>${_s.rpt_svc_rev}</span><span style="color:var(--g);font-family:var(--mono)">${fmt(k.apptRev)}</span></div>
+    <div style="font-size:11px;font-weight:700;color:var(--r);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px">${_s.rpt_outflows}</div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>${_s.rpt_payroll}</span><span style="color:var(--r);font-family:var(--mono)">-${fmt(payroll)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>${_s.rpt_op_exp}</span><span style="color:var(--r);font-family:var(--mono)">-${fmt(otherExp)}</span></div>
     <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Vendor Payments (purchases)</span><span style="color:var(--r);font-family:var(--mono)">-${fmt(paidPurch)}</span></div>
     <div style="font-size:11px;color:var(--text3);margin-top:10px">⚠ Deposits held (${fmt(depHeld)}) are customer liabilities and are NOT counted as revenue or cash flow until the rental is returned.</div>
   </div>`,
@@ -8950,9 +8950,9 @@ function rptMonthly(){const _s=_L();
   <div class="kpi-grid" style="margin-bottom:14px">
     <div class="kpi b"><div class="kpi-lbl">12-Month Revenue</div><div class="kpi-val b">${fmtKpi(totRev)}</div></div>
     <div class="kpi p"><div class="kpi-lbl">12-Month Net Profit</div><div class="kpi-val p">${fmtKpi(totNp)}</div></div>
-    <div class="kpi g"><div class="kpi-lbl">Avg Net Margin</div><div class="kpi-val g">${totRev>0?Math.round(totNp/totRev*100):0}%</div></div>
+    <div class="kpi g"><div class="kpi-lbl">${_s.rpt_avg_margin}</div><div class="kpi-val g">${totRev>0?Math.round(totNp/totRev*100):0}%</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Month</th><th>Revenue</th><th>Gross Profit</th><th>Overhead</th><th>Net Profit</th><th>Margin</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>Month</th><th>${_s.rpt_revenue}</th><th>${_s.rpt_gp}</th><th>${_s.rpt_overhead}</th><th>${_s.rpt_np}</th><th>${_s.rpt_margin}</th></tr></thead><tbody>
   ${months.map(m=>`<tr>
     <td style="font-weight:500">${m.m}</td>
     <td>${mono(fmt(m.rev),'b')}</td>
@@ -8975,7 +8975,7 @@ function rptExpBreak(){const _s=_L();
   modal('📊 Expense Breakdown — '+(PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label,`
   <div class="kpi-grid" style="margin-bottom:14px">
     <div class="kpi r"><div class="kpi-lbl">${_s.exp_kpi_total}</div><div class="kpi-val r">${fmtKpi(total)}</div></div>
-    <div class="kpi"><div class="kpi-lbl">Categories</div><div class="kpi-val">${Object.keys(cats).length}</div></div>
+    <div class="kpi"><div class="kpi-lbl">${_s.rpt_categories}</div><div class="kpi-val">${Object.keys(cats).length}</div></div>
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_category}</th><th>${_s.ui_amount}</th><th>% of Total</th></tr></thead><tbody>
   ${sorted.map(([c,v])=>`<tr><td>${c}</td><td>${mono(fmt(v),'r')}</td><td style="color:var(--text2)">${Math.round(v/total*100)}%</td></tr>`).join('')}
@@ -9018,12 +9018,12 @@ function rptAR(){const _s=_L();
 
   modal('📊 AR Aging Report',`
   <div class="kpi-grid" style="margin-bottom:14px">
-    <div class="kpi g"><div class="kpi-lbl">Current</div><div class="kpi-val g">${fmtKpi(buckets['Current'])}</div></div>
+    <div class="kpi g"><div class="kpi-lbl">${_s.rpt_current}</div><div class="kpi-val g">${fmtKpi(buckets['Current'])}</div></div>
     <div class="kpi y"><div class="kpi-lbl">1–30 Days</div><div class="kpi-val y">${fmtKpi(buckets['1–30 days'])}</div></div>
     <div class="kpi o"><div class="kpi-lbl">31–60 Days</div><div class="kpi-val o">${fmtKpi(buckets['31–60 days'])}</div></div>
     <div class="kpi r"><div class="kpi-lbl">60+ Days</div><div class="kpi-val r">${fmtKpi(buckets['60+ days'])}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_customer}</th><th>Aging</th><th>Oldest Unpaid</th><th>Balance Due</th><th>${_s.cust_col_last}</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_customer}</th><th>${_s.rpt_aging}</th><th>Oldest Unpaid</th><th>${_s.rpt_bal_due}</th><th>${_s.cust_col_last}</th></tr></thead><tbody>
   ${ar.map(c=>{const days=ageDays(c);const bkt=ageBucket(days);const unpaid=D.sales.filter(s=>(s.custId===c.id||s.cust===c.name)&&s.st!=='Paid');const oldest=unpaid.length?unpaid.sort((a,b)=>a.dt.localeCompare(b.dt))[0].dt:'—';return`<tr>
     <td><strong style="color:var(--ink)">${_esc(c.name)}</strong>${c.vip?` ${bx('VIP','bx-p')}`:''}
       <div style="font-size:10px;color:var(--text2)">${unpaid.length} unpaid invoice${unpaid.length!==1?'s':''}</div>
@@ -9075,7 +9075,7 @@ function rptAP(){const _s=_L();
     <div class="kpi o"><div class="kpi-lbl">61–90 Days</div><div class="kpi-val o">${fmtKpi(buckets['61–90 days'])}</div></div>
     <div class="kpi r"><div class="kpi-lbl">90+ Days</div><div class="kpi-val r">${fmtKpi(buckets['90+ days'])}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_vendor}</th><th>Aging</th><th>Country</th><th>Open POs</th><th>Balance Owed</th><th>${_s.ui_category}</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_vendor}</th><th>${_s.rpt_aging}</th><th>${_s.ui_country}</th><th>${_s.vc_open_po}</th><th>Balance Owed</th><th>${_s.ui_category}</th></tr></thead><tbody>
   ${ap.map(v=>{const days=apAgeDays(v);const bkt=ageBucket(days);const openPOs=D.purchases.filter(p=>(p.vendor===v.name||p.vendorId===v.id)&&p.st!=='Paid'&&p.st!=='Received');return`<tr>
     <td><strong style="color:var(--ink)">${_esc(v.name)}</strong></td>
     <td>${bx(bkt.label,bkt.cls)}</td>
@@ -9142,7 +9142,7 @@ function _renderCustStmt(custId){const _s=_L();
     <div class="kpi g"><div class="kpi-lbl">Total Invoiced</div><div class="kpi-val g">${fmtKpi(totalInvoiced)}</div></div>
     <div class="kpi b"><div class="kpi-lbl">${_s.cust_total_paid}</div><div class="kpi-val b">${fmtKpi(totalPaid)}</div></div>
     <div class="kpi ${cust.bal>0?'r':'g'}"><div class="kpi-lbl">${_s.cust_outstanding}</div><div class="kpi-val ${cust.bal>0?'r':'g'}">${fmtKpi(cust.bal||0)}</div></div>
-    <div class="kpi p"><div class="kpi-lbl">Transactions</div><div class="kpi-val p">${sales.length+rentals.length+appts.length}</div></div>
+    <div class="kpi p"><div class="kpi-lbl">${_s.rpt_transactions}</div><div class="kpi-val p">${sales.length+rentals.length+appts.length}</div></div>
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>${_s.ui_description}</th><th>Invoiced</th><th>Paid</th><th>${_s.ui_balance}</th></tr></thead><tbody>
   ${sales.map(s=>{const tot=s.total||s.amt;const bal=tot-(s.paid||0);return`<tr><td>${s.dt}</td><td>${bx('Sale','bx-g')}</td><td style="font-size:12px">${_esc(s.items)}</td><td>${mono(fmt(tot))}</td><td>${mono(fmt(s.paid||0),'g')}</td><td>${mono(fmt(bal),bal>0?'r':'g')}</td></tr>`;}).join('')}
@@ -9170,7 +9170,7 @@ function rptVendorPurch(){const _s=_L();
     <div class="kpi"><div class="kpi-lbl">PO Count</div><div class="kpi-val">${_pos.length}</div></div>
   </div>
   ${_vsorted.length>1?`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Spend by Vendor</div>${_vsorted.map(([v,amt])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px"><span>${_esc(v)}</span><span style="font-family:var(--mono);color:var(--b)">${fmt(amt)}</span></div>`).join('')}</div>`:''}
-  <div class="tbl-wrap"><table><thead><tr><th>PO</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>Items</th><th>${_s.ui_subtotal}</th><th>Freight</th><th>${_s.ui_total}</th><th>${_s.ui_status}</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>PO</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>${_s.sal_col_items}</th><th>${_s.ui_subtotal}</th><th>${_s.po_view_freight}</th><th>${_s.ui_total}</th><th>${_s.ui_status}</th></tr></thead><tbody>
   ${_pos.map(p=>`<tr><td>${mono(p.id)}</td><td>${p.dt}</td><td style="font-size:12px;color:var(--ink)">${p.vendor}</td><td style="font-size:11px">${p.items}</td><td>${mono(fmt(p.sub||0))}</td><td>${mono(fmt(p.freight||0))}</td><td>${mono(fmt(p.total),'b')}</td><td>${badge(p.st)}</td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptVendorPurchPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Vendor Purchases')">⬇ CSV</button>`,'lg');
@@ -9183,10 +9183,10 @@ function rptPayHist(){const _s=_L();
   modal('📊 Payment History',`
   <div class="kpi-grid" style="margin-bottom:14px">
     <div class="kpi g"><div class="kpi-lbl">Total Collected</div><div class="kpi-val g">${fmtKpi(totalCollected)}</div></div>
-    <div class="kpi b"><div class="kpi-lbl">Transactions</div><div class="kpi-val b">${paid.length}</div></div>
+    <div class="kpi b"><div class="kpi-lbl">${_s.rpt_transactions}</div><div class="kpi-val b">${paid.length}</div></div>
     <div class="kpi r"><div class="kpi-lbl">Still Outstanding</div><div class="kpi-val r">${fmtKpi(D.cust.filter(c=>c.bal>0).reduce((a,c)=>a+c.bal,0))}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>${_s.ui_total}</th><th>Paid</th><th>${_s.ui_balance}</th><th>${_s.ui_status}</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.sal_col_id}</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>${_s.ui_total}</th><th>Paid</th><th>${_s.ui_balance}</th><th>${_s.ui_status}</th></tr></thead><tbody>
   ${paid.map(s=>{const tot=s.total||s.amt;const bal=tot-(s.paid||0);return`<tr>
     <td>${mono(s.id)}</td><td>${s.dt}</td><td>${_esc(s.cust)}</td>
     <td>${mono(fmt(tot))}</td>
@@ -9205,11 +9205,11 @@ function rptExpFull(){const _s=_L();
   modal('📊 Full Expense Report — '+_rng.label,`
   <div class="kpi-grid" style="margin-bottom:12px">
     <div class="kpi r"><div class="kpi-lbl">${_s.exp_kpi_total}</div><div class="kpi-val r">${fmtKpi(_expTotal)}</div></div>
-    <div class="kpi"><div class="kpi-lbl">Transactions</div><div class="kpi-val">${_expP.length}</div></div>
+    <div class="kpi"><div class="kpi-lbl">${_s.rpt_transactions}</div><div class="kpi-val">${_expP.length}</div></div>
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th>${_s.ui_amount}</th><th>${_s.ui_type}</th><th>${_s.ui_method}</th></tr></thead><tbody>
   ${_expP.map(e=>`<tr><td>${mono(e.id)}</td><td>${e.dt}</td><td>${e.cat}</td><td style="font-size:12px">${e.payee}</td><td>${mono(fmt(e.amt),'r')}</td><td>${bx(e.type,'bx-n')}</td><td style="font-size:11px;color:var(--text2)">${e.method}</td></tr>`).join('')}
-  <tr style="border-top:2px solid var(--border2)"><td colspan="4"><strong>Total</strong></td><td>${mono(fmt(_expTotal),'r')}</td><td colspan="2"></td></tr>
+  <tr style="border-top:2px solid var(--border2)"><td colspan="4"><strong>${_s.adm_total}</strong></td><td>${mono(fmt(_expTotal),'r')}</td><td colspan="2"></td></tr>
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptExpFullPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Full Expense Report')">⬇ Export CSV</button>`);
 }
@@ -9233,7 +9233,7 @@ function initReports(){
 // ============================================================
 // CATALOG
 // ============================================================
-function pgCatalog(){
+function pgCatalog(){const _s=_L();
   var defaultCatName = (BIZ.name||'Our') + ' Service Catalog';
   var catName = BIZ.catalogName || defaultCatName;
   var catTagline = BIZ.catalogTagline || BIZ.tagline || '';
@@ -9246,7 +9246,7 @@ function pgCatalog(){
   var catCount = allCats.length;
 
   // Category filter options built safely
-  var catFilterOpts = '<option value="">All Categories</option>'
+  var catFilterOpts = '<option value="">${_s.cat_all_cats}</option>'
     + allCats.map(function(c){ return '<option value="'+_esc(c)+'">'+_esc(c)+'</option>'; }).join('');
 
   // Build product+service cards safely (string concat, no nested templates)
@@ -9266,7 +9266,7 @@ function pgCatalog(){
     var imgHtml = s.imgDataUrl
       ? '<img loading="lazy" src="'+s.imgDataUrl+'" style="width:100%;height:100%;object-fit:cover;display:block"/>'
       : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;background:'+s.color+'18">✂️</div>';
-    itemCards += '<div class="icard" data-cat="'+_esc(s.cat||'')+'" onclick="mNewAppt();setTimeout(function(){var el=document.getElementById(\'na-s\');if(el){el.value=\''+s.id+'\';_naSync();}},100)" title="Book this service"><div class="icard-img" style="height:140px;overflow:hidden">'+imgHtml+'</div><div class="icard-body"><div class="icard-name">'+_esc(s.name)+'</div><div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(s.cat||'')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;font-weight:700;color:'+ptColor+'">'+_esc(priceLabel)+'</span><span style="font-size:10px;color:var(--text3)">· '+_esc(durLabel)+'</span></div></div></div>';
+    itemCards += '<div class="icard" data-cat="'+_esc(s.cat||'')+'" onclick="mNewAppt();setTimeout(function(){var el=document.getElementById(\'na-s\');if(el){el.value=\''+s.id+'\';_naSync();}},100)" title="${_s.cat_book}"><div class="icard-img" style="height:140px;overflow:hidden">'+imgHtml+'</div><div class="icard-body"><div class="icard-name">'+_esc(s.name)+'</div><div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(s.cat||'')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;font-weight:700;color:'+ptColor+'">'+_esc(priceLabel)+'</span><span style="font-size:10px;color:var(--text3)">· '+_esc(durLabel)+'</span></div></div></div>';
   });
 
   if(!itemCards){
@@ -9274,8 +9274,8 @@ function pgCatalog(){
   }
 
   return '<div class="ph">'
-    +'<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>Catalog</span></div>'
-    +'<div class="ph-row"><h1>Product Catalog</h1><div class="btn-row">'
+    +'<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>${_s.cat_tab}</span></div>'
+    +'<div class="ph-row"><h1>${_s.cat_title}</h1><div class="btn-row">'
     +'<button class="btn btn-s btn-sm" onclick="genCatalogDoc()">👁 Preview</button>'
     +'<button class="btn btn-p btn-sm" onclick="genCatalogDoc()">⬇ Generate PDF</button>'
     +'</div></div>'
@@ -9283,15 +9283,15 @@ function pgCatalog(){
     +'</div>'
     +'<div class="g2" style="margin-bottom:14px">'
     +'<div class="card">'
-    +'<div class="card-hd"><div class="card-ttl">Catalog Settings</div></div>'
-    +'<div class="fg"><label class="fl">Catalog Name</label><input class="fi" id="cat-name-input" value="'+_esc(catName)+'"/></div>'
-    +'<div class="fg"><label class="fl">Cover Tagline</label><input class="fi" id="cat-tagline-input" value="'+_esc(catTagline)+'"/></div>'
+    +'<div class="card-hd"><div class="card-ttl">${_s.cat_settings}</div></div>'
+    +'<div class="fg"><label class="fl">${_s.cat_name}</label><input class="fi" id="cat-name-input" value="'+_esc(catName)+'"/></div>'
+    +'<div class="fg"><label class="fl">${_s.cat_tagline}</label><input class="fi" id="cat-tagline-input" value="'+_esc(catTagline)+'"/></div>'
     +'<div class="fg-2">'
-    +'<div class="fg"><label class="fl">Show Prices</label><select class="fs" id="cat-show-prices"><option value="all">Show All Prices</option><option value="sale">Sale Only</option><option value="rent">Rental Only</option><option value="hide">Hide Prices</option></select></div>'
-    +'<div class="fg"><label class="fl">Filter Status</label><select class="fs" id="cat-filter-status"><option value="both">Both Sale &amp; Rent</option><option value="sale">For Sale Only</option><option value="rent">For Rent Only</option></select></div>'
+    +'<div class="fg"><label class="fl">${_s.cat_show_p}</label><select class="fs" id="cat-show-prices"><option value="all">${_s.cat_show_all}</option><option value="sale">${_s.cat_sale_only}</option><option value="rent">${_s.cat_rent_only}</option><option value="hide">${_s.cat_hide_prices}</option></select></div>'
+    +'<div class="fg"><label class="fl">${_s.cat_filter_status}</label><select class="fs" id="cat-filter-status"><option value="both">Both Sale &amp; Rent</option><option value="sale">${_s.cat_for_sale_only}</option><option value="rent">${_s.cat_for_rent_only}</option></select></div>'
     +'</div>'
-    +'<div class="fg"><label class="fl">Contact Info</label><input class="fi" id="cat-contact" value="'+_esc((BIZ.email||'')+(BIZ.phone?' | '+BIZ.phone:''))+'"/></div>'
-    +'<button class="btn btn-p" onclick="BIZ.catalogContact=document.getElementById(\'cat-contact\')?.value||BIZ.catalogContact||\'\';BIZ.catalogPrices=document.getElementById(\'cat-show-prices\')?.value||BIZ.catalogPrices||\'\';BIZ.catalogStatus=document.getElementById(\'cat-filter-status\')?.value||BIZ.catalogStatus||\'\';BIZ.catalogName=document.getElementById(\'cat-name-input\')?.value||BIZ.catalogName||\''+_esc(defaultCatName)+'\';BIZ.catalogTagline=document.getElementById(\'cat-tagline-input\')?.value||\'\';_dbSaveBizProfile(SESSION.bizId);toast(\'Catalog settings saved \u2713\',\'success\')">Save Settings</button>'
+    +'<div class="fg"><label class="fl">${_s.cat_contact}</label><input class="fi" id="cat-contact" value="'+_esc((BIZ.email||'')+(BIZ.phone?' | '+BIZ.phone:''))+'"/></div>'
+    +'<button class="btn btn-p" onclick="BIZ.catalogContact=document.getElementById(\'cat-contact\')?.value||BIZ.catalogContact||\'\';BIZ.catalogPrices=document.getElementById(\'cat-show-prices\')?.value||BIZ.catalogPrices||\'\';BIZ.catalogStatus=document.getElementById(\'cat-filter-status\')?.value||BIZ.catalogStatus||\'\';BIZ.catalogName=document.getElementById(\'cat-name-input\')?.value||BIZ.catalogName||\''+_esc(defaultCatName)+'\';BIZ.catalogTagline=document.getElementById(\'cat-tagline-input\')?.value||\'\';_dbSaveBizProfile(SESSION.bizId);toast(\'Catalog settings saved \u2713\',\'success\')">${_s.cat_save}</button>'
     +'</div>'
     +'<div class="card" style="background:linear-gradient(135deg,var(--bg3),var(--bg4));border-style:dashed;text-align:center;padding:28px">'
     +'<div style="font-size:44px;margin-bottom:10px">📋</div>'
@@ -9302,7 +9302,7 @@ function pgCatalog(){
     +'</div>'
     +'</div>'
     +'<div class="card">'
-    +'<div class="card-hd"><div class="card-ttl">Items in Catalog</div>'
+    +'<div class="card-hd"><div class="card-ttl">${_s.cat_items}</div>'
     +'<div class="btn-row">'
     +'<button id="cat-cat-all" class="btn btn-g btn-sm cat-filter-btn on" onclick="document.querySelectorAll(\'.icard\').forEach(function(c){c.style.display=\'\';});document.querySelectorAll(\'.cat-filter-btn\').forEach(function(b){b.classList.remove(\'on\');});this.classList.add(\'on\')">All</button>'
     +(allCats.map(function(c){ return '<button class="btn btn-s btn-sm cat-filter-btn" onclick="var cat=\''+c.replace(/'/g,"\\'")+'\'  ;document.querySelectorAll(\'.icard\').forEach(function(el){el.style.display=(el.dataset.cat===cat)?\'\'  :\'none\';});document.querySelectorAll(\'.cat-filter-btn\').forEach(function(b){b.classList.remove(\'on\');});this.classList.add(\'on\')">'+_esc(c)+'</button>'; }).join(''))
@@ -9318,7 +9318,7 @@ function pgCatalog(){
 // ============================================================
 // AI STUDIO
 // ============================================================
-function pgAI(){
+function pgAI(){const _s=_L();
   const contentGroups = [
     {group:'📊 Business Insights', items:[
       {id:'Monthly Business Review',  icon:'📈', desc:'AI analysis of your revenue, profit, top products & recommendations'},
@@ -9378,7 +9378,7 @@ function pgAI(){
 
   return `
 <div class="ph">
-  <div class="bc">${BIZ.name||'ShopTrack'} / <span>AI Studio</span></div>
+  <div class="bc">${BIZ.name||'ShopTrack'} / <span>${_s.ai_title}</span></div>
   <div class="ph-row"><h1>✨ AI Content Studio</h1>
     <span style="font-size:11px;background:var(--g-dim);color:var(--g);padding:3px 10px;border-radius:10px;font-weight:600">✓ Powered by ShopTrack</span>
   </div>
@@ -9393,7 +9393,7 @@ function pgAI(){
       <div class="card-hd" style="margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px">
           <div style="width:22px;height:22px;background:var(--a);border-radius:50%;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
-          <div class="card-ttl">Choose Content Type</div>
+          <div class="card-ttl">${_s.ai_content_type}</div>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px" id="ai-type-list">
@@ -9414,7 +9414,7 @@ function pgAI(){
       <div class="card-hd" style="margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px">
           <div style="width:22px;height:22px;background:var(--a);border-radius:50%;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
-          <div class="card-ttl">Product or Topic</div>
+          <div class="card-ttl">${_s.ai_topic}</div>
         </div>
       </div>
       <!-- Selected chips display -->
@@ -9424,9 +9424,9 @@ function pgAI(){
         <option value="">+ Add a product or service…</option>
         ${hasSvcContent}
         ${invOptions}
-        <option value="general">General Business Promotion</option>
+        <option value="general">${_s.ai_gen_biz}</option>
       </select>
-      <input class="fi" id="ctProdCustom" placeholder="Or type a custom topic and press Enter" style="font-size:12.5px" onkeydown="if(event.key==='Enter'){event.preventDefault();_aiAddCustomChip();}"/>
+      <input class="fi" id="ctProdCustom" placeholder="${_s.ai_custom_ph}" style="font-size:12.5px" onkeydown="if(event.key==='Enter'){event.preventDefault();_aiAddCustomChip();}"/>
       <div style="font-size:10.5px;color:var(--text2);margin-top:4px">Select multiple products — each gets included in the generated content</div>
     </div>
 
@@ -9454,7 +9454,7 @@ function pgAI(){
 
     <button class="ai-gen-btn" onclick="genAI()" id="ai-gen-main-btn">
       <span id="ai-btn-icon">✨</span>
-      <span id="ai-btn-text">Generate Content</span>
+      <span id="ai-btn-text">${_s.ai_generate}</span>
     </button>
   </div>
 
@@ -9462,8 +9462,8 @@ function pgAI(){
   <div>
     <div class="card" style="margin-bottom:12px">
       <div class="card-hd" style="margin-bottom:14px">
-        <div style="font-size:14px;font-weight:700;color:var(--ink)">Generated Content</div>
-        <div id="ai-type-badge" style="font-size:11px;font-weight:700;background:rgba(67,97,238,.1);color:var(--a);border-radius:20px;padding:3px 10px">Instagram Caption</div>
+        <div style="font-size:14px;font-weight:700;color:var(--ink)">${_s.ai_generated}</div>
+        <div id="ai-type-badge" style="font-size:11px;font-weight:700;background:rgba(67,97,238,.1);color:var(--a);border-radius:20px;padding:3px 10px">${_s.ai_caption_ig}</div>
       </div>
 
       <!-- Flyer preview panel (hidden unless Branded Flyer selected) -->
@@ -9472,14 +9472,14 @@ function pgAI(){
           <div id="ai-flyer-div" style="width:420px;font-family:'Segoe UI',Arial,sans-serif;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.18)">
             <div style="padding:60px 32px;text-align:center;color:var(--text2)">
               <div style="font-size:36px;margin-bottom:12px">🖼️</div>
-              <div style="font-size:14px">Click Generate to create your branded flyer</div>
+              <div style="font-size:14px">${_s.ai_click_gen}</div>
             </div>
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
           <button class="btn btn-p" style="flex:2" id="ai-flyer-png-btn" onclick="_aiFlyerDownloadPNG()" disabled>⬇ Save as PNG</button>
           <button class="btn btn-g btn-sm" style="flex:1" id="ai-flyer-pdf-btn" onclick="_aiFlyerPrint()" disabled>🖨️ Print / PDF</button>
-          <button class="btn btn-s btn-sm" onclick="genAI()">🔄 Regenerate</button>
+          <button class="btn btn-s btn-sm" onclick="genAI()">${_s.adm_regenerate}</button>
         </div>
         <div style="margin-top:8px;display:none" id="ai-flyer-wa-row">
           <button class="btn btn-g" style="width:100%" onclick="_aiFlyerWhatsApp()">💬 Share via WhatsApp</button>
@@ -9491,14 +9491,14 @@ function pgAI(){
         <div style="border:2px solid var(--border2);border-radius:var(--r8);overflow:hidden;background:#f0f2f5;min-height:340px;display:flex;align-items:center;justify-content:center;position:relative" id="ai-img-wrap">
           <div style="text-align:center;color:var(--text2);padding:40px">
             <div style="font-size:40px;margin-bottom:12px">🎨</div>
-            <div style="font-size:14px;font-weight:600;margin-bottom:6px">AI Product Photo Generator</div>
-            <div style="font-size:12px">Select a product and click Generate.<br>Professional AI-generated product images.</div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:6px">${_s.ai_photo_title}</div>
+            <div style="font-size:12px">Select a product and click Generate.<br>${_s.ai_photo_sub}</div>
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap" id="ai-img-actions" style="display:none">
           <button class="btn btn-p" style="flex:1" id="ai-img-dl-btn" onclick="_aiImgDownload()">⬇ Download PNG</button>
           <button class="btn btn-g btn-sm" style="flex:1" onclick="_aiImgWhatsApp()">💬 Share via WhatsApp</button>
-          <button class="btn btn-s btn-sm" onclick="genAI()">🔄 Regenerate</button>
+          <button class="btn btn-s btn-sm" onclick="genAI()">${_s.adm_regenerate}</button>
         </div>
       </div>
 
@@ -9523,18 +9523,18 @@ function pgAI(){
         <div style="margin-bottom:10px">
           <div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:4px">Content type per product:</div>
           <select class="fs" id="ai-bulk-type-sel" style="font-size:12px">
-            <option value="Instagram Caption">Instagram Caption</option>
-            <option value="TikTok Hook & Caption">TikTok Hook & Caption</option>
-            <option value="WhatsApp Promo Message">WhatsApp Promo Message</option>
-            <option value="New Arrival Post">New Arrival Post</option>
-            <option value="Product Description">Product Description</option>
+            <option value="Instagram Caption">${_s.ai_caption_ig}</option>
+            <option value="TikTok Hook & Caption">${_s.ai_tiktok}</option>
+            <option value="WhatsApp Promo Message">${_s.ai_promo_wa}</option>
+            <option value="New Arrival Post">${_s.ai_new_arrival}</option>
+            <option value="Product Description">${_s.ai_desc}</option>
           </select>
         </div>
         <div id="ai-bulk-output" style="display:none;margin-top:12px">
           <div style="border:1px solid var(--border2);border-radius:var(--r8);background:var(--bg2);padding:14px;max-height:400px;overflow-y:auto;font-size:12.5px;white-space:pre-wrap;line-height:1.6;color:var(--ink)" id="ai-bulk-text"></div>
           <div style="display:flex;gap:8px;margin-top:10px">
             <button class="btn btn-p" style="flex:1" onclick="_aiBulkDownload()">⬇ Download as Text File</button>
-            <button class="btn btn-s btn-sm" onclick="genAI()">🔄 Regenerate</button>
+            <button class="btn btn-s btn-sm" onclick="genAI()">${_s.adm_regenerate}</button>
           </div>
         </div>
         <div id="ai-bulk-loading" style="display:none;text-align:center;padding:20px;color:var(--text2)">
@@ -9579,7 +9579,7 @@ function pgAI(){
             <button class="btn btn-s btn-sm" onclick="_aiInstagram()" style="flex:1;min-width:120px">📸 Instagram</button>
           </div>
           <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn btn-s btn-sm" onclick="genAI()" style="flex:1">🔄 Regenerate</button>
+            <button class="btn btn-s btn-sm" onclick="genAI()" style="flex:1">${_s.adm_regenerate}</button>
             <button class="btn btn-s btn-sm" onclick="_aiSaveToHistory()" style="flex:1">💾 Save</button>
           </div>
         </div>
@@ -9588,8 +9588,8 @@ function pgAI(){
 
     <div class="card">
       <div class="card-hd" style="margin-bottom:10px">
-        <div class="card-ttl">Recent Generations</div>
-        <button class="btn btn-g btn-sm" onclick="_aiClearHistory()" id="ai-clear-hist-btn" style="display:none">Clear</button>
+        <div class="card-ttl">${_s.ai_recent}</div>
+        <button class="btn btn-g btn-sm" onclick="_aiClearHistory()" id="ai-clear-hist-btn" style="display:none">${_s.ai_clear}</button>
       </div>
       <div id="ai-history-list">
         <div style="text-align:center;padding:20px;color:var(--text2);font-size:13px">
@@ -10093,7 +10093,7 @@ function _aiRenderHistory(){
           <div style="font-size:11px;color:var(--text2)">${h.prod||'—'} · ${h.tone||''} · ${h.ts||''}</div>
           <div style="font-size:12px;color:var(--text);margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${h.text.replace(/\n/g,' ')}</div>
         </div>
-        <button onclick="event.stopPropagation();_aiDeleteHistItem(${i})" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;flex-shrink:0;padding:0 2px" title="Remove">×</button>
+        <button onclick="event.stopPropagation();_aiDeleteHistItem(${i})" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;flex-shrink:0;padding:0 2px" title="${_s.inv_remove}">×</button>
       </div>
     </div>
   `).join('');
@@ -10792,7 +10792,7 @@ const _AUDIT_CAT_COLOR = {
   'Business':'bx-p','Settings':'bx-n','Import':'bx-b','Other':'bx-n'
 };
 
-function pgAudit(){
+function pgAudit(){const _s=_L();
   const users = [...new Set(D.audit.map(l=>l.user))].sort();
   const roles  = [...new Set(D.audit.map(l=>l.role))].sort();
   const cats   = ['All Categories','Session','Sales','Rentals','Inventory','Expenses',
@@ -10814,8 +10814,8 @@ function pgAudit(){
 
   return `
 <div class="ph">
-  <div class="bc">ShopTrack / <span>Audit Log</span></div>
-  <div class="ph-row"><h1>Audit Trail</h1>
+  <div class="bc">ShopTrack / <span>${_s.audit_title}</span></div>
+  <div class="ph-row"><h1>${_s.audit_trail}</h1>
     <div style="display:flex;gap:8px">
       <span id="audit-count" style="font-size:12px;color:var(--text2);align-self:center"></span>
       <button class="btn btn-g btn-sm" onclick="exportAuditCSV()">⬇ Export CSV</button>
@@ -10827,7 +10827,7 @@ function pgAudit(){
 <div class="card" style="margin-bottom:12px">
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end">
     <div>
-      <div class="fl" style="margin-bottom:5px">Search</div>
+      <div class="fl" style="margin-bottom:5px">${_s.audit_search}</div>
       <input class="fi" id="audit-q" placeholder="Action, user, detail…" oninput="filterAuditLog()" style="margin:0"/>
     </div>
     <div>
@@ -10839,14 +10839,14 @@ function pgAudit(){
     <div>
       <div class="fl" style="margin-bottom:5px">User</div>
       <select class="fs" id="audit-user" onchange="filterAuditLog()" style="margin:0">
-        <option value="">All Users</option>
+        <option value="">${_s.audit_all_users}</option>
         ${users.map(u=>`<option>${u}</option>`).join('')}
       </select>
     </div>
     <div>
       <div class="fl" style="margin-bottom:5px">Role</div>
       <select class="fs" id="audit-role" onchange="filterAuditLog()" style="margin:0">
-        <option value="">All Roles</option>
+        <option value="">${_s.audit_all_roles}</option>
         ${roles.map(r=>`<option>${r}</option>`).join('')}
       </select>
     </div>
@@ -10865,17 +10865,17 @@ function pgAudit(){
   </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:10px;align-items:end">
     <div>
-      <div class="fl" style="margin-bottom:5px">Date From</div>
+      <div class="fl" style="margin-bottom:5px">${_s.audit_date_from}</div>
       <input class="fi" id="audit-date-from" type="date" onchange="filterAuditLog()" style="margin:0"/>
     </div>
     <div>
-      <div class="fl" style="margin-bottom:5px">Date To</div>
+      <div class="fl" style="margin-bottom:5px">${_s.audit_date_to}</div>
       <input class="fi" id="audit-date-to" type="date" onchange="filterAuditLog()" style="margin:0"/>
     </div>
     <div style="display:flex;gap:6px;align-items:flex-end">
-      <button class="btn btn-g btn-xs" style="height:36px;flex:1" onclick="_auditQuick('today')">Today</button>
-      <button class="btn btn-g btn-xs" style="height:36px;flex:1" onclick="_auditQuick('week')">This Week</button>
-      <button class="btn btn-g btn-xs" style="height:36px;flex:1" onclick="_auditQuick('month')">This Month</button>
+      <button class="btn btn-g btn-xs" style="height:36px;flex:1" onclick="_auditQuick('today')">${_s.appt_today}</button>
+      <button class="btn btn-g btn-xs" style="height:36px;flex:1" onclick="_auditQuick('week')">${_s.audit_week}</button>
+      <button class="btn btn-g btn-xs" style="height:36px;flex:1" onclick="_auditQuick('month')">${_s.audit_month}</button>
     </div>
   </div>
 </div>
@@ -10986,7 +10986,7 @@ function _auditSort(field){
 // ║  Merges Businesses + Billing into one view                  ║
 // ║  Every business is fully manageable from a single row       ║
 // ╚══════════════════════════════════════════════════════════════╝
-function pgAdminBiz(){
+function pgAdminBiz(){const _s=_L();
   // HARD WALL: non-SA can never render SA pages
   if(!SESSION.isSuperAdmin){
     console.error('[SECURITY] Non-SA attempted pgAdminBiz access — blocking');
@@ -11015,7 +11015,7 @@ function pgAdminBiz(){
     </div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Biz ID</th><th>Business</th><th>Owner</th><th>Email</th><th>Signed Up</th><th>Token Expires</th><th></th></tr></thead>
+    <thead><tr><th>${_s.adm_biz_id}</th><th>${_s.adm_businesses}</th><th>${_s.adm_owner}</th><th>${_s.ui_email}</th><th>${_s.adm_signed_up}</th><th>${_s.adm_token_exp}</th><th></th></tr></thead>
     <tbody>${(D.adminBizUnverified||[]).map(b=>{
       const exp = b.tokenExpiry && new Date(b.tokenExpiry)<new Date();
       return `<tr id="bizrow-unv-${b.id}">
@@ -11062,7 +11062,7 @@ function pgAdminBiz(){
 
     // Amount display
     const amtDisplay = isTrial
-      ? '<span style="font-size:11px;color:var(--y)">Trial</span>'
+      ? '<span style="font-size:11px;color:var(--y)">${_s.adm_trial}</span>'
       : isFreePl
         ? '<span style="font-size:11px;color:var(--text2)">Free</span>'
         : '<span style="font-family:var(--mono);font-size:11px;color:var(--g)">'+amt.toLocaleString()+' Frs</span>';
@@ -11084,10 +11084,10 @@ function pgAdminBiz(){
       </td>
       <td onclick="event.stopPropagation()">
         <div style="display:flex;gap:3px;flex-wrap:nowrap;align-items:center">
-          <button class="btn btn-p btn-xs" onclick="mManageBiz('${b.id}')" title="Open full management panel">⚙ Manage</button>
-          ${!isFree?`<button class="btn btn-xs" style="background:rgba(99,102,241,.15);color:var(--a);border:1px solid rgba(99,102,241,.3)" onclick="event.stopPropagation();mBillingCharge('${b.id}')" title="Send CamPay charge request">📱</button>`:''}
+          <button class="btn btn-p btn-xs" onclick="mManageBiz('${b.id}')" title="${_s.adm_open_panel}">⚙ Manage</button>
+          ${!isFree?`<button class="btn btn-xs" style="background:rgba(99,102,241,.15);color:var(--a);border:1px solid rgba(99,102,241,.3)" onclick="event.stopPropagation();mBillingCharge('${b.id}')" title="${_s.adm_campay}">📱</button>`:''}
           <button class="btn btn-xs" style="background:rgba(45,212,160,.12);color:var(--g);border:1px solid rgba(45,212,160,.3)" onclick="event.stopPropagation();mBillingRemind('${b.id}')" title="${_s.rent_send_wa}">💬</button>
-          <button class="btn btn-d btn-xs" onclick="event.stopPropagation();adminBizAction('${b.id}','cancel')" title="Delete permanently" style="opacity:.5">✕</button>
+          <button class="btn btn-d btn-xs" onclick="event.stopPropagation();adminBizAction('${b.id}','cancel')" title="${_s.adm_delete_perm}" style="opacity:.5">✕</button>
         </div>
       </td>
     </tr>`;
@@ -11102,14 +11102,14 @@ function pgAdminBiz(){
 <div class="adm-banner">
   <span style="font-size:20px">🛡️</span>
   <div>
-    <div style="font-weight:700;color:var(--p);font-family:var(--display)">Platform Management Console</div>
+    <div style="font-weight:700;color:var(--p);font-family:var(--display)">${_s.adm_console}</div>
     <div style="font-size:12px;color:var(--text)">Manage businesses, subscriptions, billing and credentials — all in one place</div>
   </div>
 </div>
 
 <div class="ph">
   <div class="ph-row">
-    <h1>Businesses</h1>
+    <h1>${_s.adm_businesses}</h1>
     <div class="btn-row">
       <button class="btn btn-s btn-sm" onclick="mBillingRunReminders()">💬 Reminders</button>
       <button class="btn btn-s btn-sm" onclick="mBillingChargeAll()">📱 Charge Due</button>
@@ -11121,13 +11121,13 @@ function pgAdminBiz(){
 <!-- ── KPI Grid ──────────────────────────────────────────────── -->
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-bottom:14px">
   <div class="kpi g"><div class="kpi-lbl">MRR</div><div class="kpi-val g" style="font-size:18px">${mrr.toLocaleString()} XAF</div><div class="kpi-sub">~$${Math.round(mrr/620)} USD</div></div>
-  <div class="kpi b" style="cursor:pointer" onclick="_saFilter('','','')"><div class="kpi-lbl">Total</div><div class="kpi-val b">${total}</div><div class="kpi-sub">All businesses</div></div>
-  <div class="kpi g" style="cursor:pointer" onclick="_saFilter('Active','','')"><div class="kpi-lbl">Active</div><div class="kpi-val g">${active}</div><div class="kpi-sub">${paying} paying</div></div>
-  <div class="kpi y" style="cursor:pointer" onclick="_saFilter('','','Trial (30 Days)')"><div class="kpi-lbl">Trials</div><div class="kpi-val y">${trials}</div><div class="kpi-sub">Free</div></div>
-  <div class="kpi r" style="cursor:pointer" onclick="_saFilter('','overdue','')"><div class="kpi-lbl">Overdue</div><div class="kpi-val r">${overdue}</div><div class="kpi-sub">Charge now</div></div>
-  <div class="kpi p" style="cursor:pointer" onclick="_saFilter('','expiring','')"><div class="kpi-lbl">Expiring ≤3d</div><div class="kpi-val p">${expiring}</div><div class="kpi-sub">Send reminders</div></div>
-  <div class="kpi y" style="cursor:pointer" onclick="_saFilter('Suspended','','')"><div class="kpi-lbl">Suspended</div><div class="kpi-val y">${suspended}</div><div class="kpi-sub">Non-payment</div></div>
-  ${pending?`<div class="kpi" style="cursor:pointer" onclick="_saFilter('Pending','','')"><div class="kpi-lbl">${_s.ui_st_pending}</div><div class="kpi-val">${pending}</div><div class="kpi-sub">Activate</div></div>`:''}
+  <div class="kpi b" style="cursor:pointer" onclick="_saFilter('','','')"><div class="kpi-lbl">${_s.adm_total}</div><div class="kpi-val b">${total}</div><div class="kpi-sub">${_s.adm_all_biz}</div></div>
+  <div class="kpi g" style="cursor:pointer" onclick="_saFilter('Active','','')"><div class="kpi-lbl">${_s.adm_active}</div><div class="kpi-val g">${active}</div><div class="kpi-sub">${paying} paying</div></div>
+  <div class="kpi y" style="cursor:pointer" onclick="_saFilter('','','Trial (30 Days)')"><div class="kpi-lbl">${_s.adm_trials}</div><div class="kpi-val y">${trials}</div><div class="kpi-sub">Free</div></div>
+  <div class="kpi r" style="cursor:pointer" onclick="_saFilter('','overdue','')"><div class="kpi-lbl">${_s.adm_overdue}</div><div class="kpi-val r">${overdue}</div><div class="kpi-sub">${_s.adm_charge_now}</div></div>
+  <div class="kpi p" style="cursor:pointer" onclick="_saFilter('','expiring','')"><div class="kpi-lbl">Expiring ≤3d</div><div class="kpi-val p">${expiring}</div><div class="kpi-sub">${_s.adm_send_remind}</div></div>
+  <div class="kpi y" style="cursor:pointer" onclick="_saFilter('Suspended','','')"><div class="kpi-lbl">${_s.adm_suspended}</div><div class="kpi-val y">${suspended}</div><div class="kpi-sub">${_s.adm_non_payment}</div></div>
+  ${pending?`<div class="kpi" style="cursor:pointer" onclick="_saFilter('Pending','','')"><div class="kpi-lbl">${_s.ui_st_pending}</div><div class="kpi-val">${pending}</div><div class="kpi-sub">${_s.adm_activate}</div></div>`:''}
 </div>
 
 ${alertBars}
@@ -11138,15 +11138,15 @@ ${unvSection}
   <div class="fbar" style="margin-bottom:13px">
     <input class="fi-s" id="sa-search" placeholder="Search name, owner, email…" style="flex:1;min-width:160px" oninput="_saFilter()"/>
     <select class="sel" id="sa-st-filter" onchange="_saFilter()" style="min-width:120px">
-      <option value="">All Statuses</option>
-      <option>${_s.ui_st_active}</option><option>Suspended</option><option>${_s.ui_st_pending}</option><option>Inactive</option>
+      <option value="">${_s.adm_all_statuses}</option>
+      <option>${_s.ui_st_active}</option><option>${_s.adm_suspended}</option><option>${_s.ui_st_pending}</option><option>${_s.adm_inactive}</option>
     </select>
     <select class="sel" id="sa-plan-filter" onchange="_saFilter()" style="min-width:130px">
-      <option value="">All Plans</option>
+      <option value="">${_s.adm_all_plans}</option>
       ${[...new Set(bizes.map(b=>b.plan||'').filter(Boolean))].sort().map(p=>`<option value="${_esc(p)}">${_esc(p)}</option>`).join('')}
     </select>
     <select class="sel" id="sa-billing-filter" onchange="_saFilter()" style="min-width:130px">
-      <option value="">All Billing</option>
+      <option value="">${_s.adm_all_billing}</option>
       <option value="overdue">🔴 Overdue</option>
       <option value="expiring">⚠ Expiring ≤3d</option>
       <option value="current">✓ Current</option>
@@ -11163,14 +11163,14 @@ ${unvSection}
         <th>${_s.ui_status}</th>
         <th>Plan</th>
         <th>Amount/mo</th>
-        <th>Expiry</th>
-        <th>Phone</th>
+        <th>${_s.adm_expiry}</th>
+        <th<th>${_s.ui_phone}</th>
         <th>${_s.ui_actions}</th>
       </tr></thead>
       <tbody id="sa-biz-tbody">${rows}</tbody>
     </table>
   </div>
-  <div id="sa-empty" style="display:none;text-align:center;padding:32px;color:var(--text2);font-size:13px">No businesses match the current filter.</div>
+  <div id="sa-empty" style="display:none;text-align:center;padding:32px;color:var(--text2);font-size:13px">${_s.adm_all_biz}</div>
 </div>`;
 }
 
@@ -11296,15 +11296,15 @@ function mManageBiz(bizId){const _s=_L();
 
   <!-- ── PROFILE ─────────────────────────────────── -->
   <div style="margin-bottom:18px">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:10px">Business Profile</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:10px">${_s.adm_biz_profile}</div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">Business Name</label>
+      <div class="fg"><label class="fl">${_s.adm_biz_name}</label>
         <input class="fi" id="mb-name" value="${_esc(b.name)}"/>
       </div>
-      <div class="fg"><label class="fl">Owner Name</label>
+      <div class="fg"><label class="fl">${_s.adm_owner_name}</label>
         <input class="fi" id="mb-owner" value="${_esc(b.owner||'')}"/>
       </div>
-      <div class="fg"><label class="fl">Owner Email</label>
+      <div class="fg"><label class="fl">${_s.adm_owner_email}</label>
         <input class="fi" id="mb-email" value="${_esc(b.email||'')}" type="email"/>
       </div>
       <div class="fg"><label class="fl">WhatsApp / Phone</label>
@@ -11313,7 +11313,7 @@ function mManageBiz(bizId){const _s=_L();
       <div class="fg"><label class="fl">${_s.ui_country}</label>
         <input class="fi" id="mb-country" value="${_esc(b.country||'')}"/>
       </div>
-      <div class="fg"><label class="fl">Business Type</label>
+      <div class="fg"><label class="fl">${_s.adm_biz_type}</label>
         <input class="fi" id="mb-type" value="${_esc(b.type||'')}"/>
       </div>
     </div>
@@ -11323,16 +11323,16 @@ function mManageBiz(bizId){const _s=_L();
   <div style="margin-bottom:18px;padding-top:14px;border-top:1px solid var(--border)">
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:10px">Status &amp; Plan</div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">Account Status</label>
+      <div class="fg"><label class="fl">${_s.adm_acct_status}</label>
         <select class="fs" id="mb-status">${statusOptions}</select>
       </div>
-      <div class="fg"><label class="fl">Subscription Plan</label>
+      <div class="fg"><label class="fl">${_s.adm_plan}</label>
         <select class="fs" id="mb-plan">${planOptions}</select>
       </div>
-      <div class="fg"><label class="fl">Billing Cycle</label>
+      <div class="fg"><label class="fl">${_s.adm_billing_cycle}</label>
         <select class="fs" id="mb-cycle">
-          <option value="monthly"${(b.billingCycle||'monthly')==='monthly'?' selected':''}>Monthly</option>
-          <option value="yearly"${b.billingCycle==='yearly'?' selected':''}>Annual</option>
+          <option value="monthly"${(b.billingCycle||'monthly')==='monthly'?' selected':''}>${_s.adm_monthly}</option>
+          <option value="yearly"${b.billingCycle==='yearly'?' selected':''}>${_s.adm_annual}</option>
         </select>
       </div>
     </div>
@@ -11340,7 +11340,7 @@ function mManageBiz(bizId){const _s=_L();
 
   <!-- ── SUBSCRIPTION EXPIRY ─────────────────────── -->
   <div style="margin-bottom:18px;padding-top:14px;border-top:1px solid var(--border)">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:10px">Subscription Expiry</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:10px">${_s.adm_sub_expiry}</div>
     <div class="fg-2">
       <div class="fg">
         <label class="fl">Expiry Date
@@ -11365,7 +11365,7 @@ function mManageBiz(bizId){const _s=_L();
   <!-- ── BILLING ACTIONS ─────────────────────────── -->
   ${!isFree ? `
   <div style="margin-bottom:18px;padding-top:14px;border-top:1px solid var(--border)">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:10px">Billing Actions</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:10px">${_s.adm_billing_act}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button type="button" class="btn btn-p btn-sm" onclick="_mbSave('${bizId}');setTimeout(function(){mBillingCharge('${bizId}');},400)">
         📱 Charge — ${billingAmt.toLocaleString()} XAF
@@ -11384,12 +11384,12 @@ function mManageBiz(bizId){const _s=_L();
 
   <!-- ── CREDENTIALS ─────────────────────────────── -->
   <div style="padding-top:14px;border-top:1px solid var(--border)">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:10px">Owner Login</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:10px">${_s.adm_owner_login}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button type="button" class="btn btn-s btn-sm" onclick="_mbResetLogin('${bizId}')">🔑 Reset Password</button>
       <button type="button" class="btn btn-d btn-sm" onclick="closeModal();adminBizAction('${bizId}','cancel')">🗑 Delete Business</button>
     </div>
-    ${b.st==='Pending' ? `<div class="alrt alrt-b" style="margin-top:10px;font-size:12px">This business is pending activation. Change status to <strong>Active</strong> above and save to grant access.</div>` : ''}
+    ${b.st==='Pending' ? `<div class="alrt alrt-b" style="margin-top:10px;font-size:12px">This business is pending activation. Change status to <strong>${_s.adm_active}</strong> above and save to grant access.</div>` : ''}
   </div>`,
 
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
@@ -11498,9 +11498,9 @@ function _mbResetLogin(bizId){
   modal('🔑 Reset Login — '+_esc(b.name),`
   <div class="alrt alrt-y" style="margin-bottom:14px">Resetting login for <strong>${_esc(b.name)}</strong>. The old password stops working immediately.</div>
   <div style="background:var(--bg3);border-radius:var(--r8);padding:13px 14px;display:flex;flex-direction:column;gap:8px;font-size:13px">
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Email</span><span style="font-family:var(--mono);color:var(--c)">${_esc(ownerEmail)}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.ui_email}</span><span style="font-family:var(--mono);color:var(--c)">${_esc(ownerEmail)}</span></div>
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <span style="color:var(--text2)">New Password</span>
+      <span style="color:var(--text2)">${_s.adm_new_pass}</span>
       <div style="display:flex;align-items:center;gap:8px">
         <strong style="font-family:var(--mono);color:var(--g);background:rgba(45,212,160,.1);padding:3px 10px;border-radius:5px">${newPass}</strong>
         <button onclick="navigator.clipboard.writeText('${newPass}').then(()=>toast('Copied','success'))" style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px;color:var(--text);font-family:inherit">📋</button>
@@ -11636,11 +11636,11 @@ function mProvision(){const _s=_L();
       <div style="font-size:10px;color:var(--text2);margin-top:4px">This becomes their login email. Must be unique on the platform.</div>
     </div>
     <div class="fg"><label class="fl">Business Name <span style="color:var(--r)">*</span></label><input class="fi" id="prov-name" placeholder="e.g. Premier Party Rentals"/></div>
-    <div class="fg"><label class="fl">Owner Full Name <span style="color:var(--r)">*</span></label><input class="fi" id="prov-owner" placeholder="First and last name"/></div>
-    <div class="fg"><label class="fl">Business Type</label>
+    <div class="fg"><label class="fl">Owner Full Name <span style="color:var(--r)">*</span></label><input class="fi" id="prov-owner" placeholder="${_s.adm_owner_name}"/></div>
+    <div class="fg"><label class="fl">${_s.adm_biz_type}</label>
       <select class="fs" id="prov-type">
-        <option>Bridal Shop</option><option>Fashion Boutique</option><option>Beauty & Hair</option>
-        <option>Equipment Rental</option><option>Decor Rental</option><option>Party Supplies</option><option>General Retail</option>
+        <option>${_s.adm_biz_type}</option><option>${_s.adm_biz_type}</option><option>${_s.adm_biz_type}</option>
+        <option>${_s.adm_biz_type}</option><option>${_s.adm_biz_type}</option><option>${_s.adm_biz_type}</option><option>${_s.adm_biz_type}</option>
       </select>
     </div>
     <div class="fg"><label class="fl">${_s.ui_country}</label>
@@ -11652,7 +11652,7 @@ function mProvision(){const _s=_L();
       <div id="prov-phone-preview" style="font-size:10px;color:var(--text2);margin-top:3px"></div>
     </div>
     <div class="fg"><label class="fl">Plan</label>
-      <select class="fs" id="prov-plan"><option selected>Trial (30 Days)</option><option>Free</option><option>Premium</option></select>
+      <select class="fs" id="prov-plan"><option selected>Trial (30 Days)</option><option>Free</option><option>${_s.adm_premium}</option></select>
     </div>
   </div>
 
@@ -11660,14 +11660,14 @@ function mProvision(){const _s=_L();
     <div class="fl" style="margin-bottom:10px;color:var(--ink);font-size:13px;font-weight:600">🔑 Auto-Generated Credentials</div>
     <div style="background:var(--bg3);border-radius:var(--r8);padding:13px 14px;display:flex;flex-direction:column;gap:8px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:12px;color:var(--text)">Login Email</span>
+        <span style="font-size:12px;color:var(--text)">${_s.adm_login_email}</span>
         <span id="prov-email-display" style="font-family:var(--mono);font-size:12px;color:var(--c)">— enter email above —</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:12px;color:var(--text)">Temporary Password</span>
+        <span style="font-size:12px;color:var(--text)">${_s.adm_temp_pass}</span>
         <div style="display:flex;align-items:center;gap:8px">
           <span id="prov-pass-display" style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--g);background:rgba(45,212,160,.1);padding:3px 10px;border-radius:5px">${tempPass}</span>
-          <button onclick="navigator.clipboard.writeText(document.getElementById('prov-pass-display').textContent).then(()=>toast('Password copied','success'))" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text2)" title="Copy password">📋</button>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('prov-pass-display').textContent).then(()=>toast('Password copied','success'))" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text2)" title="${_s.adm_copy_pass}">📋</button>
           <button onclick="document.getElementById('prov-pass-display').textContent=_genTempPassword()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--a);font-family:inherit" title="Regenerate">↻ New</button>
         </div>
       </div>
@@ -11776,11 +11776,11 @@ function doProvision(){
   <div style="background:var(--bg3);border-radius:var(--r8);padding:14px;margin-bottom:14px">
     <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:10px">📋 Credentials to share with owner</div>
     <div style="display:flex;flex-direction:column;gap:7px;font-size:13px">
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Business</span><strong style="color:var(--ink)">${name}</strong></div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Business ID</span><span style="font-family:var(--mono);color:var(--p)">${bizId}</span></div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Owner</span><strong style="color:var(--ink)">${owner}</strong></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.adm_businesses}</span><strong style="color:var(--ink)">${name}</strong></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.adm_biz_id}</span><span style="font-family:var(--mono);color:var(--p)">${bizId}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.adm_owner}</span><strong style="color:var(--ink)">${owner}</strong></div>
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="color:var(--text2)">Login Email</span>
+        <span style="color:var(--text2)">${_s.adm_login_email}</span>
         <span style="font-family:var(--mono);color:var(--c)">${email}</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -11845,7 +11845,7 @@ async function _purgeAllUnverified(){
   nav('admin-biz');
 }
 
-function pgAdminUsers(){
+function pgAdminUsers(){const _s=_L();
   if(!SESSION.isSuperAdmin){
     console.error('[SECURITY] Non-SA attempted pgAdminUsers access — blocking');
     setTimeout(()=>nav('dashboard'),0); return '';
@@ -11873,10 +11873,10 @@ function pgAdminUsers(){
   return `
 <div class="adm-banner">
   <span style="font-size:20px">👥</span>
-  <div><div style="font-weight:700;color:var(--p);font-family:var(--display)">Platform User Management</div>
+  <div><div style="font-weight:700;color:var(--p);font-family:var(--display)">${_s.adm_platform_mgmt}</div>
   <div style="font-size:12px;color:var(--text)">All users across all businesses · Assign roles · Manage rights</div></div>
 </div>
-<div class="ph"><div class="ph-row"><h1>Platform Users</h1>
+<div class="ph"><div class="ph-row"><h1>${_s.adm_platform_users}</h1>
   <div class="btn-row">
     <button class="btn btn-s btn-sm" onclick="mManageRights()">⚙ Rights Matrix</button>
     <button class="btn btn-p btn-sm" onclick="mAddBizUser()">+ Add User</button>
@@ -11886,43 +11886,43 @@ function pgAdminUsers(){
 ${pendingBanner}
 
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:14px">
-  <div class="kpi"><div class="kpi-lbl">Total Users</div><div class="kpi-val">${BIZ_USERS.length+1}</div></div>
-  <div class="kpi p"><div class="kpi-lbl">Owners</div><div class="kpi-val p">${byLevel.owner||0}</div></div>
-  <div class="kpi b"><div class="kpi-lbl">Managers</div><div class="kpi-val b">${byLevel.manager||0}</div></div>
-  <div class="kpi g"><div class="kpi-lbl">Accountants</div><div class="kpi-val g">${byLevel.accountant||0}</div></div>
-  <div class="kpi"><div class="kpi-lbl">Staff</div><div class="kpi-val">${byLevel.staff||0}</div></div>
-  <div class="kpi g"><div class="kpi-lbl">Active</div><div class="kpi-val g">${BIZ_USERS.filter(u=>u.st==='Active').length+1}</div></div>
+  <div class="kpi"><div class="kpi-lbl">${_s.adm_total_users}</div><div class="kpi-val">${BIZ_USERS.length+1}</div></div>
+  <div class="kpi p"><div class="kpi-lbl">${_s.adm_owners}</div><div class="kpi-val p">${byLevel.owner||0}</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.adm_managers}</div><div class="kpi-val b">${byLevel.manager||0}</div></div>
+  <div class="kpi g"><div class="kpi-lbl">${_s.adm_accountants}</div><div class="kpi-val g">${byLevel.accountant||0}</div></div>
+  <div class="kpi"><div class="kpi-lbl">${_s.appt_staff}</div><div class="kpi-val">${byLevel.staff||0}</div></div>
+  <div class="kpi g"><div class="kpi-lbl">${_s.adm_active}</div><div class="kpi-val g">${BIZ_USERS.filter(u=>u.st==='Active').length+1}</div></div>
 </div>
 
 <div class="card">
   <div class="fbar" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <input class="fi-s" id="usr-search" placeholder="🔍  Search by name or email…" style="width:220px" oninput="filterAdminUsers()"/>
     <select class="sel" id="usr-biz-filter" onchange="filterAdminUsers()">
-      <option value="">All Businesses</option>
+      <option value="">${_s.adm_all_biz2}</option>
       ${bizList.map(b=>`<option value="${b.id}">${b.name}</option>`).join('')}
     </select>
     <select class="sel" id="usr-level-filter" onchange="filterAdminUsers()">
-      <option value="">All Levels</option>
-      <option value="superadmin">Super Admin</option>
-      <option value="owner">Business Owner</option>
-      <option value="manager">Manager</option>
-      <option value="accountant">Accountant</option>
-      <option value="staff">Store Staff</option>
+      <option value="">${_s.adm_all_levels}</option>
+      <option value="superadmin">${_s.adm_super_admin}</option>
+      <option value="owner">${_s.adm_owner_role}</option>
+      <option value="manager">${_s.adm_manager}</option>
+      <option value="accountant">${_s.adm_accountant}</option>
+      <option value="staff">${_s.adm_store_staff}</option>
     </select>
     <select class="sel" id="usr-status-filter" onchange="filterAdminUsers()">
-      <option value="">All Status</option>
+      <option value="">${_s.adm_all_status2}</option>
       <option value="Active">${_s.ui_st_active}</option>
-      <option value="Suspended">Suspended</option>
+      <option value="Suspended">${_s.adm_suspended}</option>
     </select>
     <span id="usr-count" style="font-size:12px;color:var(--text2);margin-left:4px;align-self:center"></span>
     <button class="btn btn-s btn-sm" style="margin-left:auto" onclick="document.getElementById('usr-search').value='';document.getElementById('usr-biz-filter').value='';document.getElementById('usr-level-filter').value='';document.getElementById('usr-status-filter').value='';filterAdminUsers()">✕ Clear</button>
   </div>
   <div class="tbl-wrap"><table id="usr-table">
-    <thead><tr><th>User</th><th>Business</th><th>Level</th><th>${_s.ui_status}</th><th>Last Login</th><th>Profile Access</th><th>${_s.ui_actions}</th></tr></thead>
+    <thead><tr><th>User</th><th>${_s.adm_businesses}</th><th>${_s.adm_level}</th><th>${_s.ui_status}</th><th>${_s.adm_last_login}</th><th>${_s.adm_profile_access}</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody id="usr-tbody">
       <tr data-biz="" data-level="superadmin" data-status="Active" data-search="super admin admin&#64;shoptrack.work">
-        <td><strong style="color:var(--p)">Super Admin</strong><div style="font-size:10px;color:var(--text2)">admin&#64;shoptrack.work</div></td>
-        <td><span style="color:var(--p);font-size:12px">Platform Level</span></td>
+        <td><strong style="color:var(--p)">${_s.adm_super_admin}</strong><div style="font-size:10px;color:var(--text2)">admin&#64;shoptrack.work</div></td>
+        <td><span style="color:var(--p);font-size:12px">${_s.adm_platform_lvl}</span></td>
         <td>${bx('Super Admin','bx-p')}</td><td>${badge('Active')}</td><td style="color:var(--text2)">Just now</td>
         <td>—</td>
         <td><span style="font-size:11px;color:var(--text2);font-style:italic">You · Cannot modify</span></td>
@@ -11937,7 +11937,7 @@ ${pendingBanner}
             : req.status==='denied'
             ? `<span style="font-size:10px;background:rgba(255,95,122,.1);color:var(--r);border:1px solid rgba(255,95,122,.25);padding:2px 8px;border-radius:4px;font-weight:600">✕ Denied</span>`
             : `<span style="font-size:10px;background:rgba(245,200,66,.1);color:var(--y);border:1px solid rgba(245,200,66,.25);padding:2px 8px;border-radius:4px;font-weight:600">⏳ Pending</span>`
-          : `<span style="font-size:10px;color:var(--text2)">No request</span>`;
+          : `<span style="font-size:10px;color:var(--text2)">${_s.adm_no_request}</span>`;
         return `<tr data-biz="${u.bizId}" data-level="${u.level}" data-status="${u.st}" data-search="${u.name.toLowerCase()} ${u.email.toLowerCase()} ${bizName.toLowerCase()}">
           <td>
             <div style="display:flex;align-items:center;gap:8px">
@@ -11952,12 +11952,12 @@ ${pendingBanner}
           <td>${accessBadge}</td>
           <td><div class="btn-row">
             ${SESSION.isSuperAdmin
-              ? `<button class="btn btn-b btn-xs" onclick="mRequestProfileAccess('${u.id}')" title="Request owner approval to view this profile">👤 View Profile</button>`
+              ? `<button class="btn btn-b btn-xs" onclick="mRequestProfileAccess('${u.id}')" title="${_s.adm_req_access}">👤 View Profile</button>`
               : `<button class="btn btn-g btn-xs" onclick="mEditBizUser('${u.id}')">✏ Edit</button>
                  <button class="btn btn-g btn-xs" onclick="mUserRights('${u.id}')">🔐 Rights</button>`
             }
-            ${u.st==='Active'?`<button class="btn btn-d btn-xs" onclick="bizUserAction('${u.id}','suspend')" title="Suspend">⏸</button>`:''}
-            ${u.st!=='Active'?`<button class="btn btn-p btn-xs" onclick="bizUserAction('${u.id}','reactivate')" title="Reactivate">▶</button>`:''}
+            ${u.st==='Active'?`<button class="btn btn-d btn-xs" onclick="bizUserAction('${u.id}','suspend')" title="${_s.adm_suspend}">⏸</button>`:''}
+            ${u.st!=='Active'?`<button class="btn btn-p btn-xs" onclick="bizUserAction('${u.id}','reactivate')" title="${_s.adm_reactivate}">▶</button>`:''}
           </div></td>
         </tr>`;
       }).join('')}
@@ -11983,15 +11983,15 @@ function mRequestProfileAccess(userId){const _s=_L();
     modal('⏳ Request Already Pending',`
     <div class="alrt alrt-y" style="margin-bottom:14px">A profile access request for <strong>${u.name}</strong> is already awaiting approval from <strong>${ownerName}</strong>.</div>
     <div style="background:var(--bg3);border-radius:var(--r8);padding:13px 14px;font-size:12px;display:flex;flex-direction:column;gap:7px">
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Requested</span><span>${existing.requestedAt}</span></div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Owner notified</span><span style="font-family:var(--mono);font-size:11px;color:var(--c)">${ownerEmail}</span></div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Expires</span><span>${existing.expiresAt}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.adm_requested}</span><span>${existing.requestedAt}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.adm_owner_notified}</span><span style="font-family:var(--mono);font-size:11px;color:var(--c)">${ownerEmail}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.adm_expires}</span><span>${existing.expiresAt}</span></div>
     </div>`,
     `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
      <button class="btn btn-d btn-sm" onclick="
        ACCESS_REQUESTS.splice(ACCESS_REQUESTS.findIndex(r=>r.id==='${existing.id}'),1);
        closeModal(); toast('Request cancelled','success'); nav('admin-users');
-     ">Cancel Request</button>`);
+     ">${_s.adm_cancel_req}</button>`);
     return;
   }
 
@@ -12005,7 +12005,7 @@ function mRequestProfileAccess(userId){const _s=_L();
 
   modal(`👤 Request Profile Access — ${u.name}`,`
   <div class="alrt alrt-b" style="margin-bottom:16px">
-    <strong>Owner Confirmation Required</strong><br>
+    <strong>${_s.adm_owner_confirm}</strong><br>
     <span style="font-size:12px">To protect user privacy, the business owner must approve this request via email confirmation before you can view this profile.</span>
   </div>
   <div style="background:var(--bg3);border-radius:var(--r8);padding:13px 14px;margin-bottom:16px;display:flex;flex-direction:column;gap:8px;font-size:13px">
@@ -12017,18 +12017,18 @@ function mRequestProfileAccess(userId){const _s=_L();
       </div>
     </div>
     <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Role</span>${bx(USER_LEVEL_LABELS[u.level]||u.level,'bx-b')}</div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Business</span><strong style="color:var(--ink)">${biz?.name||u.bizId}</strong></div>
-    <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--text2)">Owner to notify</span><span style="font-family:var(--mono);font-size:11px;color:var(--c)">${ownerEmail}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.adm_businesses}</span><strong style="color:var(--ink)">${biz?.name||u.bizId}</strong></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--text2)">${_s.adm_owner_to_notify}</span><span style="font-family:var(--mono);font-size:11px;color:var(--c)">${ownerEmail}</span></div>
   </div>
   <div class="fg">
     <label class="fl">Reason for Access <span style="color:var(--r)">*</span></label>
     <select class="fs" id="par-reason-sel" onchange="document.getElementById('par-reason-other').style.display=this.value==='Other'?'block':'none'">
       <option value="">— Select reason —</option>
-      <option>Routine compliance check</option>
-      <option>Support request from business</option>
-      <option>Security audit</option>
-      <option>Account verification</option>
-      <option>Billing dispute investigation</option>
+      <option>${_s.adm_compliance}</option>
+      <option>${_s.adm_support_req}</option>
+      <option>${_s.adm_security_audit}</option>
+      <option>${_s.adm_acct_verif}</option>
+      <option>${_s.adm_billing_dispute}</option>
       <option>${_s.po_other}</option>
     </select>
     <input class="fi" id="par-reason-other" placeholder="Describe the reason…" style="display:none;margin-top:8px"/>
@@ -12073,7 +12073,7 @@ function doSubmitProfileRequest(userId, ownerEmail, ownerName, bizId){
   // Show confirmation with simulated email preview
   modal('📧 Request Sent',`
   <div class="alrt alrt-g" style="margin-bottom:16px">
-    ✅ <strong>Access request submitted.</strong> A confirmation email has been sent to the business owner.
+    ✅ <strong>${_s.adm_access_submitted}</strong> A confirmation email has been sent to the business owner.
   </div>
   <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);padding:16px;font-size:12px">
     <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📧 Email Preview (sent to owner)</div>
@@ -12140,7 +12140,7 @@ function mViewAccessRequests(){const _s=_L();
 }
 
 // Resolve a request (approve / deny / cancel)
-function resolveAccessRequest(reqId, newStatus){
+function resolveAccessRequest(reqId, newStatus){const _s=_L();
   const req = ACCESS_REQUESTS.find(r=>r.id===reqId); if(!req) return;
   req.status = newStatus;
   req.resolvedAt = new Date().toISOString().slice(0,16).replace('T',' ');
@@ -12161,7 +12161,7 @@ function resolveAccessRequest(reqId, newStatus){
 }
 
 // View a read-only user profile (only when approved)
-function mViewApprovedProfile(userId, reqId){
+function mViewApprovedProfile(userId, reqId){const _s=_L();
   const req = ACCESS_REQUESTS.find(r=>r.id===reqId);
   if(!req || req.status !== 'approved'){
     toast('Access not approved — request owner confirmation first','error'); return;
@@ -12188,7 +12188,7 @@ function mViewApprovedProfile(userId, reqId){
     ${[
       ['User ID',    u.id],
       ['Business',   biz?.name||u.bizId],
-      ['Business ID',u.bizId],
+      [_s.adm_biz_id,u.bizId],
       ['Role',       USER_LEVEL_LABELS[u.level]||u.level],
       ['Status',     u.st],
       ['Last Login', u.last||'Never'],
@@ -12199,7 +12199,7 @@ function mViewApprovedProfile(userId, reqId){
     </div>`).join('')}
   </div>
   <div style="background:var(--bg3);border-radius:var(--r6);padding:10px 12px;margin-bottom:14px">
-    <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Module Access Rights</div>
+    <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">${_s.prof_module_rights}</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px">
       ${Object.entries(DEFAULT_RIGHTS[u.level]||{}).slice(0,10).map(([mod,t])=>{
         const mm=TIER_META[t]||TIER_META.none;
@@ -12208,7 +12208,7 @@ function mViewApprovedProfile(userId, reqId){
     </div>
   </div>
   <div style="background:rgba(245,200,66,.07);border:1px solid rgba(245,200,66,.2);border-radius:var(--r6);padding:10px 12px;font-size:11px;color:var(--text)">
-    🔒 <strong style="color:var(--y)">Read-only view</strong> · Approved by ${req.ownerName} · ${req.resolvedAt} · Access expires ${req.expiresAt}<br>
+    🔒 <strong style="color:var(--y)">${_s.prof_read_only}</strong> · Approved by ${req.ownerName} · ${req.resolvedAt} · Access expires ${req.expiresAt}<br>
     Passwords and sensitive credentials are never shown to platform admins.
   </div>`,
   `<button class="btn btn-p" onclick="closeModal()">${_s.ui_close}</button>`,'lg');
@@ -12247,7 +12247,7 @@ function _showUpsell(reason){const _s=_L();
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:12px;color:var(--text2)">'
     +'<strong style="color:var(--ink)">Includes:</strong> Unlimited everything \u00b7 5 users \u00b7 AI Studio \u00b7 Rentals \u00b7 No watermark'
     +'</div>',
-    '<button class="btn btn-s" onclick="closeModal()">Not now</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.prof_not_now}</button>'
     +'<button class="btn btn-p" onclick="closeModal();_pwProceed()">\u25b6 Upgrade \u2014 8,900 XAF/mo</button>'
   );
 }
@@ -12273,7 +12273,7 @@ function mAddBizUser(){const _s=_L();
     bizFieldHTML = '<div class="fg"><label class="fl">Business *</label><select class="fs" id="abu-biz">'+bizOpts2+'</select></div>';
   } else {
     var myBizName = BIZ.name || SESSION.bizId;
-    bizFieldHTML = '<div class="fg"><label class="fl">Business</label>'
+    bizFieldHTML = '<div class="fg"><label class="fl">${_s.adm_businesses}</label>'
       +'<div style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);font-size:13px;color:var(--ink);font-weight:600">'+_esc(myBizName)+'</div>'
       +'<input type="hidden" id="abu-biz" value="'+_esc(SESSION.bizId||'')+'"/>'
       +'</div>';
@@ -12285,18 +12285,18 @@ function mAddBizUser(){const _s=_L();
   +'<div class="fg"><label class="fl">Email *</label><input class="fi" id="abu-email" type="email" placeholder="user@business.com"/></div>'
   +bizFieldHTML
   +'<div class="fg"><label class="fl">User Level *</label><select class="fs" id="abu-level">'
-  +'<option value="staff">Store Staff</option>'
-  +'<option value="accountant">Accountant</option>'
-  +'<option value="manager">Manager</option>'
-  +'<option value="owner">Business Owner</option>'
+  +'<option value="staff">${_s.adm_store_staff}</option>'
+  +'<option value="accountant">${_s.adm_accountant}</option>'
+  +'<option value="manager">${_s.adm_manager}</option>'
+  +'<option value="owner">${_s.adm_owner_role}</option>'
   +'</select></div>'
-  +'<div class="fg"><label class="fl">Temporary Password</label>'
+  +'<div class="fg"><label class="fl">${_s.usr_temp_pass}</label>'
   +'<input class="fi" id="abu-pass" value="'+_esc(tempPwd)+'"/>'
   +'<div class="fh">Share securely — user should change on first login</div>'
   +'</div>'
   +'</div>',
   '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
-  +' <button class="btn btn-p" onclick="_doAddBizUser()">Add User</button>');
+  +' <button class="btn btn-p" onclick="_doAddBizUser()">${_s.usr_add_title}</button>');
 }
 function _doAddBizUser(){
   var nm  = (document.getElementById('abu-name')?.value||'').trim();
@@ -12331,11 +12331,11 @@ function mEditBizUser(uid){const _s=_L();
     var bizOpts2 = D.adminBiz.filter(function(b){return b.st==='Active';}).map(function(b){
       return '<option value="'+b.id+'"'+(b.id===u.bizId?' selected':'')+'>'+_esc(b.name)+'</option>';
     }).join('');
-    bizFieldHTML = '<div class="fg"><label class="fl">Business</label><select class="fs" id="eu-biz">'+bizOpts2+'</select></div>';
+    bizFieldHTML = '<div class="fg"><label class="fl">${_s.adm_businesses}</label><select class="fs" id="eu-biz">'+bizOpts2+'</select></div>';
   } else {
     var resolvedName = BIZ.name || u.bizId;
     var resolvedId   = SESSION.bizId || u.bizId;
-    bizFieldHTML = '<div class="fg"><label class="fl">Business</label>'
+    bizFieldHTML = '<div class="fg"><label class="fl">${_s.adm_businesses}</label>'
       +'<div style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);font-size:13px;color:var(--ink);font-weight:600">'+_esc(resolvedName)+'</div>'
       +'<input type="hidden" id="eu-biz" value="'+_esc(resolvedId)+'"/>'
       +'</div>';
@@ -12347,10 +12347,10 @@ function mEditBizUser(uid){const _s=_L();
 
   modal('✏️ Edit User — '+_esc(u.name),
     '<div class="fg-2">'
-    +'<div class="fg"><label class="fl">Full Name</label><input class="fi" id="eu-name" value="'+_esc(u.name)+'"/></div>'
+    +'<div class="fg"><label class="fl">${_s.sa_full_name}</label><input class="fi" id="eu-name" value="'+_esc(u.name)+'"/></div>'
     +'<div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" id="eu-email" type="email" value="'+_esc(u.email)+'"/></div>'
     +bizFieldHTML
-    +'<div class="fg"><label class="fl">User Level</label><select class="fs" id="eu-level">'+lvlOpts+'</select></div>'
+    +'<div class="fg"><label class="fl">${_s.adm_level}</label><select class="fs" id="eu-level">'+lvlOpts+'</select></div>'
     +'</div>'
     +'<div class="alrt alrt-b" style="margin-top:12px">💡 Changing the level resets custom rights to the level\'s defaults. Use the Rights button to set custom overrides.</div>',
     '<button class="btn btn-d btn-sm" onclick="confirmDo(\'Remove <strong>'+_esc(u.name)+'</strong>?\',function(){'
@@ -12439,11 +12439,11 @@ function mUserRights(uid){const _s=_L();
     <div style="margin-left:auto;display:flex;gap:6px">${Object.values(TIER_META).map(m=>`<span style="font-size:10px;color:${m.color}">${m.icon} ${m.label}</span>`).join(' &nbsp;')}</div>
   </div>
   <div class="tbl-wrap" style="max-height:420px;overflow-y:auto"><table>
-    <thead><tr><th>Module</th><th style="text-align:center;width:110px">Level Default</th><th style="text-align:center;width:130px">This User</th></tr></thead>
+    <thead><tr><th>${_s.usr_module}</th><th style="text-align:center;width:110px">${_s.usr_level_def}</th><th style="text-align:center;width:130px">${_s.usr_this_user}</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>
   <div class="alrt alrt-b" style="margin-top:12px;font-size:11px">
-    <strong>Edit</strong> = full read + write &nbsp;·&nbsp; <strong>Read</strong> = view only, no changes &nbsp;·&nbsp; <strong>Hidden</strong> = module/field not visible
+    <strong>Edit</strong> = full read + write &nbsp;·&nbsp; <strong>Read</strong> = view only, no changes &nbsp;·&nbsp; <strong>${_s.usr_hidden}</strong> = module/field not visible
   </div>`,
   `<button class="btn btn-d btn-sm" onclick="
     const u2=BIZ_USERS.find(x=>x.id==='${uid}');
@@ -12470,7 +12470,7 @@ function mManageRights(){const _s=_L();
   if(!can('manage_users')){ toast('⛔ Manage Users — permission denied','error'); return; }
   const modEntries = Object.entries(RIGHT_MODULES);
   const levels = USER_LEVELS;
-  const headerRow=`<tr><th>Module</th>${levels.map(l=>`<th style="text-align:center;font-size:10px;min-width:80px">${USER_LEVEL_LABELS[l]}</th>`).join('')}</tr>`;
+  const headerRow=`<tr><th>${_s.usr_module}</th>${levels.map(l=>`<th style="text-align:center;font-size:10px;min-width:80px">${USER_LEVEL_LABELS[l]}</th>`).join('')}</tr>`;
   const rows=modEntries.map(([key,mod])=>`<tr>
     <td style="font-size:12px">${mod.icon} ${mod.label}</td>
     ${levels.map(l=>`<td style="text-align:center;padding:5px">${tierBadge(DEFAULT_RIGHTS[l]?.[key]||'none')}</td>`).join('')}
@@ -12497,40 +12497,40 @@ function pgAdminAnalytics(){const _s=_L();
   return `
 <div class="adm-banner">
   <span style="font-size:20px">📊</span>
-  <div><div style="font-weight:700;color:var(--p);font-family:var(--display)">Platform Analytics</div>
+  <div><div style="font-weight:700;color:var(--p);font-family:var(--display)">${_s.adm_analytics}</div>
   <div style="font-size:12px;color:var(--text)">Structural platform metrics only — business data is private.</div></div>
 </div>
 <div class="ph">
-  <div class="ph-row"><h1>Platform Analytics</h1></div>
+  <div class="ph-row"><h1>${_s.adm_analytics}</h1></div>
   <p>These metrics cover platform-level structure only. Individual business revenue and transaction data is private and only accessible to the business itself.</p>
 </div>
 <div class="alrt alrt-p" style="margin-bottom:16px">
   🔒 <strong>Privacy Policy:</strong> ShopTrack does not expose business financial or operational data to platform administrators. Revenue and transaction figures below are not available at this level.
 </div>
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">
-  <div class="kpi b"><div class="kpi-lbl">Total Businesses</div><div class="kpi-val b">${total}</div></div>
-  <div class="kpi g"><div class="kpi-lbl">Active</div><div class="kpi-val g">${active}</div></div>
-  <div class="kpi y"><div class="kpi-lbl">Suspended</div><div class="kpi-val y">${suspended}</div></div>
-  <div class="kpi r"><div class="kpi-lbl">Inactive</div><div class="kpi-val r">${inactive}</div></div>
-  <div class="kpi p"><div class="kpi-lbl">Pending Setup</div><div class="kpi-val p">${pending}</div></div>
-  <div class="kpi c"><div class="kpi-lbl">Registered Users</div><div class="kpi-val c">${totalUsers}</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.adm_total_biz}</div><div class="kpi-val b">${total}</div></div>
+  <div class="kpi g"><div class="kpi-lbl">${_s.adm_active}</div><div class="kpi-val g">${active}</div></div>
+  <div class="kpi y"><div class="kpi-lbl">${_s.adm_suspended}</div><div class="kpi-val y">${suspended}</div></div>
+  <div class="kpi r"><div class="kpi-lbl">${_s.adm_inactive}</div><div class="kpi-val r">${inactive}</div></div>
+  <div class="kpi p"><div class="kpi-lbl">${_s.adm_pending_setup}</div><div class="kpi-val p">${pending}</div></div>
+  <div class="kpi c"><div class="kpi-lbl">${_s.adm_reg_users}</div><div class="kpi-val c">${totalUsers}</div></div>
 </div>
 
 <div class="g2" style="margin-top:13px">
   <div class="card">
-    <div class="card-hd"><div class="card-ttl">Business Status Breakdown</div></div>
+    <div class="card-hd"><div class="card-ttl">${_s.adm_biz_status}</div></div>
     <div class="ch-wrap" style="height:210px"><canvas id="admStatusChart"></canvas></div>
   </div>
   <div class="card">
-    <div class="card-hd"><div class="card-ttl">Plan Distribution</div></div>
+    <div class="card-hd"><div class="card-ttl">${_s.adm_plan_dist}</div></div>
     <div class="ch-wrap" style="height:210px"><canvas id="admPlanChart"></canvas></div>
   </div>
 </div>
 
 <div class="card" style="margin-top:13px">
-  <div class="card-hd"><div class="card-ttl">Business Registry</div><span style="font-size:11px;color:var(--text2)">Platform metadata only — no business data</span></div>
+  <div class="card-hd"><div class="card-ttl">${_s.adm_biz_registry}</div><span style="font-size:11px;color:var(--text2)">Platform metadata only — no business data</span></div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Business ID</th><th>Business Name</th><th>Owner</th><th>Plan</th><th>${_s.ui_status}</th><th>Users</th><th>Onboarded</th></tr></thead>
+    <thead><tr><th>Business ID</th><th>${_s.adm_biz_name}</th><th>${_s.adm_owner}</th><th>Plan</th><th>${_s.ui_status}</th><th>${_s.adm_users}</th><th>${_s.adm_onboarded}</th></tr></thead>
     <tbody>${D.adminBiz.map(b=>`<tr>
       <td>${mono(b.id,'p')}</td>
       <td><strong style="color:var(--ink)">${b.name}</strong></td>
@@ -12689,11 +12689,11 @@ async function mBillingCharge(bizId){const _s=_L();
     They must approve it within ~2 minutes.
   </div>
   <div style="background:var(--bg3);border-radius:var(--r8);padding:13px 14px;display:flex;flex-direction:column;gap:8px;font-size:13px">
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Business</span><strong>${_esc(b.name)}</strong></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Owner</span><span>${_esc(b.owner||'—')}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.adm_businesses}</span><strong>${_esc(b.name)}</strong></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.adm_owner}</span><span>${_esc(b.owner||'—')}</span></div>
     <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Plan</span>${bx(b.plan||'Starter','bx-b')}</div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Amount</span><strong style="color:var(--g);font-family:var(--mono)">${amt.toLocaleString()} XAF</strong></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Phone</span><span style="font-family:var(--mono);color:var(--c)">${_esc(phone)}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.ui_amount}</span><strong style="color:var(--g);font-family:var(--mono)">${amt.toLocaleString()} XAF</strong></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.ui_phone}</span><span style="font-family:var(--mono);color:var(--c)">${_esc(phone)}</span></div>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" id="mbc-send-btn" onclick="(async function(){
@@ -12735,7 +12735,7 @@ function mBillingRemind(bizId, daysOverride){const _s=_L();
   <div class="fg"><label class="fl">${_s.vend_phone}</label>
     <input class="fi" id="br-phone" value="${_esc(phone||'')}" placeholder="237XXXXXXXXX"/>
   </div>
-  <div class="fg"><label class="fl">Message Preview</label>
+  <div class="fg"><label class="fl">${_s.adm_msg_preview}</label>
     <textarea class="ft" id="br-msg" style="min-height:220px;font-size:12px;line-height:1.6">${_esc(msg)}</textarea>
   </div>
   <div class="alrt alrt-b" style="margin-top:8px;font-size:11px">
@@ -12756,10 +12756,10 @@ function mBillingExtend(bizId){const _s=_L();
   const curExp = b.subExpires || b.trialEnd || localDateStr();
   modal('⏱ Extend Subscription — '+_esc(b.name),`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Current Expiry</label>
+    <div class="fg"><label class="fl">${_s.adm_current_exp}</label>
       <div style="padding:9px 12px;background:var(--bg3);border-radius:var(--r6);font-size:13px;font-family:var(--mono)">${curExp||'—'}</div>
     </div>
-    <div class="fg"><label class="fl">Extend By</label>
+    <div class="fg"><label class="fl">${_s.adm_extend_by}</label>
       <select class="fs" id="be-days">
         <option value="7">7 days</option>
         <option value="14">14 days</option>
@@ -13024,22 +13024,22 @@ function _affPayPartial(id){const _s=_L();
   modal('💳 Process Payment — '+_esc(a.name),
     '<div style="margin-bottom:16px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--bg3);border-radius:var(--r8);margin-bottom:12px">'+
-      '<div><div style="font-size:12px;color:var(--text2);margin-bottom:2px">Affiliate</div>'+
+      '<div><div style="font-size:12px;color:var(--text2);margin-bottom:2px">${_s.adm_affiliate}</div>'+
       '<div style="font-weight:600;color:var(--ink)">'+_esc(a.name)+'</div>'+
       '<div style="font-size:11px;color:var(--a)">'+_esc(a.email)+'</div></div>'+
       '<div style="text-align:right">'+
-      '<div style="font-size:12px;color:var(--text2);margin-bottom:2px">Total Unpaid</div>'+
+      '<div style="font-size:12px;color:var(--text2);margin-bottom:2px">${_s.adm_total_unpaid}</div>'+
       '<div style="font-size:20px;font-weight:700;color:var(--r)">'+fmt(unpaid)+' XAF</div></div>'+
     '</div>'+
     '<div class="fg">'+
       '<label class="fl">Payment Amount (XAF) *</label>'+
-      '<input class="fi" id="aff-pay-amt" type="number" min="1" max="'+unpaid+'" placeholder="Enter amount..." style="font-size:18px;font-weight:600"/>'+
+      '<input class="fi" id="aff-pay-amt" type="number" min="1" max="'+unpaid+'" placeholder="${_s.adm_enter_amount}" style="font-size:18px;font-weight:600"/>'+
     '</div>'+
     '<div class="fg" style="margin-top:10px">'+
       '<label class="fl">${_s.ui_pay_method}</label>'+
       '<select class="fs" id="aff-pay-method">'+
-        '<option>Mobile Money</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option>'+
-        '<option>${_s.ui_orange}</option><option>MTN Mobile Money</option><option>PayPal</option><option>${_s.po_other}</option>'+
+        '<option>${_s.adm_mobile_money}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option>'+
+        '<option>${_s.ui_orange}</option><option>${_s.adm_mtn}</option><option>${_s.adm_paypal}</option><option>${_s.po_other}</option>'+
       '</select>'+
     '</div>'+
     '<div class="fg" style="margin-top:10px">'+
@@ -13048,7 +13048,7 @@ function _affPayPartial(id){const _s=_L();
     '</div>'+
     '<div class="fg" style="margin-top:10px">'+
       '<label class="fl">Notes <span style="font-size:11px;color:var(--text2)">(optional)</span></label>'+
-      '<textarea class="ft" id="aff-pay-notes" placeholder="Any notes about this payment..." style="min-height:55px"></textarea>'+
+      '<textarea class="ft" id="aff-pay-notes" placeholder="${_s.adm_enter_amount}" style="min-height:55px"></textarea>'+
     '</div>'+
     '<div class="fg" style="margin-top:10px">'+
       '<label class="fl">Receipts <span style="font-size:11px;color:var(--text2)">(optional — attach multiple images or PDFs)</span></label>'+
@@ -13057,7 +13057,7 @@ function _affPayPartial(id){const _s=_L();
         '<div id="aff-receipt-grid" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px"></div>'+
         '<div id="aff-receipt-placeholder" style="text-align:center;padding:8px 0">'+
           '<div style="font-size:26px;margin-bottom:4px">📎</div>'+
-          '<div style="font-size:13px;color:var(--ink);font-weight:500">Drop files here or</div>'+
+          '<div style="font-size:13px;color:var(--ink);font-weight:500">${_s.adm_drop_files}</div>'+
         '</div>'+
         '<div style="text-align:center;margin-top:4px">'+
           '<button type="button" class="btn btn-s btn-sm" id="aff-add-files-btn">+ Add Files</button>'+
@@ -13066,7 +13066,7 @@ function _affPayPartial(id){const _s=_L();
       '</div>'+
     '</div>'+
     '<div id="aff-pay-preview" style="margin-top:12px;padding:10px 14px;background:var(--bg3);border-radius:var(--r6);display:none">'+
-      '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">After payment</div>'+
+      '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">${_s.adm_after_pay}</div>'+
       '<div style="display:flex;justify-content:space-between">'+
         '<span style="color:var(--ink)">Remaining unpaid:</span>'+
         '<span id="aff-pay-remaining" style="font-weight:700;color:var(--g)"></span>'+
@@ -13177,9 +13177,9 @@ function _affViewHistory(id){const _s=_L();
     '</div>'+
     (hist.length
       ? '<div class="tbl-wrap"><table>'+
-          '<thead><tr><th>${_s.ui_date}</th><th>${_s.ui_amount}</th><th>${_s.ui_method}</th><th>${_s.ui_reference}</th><th>${_s.ui_notes}</th><th>Receipts</th></tr></thead>'+
+          '<thead><tr><th>${_s.ui_date}</th><th>${_s.ui_amount}</th><th>${_s.ui_method}</th><th>${_s.ui_reference}</th><th>${_s.ui_notes}</th><th>${_s.adm_receipts}</th></tr></thead>'+
           '<tbody>'+rows+'</tbody></table></div>'
-      : '<div style="text-align:center;padding:30px;color:var(--text2)"><div style="font-size:32px;margin-bottom:8px">📭</div>No payment history yet.</div>'
+      : '<div style="text-align:center;padding:30px;color:var(--text2)"><div style="font-size:32px;margin-bottom:8px">📭</div>${_s.adm_no_pay_hist}</div>'
     ),
     '<button class="btn btn-p" onclick="closeModal()">${_s.ui_close}</button>',
     'md'
@@ -13194,7 +13194,7 @@ function pgAdminAffiliates(){const _s=_L();
   }
   return `
 <div class="ph">
-  <div class="bc">ShopTrack / <span>Affiliates</span></div>
+  <div class="bc">ShopTrack / <span>${_s.adm_affiliates}</span></div>
   <div class="ph-row">
     <h1>&#x1F91D; Affiliate Program</h1>
     <div class="btn-row">
@@ -13205,27 +13205,27 @@ function pgAdminAffiliates(){const _s=_L();
 </div>
 
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(175px,1fr));margin-bottom:14px">
-  <div class="kpi b"><div class="kpi-lbl">Total Affiliates</div><div class="kpi-val b" id="aff-kpi-total">—</div></div>
-  <div class="kpi g"><div class="kpi-lbl">Approved</div><div class="kpi-val g" id="aff-kpi-approved">—</div></div>
-  <div class="kpi y"><div class="kpi-lbl">Pending Approval</div><div class="kpi-val y" id="aff-kpi-pending">—</div></div>
-  <div class="kpi p"><div class="kpi-lbl">Total Conversions</div><div class="kpi-val p" id="aff-kpi-conv">—</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.adm_total_aff}</div><div class="kpi-val b" id="aff-kpi-total">—</div></div>
+  <div class="kpi g"><div class="kpi-lbl">${_s.adm_approved}</div><div class="kpi-val g" id="aff-kpi-approved">—</div></div>
+  <div class="kpi y"><div class="kpi-lbl">${_s.adm_pending_app}</div><div class="kpi-val y" id="aff-kpi-pending">—</div></div>
+  <div class="kpi p"><div class="kpi-lbl">${_s.adm_total_conv}</div><div class="kpi-val p" id="aff-kpi-conv">—</div></div>
   <div class="kpi g"><div class="kpi-lbl">Total Earned (XAF)</div><div class="kpi-val g" id="aff-kpi-earned">—</div></div>
   <div class="kpi r"><div class="kpi-lbl">Unpaid (XAF)</div><div class="kpi-val r" id="aff-kpi-unpaid">—</div></div>
 </div>
 
 <div class="stabs" id="aff-tabs">
   <button class="stab on" onclick="_affSetTab(this,'all')">All</button>
-  <button class="stab" onclick="_affSetTab(this,'pending')">Pending</button>
-  <button class="stab" onclick="_affSetTab(this,'approved')">Approved</button>
-  <button class="stab" onclick="_affSetTab(this,'suspended')">Suspended</button>
+  <button class="stab" onclick="_affSetTab(this,'pending')">${_s.ui_st_pending}</button>
+  <button class="stab" onclick="_affSetTab(this,'approved')">${_s.adm_approved}</button>
+  <button class="stab" onclick="_affSetTab(this,'suspended')">${_s.adm_suspended}</button>
 </div>
 
 <div class="card" style="margin-top:10px">
   <div class="tbl-wrap"><table>
     <thead><tr>
-      <th>Affiliate</th><th>Code</th><th>${_s.ui_status}</th>
-      <th>Clicks</th><th>Conv.</th><th>Rate</th>
-      <th>Earned</th><th>Unpaid</th><th>Joined</th><th>${_s.ui_actions}</th>
+      <th>${_s.adm_affiliate}</th><th>Code</th><th>${_s.ui_status}</th>
+      <th>${_s.adm_clicks}</th><th>${_s.adm_conv}</th><th>Rate</th>
+      <th>${_s.adm_earned}</th><th>${_s.adm_unpaid_bal}</th><th>${_s.adm_joined}</th><th>${_s.ui_actions}</th>
     </tr></thead>
     <tbody id="aff-tbody"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text2)">Loading...</td></tr></tbody>
   </table></div>
@@ -13288,9 +13288,9 @@ function _affRenderTable(){
     var rate = a.clicks>0 ? Math.round((a.conversions||0)/a.clicks*100)+'%' : '\u2014';
     var rateNum = a.clicks>0 ? (a.conversions||0)/a.clicks*100 : -1;
     var rateColor = rateNum<0?'var(--text2)':rateNum>=5?'var(--g)':rateNum>=2?'var(--y)':'var(--r)';
-    var statusBadge = a.status==='approved' ? '<span class="bx bx-g">Approved</span>'
-      : a.status==='pending' ? '<span class="bx bx-y">Pending</span>'
-      : '<span class="bx bx-r">Suspended</span>';
+    var statusBadge = a.status==='approved' ? '<span class="bx bx-g">${_s.adm_approved}</span>'
+      : a.status==='pending' ? '<span class="bx bx-y">${_s.ui_st_pending}</span>'
+      : '<span class="bx bx-r">${_s.adm_suspended}</span>';
     var affLink = 'https://shoptrack.org/?aff='+_esc(a.affiliate_code||'');
     return '<tr>'+
       '<td><strong style="color:var(--ink)">'+_esc(a.name||'')+'</strong><div style="font-size:11px;color:var(--text2)">'+_esc(a.email||'')+'</div>'+(a.social_handle?'<div style="font-size:11px;color:var(--a)">'+_esc(a.social_handle)+'</div>':'')+'</td>'+
@@ -13310,7 +13310,7 @@ function _affRenderTable(){
           '<button class="btn btn-p btn-xs" onclick="_affPayPartial(\''+a.id+'\')">&#x1F4B3; Pay</button>'+
           (a.unpaid_xaf>0?'<button class="btn btn-g btn-xs" onclick="_affMarkPaid(\''+a.id+'\')">&#x2714; All Paid</button>':'')+
           '<button class="btn btn-s btn-xs" onclick="_affViewHistory(\''+a.id+'\')">&#x1F4CB; History</button>'+
-          (a.email?'<button class="btn btn-b btn-xs" onclick="_affResendApprovalEmail(\''+a.id+'\')" title="Resend approval email with affiliate link">&#x1F4E7; Send Link</button>':'')
+          (a.email?'<button class="btn btn-b btn-xs" onclick="_affResendApprovalEmail(\''+a.id+'\')" title="${_s.adm_resend_aff}">&#x1F4E7; Send Link</button>':'')
         :'')+
         (a.status==='suspended'?
           '<button class="btn btn-g btn-xs" onclick="_affApprove(\''+a.id+'\')">&#x21BA; Reactivate</button>':
@@ -13434,7 +13434,7 @@ async function _affMarkPaid(id){const _s=_L();
   modal('Mark as Fully Paid',
     '<div class="alrt alrt-b" style="margin-bottom:12px">Clear full unpaid balance for <strong>'+_esc(a.name)+'</strong>?</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:13px;display:flex;justify-content:space-between">'
-    +'<span style="color:var(--text2)">Unpaid balance to clear</span><strong style="color:var(--r)">'+fmt(unpaid)+'</strong></div>',
+    +'<span style="color:var(--text2)">${_s.adm_unpaid_bal}</span><strong style="color:var(--r)">'+fmt(unpaid)+'</strong></div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-p" onclick="closeModal();_doAffMarkPaid(\''+id+'\')">\u2714 Mark Paid</button>'
   );
@@ -13452,7 +13452,7 @@ async function _doAffMarkPaid(id){const _s=_L();
 function _affSetCode(id){const _s=_L();
   var a=_affiliates.find(function(x){return x.id===id;});
   var cur=a?(a.affiliate_code&&!a.affiliate_code.startsWith('PENDING')?a.affiliate_code:''):''
-  modal('Edit Affiliate Code',
+  modal(_s.adm_edit_aff_code,
     '<div class="fg"><label class="fl">Affiliate Code *</label>'
     +'<input class="fi" id="aff-code-inp" value="'+_esc(cur)+'"'
     +' placeholder="e.g. AMAKA2026" style="text-transform:uppercase;font-family:var(--mono)"'
@@ -13508,9 +13508,9 @@ function _affAddManual(){const _s=_L();
     '<div class="fg"><label class="fl">Email *</label><input class="fi" id="aff-mn-email" type="email" placeholder="amaka@email.com"/></div>'+
     '<div class="fg"><label class="fl">Affiliate Code *</label><input class="fi" id="aff-mn-code" placeholder="e.g. AMAKA2026" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\')"/><div class="fh">Used in shoptrack.org/?aff=CODE</div></div>'+
     '<div class="fg"><label class="fl">TikTok / Social Handle</label><input class="fi" id="aff-mn-handle" placeholder="@handle"/></div>'+
-    '<div class="fg"><label class="fl">Commission %</label><input class="fi" id="aff-mn-pct" type="number" value="20" min="1" max="50"/><div class="fh">% of first subscription payment</div></div>',
+    '<div class="fg"><label class="fl">${_s.adm_commission}</label><input class="fi" id="aff-mn-pct" type="number" value="20" min="1" max="50"/><div class="fh">% of first subscription payment</div></div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
-    '<button class="btn btn-p" onclick="_affDoAddManual()">Add Affiliate</button>'
+    '<button class="btn btn-p" onclick="_affDoAddManual()">${_s.adm_add_aff}</button>'
   );
 }
 
@@ -15674,7 +15674,7 @@ function toggleLoginPwd(){
   p.type = p.type==='password' ? 'text' : 'password';
 }
 
-function doLogin(){
+function doLogin(){const _s=_L();
   // Always reset session flags before login attempt — prevents stale SA session bleed
   SESSION.isSuperAdmin = false;
   SESSION.level = null;
@@ -15884,8 +15884,8 @@ function doLogin(){
     <strong>You are using a temporary password.</strong><br>
     <span style="font-size:12px">You must set a personal password before continuing. This cannot be skipped.</span>
   </div>
-  <div class="fg"><label class="fl">New Password</label><input class="fi" id="fp-new" type="password" placeholder="At least 8 characters" autofocus/></div>
-  <div class="fg"><label class="fl">Confirm New Password</label><input class="fi" id="fp-conf" type="password" placeholder="Repeat new password"/></div>
+  <div class="fg"><label class="fl">${_s.adm_new_pass}</label><input class="fi" id="fp-new" type="password" placeholder="At least 8 characters" autofocus/></div>
+  <div class="fg"><label class="fl">${_s.sa_confirm_new}</label><input class="fi" id="fp-conf" type="password" placeholder="${_s.sa_repeat}"/></div>
   <div style="margin-top:6px;font-size:11px;color:var(--text2)">Min 8 characters · at least 1 number · at least 1 special character (!@#$&…)</div>`,
   `<button class="btn btn-p" style="width:100%" onclick="
     const np=document.getElementById('fp-new')?.value||'';
@@ -16102,9 +16102,9 @@ async function _doChangePasswordDirect(cur, nw){const _s=_L();
 function mChangePassword(){const _s=_L();
   modal('🔑 Change Password',`
   <div class="alrt alrt-b" style="margin-bottom:14px">Changing password for <strong>${SESSION.name}</strong> (${SESSION.isSuperAdmin?'Super Admin':USER_LEVEL_LABELS[SESSION.level]})</div>
-  <div class="fg"><label class="fl">Current Password</label><input class="fi" id="cp-cur" type="password" placeholder="Current password"/></div>
-  <div class="fg"><label class="fl">New Password</label><input class="fi" id="cp-new" type="password" placeholder="At least 8 characters"/></div>
-  <div class="fg"><label class="fl">Confirm New Password</label><input class="fi" id="cp-conf" type="password" placeholder="Repeat new password"/></div>
+  <div class="fg"><label class="fl">${_s.sa_cur_pass}</label><input class="fi" id="cp-cur" type="password" placeholder="Current password"/></div>
+  <div class="fg"><label class="fl">${_s.adm_new_pass}</label><input class="fi" id="cp-new" type="password" placeholder="At least 8 characters"/></div>
+  <div class="fg"><label class="fl">${_s.sa_confirm_new}</label><input class="fi" id="cp-conf" type="password" placeholder="${_s.sa_repeat}"/></div>
   <div style="margin-top:8px;font-size:11px;color:var(--text2)">
       Requirements: min 8 chars · at least 1 number · at least 1 special character (!@#$%)
   </div>`,
@@ -16188,9 +16188,9 @@ function _inlineCustFormHTML(prefix){const _s=_L();
   const ph = _ph('phonePh');
   return `
   <div id="${prefix}-nc-panel" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);padding:12px;margin-bottom:8px">
-    <div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">New Customer Details</div>
+    <div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">${_s.appt_new_cust}</div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="${prefix}-nc-name" placeholder="Customer name"/></div>
+      <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="${prefix}-nc-name" placeholder="${_s.appt_cust_name_ph}"/></div>
       <div class="fg"><label class="fl">Phone *</label><input class="fi" id="${prefix}-nc-phone" type="tel" placeholder="${ph}" data-locale="phone"/></div>
     </div>
     <div class="fg-2">
@@ -16778,7 +16778,7 @@ function showSignup(){
         +'</div>'
       +'</div>'
       +'<div style="margin-bottom:14px">'
-        +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Confirm Password *</label>'
+        +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${_s.adm_confirm_pass}</label>'
         +'<div style="position:relative">'
         +'<input id="su-pwd2" type="password" placeholder="Repeat your password" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 36px 9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
         +'<button type="button" onclick="(function(){var i=document.getElementById(\'su-pwd2\');i.type=i.type===\'password\'?\'text\':\'password\';})();" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#64748b;font-size:14px">👁</button>'
@@ -19124,13 +19124,13 @@ ${tabDocsHtml}
 
 
 // ── SUPER ADMIN SETTINGS ─────────────────────────────────────────────────────
-function pgSettingsSA(){
+function pgSettingsSA(){const _s=_L();
   const p = SA_PROFILE;
   const initials = p.name.split(' ').filter(Boolean).map(w=>w[0]).join('').substring(0,2).toUpperCase() || 'SA';
   return `
 <div class="ph">
-  <div class="bc">ShopTrack / <span>Settings</span></div>
-  <div class="ph-row"><h1>Platform Settings</h1></div>
+  <div class="bc">ShopTrack / <span>${_s.sa_settings_title}</span></div>
+  <div class="ph-row"><h1>${_s.sa_settings}</h1></div>
   <p>Super Admin profile, security, and platform-wide configuration</p>
 </div>
 <div class="stabs" id="settingsTabs">
@@ -19145,7 +19145,7 @@ function pgSettingsSA(){
 <div class="g2">
   <div class="card" style="grid-column:1/-1">
     <div class="card-hd">
-      <div class="card-ttl">Super Admin Profile</div>
+      <div class="card-ttl">${_s.sa_profile}</div>
       <button class="btn btn-p btn-sm" onclick="saveSAProfile()">💾 Save Changes</button>
     </div>
     <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-bottom:22px">
@@ -19159,31 +19159,31 @@ function pgSettingsSA(){
           ${['#5b7fff','#9f7aea','#e8667a','#2dd4a0','#f5c842','#38bdf8','#fb923c'].map(col=>`
           <div onclick="SA_PROFILE.avatarColor='${col}';document.getElementById('sa-avatar').style.background='${col}'" style="width:18px;height:18px;border-radius:50%;background:${col};cursor:pointer;border:2px solid ${col===p.avatarColor?'#fff':'transparent'}" title="${col}"></div>`).join('')}
         </div>
-        <div style="font-size:10px;color:var(--text2)">Avatar colour</div>
+        <div style="font-size:10px;color:var(--text2)">${_s.sa_avatar}</div>
       </div>
       <!-- Name + title + bio -->
       <div style="flex:1;min-width:220px">
         <div class="fg-2">
-          <div class="fg"><label class="fl">Full Name</label><input class="fi" id="sa-name" value="${p.name}" placeholder="Your full name"/></div>
-          <div class="fg"><label class="fl">Job Title</label><input class="fi" id="sa-title" value="${p.title}" placeholder="e.g. Platform Administrator"/></div>
+          <div class="fg"><label class="fl">${_s.sa_full_name}</label><input class="fi" id="sa-name" value="${p.name}" placeholder="${_s.sa_full_name_ph}"/></div>
+          <div class="fg"><label class="fl">${_s.sa_job_title}</label><input class="fi" id="sa-title" value="${p.title}" placeholder="e.g. Platform Administrator"/></div>
         </div>
         <div class="fg"><label class="fl">Bio / About</label><textarea class="ft" id="sa-bio" style="min-height:56px" placeholder="A short description about yourself…">${p.bio}</textarea></div>
       </div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:4px">
-      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px">Contact Details</div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px">${_s.sa_contact}</div>
       <div class="fg-2">
-        <div class="fg"><label class="fl">Email Address</label><input class="fi" id="sa-email" type="email" value="${p.email}" placeholder="admin"+'@'+"shoptrack.work"/></div>
-        <div class="fg"><label class="fl">Phone Number</label><input class="fi" id="sa-phone" type="tel" value="${p.phone}" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
+        <div class="fg"><label class="fl">${_s.sa_email}</label><input class="fi" id="sa-email" type="email" value="${p.email}" placeholder="admin"+'@'+"shoptrack.work"/></div>
+        <div class="fg"><label class="fl">${_s.sa_phone}</label><input class="fi" id="sa-phone" type="tel" value="${p.phone}" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
         <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="sa-whatsapp" type="tel" value="${p.whatsapp}" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
-        <div class="fg"><label class="fl">Website</label><input class="fi" id="sa-website" value="${p.website}" placeholder="www.shoptrack.org"/></div>
+        <div class="fg"><label class="fl">${_s.sa_website}</label><input class="fi" id="sa-website" value="${p.website}" placeholder="www.shoptrack.org"/></div>
         <div class="fg"><label class="fl">Company / Platform Name</label><input class="fi" id="sa-company" value="${p.company}" placeholder="ShopTrack"/></div>
         <div class="fg"><label class="fl">Location / City</label><input class="fi" id="sa-location" value="${p.location}" placeholder="e.g. Yaoundé, Cameroon"/></div>
       </div>
     </div>
     <!-- Profile card preview -->
     <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
-      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Profile Preview</div>
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">${_s.sa_profile_prev}</div>
       <div style="background:linear-gradient(135deg,var(--bg3),var(--bg4));border:1px solid var(--border2);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:16px;max-width:420px">
         <div style="width:52px;height:52px;border-radius:50%;background:${p.avatarColor};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;flex-shrink:0">${initials}</div>
         <div>
@@ -19194,7 +19194,7 @@ function pgSettingsSA(){
           ${p.location?`<div style="font-size:11px;color:var(--text)">📍 ${p.location}</div>`:''}
         </div>
       </div>
-      <div style="font-size:10px;color:var(--text2);margin-top:6px">This preview updates after you save.</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:6px">${_s.sa_prev_hint}</div>
     </div>
   </div>
 </div>
@@ -19208,13 +19208,13 @@ ${renderPlansTab()}
 <!-- SA SECURITY TAB -->
 <div id="sa-tab-security" style="display:none">
 <div class="card">
-  <div class="card-hd"><div class="card-ttl">Security Settings</div></div>
+  <div class="card-hd"><div class="card-ttl">${_s.sa_security}</div></div>
   <div class="fg-2">
     <div>
-      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px">Change Password</div>
-      <div class="fg"><label class="fl">Current Password</label><input class="fi" type="password" id="sec-cur" placeholder="••••••••"/></div>
-      <div class="fg"><label class="fl">New Password</label><input class="fi" type="password" id="sec-new" placeholder="Min 12 characters"/></div>
-      <div class="fg"><label class="fl">Confirm New Password</label><input class="fi" type="password" id="sec-conf" placeholder="Repeat new password"/></div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px">${_s.sa_change_pass}</div>
+      <div class="fg"><label class="fl">${_s.sa_cur_pass}</label><input class="fi" type="password" id="sec-cur" placeholder="••••••••"/></div>
+      <div class="fg"><label class="fl">${_s.adm_new_pass}</label><input class="fi" type="password" id="sec-new" placeholder="Min 12 characters"/></div>
+      <div class="fg"><label class="fl">${_s.sa_confirm_new}</label><input class="fi" type="password" id="sec-conf" placeholder="${_s.sa_repeat}"/></div>
       <button class="btn btn-p btn-sm" onclick="
         const cur=document.getElementById('sec-cur').value;
         const nw=document.getElementById('sec-new').value;
@@ -19230,7 +19230,7 @@ ${renderPlansTab()}
       ">🔐 Update Password</button>
     </div>
     <div>
-      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px">Access Log</div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px">${_s.sa_access_log}</div>
       <div style="display:flex;flex-direction:column;gap:6px">
         ${[
           {date:'Today 14:32',device:'Chrome · Windows',loc:'Yaoundé, CM',cur:true},
@@ -19242,7 +19242,7 @@ ${renderPlansTab()}
             <div style="font-weight:600;color:var(--ink)">${s.device}${s.cur?' <span style="color:var(--g);font-size:10px">· Current</span>':''}</div>
             <div style="color:var(--text2);margin-top:2px">${s.date} · ${s.loc}</div>
           </div>
-          ${s.cur?'':'<button style="font-size:10px;color:var(--r);background:none;border:none;cursor:pointer" onclick="toast(\'Session revoked\',\'success\')">Revoke</button>'}
+          ${s.cur?'':'<button style="font-size:10px;color:var(--r);background:none;border:none;cursor:pointer" onclick="toast(\'Session revoked\',\'success\')">${_s.adm_revoke}</button>'}
         </div>`).join('')}
       </div>
     </div>
@@ -19253,7 +19253,7 @@ ${renderPlansTab()}
 <!-- SA NOTIFICATIONS TAB -->
 <div id="sa-tab-notif" style="display:none">
 <div class="card">
-  <div class="card-hd"><div class="card-ttl">Notification Preferences</div></div>
+  <div class="card-hd"><div class=${_s.sa_notif}</div></div>
   <div style="display:flex;flex-direction:column;gap:12px">
     ${[
       ['New business onboarded','Get notified when a new business joins the platform',true],
@@ -19322,7 +19322,7 @@ function saveSAProfile(){
 }
 
 // ── Subscription Plans renderer ───────────────────────────────────────────────
-function renderPlansTab(){
+function renderPlansTab(){const _s=_L();
   // Build plan cards using string concatenation — no nested template literals
   var cards = SUBSCRIPTION_PLANS.map(function(plan){
     var isHighlight = plan.highlight;
@@ -19383,7 +19383,7 @@ function renderPlansTab(){
       // Feature sections
       + sections
       // CTA
-      + '<button style="width:100%;padding:11px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;font-family:var(--display);letter-spacing:-.2px;'+ctaStyle+'" data-pid="'+plan.id+'" onclick="mSetDefaultPlan(this.dataset.pid)">Set as Default Plan</button>'
+      + '<button style="width:100%;padding:11px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;font-family:var(--display);letter-spacing:-.2px;'+ctaStyle+'" data-pid="'+plan.id+'" onclick="mSetDefaultPlan(this.dataset.pid)">${_s.sa_set_default_plan}</button>'
     + '</div>';
   }).join('');
 
@@ -19397,8 +19397,8 @@ function renderPlansTab(){
     ? 'Businesses are restricted to their assigned plan limits. Downgrade and access restrictions are active.'
     : 'All businesses have full platform access regardless of plan. Enable enforcement when you are ready to go live.';
   var enfBtn   = enfState
-    ? '<button style="background:var(--r-dim);color:var(--r);border:1px solid rgba(255,95,122,.3);padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer" onclick="toggleSubscriptionEnforcement(false)">Switch to Testing Mode</button>'
-    : '<button style="background:var(--g-dim);color:var(--g);border:1px solid rgba(45,212,160,.3);padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer" onclick="toggleSubscriptionEnforcement(true)">Enable Enforcement</button>';
+    ? '<button style="background:var(--r-dim);color:var(--r);border:1px solid rgba(255,95,122,.3);padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer" onclick="toggleSubscriptionEnforcement(false)">${_s.sa_testing_mode}</button>'
+    : '<button style="background:var(--g-dim);color:var(--g);border:1px solid rgba(45,212,160,.3);padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer" onclick="toggleSubscriptionEnforcement(true)">${_s.sa_enforcement}</button>';
 
   var enforcementBanner = '<div style="background:'+enfBg+';border:1px solid '+enfBdr+';border-radius:14px;padding:18px 22px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">'
     + '<div>'
@@ -19413,7 +19413,7 @@ function renderPlansTab(){
     + '<h2 style="font-size:22px;font-weight:900;color:var(--ink);font-family:var(--display);margin-bottom:6px">ShopTrack Subscription Plans</h2>'
     + '<p style="color:var(--text2);font-size:13px;max-width:480px;margin:0 auto">Choose the right plan for your businesses. All plans include a 30-day free trial and can be changed at any time.</p>'
     + '<div style="display:inline-flex;align-items:center;gap:10px;margin-top:16px;background:var(--bg3);padding:7px 16px;border-radius:30px;border:1px solid var(--border2)">'
-      + '<span id="lbl-monthly" style="font-size:12px;font-weight:700;color:var(--ink)">Monthly</span>'
+      + '<span id="lbl-monthly" style="font-size:12px;font-weight:700;color:var(--ink)">${_s.adm_monthly}</span>'
       + '<label style="position:relative;display:inline-block;width:40px;height:22px">'
         + '<input type="checkbox" id="plan-billing-toggle" style="opacity:0;width:0;height:0" onchange="togglePlanBilling(this.checked)"/>'
         + '<span style="position:absolute;cursor:pointer;inset:0;background:var(--a);border-radius:22px"></span>'
@@ -19471,7 +19471,7 @@ function toggleSubscriptionEnforcement(enforce){const _s=_L();
 function mSetDefaultPlan(planId){const _s=_L();
   var plan = SUBSCRIPTION_PLANS.find(function(p){ return p.id===planId; });
   if(!plan) return;
-  modal('Set Default Plan — '+plan.name,
+  modal(_s.adm_set_default+' '+plan.name,
     '<div class="alrt alrt-b" style="margin-bottom:14px">Setting <strong>'+plan.name+'</strong> as the default assigns it automatically to newly onboarded businesses. Existing businesses are unaffected.</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:16px 18px;display:flex;gap:16px;align-items:center">'
       +'<div style="font-size:36px">'+plan.emoji+'</div>'
@@ -19482,7 +19482,7 @@ function mSetDefaultPlan(planId){const _s=_L();
       +'</div>'
     +'</div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
-    +'<button class="btn btn-p" onclick="addAudit(\'Default plan changed\',\'Set to \'+plan.name);closeModal();toast(\'Plan set to \'+ plan.name,\'success\')">Confirm</button>'
+    +'<button class="btn btn-p" onclick="addAudit(\'Default plan changed\',\'Set to \'+plan.name);closeModal();toast(\'Plan set to \'+ plan.name,\'success\')">${_s.appt_confirm_btn}</button>'
   );
 }
 
@@ -19540,12 +19540,12 @@ function _renderImportGateBanner(){const _s=_L();
   const countryMissing = !(BIZ.country||'').trim();
   if(nameMissing || countryMissing){
     const missing = [];
-    if(nameMissing)    missing.push('<strong>Business Name</strong>');
+    if(nameMissing)    missing.push('<strong>${_s.adm_biz_name}</strong>');
     if(countryMissing) missing.push('<strong>${_s.ui_country}</strong> (sets your currency)');
     el.innerHTML = '<div class="alrt alrt-y" style="margin-bottom:16px;display:flex;align-items:flex-start;gap:12px">'
       + '<span style="font-size:18px;flex-shrink:0">⚠</span>'
       + '<div style="flex:1">'
-      + '<div style="font-weight:700;color:var(--ink);margin-bottom:4px">Business Profile incomplete</div>'
+      + '<div style="font-weight:700;color:var(--ink);margin-bottom:4px">${_s.adm_biz_profile_inc}</div>'
       + '<div style="font-size:12px;line-height:1.7;color:var(--text)">Complete your profile before downloading or importing — this locks in the correct currency for your template.<br>'
       + 'Missing: ' + missing.join(' and ') + '.</div>'
       + '<button class="btn btn-p btn-sm" style="margin-top:10px" '
@@ -19572,11 +19572,11 @@ function mResetUserPwd(uid){const _s=_L();
   <div class="alrt alrt-b" style="margin-bottom:14px">
     Resetting password for <strong>${_esc(u.name)}</strong> (${_esc(USER_LEVEL_LABELS[u.level]||u.level)})
   </div>
-  <div class="fg"><label class="fl">New Password</label>
+  <div class="fg"><label class="fl">${_s.adm_new_pass}</label>
     <input class="fi" id="rp-new" type="password" placeholder="Min 8 characters"/>
   </div>
   <div class="fg"><label class="fl">Confirm Password</label>
-    <input class="fi" id="rp-conf" type="password" placeholder="Repeat password"/>
+    <input class="fi" id="rp-conf" type="password" placeholder="${_s.adm_repeat_pass}"/>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_doResetUserPwd('${uid}')">🔑 Reset Password</button>`);
@@ -20172,7 +20172,7 @@ function handleImportUpload(input){
           </div>
           <div style="border:1px solid var(--border);border-radius:var(--r8);overflow:hidden">
             <div style="display:grid;grid-template-columns:150px 1fr 70px;font-size:11px;font-weight:700;color:var(--text2);padding:9px 16px;background:var(--bg3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">
-              <span>Sheet</span><span>Result</span><span style="text-align:right">Records</span>
+              <span>${_s.adm_records}</span><span>${_s.adm_records}</span><span style="text-align:right">${_s.adm_records}</span>
             </div>
             ${log.map(l=>`<div style="display:grid;grid-template-columns:150px 1fr 70px;padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px;align-items:center">
               <span style="font-weight:600;color:var(--ink)">${l.sheet}</span>
@@ -20522,7 +20522,7 @@ function mDuplicateCategory(type){const _s=_L();
   html += '<div style="padding:12px 14px;background:var(--a-dim);border:2px solid var(--a);border-radius:var(--r8);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="_execDuplicate(\''+type+'\',\'__all__\')">';
   html += '<div><div style="font-weight:700;color:var(--a)">⧉ Duplicate Everything</div>';
   html += '<div style="font-size:11px;color:var(--text2);margin-top:2px">All '+items.length+' '+(isInv?'products':'services')+' across '+cats.length+' categories</div></div>';
-  html += '<button class="btn btn-p btn-sm" onclick="event.stopPropagation();_execDuplicate(\''+type+'\',\'__all__\')">Duplicate All</button>';
+  html += '<button class="btn btn-p btn-sm" onclick="event.stopPropagation();_execDuplicate(\''+type+'\',\'__all__\')">${_s.sal_dup_all}</button>';
   html += '</div>';
   // Per category
   cats.forEach(function(cat){
@@ -20609,7 +20609,7 @@ function mEditPurchase(id){const _s=_L();
   modal(`✏️ Edit PO — ${p.id}`,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" type="date" id="ep-dt" value="${p.dt}"/></div>
-    <div class="fg"><label class="fl">Expected Delivery</label><input class="fi" type="date" id="ep-delivery" value="${p.delivery||''}"/></div>
+    <div class="fg"><label class="fl">${_s.po_edit_delivery}</label><input class="fi" type="date" id="ep-delivery" value="${p.delivery||''}"/></div>
     <div class="fg"><label class="fl">${_s.ui_vendor}</label><select class="fs" id="ep-vendor">${vOpts}</select></div>
     <div class="fg"><label class="fl">${_s.po_pay_status}</label><select class="fs" id="ep-st">${stOpts}</select></div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="ep-method">${methodOpts}</select></div>
@@ -20626,7 +20626,7 @@ function mEditPurchase(id){const _s=_L();
     <div class="fg"><label class="fl" style="color:var(--g);font-weight:700">Total Landed Cost <span style="font-size:10px;color:var(--text2);font-weight:400">(${sym})</span></label>
       <input class="fi" type="number" id="ep-total-display" value="${v('total')}" readonly style="background:var(--a-dim);color:var(--g);font-weight:700;cursor:default"/></div>
   </div>
-  <div class="fg"><label class="fl">Items Description</label><textarea class="ft" id="ep-items" style="min-height:55px">${_esc(p.items||'')}</textarea></div>
+  <div class="fg"><label class="fl">${_s.po_items_desc}</label><textarea class="ft" id="ep-items" style="min-height:55px">${_esc(p.items||'')}</textarea></div>
   <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ep-notes" style="min-height:42px">${_esc(p.notes||'')}</textarea></div>`,
   `<button class="btn btn-d btn-sm" onclick="closeModal();deletePurchase('${id}')">🗑 Delete</button>
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
@@ -20733,8 +20733,8 @@ function mEditRental(id){const _s=_L();
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.ui_customer}</label><select class="fs" id="er-cust">${custOpts}</select></div>
     <div class="fg"><label class="fl">${_s.rent_item_lbl}</label><input class="fi" id="er-item" value="${_esc(r.item)}" readonly style="background:var(--bg3);opacity:.7" title="Item cannot be changed — delete and re-create to change item"/></div>
-    <div class="fg"><label class="fl">Start Date</label><input class="fi" type="date" id="er-start" value="${r.start}"/></div>
-    <div class="fg"><label class="fl">Due Date</label><input class="fi" type="date" id="er-due" value="${r.due}"/></div>
+    <div class="fg"><label class="fl">${_s.rpt_start_date}</label><input class="fi" type="date" id="er-start" value="${r.start}"/></div>
+    <div class="fg"><label class="fl">${_s.inv_modal_due}</label><input class="fi" type="date" id="er-due" value="${r.due}"/></div>
     <div class="fg"><label class="fl">Rental Fee <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="er-fee" value="${Math.round((r.fee||0)*CUR.rate)}"/></div>
     <div class="fg"><label class="fl">Deposit <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="er-dep" value="${Math.round((r.dep||0)*CUR.rate)}"/></div>
     <div class="fg"><label class="fl">Amount Paid <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="er-paid" value="${Math.round((r.paid||0)*CUR.rate)}"/></div>
@@ -21016,7 +21016,7 @@ function mARDetail(){const _s=_L();
   modal('📋 Accounts Receivable',`
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding:10px 14px;background:var(--r-dim);border:1px solid rgba(255,96,128,.25);border-radius:var(--r8)">
     <div>
-      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Total AR Outstanding</div>
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">${_s.vc_total_ar}</div>
       <div style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--r)">${fmt(total)}</div>
     </div>
     <div style="display:flex;gap:6px">
@@ -21033,7 +21033,7 @@ function mARDetail(){const _s=_L();
     </div>`).join('')}
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>${_s.ui_customer}</th><th>Phone</th><th>Invoices</th><th>Last Sale</th><th>Age</th><th>${_s.ui_balance}</th><th>${_s.ui_actions}</th></tr></thead>
+    <thead><tr><th>${_s.ui_customer}</th><th<th>${_s.ui_phone}</th><th>${_s.rpt_invoices}</th><th>${_s.vc_last_sale}</th><th>Age</th><th>${_s.ui_balance}</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>
   <div style="font-size:11px;color:var(--text3);margin-top:10px">💡 Write Off removes the balance from AR without deleting the sale record. Use for bad debts or corrections.</div>`,
@@ -21100,19 +21100,19 @@ function _arExportPDF(){
     </div>
   </div>
   <div style="text-align:right;font-size:11px;color:#64748b">
-    <strong style="display:block;font-size:13px;color:#0f172a;font-weight:700;margin-bottom:2px">Accounts Receivable Report</strong>
+    <strong style="display:block;font-size:13px;color:#0f172a;font-weight:700;margin-bottom:2px">${_s.vc_ar_report}</strong>
     Generated ${now}<br>
     ${BIZ.email?_esc(BIZ.email):''}
   </div>
 </div>
-<div class="doc-title">AR Outstanding</div>
+<div class="doc-title">${_s.vc_total_ar}</div>
 <div class="summary">
-  <div class="sum-box"><div class="sum-lbl">Total AR Outstanding</div><div class="sum-val red">${fmt(total)}</div></div>
-  <div class="sum-box"><div class="sum-lbl">Customers with Balance</div><div class="sum-val">${debtors.length}</div></div>
-  <div class="sum-box"><div class="sum-lbl">Avg. Balance</div><div class="sum-val">${fmt(total/debtors.length)}</div></div>
+  <div class="sum-box"><div class="sum-lbl">${_s.vc_total_ar}</div><div class="sum-val red">${fmt(total)}</div></div>
+  <div class="sum-box"><div class="sum-lbl">${_s.vc_cust_bal}</div><div class="sum-val">${debtors.length}</div></div>
+  <div class="sum-box"><div class="sum-lbl">${_s.vc_avg_bal}</div><div class="sum-val">${fmt(total/debtors.length)}</div></div>
 </div>
 <table>
-  <thead><tr><th>${_s.ui_customer}</th><th>${_s.ui_contact}</th><th>Open Invoices</th><th>${_s.cust_col_last}</th><th style="text-align:right">Balance Due</th></tr></thead>
+  <thead><tr><th>${_s.ui_customer}</th><th>${_s.ui_contact}</th><th>${_s.rpt_open_inv}</th><th>${_s.cust_col_last}</th><th style="text-align:right">${_s.rpt_bal_due}</th></tr></thead>
   <tbody>${rows}</tbody>
   <tfoot><tr style="background:#fff7f7;border-top:2px solid ${primary}">
     <td colspan="4" style="padding:10px;font-weight:800;color:#0f172a;font-size:13px">TOTAL AR OUTSTANDING</td>
@@ -21193,11 +21193,11 @@ function _arSendWA(custId){
 
   modal('💬 WhatsApp AR Reminder — '+_esc(c.name),
     '<div style="background:var(--bg3);border-radius:var(--r8);padding:10px 12px;margin-bottom:10px">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Outstanding Invoices</div>'
+    +'<div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${_s.vc_out_inv}</div>'
     +invoiceLines
-    +'<div style="display:flex;justify-content:space-between;padding-top:8px;font-weight:700;font-size:13px"><span>Total Due</span><span style="font-family:var(--mono);color:var(--y)">'+fmt(c.bal)+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;padding-top:8px;font-weight:700;font-size:13px"><span>${_s.vc_total_due}</span><span style="font-family:var(--mono);color:var(--y)">'+fmt(c.bal)+'</span></div>'
     +'</div>'
-    +'<div class="fg"><label class="fl">Message Preview</label>'
+    +'<div class="fg"><label class="fl">${_s.adm_msg_preview}</label>'
     +'<textarea class="ft" id="ar-wa-msg" rows="8" style="font-size:12px;font-family:var(--mono)">'+_esc(msgLines)+'</textarea></div>'
     +'<div style="font-size:11px;color:var(--text2);margin-top:4px">Sending to: '+_esc(c.name)+' ('+ph+')</div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
@@ -21245,7 +21245,7 @@ function _arWriteOffAll(){const _s=_L();
   const total=debtors.reduce((a,c)=>a+c.bal,0);
   const count=debtors.length;
   if(!count){ toast('No AR to write off','info'); return; }
-  modal('Write Off All AR',
+  modal(_s.vc_write_off_all,
     '<p style="font-size:14px;color:var(--ink);margin-bottom:8px">Write off <strong>'+fmt(total)+'</strong> across <strong>'+count+' customer'+(count!==1?'s':'')+'</strong>?</p>'
     +'<div class="alrt alrt-r">This cannot be undone. All customer AR balances will be zeroed. Original records are preserved.</div>',
     '<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_cancel}</button>'
@@ -21279,7 +21279,7 @@ function mAPDetail(){const _s=_L();
       <td><span style="font-family:var(--mono);font-weight:700;color:var(--r)">${fmt(v.bal)}</span></td>
       <td>
         <div class="btn-row">
-          <button class="btn btn-p btn-xs" onclick="closeModal();nav('purchases')" title="View purchases">POs</button>
+          <button class="btn btn-p btn-xs" onclick="closeModal();nav('purchases')" title="${_s.vc_view_purch}">POs</button>
           <button class="btn btn-y btn-xs" onclick="_apWriteOff('${v.id}')" title="Write off balance">✕ Clear</button>
         </div>
       </td>
@@ -21289,13 +21289,13 @@ function mAPDetail(){const _s=_L();
   modal('🏭 Accounts Payable',`
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding:10px 14px;background:var(--r-dim);border:1px solid rgba(255,96,128,.25);border-radius:var(--r8)">
     <div>
-      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Total AP Outstanding</div>
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">${_s.vc_total_ap}</div>
       <div style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--r)">${fmt(total)}</div>
     </div>
     <button class="btn btn-s btn-sm" onclick="closeModal();nav('vendors')">View Vendors →</button>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>${_s.ui_vendor}</th><th>Country</th><th>Terms</th><th>Open POs</th><th>${_s.ui_balance}</th><th>${_s.ui_actions}</th></tr></thead>
+    <thead><tr><th>${_s.ui_vendor}</th><th>${_s.ui_country}</th><th>${_s.rpt_terms}</th><th>${_s.vc_open_po}</th><th>${_s.ui_balance}</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>
   <div style="font-size:11px;color:var(--text3);margin-top:10px">💡 "Clear" marks the balance as settled. Use after recording payment in the vendor's PO.</div>`,
@@ -21306,7 +21306,7 @@ function _apWriteOff(vendorId){const _s=_L();
   const v=D.vendors.find(x=>x.id===vendorId); if(!v||!v.bal) return;
   const amt=v.bal;
   const vendorName=v.name;
-  modal('Clear AP — '+_esc(vendorName),
+  modal(_s.vc_clear_ap+' '+_esc(vendorName),
     '<p style="font-size:14px;color:var(--ink);margin-bottom:8px">Clear <strong>'+fmt(amt)+'</strong> AP balance for <strong>'+_esc(vendorName)+'</strong>?</p>'
     +'<div class="alrt alrt-y">This marks the balance as settled. Use after confirming payment has been made to the vendor.</div>',
     '<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_cancel}</button>'
@@ -21364,14 +21364,14 @@ function mServicesRevenue(){const _s=_L();
 
   modal('✂️ Services Revenue',`
   <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
-    <div class="kpi p" style="padding:11px"><div class="kpi-lbl">Total Revenue</div><div style="font-size:17px;font-weight:800;font-family:var(--mono);color:var(--p)">${fmt(total)}</div></div>
-    <div class="kpi g" style="padding:11px"><div class="kpi-lbl">Completed Appts</div><div style="font-size:17px;font-weight:800;color:var(--g)">${completed.length}</div></div>
-    <div class="kpi b" style="padding:11px"><div class="kpi-lbl">Avg. Per Appt</div><div style="font-size:17px;font-weight:800;font-family:var(--mono);color:var(--a)">${fmt(avgVal)}</div></div>
+    <div class="kpi p" style="padding:11px"><div class="kpi-lbl">${_s.rpt_total_rev}</div><div style="font-size:17px;font-weight:800;font-family:var(--mono);color:var(--p)">${fmt(total)}</div></div>
+    <div class="kpi g" style="padding:11px"><div class="kpi-lbl">${_s.rpt_completed_appts}</div><div style="font-size:17px;font-weight:800;color:var(--g)">${completed.length}</div></div>
+    <div class="kpi b" style="padding:11px"><div class="kpi-lbl">${_s.rpt_avg_per_appt}</div><div style="font-size:17px;font-weight:800;font-family:var(--mono);color:var(--a)">${fmt(avgVal)}</div></div>
   </div>
-  ${topSvc.length>1?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Revenue by Service</div>${svcBreakdown}</div>`:''}
+  ${topSvc.length>1?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${_s.rpt_rev_by_svc}</div>${svcBreakdown}</div>`:''}
   <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Completed Appointments — click row for invoice</div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Ref</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>Service</th><th>Staff</th><th>Duration</th><th>${_s.ui_amount}</th><th></th></tr></thead>
+    <thead><tr><th>Ref</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>${_s.svc_col_name}</th><th>${_s.appt_staff}</th><th>${_s.svc_col_dur}</th><th>${_s.ui_amount}</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
@@ -21649,7 +21649,7 @@ function setReportPeriod(el, period){const _s=_L();
   if(period==='custom'){
     modal('Custom Date Range',`
     <div class="fg-2">
-      <div class="fg"><label class="fl">Start Date</label><input class="fi" type="date" id="rpt-start" value="${PERIOD_RANGES.month.start}"/></div>
+      <div class="fg"><label class="fl">${_s.rpt_start_date}</label><input class="fi" type="date" id="rpt-start" value="${PERIOD_RANGES.month.start}"/></div>
       <div class="fg"><label class="fl">End Date</label><input class="fi" type="date" id="rpt-end" value="${localDateStr()}"/></div>
     </div>`,
     `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
@@ -22413,19 +22413,19 @@ function _renderRentalCalendar(){
 
       <!-- Stats strip -->
       <div class="cal-stats">
-        <div class="cal-stat"><div class="cal-stat-val" style="color:var(--a)">${mActive}</div><div class="cal-stat-lbl">Active</div></div>
-        <div class="cal-stat"><div class="cal-stat-val" style="color:var(--r)">${mOverdue}</div><div class="cal-stat-lbl">Overdue</div></div>
-        <div class="cal-stat"><div class="cal-stat-val" style="color:var(--g)">${fmt(mRev)}</div><div class="cal-stat-lbl">Revenue</div></div>
+        <div class="cal-stat"><div class="cal-stat-val" style="color:var(--a)">${mActive}</div><div class="cal-stat-lbl">${_s.adm_active}</div></div>
+        <div class="cal-stat"><div class="cal-stat-val" style="color:var(--r)">${mOverdue}</div><div class="cal-stat-lbl">${_s.adm_overdue}</div></div>
+        <div class="cal-stat"><div class="cal-stat-val" style="color:var(--g)">${fmt(mRev)}</div><div class="cal-stat-lbl">${_s.rpt_revenue}</div></div>
         <div class="cal-stat"><div class="cal-stat-val" style="color:var(--y)">${D.rentals.filter(r=>!['Returned','Closed'].includes(r.st)).reduce((a,r)=>a+r.dep,0)>0?fmt(D.rentals.filter(r=>!['Returned','Closed'].includes(r.st)).reduce((a,r)=>a+r.dep,0)):'—'}</div><div class="cal-stat-lbl">Deposits</div></div>
       </div>
 
       <!-- Legend -->
       <div class="cal-legend">
         <div class="cal-leg-item"><div class="cal-leg-dot" style="background:rgba(45,212,160,.4);border:1px solid #2dd4a0"></div>Starts</div>
-        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:rgba(91,127,255,.3);border:1px solid rgba(91,127,255,.6)"></div>Active</div>
+        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:rgba(91,127,255,.3);border:1px solid rgba(91,127,255,.6)"></div>${_s.adm_active}</div>
         <div class="cal-leg-item"><div class="cal-leg-dot" style="background:rgba(245,200,66,.3);border:1px solid #f5c842"></div>Due</div>
-        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:rgba(255,95,122,.3);border:1px solid #ff5f7a"></div>Overdue</div>
-        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:var(--p);border-radius:50%;width:9px;height:9px"></div>Today</div>
+        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:rgba(255,95,122,.3);border:1px solid #ff5f7a"></div>${_s.adm_overdue}</div>
+        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:var(--p);border-radius:50%;width:9px;height:9px"></div>${_s.appt_today}</div>
       </div>
 
       <!-- Day names -->
@@ -22487,14 +22487,14 @@ function mViewPurchase(id){const _s=_L();
   modal(`📦 Purchase Order — ${p.id}`,`
   <!-- Cost summary tiles -->
   <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;gap:8px">
-    <div class="kpi b" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Subtotal</div>
+    <div class="kpi b" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.ui_subtotal}</div>
       <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--a)">${fmt(p.sub)}</div></div>
-    <div class="kpi y" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Landed Costs</div>
+    <div class="kpi y" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.po_view_landed}</div>
       <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--y)">${fmt(landedCosts)}</div>
       <div style="font-size:10px;color:var(--text2)">${landedPct}% of sub</div></div>
     <div class="kpi g" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.po_landed}</div>
       <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(p.total)}</div></div>
-    <div class="kpi" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Status</div>
+    <div class="kpi" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.ui_status}</div>
       <div style="margin-top:4px">${badge(p.st)}</div></div>
   </div>
   <!-- Details grid -->
@@ -22503,14 +22503,14 @@ function mViewPurchase(id){const _s=_L();
     <div><div class="fl">${_s.po_col_date}</div><div style="font-size:13px;color:var(--text)">${p.dt}</div></div>
     ${p.delivery?`<div><div class="fl">${_s.po_delivery}</div><div style="font-size:13px;color:var(--text)">${p.delivery}</div></div>`:''}
     <div><div class="fl">${_s.ui_pay_method}</div><div style="font-size:12px;color:var(--text)">${_esc(p.method||'—')}</div></div>
-    ${p.freight>0?`<div><div class="fl">Freight</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.freight)}</div></div>`:''}
-    ${p.duties>0?`<div><div class="fl">Import Duties</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.duties)}</div></div>`:''}
-    ${p.taxes>0?`<div><div class="fl">Taxes</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.taxes)}</div></div>`:''}
-    ${p.other>0?`<div><div class="fl">Other Costs</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.other)}</div></div>`:''}
+    ${p.freight>0?`<div><div class="fl">${_s.po_view_freight}</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.freight)}</div></div>`:''}
+    ${p.duties>0?`<div><div class="fl">${_s.po_view_duties}</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.duties)}</div></div>`:''}
+    ${p.taxes>0?`<div><div class="fl">${_s.po_view_taxes}</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.taxes)}</div></div>`:''}
+    ${p.other>0?`<div><div class="fl">${_s.po_view_other}</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.other)}</div></div>`:''}
   </div>
-  <div class="fl" style="margin-bottom:6px">Items Ordered</div>
+  <div class="fl" style="margin-bottom:6px">${_s.po_view_items}</div>
   <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);padding:12px;font-size:13px;color:var(--text);white-space:pre-line;line-height:1.6;margin-bottom:${p.notes?'12px':'0'}">${_esc(p.items||'—')}</div>
-  ${p.notes?`<div class="fl" style="margin-bottom:4px;margin-top:10px">Notes</div><div style="font-size:12px;color:var(--text2)">${_esc(p.notes)}</div>`:''}`,
+  ${p.notes?`<div class="fl" style="margin-bottom:4px;margin-top:10px">${_s.ui_notes}</div><div style="font-size:12px;color:var(--text2)">${_esc(p.notes)}</div>`:''}`,
 
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mEditPurchase('${p.id}')">✏ Edit</button>
@@ -23044,21 +23044,21 @@ function exportPnLPDF(){
   const body=`
     <div class="doc-title">Profit &amp; Loss Statement &mdash; ${period}</div>
     <div class="summary" style="grid-template-columns:repeat(4,1fr)">
-      <div class="sum-box"><div class="sum-lbl">Total Revenue</div><div class="sum-val blue">${fmt(k.rev)}</div></div>
-      <div class="sum-box"><div class="sum-lbl">Gross Profit</div><div class="sum-val green">${fmt(k.gp)}</div></div>
-      <div class="sum-box"><div class="sum-lbl">Net Profit</div><div class="sum-val ${k.np>=0?'green':'red'}">${fmt(k.np)}</div></div>
-      <div class="sum-box"><div class="sum-lbl">GP Margin</div><div class="sum-val blue">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.rpt_total_rev}</div><div class="sum-val blue">${fmt(k.rev)}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.rpt_gp}</div><div class="sum-val green">${fmt(k.gp)}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.rpt_np}</div><div class="sum-val ${k.np>=0?'green':'red'}">${fmt(k.np)}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.rpt_gp_margin}</div><div class="sum-val blue">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</div></div>
     </div>
     <table>
-      <thead><tr><th>Line Item</th><th class="num">Amount</th></tr></thead>
+      <thead><tr><th>${_s.po_view_li}</th><th class="num">${_s.ui_amount}</th></tr></thead>
       <tbody>
         <tr><td>Sales Revenue</td><td class="num blue">${fmt(k.saleRev)}</td></tr>
         <tr><td>Rental Revenue</td><td class="num blue">${fmt(k.rentRev)}</td></tr>
-        <tr style="border-top:2px solid #e5e7eb"><td><strong>Total Revenue</strong></td><td class="num blue"><strong>${fmt(k.rev)}</strong></td></tr>
+        <tr style="border-top:2px solid #e5e7eb"><td><strong>${_s.rpt_total_rev}</strong></td><td class="num blue"><strong>${fmt(k.rev)}</strong></td></tr>
         <tr><td>&nbsp;&nbsp;Less: Cost of Goods Sold (COGS)</td><td class="num red">(${fmt(k.cogs)})</td></tr>
-        <tr style="border-top:1px solid #e5e7eb"><td><strong>Gross Profit</strong> &nbsp;<span style="font-size:11px;color:#6b7280">${k.rev>0?Math.round(k.gp/k.rev*100):0}% margin</span></td><td class="num green"><strong>${fmt(k.gp)}</strong></td></tr>
+        <tr style="border-top:1px solid #e5e7eb"><td><strong>${_s.rpt_gp}</strong> &nbsp;<span style="font-size:11px;color:#6b7280">${k.rev>0?Math.round(k.gp/k.rev*100):0}% margin</span></td><td class="num green"><strong>${fmt(k.gp)}</strong></td></tr>
         <tr><td>&nbsp;&nbsp;Less: Operating Expenses</td><td class="num red">(${fmt(k.oh||0)})</td></tr>
-        <tr style="border-top:2px solid #1e293b;background:#f8fafc"><td><strong>Net Profit</strong> &nbsp;<span style="font-size:11px;color:#6b7280">${k.rev>0?Math.round(k.np/k.rev*100):0}% margin</span></td><td class="num ${k.np>=0?'green':'red'}"><strong>${fmt(k.np)}</strong></td></tr>
+        <tr style="border-top:2px solid #1e293b;background:#f8fafc"><td><strong>${_s.rpt_np}</strong> &nbsp;<span style="font-size:11px;color:#6b7280">${k.rev>0?Math.round(k.np/k.rev*100):0}% margin</span></td><td class="num ${k.np>=0?'green':'red'}"><strong>${fmt(k.np)}</strong></td></tr>
         <tr style="background:#f8fafc"><td>Accounts Receivable (owed to you)</td><td class="num ${k.ar>0?'red':''}">${fmt(k.ar)}</td></tr>
         <tr style="background:#f8fafc"><td>Accounts Payable (owed by you)</td><td class="num ${k.ap>0?'red':''}">${fmt(k.ap)}</td></tr>
         <tr style="background:#f8fafc"><td>Inventory Value</td><td class="num blue">${fmt(k.invVal)}</td></tr>
@@ -23279,7 +23279,7 @@ function _showTrialPaywall(daysLeft, hardBlock){const _s=_L();
         +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--a);font-family:var(--mono)">'+salesCount+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${_s.acc_row_sales}</div></div>'
         +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--g);font-family:var(--mono)">'+custCount+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Customers</div></div>'
         +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--p);font-family:var(--mono)">'+invCount+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Products</div></div>'
-        +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:15px;font-weight:800;color:var(--g);font-family:var(--mono)">'+fmtKpi(totalRev)+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Revenue</div></div>'
+        +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:15px;font-weight:800;color:var(--g);font-family:var(--mono)">'+fmtKpi(totalRev)+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${_s.rpt_revenue}</div></div>'
       +'</div>'
       +'<div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:8px;padding:10px 12px;font-size:12px;color:#dc2626;margin-bottom:14px">\u26a0\ufe0f '+accessMsg+'</div>'
       +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Upgrade to keep full access</div>'
@@ -23350,7 +23350,7 @@ function mPayVendor(vendorId){const _s=_L();
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
       <select class="fs" id="vp-method">
         <option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option>
-        <option>Mobile Money</option><option>${_s.ui_cheque}</option><option>Card</option>
+        <option>${_s.adm_mobile_money}</option><option>${_s.ui_cheque}</option><option>Card</option>
       </select></div>
     <div class="fg"><label class="fl">Reference / Note</label>
       <input class="fi" id="vp-ref" placeholder="e.g. Bank ref, receipt no…"/></div>
@@ -23717,7 +23717,7 @@ function _apptCalHTML(){
       ${a.staffName?`<div style="font-size:10px;color:var(--text2)">👤 ${a.staffName}</div>`:''}
       <div style="display:flex;gap:4px;margin-top:5px">
         <button class="btn btn-g btn-xs" onclick="event.stopPropagation();mViewAppt('${a.id}')">${_s.ui_view}</button>
-        ${a.st==='Completed'?`<button class="btn btn-p btn-xs" onclick="event.stopPropagation();_apptCheckout('${a.id}')">Checkout</button>`:''}
+        ${a.st==='Completed'?`<button class="btn btn-p btn-xs" onclick="event.stopPropagation();_apptCheckout('${a.id}')">${_s.appt_checkout}</button>`:''}
       </div>
     </div>`).join('')}
     <button class="btn btn-s btn-sm" style="width:100%;margin-top:2px" onclick="mNewAppt('${sd}')">+ Add</button>`
@@ -23733,7 +23733,7 @@ function _apptListHTML(){const _s=_L();
     <div class="btn-row">
       <input class="fi-s" id="al-q" placeholder="Search name, service…" style="width:160px" oninput="_apptFilter()"/>
       <select class="sel" id="al-st" onchange="_apptFilter()" style="font-size:12px">
-        <option value="">All Status</option>
+        <option value="">${_s.adm_all_status2}</option>
         <option>${_s.rent_st_reserved}</option><option>Confirmed</option><option>In Progress</option>
         <option>${_s.ui_st_completed}</option><option>No-Show</option><option>${_s.ui_st_cancelled}</option>
       </select>
@@ -23742,7 +23742,7 @@ function _apptListHTML(){const _s=_L();
     </div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>ID</th><th>Date & Time</th><th>${_s.ui_customer}</th><th>Service</th><th>Staff</th><th>${_s.ui_status}</th><th>${_s.ui_amount}</th><th>${_s.ui_actions}</th></tr></thead>
+    <thead><tr><th>ID</th><th>Date & Time</th><th>${_s.ui_customer}</th><th>${_s.svc_col_name}</th><th>${_s.appt_staff}</th><th>${_s.ui_status}</th><th>${_s.ui_amount}</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody id="al-tbody">
     ${appts.map(a=>`<tr data-st="${a.st}" data-dt="${a.date}" data-q="${_esc((a.custName+' '+a.serviceName+' '+(a.staffName||'')).toLowerCase())}" style="cursor:pointer" onclick="mViewAppt('${a.id}')">
       <td>
@@ -23949,7 +23949,7 @@ function _apptCancelNewCust(){
   const form=document.getElementById('na-new-cust-form');
   if(form) form.style.display='none';
 }
-function pgAppointments(){
+function pgAppointments(){const _s=_L();
   var today     = localDateStr();
   var appts     = D.appointments || [];
   var todayList = appts.filter(function(a){return a.date===today && a.st!=='Cancelled';});
@@ -24002,7 +24002,7 @@ function pgAppointments(){
 
   return '<div class="ph">'
     +'<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>${_ui.nav_appointments}</span></div>'
-    +'<div class="ph-row"><h1>Appointments</h1>'
+    +'<div class="ph-row"><h1>${_s.appt_title}</h1>'
     +'<div class="btn-row">'
     +'<button class="btn btn-s btn-sm" onclick="_togApptView()">'+(_apptView==='calendar'?'📋 List':'📅 Calendar')+'</button>'
     +'<button class="btn btn-s btn-sm" onclick="_apptBulkConfirm()">✓ Confirm All</button>'
@@ -24016,23 +24016,23 @@ function pgAppointments(){
 
     // Today → filters list to today
     +'<div class="kpi c" style="cursor:pointer" onclick="_togApptView(\'list\',\'today\')" title="View today\'s appointments">'
-      +'<div class="kpi-lbl">Today</div>'
+      +'<div class="kpi-lbl">${_s.appt_today}</div>'
       +'<div class="kpi-val c">'+todayList.length+'</div>'
       +'<div class="kpi-sub">'+(todayList.length ? todayList.filter(a=>a.st==='Completed').length+' done · '+todayList.filter(a=>a.st!=='Completed'&&a.st!=='Cancelled').length+' remaining' : 'Nothing booked')+'</div>'
     +'</div>'
 
     // Upcoming → filters list to future non-cancelled
-    +'<div class="kpi b" style="cursor:pointer" onclick="_togApptView(\'list\',\'upcoming\')" title="View upcoming appointments">'
-      +'<div class="kpi-lbl">Upcoming</div>'
+    +'<div class="kpi b" style="cursor:pointer" onclick="_togApptView(\'list\',\'upcoming\')" title="${_s.appt_view_up}">'
+      +'<div class="kpi-lbl">${_s.appt_upcoming}</div>'
       +'<div class="kpi-val b">'+upcoming.length+'</div>'
       +'<div class="kpi-sub">Next 30 days</div>'
     +'</div>'
 
     // Pending confirmation → filters to Reserved
-    +'<div class="kpi p" style="cursor:pointer" onclick="_togApptView(\'list\',\'pending\')" title="View appointments needing confirmation">'
+    +'<div class="kpi p" style="cursor:pointer" onclick="_togApptView(\'list\',\'pending\')" title="${_s.appt_view_confirm}">'
       +'<div class="kpi-lbl">${_s.ui_st_pending}</div>'
       +'<div class="kpi-val p">'+pending.length+'</div>'
-      +'<div class="kpi-sub">Needs confirmation</div>'
+      +'<div class="kpi-sub">${_s.appt_confirm_tab}</div>'
     +'</div>'
 
     // Completed → opens revenue breakdown modal
@@ -24043,7 +24043,7 @@ function pgAppointments(){
     +'</div>'
 
     // Revenue KPI — avg per appointment
-    +'<div class="kpi y" style="cursor:pointer" onclick="mServicesRevenue()" title="View revenue details">'
+    +'<div class="kpi y" style="cursor:pointer" onclick="mServicesRevenue()" title="${_s.appt_view_rev}">'
       +'<div class="kpi-lbl">Avg / Appt</div>'
       +'<div class="kpi-val y">'+fmtKpi(avgRev)+'</div>'
       +'<div class="kpi-sub">'+(completed.length?completed.length+' completed':'—')+'</div>'
@@ -24051,7 +24051,7 @@ function pgAppointments(){
 
     // No-shows → filters list
     +'<div class="kpi r" style="cursor:pointer" onclick="_togApptView(\'list\',\'no-show\')" title="View no-show appointments">'
-      +'<div class="kpi-lbl">No-Shows</div>'
+      +'<div class="kpi-lbl">${_s.appt_no_show}</div>'
       +'<div class="kpi-val r">'+noShows.length+'</div>'
       +'<div class="kpi-sub">'+noShowRate+'% rate</div>'
     +'</div>'
@@ -24152,12 +24152,12 @@ async function _applyPriceFix(){
 }
 
 // ── BOOKING PAGE SETTINGS ─────────────────────────────────────
-function pgBookingSettings(){
+function pgBookingSettings(){const _s=_L();
   const link = (window.location.origin||'https://shoptrack.org')+'/booking.html?biz='+(SESSION.bizId||'');
   return `
 <div class="ph">
-  <div class="bc">${BIZ.name||'ShopTrack'} / <span>Booking Page</span></div>
-  <div class="ph-row"><h1>Booking Page</h1></div>
+  <div class="bc">${BIZ.name||'ShopTrack'} / <span>${_s.book_page}</span></div>
+  <div class="ph-row"><h1>${_s.book_page}</h1></div>
   <p>Share your booking link so clients can book appointments online — 24/7, from any device.</p>
 </div>
 <div class="g2">
@@ -24175,13 +24175,13 @@ function pgBookingSettings(){
   <div class="card">
     <div class="card-hd"><div class="card-ttl">⚙ Settings</div></div>
     <div class="fg">
-      <label class="fl">Confirmation Message</label>
-      <textarea class="ft" id="bk-note" rows="3" placeholder="Message shown to client after booking">${BIZ.bookingNote||'Thank you for booking with us! We look forward to seeing you.'}</textarea>
+      <label class="fl">${_s.book_confirm_msg}</label>
+      <textarea class="ft" id="bk-note" rows="3" placeholder="${_s.book_confirm_msg}">${BIZ.bookingNote||'Thank you for booking with us! We look forward to seeing you.'}</textarea>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border)">
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--ink)">Accept Online Bookings</div>
-        <div style="font-size:11px;color:var(--text2)">Clients can book via your link</div>
+        <div style="font-size:13px;font-weight:600;color:var(--ink)">${_s.book_accept}</div>
+        <div style="font-size:11px;color:var(--text2)">${_s.book_clients_can}</div>
       </div>
       <input type="checkbox" id="bk-enabled" ${BIZ.bookingsEnabled!==false?'checked':''} style="width:18px;height:18px;accent-color:var(--a);cursor:pointer"/>
     </div>
@@ -24189,25 +24189,25 @@ function pgBookingSettings(){
   </div>
 </div>
 <div class="card" style="margin-top:0">
-  <div class="card-hd"><div class="card-ttl">How It Works</div></div>
+  <div class="card-hd"><div class="card-ttl">${_s.book_how}</div></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
     ${[['1️⃣','Share your link','Post on WhatsApp, Instagram or anywhere clients find you.'],['2️⃣','Client selects','They pick a service, date and available time slot.'],['3️⃣','Instant booking','Appointment appears in your calendar immediately.'],['4️⃣','Confirm & remind','Send WhatsApp confirmation in one tap.']].map(([n,t,d])=>'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px"><div style="font-size:20px;margin-bottom:5px">'+n+'</div><div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:3px">'+t+'</div><div style="font-size:12px;color:var(--text2)">'+d+'</div></div>').join('')}
   </div>
 </div>`;
 }
 
-function pgServices(){
+function pgServices(){const _s=_L();
   var activeCats=[...new Set((D.services||[]).filter(function(s){return s.cat;}).map(function(s){return s.cat;}))].sort();
   var out = '';
 
   // ── Page header ───────────────────────────────────────────
   out += '<div class="ph">';
   out += '<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>${_ui.nav_services}</span></div>';
-  out += '<div class="ph-row"><h1>Services</h1><div class="btn-row">';
+  out += '<div class="ph-row"><h1>${_s.svc_title}</h1><div class="btn-row">';
   out += '<button class="btn btn-s btn-sm" onclick="_syncServicesToCloud()" title="Save all services to cloud so they appear on your booking page">\u2601 Sync to Cloud</button>';
   out += '<button class="btn btn-g btn-sm" onclick="_fixServicePrices()" title="Detect and fix prices that appear wrong on the booking page">🔧 Fix Prices</button>';
   out += '<button class="btn btn-g btn-sm" onclick="mDuplicateCategory(\'svc\')">⧉ Duplicate Category</button>';
-  out += '<button class="btn btn-p btn-sm" onclick="mNewService()">+ Add Service</button>';
+  out += '<button class="btn btn-p btn-sm" onclick="mNewService()">${_s.svc_add}</button>';
   out += '</div></div>';
   out += '<p>Your service catalog \u2014 manage pricing, duration, categories, and your booking page</p>';
   if(activeCats.length>1){
@@ -24224,7 +24224,7 @@ function pgServices(){
   if(!D.services.length){
     out += '<div class="card" style="text-align:center;padding:56px 24px">';
     out += '<div style="font-size:52px;margin-bottom:14px">\u2702\ufe0f</div>';
-    out += '<div style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px">No services yet</div>';
+    out += '<div style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px">${_s.svc_no_services}</div>';
     out += '<div style="color:var(--text2);margin-bottom:20px">Add your services so clients can book appointments online</div>';
     out += '<button class="btn btn-p" onclick="mNewService()">+ Add Your First Service</button>';
     out += '</div>';
@@ -24267,7 +24267,7 @@ function pgServices(){
       card += '<div style="width:100%;height:160px;overflow:hidden;flex-shrink:0;position:relative;">';
       card += '<img src="'+s.imgDataUrl+'" style="width:100%;height:100%;object-fit:cover;display:block;"/>';
       // Inactive overlay
-      if(inactive) card += '<div style="position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(0,0,0,.5);padding:4px 10px;border-radius:20px">Inactive</span></div>';
+      if(inactive) card += '<div style="position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(0,0,0,.5);padding:4px 10px;border-radius:20px">${_s.adm_inactive}</span></div>';
       card += '</div>';
     } else {
       // Decorative coloured band
@@ -24281,8 +24281,8 @@ function pgServices(){
     card += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">';
     card += '<div style="font-size:15px;font-weight:800;color:var(--ink);line-height:1.3;flex:1;min-width:0">'+_esc(s.name)+'</div>';
     var statusBadge = inactive
-      ? '<span style="flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;background:var(--r-dim);color:var(--r);padding:3px 7px;border-radius:10px">Inactive</span>'
-      : '<span style="flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;background:#dcfce7;color:#166534;padding:3px 7px;border-radius:10px">Active</span>';
+      ? '<span style="flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;background:var(--r-dim);color:var(--r);padding:3px 7px;border-radius:10px">${_s.adm_inactive}</span>'
+      : '<span style="flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;background:#dcfce7;color:#166534;padding:3px 7px;border-radius:10px">${_s.adm_active}</span>';
     card += statusBadge;
     card += '</div>';
 
@@ -24368,15 +24368,15 @@ function mEditAppt(id){const _s=_L();
   var stList=['Reserved','Confirmed','In Progress','Completed','No-Show','Cancelled'].map(function(s){return '<option'+(s===a.st?' selected':'')+'>'+s+'</option>';}).join('');
   modal('\u270F Edit \u2014 '+a.id,
     '<div class="fg-2">'
-    +'<div class="fg"><label class="fl">Service</label><select class="fs" id="ea-svc" onchange="_eaSync()">'+svcOpts+'</select></div>'
+    +'<div class="fg"><label class="fl">${_s.appt_service}</label><select class="fs" id="ea-svc" onchange="_eaSync()">'+svcOpts+'</select></div>'
     +'<div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" id="ea-date" type="date" value="'+a.date+'"/></div>'
     +'<div class="fg"><label class="fl">${_s.rent_start_lbl}</label><input class="fi" id="ea-st" type="time" value="'+(a.startTime||'09:00')+'" oninput="_eaSync()"/></div>'
     +'<div class="fg"><label class="fl">End</label><input class="fi" id="ea-et" type="time" value="'+(a.endTime||'')+'" readonly style="background:var(--bg3);color:var(--text2)"/></div>'
     +'</div>'
-    +'<div class="fg">'+_newCustBtnHTML('ea')+'<select class="fs" id="ea-cust"><option value="">Walk-in</option>'+custOpts+'</select>'+_inlineCustFormHTML('ea')+'</div>'
+    +'<div class="fg">'+_newCustBtnHTML('ea')+'<select class="fs" id="ea-cust"><option value="">${_s.appt_walkin}</option>'+custOpts+'</select>'+_inlineCustFormHTML('ea')+'</div>'
     +'<div class="fg-2">'
     +'<div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="ea-phone" value="'+(a.custPhone||'')+'"/></div>'
-    +'<div class="fg"><label class="fl">Staff</label><select class="fs" id="ea-staff"><option value="">Any</option>'+stfOpts+'</select></div>'
+    +'<div class="fg"><label class="fl">${_s.appt_staff}</label><select class="fs" id="ea-staff"><option value="">Any</option>'+stfOpts+'</select></div>'
     +'<div class="fg"><label class="fl">Amount ('+CUR.symbol+')</label><input class="fi" id="ea-amt" type="number" value="'+Math.round((a.totalAmt||0)*CUR.rate*100)/100+'" step="0.01" oninput="this._t=true"/></div>'
     +'<div class="fg"><label class="fl">${_s.ui_status}</label><select class="fs" id="ea-status">'+stList+'</select></div>'
     +'</div>'
@@ -24429,9 +24429,9 @@ function mCancelAppt(id){const _s=_L();
   modal('\u274C Cancel \u2014 '+a.custName,
     '<div class="alrt alrt-r" style="margin-bottom:12px">Cancel <strong>'+a.serviceName+'</strong> for <strong>'+a.custName+'</strong> on '+a.date+' at '+_timeLabel(a.startTime)+'?</div>'
     +'<div class="fg"><label class="fl">${_s.inv_reason}</label>'
-    +'<select class="fs" id="ca-reason"><option value="">No reason</option>'
-    +'<option>Client requested</option><option>No-show</option><option>Staff unavailable</option>'
-    +'<option>Rescheduled</option><option>${_s.po_other}</option></select></div>'
+    +'<select class="fs" id="ca-reason"><option value="">${_s.appt_no_reason}</option>'
+    +'<option>${_s.appt_client_req}</option><option>${_s.appt_noshow}</option><option>${_s.appt_staff_unavail}</option>'
+    +'<option>${_s.appt_reschedule}</option><option>${_s.po_other}</option></select></div>'
     +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:8px">'
     +'<input type="checkbox" id="ca-noshow" style="accent-color:var(--r)"/> Mark as No-Show</label>',
     '<button class="btn btn-s" onclick="closeModal()">Keep</button>'
@@ -24453,10 +24453,10 @@ function mRescheduleAppt(id){const _s=_L();
   modal('\uD83D\uDD04 Reschedule \u2014 '+a.custName,
     '<div class="alrt alrt-b" style="margin-bottom:12px">Currently: <strong>'+a.date+'</strong> at <strong>'+_timeLabel(a.startTime)+'</strong></div>'
     +'<div class="fg-2">'
-    +'<div class="fg"><label class="fl">New Date</label><input class="fi" id="rs-date" type="date" value="'+a.date+'"/></div>'
-    +'<div class="fg"><label class="fl">New Start</label><input class="fi" id="rs-st" type="time" value="'+(a.startTime||'09:00')+'" oninput="_rsSync(\''+id+'\')"/></div>'
-    +'<div class="fg"><label class="fl">New End</label><input class="fi" id="rs-et" type="time" value="'+(a.endTime||'')+'" readonly style="background:var(--bg3);color:var(--text2)"/></div>'
-    +'<div class="fg"><label class="fl">Staff</label><select class="fs" id="rs-staff" onchange="_rsSync(\''+id+'\')"><option value="">Any</option>'+stfOpts+'</select></div>'
+    +'<div class="fg"><label class="fl">${_s.appt_edit_newdate}</label><input class="fi" id="rs-date" type="date" value="'+a.date+'"/></div>'
+    +'<div class="fg"><label class="fl">${_s.appt_edit_newstart}</label><input class="fi" id="rs-st" type="time" value="'+(a.startTime||'09:00')+'" oninput="_rsSync(\''+id+'\')"/></div>'
+    +'<div class="fg"><label class="fl">${_s.appt_edit_newend}</label><input class="fi" id="rs-et" type="time" value="'+(a.endTime||'')+'" readonly style="background:var(--bg3);color:var(--text2)"/></div>'
+    +'<div class="fg"><label class="fl">${_s.appt_staff}</label><select class="fs" id="rs-staff" onchange="_rsSync(\''+id+'\')"><option value="">Any</option>'+stfOpts+'</select></div>'
     +'</div>'
     +'<div class="fg"><label class="fl">${_s.inv_reason}</label><input class="fi" id="rs-reason" placeholder="e.g. Client request\u2026"/></div>'
     +'<div id="rs-conflict" style="display:none;margin-top:8px" class="alrt alrt-y"></div>',
@@ -24534,7 +24534,7 @@ async function mNewService(){const _s=_L();
   if(!D.svcCats||!D.svcCats.length) D.svcCats=['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
   modal('🛠 New Service',`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Service Name</label><input class="fi" id="sv-nm" placeholder="e.g. Interior Consultation, Haircut…"/></div>
+    <div class="fg"><label class="fl">${_s.svc_name_ph}</label><input class="fi" id="sv-nm" placeholder="e.g. Interior Consultation, Haircut…"/></div>
     <div class="fg"><label class="fl">${_s.ui_category}</label>
       <div id="sv-cat-wrap" style="position:relative"></div>
       <input type="hidden" id="sv-cat" value=""/>
@@ -24542,11 +24542,11 @@ async function mNewService(){const _s=_L();
   </div>
   <div class="fg-2">
     <div class="fg"><label class="fl">Duration (min) <span style="font-size:10px;color:var(--text3);font-weight:400">0 = TBD</span></label><input class="fi" id="sv-du" type="number" value="60" min="0" step="5" oninput="_svSyncTotal()" placeholder="0 = TBD"/></div>
-    <div class="fg"><label class="fl">Colour</label><input class="fi" id="sv-cl" type="color" value="#4361ee" style="height:40px;cursor:pointer"/></div>
+    <div class="fg"><label class="fl">${_s.svc_colour}</label><input class="fi" id="sv-cl" type="color" value="#4361ee" style="height:40px;cursor:pointer"/></div>
   </div>
   <div class="fg-2">
     <div class="fg">
-      <label class="fl">Pricing Model</label>
+      <label class="fl">${_s.svc_price_model}</label>
       <select class="fs" id="sv-pt" onchange="_svPtChange()">${ptOpts}</select>
       <div id="sv-pt-hint" style="font-size:11px;color:var(--text2);margin-top:4px">${_ptHint('flat')}</div>
     </div>
@@ -24595,7 +24595,7 @@ async function mEditSvc(id){const _s=_L();
   if(!D.svcCats||!D.svcCats.length) D.svcCats=['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
   modal('✏ Edit — '+s.name,`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Service Name</label><input class="fi" id="sv-nm" value="${_esc(s.name)}"/></div>
+    <div class="fg"><label class="fl">${_s.svc_name_ph}</label><input class="fi" id="sv-nm" value="${_esc(s.name)}"/></div>
     <div class="fg"><label class="fl">${_s.ui_category}</label>
       <div id="sv-cat-wrap" style="position:relative"></div>
       <input type="hidden" id="sv-cat" value="${_esc(sCat)}"/>
@@ -24603,11 +24603,11 @@ async function mEditSvc(id){const _s=_L();
   </div>
   <div class="fg-2">
     <div class="fg"><label class="fl">Duration (min) <span style="font-size:10px;color:var(--text3);font-weight:400">0 = TBD</span></label><input class="fi" id="sv-du" type="number" value="${s.duration}" min="0" step="5" oninput="_svSyncTotal()" placeholder="0 = TBD"/></div>
-    <div class="fg"><label class="fl">Colour</label><input class="fi" id="sv-cl" type="color" value="${s.color||'#4361ee'}" style="height:40px;cursor:pointer"/></div>
+    <div class="fg"><label class="fl">${_s.svc_colour}</label><input class="fi" id="sv-cl" type="color" value="${s.color||'#4361ee'}" style="height:40px;cursor:pointer"/></div>
   </div>
   <div class="fg-2">
     <div class="fg">
-      <label class="fl">Pricing Model</label>
+      <label class="fl">${_s.svc_price_model}</label>
       <select class="fs" id="sv-pt" onchange="_svPtChange()">${ptOpts}</select>
       <div id="sv-pt-hint" style="font-size:11px;color:var(--text2);margin-top:4px">${_ptHint(pt)}</div>
     </div>
@@ -24619,7 +24619,7 @@ async function mEditSvc(id){const _s=_L();
   </div>
   <div class="fg"><label class="fl">${_s.ui_description}</label><textarea class="ft" id="sv-ds" rows="2">${s.desc||''}</textarea></div>
   <div class="fg">${_costBreakdownHTML('cs', s.costLines||[])}</div>
-  ${stO?`<div class="fg"><label class="fl">Staff</label><div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:var(--bg3);border-radius:var(--r6)" id="sv-stl">${stO}</div></div>`:''}
+  ${stO?`<div class="fg"><label class="fl">${_s.appt_staff}</label><div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:var(--bg3);border-radius:var(--r6)" id="sv-stl">${stO}</div></div>`:''}
   <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:6px"><input type="checkbox" id="sv-ac" ${s.active!==false?'checked':''} style="accent-color:var(--a)"/> Active</label>
   <div class="fg" style="margin-top:10px">
     <label class="fl">Service Photo <span style="font-size:10px;color:var(--text2)">(shown on booking page)</span></label>
@@ -24738,18 +24738,18 @@ function _delSvc(id){const _s=_L();
     var apptRows=futureAppts.slice(0,4).map(function(a){
       return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><strong>'+a.id+'</strong> — '+_esc(a.custName)+' · '+a.date+'</div>';
     }).join('');
-    modal('Cannot Delete Service',
+    modal(_s.svc_cant_del,
       '<div class="alrt alrt-r" style="margin-bottom:10px"><strong>'+_esc(svc.name)+'</strong> has '+futureAppts.length+' upcoming appointment'+(futureAppts.length!==1?'s':'')+'.</div>'+
       '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Cancel or reschedule all upcoming appointments first.</p>'+
       '<div>'+apptRows+'</div>',
       '<button class="btn btn-s" onclick="closeModal()">OK</button>'+
-      '<button class="btn btn-p btn-sm" id="go-appts-btn">View Appointments</button>');
+      '<button class="btn btn-p btn-sm" id="go-appts-btn">${_s.appt_title}</button>');
     setTimeout(function(){ var b=document.getElementById('go-appts-btn'); if(b) b.onclick=function(){closeModal();nav('appointments');}; },30);
     return;
   }
   var historyNote=allAppts.length?'<p style="font-size:12px;color:var(--text3);margin-top:8px">'+allAppts.length+' completed appointment record'+(allAppts.length!==1?'s':'')+' will keep the service name for history.</p>':'';
   var mid=id, mname=svc.name;
-  modal('Delete Service — '+_esc(svc.name),
+  modal(_s.svc_del_title+' '+_esc(svc.name),
     '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(svc.name)+'</strong>? This cannot be undone.</p>'+historyNote,
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
     '<button class="btn btn-d" id="confirm-del-svc-btn">${_s.ui_delete}</button>');
@@ -25200,7 +25200,7 @@ function _L(){
     set_n_waAR_d:      fr ? "Envoyer WA au client avec facture impayée" : 'Prompt to send WA to customer with unpaid invoice',
     set_con_title:     fr ? '📋 Modèle de Contrat de Location' : '📋 Rental Contract Template',
     set_con_enable:    fr ? 'Activer les contrats'        : 'Enable contracts',
-    set_con_hint:      fr ? "Quand activé, un bouton <strong>Générer le Contrat</strong> apparaît sur chaque location. Les contrats sont pré-remplis et peuvent être signés sur n'importe quel appareil." : 'When enabled, a <strong>Generate Contract</strong> button appears on every rental. Contracts are pre-filled with rental details and can be signed on any device.',
+    set_con_hint:      fr ? "Quand activé, un bouton <strong>Générer le Contrat</strong> apparaît sur chaque location. Les contrats sont pré-remplis et peuvent être signés sur n'importe quel appareil." : 'When enabled, a <strong>${_s.rent_btn_contract}</strong> button appears on every rental. Contracts are pre-filled with rental details and can be signed on any device.',
     set_con_ph_title:  fr ? '📌 Paramètres disponibles — remplacés automatiquement à la génération :' : '📌 Available placeholders — these are replaced automatically when generating a contract:',
     set_con_title_lbl: fr ? 'Titre du Contrat'           : 'Contract Title',
     set_con_title_ph:  fr ? 'ex. Contrat de Location'    : 'e.g. Rental Agreement',
@@ -25779,8 +25779,441 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     inv_cat_name_lbl:    fr ? 'Nom de Catégorie *'           : 'Category Name *',
     set_stripe_note_inner: fr ? 'Paiements sécurisés via Stripe.' : 'Secure payments via Stripe.',
     inv_edit_photos_use2: fr ? 'pour ajouter des photos'    : 'to add photos',
-    set_stripe_note:     fr ? '🔒 <strong>Paiements sécurisés via Stripe.</strong> Vos coordonnées bancaires ne sont jamais stockées. Vous serez redirigé vers ShopTrack après le paiement.' : _s.set_stripe_note,
+    set_stripe_note:     fr ? '🔒 <strong>Paiements sécurisés via Stripe.</strong> Vos coordonnées bancaires ne sont jamais stockées. Vous serez redirigé vers ShopTrack après le paiement.' : '🔒 <strong>Secure payments via Stripe.</strong> We never store your card details. You will be returned to ShopTrack automatically after payment.',
 
+    // ── Reports page ─────────────────────────────────────────
+    rpt_revenue:       fr ? "Chiffre d'Affaires"          : 'Revenue',
+    rpt_total_rev:     fr ? 'CA Total'                    : 'Total Revenue',
+    rpt_period_rev:    fr ? 'CA de la Période'            : 'Period Revenue',
+    rpt_sales_rev:     fr ? 'CA Ventes'                   : 'Sales Revenue',
+    rpt_rental_rev:    fr ? 'CA Locations'                : 'Rental Revenue',
+    rpt_svc_rev:       fr ? 'CA Services'                 : 'Services Revenue',
+    rpt_rev_by_cat:    fr ? 'CA par Catégorie'            : 'Revenue by Category',
+    rpt_rev_by_svc:    fr ? 'CA par Service'              : 'Revenue by Service',
+    rpt_gp:            fr ? 'Marge Brute'                 : 'Gross Profit',
+    rpt_np:            fr ? 'Bénéfice Net'                : 'Net Profit',
+    rpt_cogs:          fr ? 'Coût des Ventes'             : 'Cost of Goods Sold',
+    rpt_overhead:      fr ? 'Charges Générales'           : 'Overhead',
+    rpt_oh_exp:        fr ? 'Charges Générales'           : 'Overhead Expenses',
+    rpt_op_exp:        fr ? "Charges d'Exploitation"      : 'Operating Expenses',
+    rpt_payroll:       fr ? 'Masse Salariale'             : 'Payroll',
+    rpt_gp_margin:     fr ? 'Marge Brute %'               : 'GP Margin',
+    rpt_net_margin:    fr ? 'Marge Nette %'               : 'Net Margin',
+    rpt_avg_margin:    fr ? 'Marge Nette Moy.'            : 'Avg Net Margin',
+    rpt_margin:        fr ? 'Marge'                       : 'Margin',
+    rpt_pot_margin:    fr ? 'Marge Potentielle'           : 'Potential Margin',
+    rpt_cash_in:       fr ? 'Encaissements'               : 'Cash Inflows',
+    rpt_cash_out:      fr ? 'Décaissements'               : 'Cash Outflows',
+    rpt_inflows:       fr ? 'Entrées'                     : 'Inflows',
+    rpt_outflows:      fr ? 'Sorties'                     : 'Outflows',
+    rpt_cash_coll:     fr ? 'Encaissé'                    : 'Cash Collected',
+    rpt_total_ar:      fr ? 'Total Créances'              : 'Total AR',
+    rpt_total_dep:     fr ? 'Total Cautions'              : 'Total Deposits',
+    rpt_total_fees:    fr ? 'Total Frais'                 : 'Total Fees',
+    rpt_total_late:    fr ? 'Total Pénalités'             : 'Total Late Fees',
+    rpt_total_liab:    fr ? 'Total Engagements'           : 'Total Liability',
+    rpt_total_oh:      fr ? 'Total Charges'               : 'Total Overhead',
+    rpt_total_qty:     fr ? 'Quantité Totale'             : 'Total Qty',
+    rpt_total_units:   fr ? 'Total Unités'                : 'Total Units',
+    rpt_total_skus:    fr ? 'Total SKUs'                  : 'Total SKUs',
+    rpt_transactions:  fr ? 'Transactions'                : 'Transactions',
+    rpt_product:       fr ? 'Produit'                     : 'Product',
+    rpt_share:         fr ? 'Part'                        : 'Share',
+    rpt_on_hand:       fr ? 'En Stock'                    : 'On Hand',
+    rpt_cost_val:      fr ? 'Valeur au Coût'              : 'Cost Value',
+    rpt_retail_val:    fr ? 'Valeur Détail'               : 'Retail Value',
+    rpt_unit_cost:     fr ? 'Coût Unitaire'               : 'Unit Cost',
+    rpt_utilization:   fr ? "Taux d'Utilisation"          : 'Utilization',
+    rpt_units_rented:  fr ? 'Unités en Location'          : 'Units Rented Out',
+    rpt_rent_fees:     fr ? 'Frais de Location Encaissés' : 'Rental Fees Collected',
+    rpt_low_stock:     fr ? 'Stock Faible'                : 'Low Stock',
+    rpt_out_stock:     fr ? 'Rupture de Stock'            : 'Out of Stock',
+    rpt_no_threshold:  fr ? 'Pas de Seuil'                : 'No Threshold Set',
+    rpt_threshold:     fr ? 'Seuil'                       : 'Threshold',
+    rpt_aging:         fr ? 'Ancienneté'                  : 'Aging',
+    rpt_current:       fr ? 'En cours'                    : 'Current',
+    rpt_overdue:       fr ? 'En retard'                   : 'Overdue',
+    rpt_bal_due:       fr ? 'Solde Dû'                    : 'Balance Due',
+    rpt_oldest_unpaid: fr ? 'Plus Ancienne Impayée'       : 'Oldest Unpaid',
+    rpt_open_inv:      fr ? 'Factures Ouvertes'           : 'Open Invoices',
+    rpt_deposit:       fr ? 'Caution'                     : 'Deposit',
+    rpt_dep_held:      fr ? 'Caution Retenue'             : 'Deposit Held',
+    rpt_late_fee:      fr ? 'Pénalité de Retard'          : 'Late Fee',
+    rpt_month:         fr ? 'Mois'                        : 'Month',
+    rpt_quarter:       fr ? 'Trimestre'                   : 'Quarter',
+    rpt_custom:        fr ? 'Personnalisé'                : 'Custom',
+    rpt_monthly_perf:  fr ? 'Performance Mensuelle'       : 'Monthly Performance',
+    rpt_view_full:     fr ? 'Voir Tout'                   : 'View Full',
+    rpt_export_excel:  fr ? 'Exporter toutes les données vers Excel' : 'Export all business data to Excel',
+    rpt_completed_appts: fr ? 'RDV Complétés'             : 'Completed Appts',
+    rpt_avg_per_appt:  fr ? 'Moy. par RDV'               : 'Avg. Per Appt',
+    rpt_due_date:      fr ? "Date d'échéance"             : 'Due Date',
+    rpt_start_date:    fr ? 'Date de Début'               : 'Start Date',
+    rpt_terms:         fr ? 'Conditions'                  : 'Terms',
+    rpt_invoices:      fr ? 'Factures'                    : 'Invoices',
+    rpt_categories:    fr ? 'Catégories'                  : 'Categories',
+    // ── Appointments page ─────────────────────────────────────
+    appt_title:        fr ? 'Rendez-vous'                 : 'Appointments',
+    appt_today:        fr ? "Aujourd'hui"                 : 'Today',
+    appt_upcoming:     fr ? 'À Venir'                     : 'Upcoming',
+    appt_confirm_tab:  fr ? 'À Confirmer'                 : 'Needs confirmation',
+    appt_no_show:      fr ? 'Absences'                    : 'No-Shows',
+    appt_checkout:     fr ? 'Encaisser'                   : 'Checkout',
+    appt_complete:     fr ? 'Terminer'                    : 'Complete',
+    appt_confirm_btn:  fr ? 'Confirmer'                   : 'Confirm',
+    appt_cancel_btn:   fr ? 'Annuler'                     : 'Cancel',
+    appt_manage_svc:   fr ? 'Gérer les services'          : 'Manage services',
+    appt_view_confirm: fr ? 'Voir les RDV à confirmer'    : 'View appointments needing confirmation',
+    appt_view_rev:     fr ? 'Voir le détail du CA'        : 'View revenue details',
+    appt_view_up:      fr ? 'Voir les prochains RDV'      : 'View upcoming appointments',
+    appt_start:        fr ? 'Début'                       : 'Start',
+    appt_pending_co:   fr ? "En attente d'encaissement"   : 'Pending checkout',
+    appt_edit_newdate: fr ? 'Nouvelle Date'               : 'New Date',
+    appt_edit_newstart:fr ? 'Nouveau Début'               : 'New Start',
+    appt_edit_newend:  fr ? 'Nouvelle Fin'                : 'New End',
+    appt_no_reason:    fr ? 'Sans raison'                 : 'No reason',
+    appt_noshow:       fr ? 'Absent(e)'                   : 'No-show',
+    appt_reschedule:   fr ? 'Reprogrammé'                 : 'Rescheduled',
+    appt_client_req:   fr ? 'Demande client'              : 'Client requested',
+    appt_staff_unavail:fr ? 'Personnel indisponible'      : 'Staff unavailable',
+    appt_walkin:       fr ? 'Sans rendez-vous'            : 'Walk-in',
+    appt_any_staff:    fr ? "N'importe lequel"            : 'Any Available',
+    appt_auto_cust:    fr ? 'Rempli automatiquement'      : 'Auto-filled from customer',
+    appt_new_cust:     fr ? 'Nouveau Client'              : 'New Customer Details',
+    appt_cust_name_ph: fr ? 'Nom du client'               : 'Customer name',
+    appt_start_time:   fr ? 'Heure de Début'              : 'Start Time',
+    appt_end_time:     fr ? 'Heure de Fin'                : 'End Time',
+    appt_update_status:fr ? 'Mettre à jour le Statut'     : 'Update Status',
+    // ── AI Studio page ────────────────────────────────────────
+    ai_title:          fr ? 'Studio IA'                   : 'AI Studio',
+    ai_content_type:   fr ? 'Type de Contenu'             : 'Choose Content Type',
+    ai_topic:          fr ? 'Produit ou Sujet'            : 'Product or Topic',
+    ai_custom_ph:      fr ? 'Ou tapez un sujet personnalisé et appuyez sur Entrée' : 'Or type a custom topic and press Enter',
+    ai_generate:       fr ? 'Générer le Contenu'          : 'Generate Content',
+    ai_generated:      fr ? 'Contenu Généré'              : 'Generated Content',
+    ai_recent:         fr ? 'Générations Récentes'        : 'Recent Generations',
+    ai_clear:          fr ? 'Effacer'                     : 'Clear',
+    ai_photo_title:    fr ? 'Générateur Photo IA'         : 'AI Product Photo Generator',
+    ai_photo_sub:      fr ? 'Images produits professionnelles générées par IA.' : 'Professional AI-generated product images.',
+    ai_promo_wa:       fr ? 'Message Promo WhatsApp'      : 'WhatsApp Promo Message',
+    ai_caption_ig:     fr ? 'Légende Instagram'           : 'Instagram Caption',
+    ai_new_arrival:    fr ? 'Post Nouveau Produit'        : 'New Arrival Post',
+    ai_desc:           fr ? 'Description Produit'         : 'Product Description',
+    ai_tiktok:         fr ? 'Accroche & Légende TikTok'   : 'TikTok Hook & Caption',
+    ai_gen_biz:        fr ? 'Promotion Générale'          : 'General Business Promotion',
+    ai_click_gen:      fr ? 'Cliquez sur Générer pour créer votre flyer' : 'Click Generate to create your branded flyer',
+    // ── Catalog page ──────────────────────────────────────────
+    cat_title:         fr ? 'Catalogue Produits'          : 'Product Catalog',
+    cat_tab:           fr ? 'Catalogue'                   : 'Catalog',
+    cat_name:          fr ? 'Nom du Catalogue'            : 'Catalog Name',
+    cat_settings:      fr ? 'Paramètres du Catalogue'     : 'Catalog Settings',
+    cat_tagline:       fr ? 'Accroche de Couverture'      : 'Cover Tagline',
+    cat_contact:       fr ? 'Coordonnées'                 : 'Contact Info',
+    cat_filter_status: fr ? 'Filtrer par Statut'          : 'Filter Status',
+    cat_show_prices:   fr ? 'Afficher les Prix'           : 'Show Prices',
+    cat_show_all:      fr ? 'Afficher Tous les Prix'      : 'Show All Prices',
+    cat_hide_prices:   fr ? 'Masquer les Prix'            : 'Hide Prices',
+    cat_sale_only:     fr ? 'Vente Uniquement'            : 'Sale Only',
+    cat_rent_only:     fr ? 'Location Uniquement'         : 'Rental Only',
+    cat_for_sale_only: fr ? 'En Vente Uniquement'         : 'For Sale Only',
+    cat_for_rent_only: fr ? 'En Location Uniquement'      : 'For Rent Only',
+    cat_items:         fr ? 'Articles dans le Catalogue'  : 'Items in Catalog',
+    cat_book:          fr ? 'Réserver ce service'         : 'Book this service',
+    cat_save:          fr ? '💾 Enregistrer'              : 'Save Settings',
+    // ── Audit log page ────────────────────────────────────────
+    audit_title:       fr ? "Journal d'Audit"             : 'Audit Log',
+    audit_trail:       fr ? "Piste d'Audit"               : 'Audit Trail',
+    audit_search:      fr ? 'Rechercher'                  : 'Search',
+    audit_date_from:   fr ? 'Date Début'                  : 'Date From',
+    audit_date_to:     fr ? 'Date Fin'                    : 'Date To',
+    audit_today:       fr ? "Aujourd'hui"                 : 'Today',
+    audit_week:        fr ? 'Cette Semaine'               : 'This Week',
+    audit_month:       fr ? 'Ce Mois'                     : 'This Month',
+    audit_all_users:   fr ? 'Tous les Utilisateurs'       : 'All Users',
+    audit_all_roles:   fr ? 'Tous les Rôles'              : 'All Roles',
+    // ── Purchase view modal ───────────────────────────────────
+    po_view_items:     fr ? 'Articles Commandés'          : 'Items Ordered',
+    po_view_landed:    fr ? 'Coûts Rendus'                : 'Landed Costs',
+    po_view_freight:   fr ? 'Fret'                        : 'Freight',
+    po_view_duties:    fr ? 'Droits de Douane'            : 'Import Duties',
+    po_view_taxes:     fr ? 'Taxes'                       : 'Taxes',
+    po_view_other:     fr ? 'Autres Coûts'                : 'Other Costs',
+    po_view_li:        fr ? 'Ligne'                       : 'Line Item',
+    // ── Photo upload modal ────────────────────────────────────
+    photo_choose:      fr ? 'Choisir des photos'          : 'Choose Photos',
+    photo_click:       fr ? 'Cliquer pour choisir'        : 'Click to select photos',
+    photo_current:     fr ? 'Photos Actuelles'            : 'Current Photos',
+    photo_replace:     fr ? 'Le téléversement remplacera les photos existantes.' : 'Uploading new photos will replace these.',
+    photo_no_data:     fr ? 'Fichier non disponible'      : 'No file data available',
+    photo_remove_row:  fr ? 'Supprimer la ligne'          : 'Remove row',
+    photo_download:    fr ? 'Télécharger'                 : 'Download',
+    photo_share:       fr ? 'Partager'                    : 'Share',
+    // ── Invoice create modal ──────────────────────────────────
+    inv_modal_date:    fr ? 'Date de Facture'             : 'Invoice Date',
+    inv_modal_due:     fr ? "Date d'Échéance"             : 'Due Date',
+    inv_modal_type:    fr ? 'Type de Facture'             : 'Invoice Type',
+    inv_modal_lines:   fr ? 'Lignes de Facture'           : 'Line Items',
+    inv_modal_desc:    fr ? "Description de l'article"    : 'Item description',
+    inv_modal_unit:    fr ? 'Prix Unitaire'               : 'Unit Price',
+    inv_modal_partial: fr ? 'Paiement partiel'            : 'Partial payment',
+    inv_modal_rental:  fr ? 'Location'                    : 'Rental',
+    inv_modal_service: fr ? 'Service'                     : 'Service',
+    // ── mViewCustomer / AR extra ──────────────────────────────
+    vc_avg_bal:        fr ? 'Solde Moy.'                  : 'Avg. Balance',
+    vc_last_sale:      fr ? 'Dernière Vente'              : 'Last Sale',
+    vc_open_po:        fr ? 'BC Ouverts'                  : 'Open POs',
+    vc_view_purch:     fr ? 'Voir les achats'             : 'View purchases',
+    vc_write_off:      fr ? 'Passer en perte'             : 'Write off balance',
+    vc_write_off_all:  fr ? 'Tout passer en perte'        : 'Write Off All AR',
+    vc_clear_ap:       fr ? 'Effacer les dettes —'        : 'Clear AP —',
+    vc_write_off_ar:   fr ? 'Passer en perte —'           : 'Write Off AR —',
+    vc_total_ap:       fr ? 'Total Dettes'                : 'Total AP Outstanding',
+    vc_total_ar:       fr ? 'Total Créances'              : 'Total AR Outstanding',
+    vc_total_due:      fr ? 'Total Dû'                    : 'Total Due',
+    vc_cust_bal:       fr ? 'Clients avec Solde'          : 'Customers with Balance',
+    vc_ar_report:      fr ? 'Rapport Créances Clients'    : 'Accounts Receivable Report',
+    vc_dl_pdf:         fr ? 'Télécharger PDF Créances'    : 'Download branded AR PDF',
+    vc_dur:            fr ? 'Durée'                       : 'Duration',
+    vc_out_inv:        fr ? 'Factures Impayées'           : 'Outstanding Invoices',
+    vc_start_date:     fr ? 'Date de Début'               : 'Start Date',
+    vc_terms:          fr ? 'Conditions'                  : 'Terms',
+    // ── Admin pages ───────────────────────────────────────────
+    adm_console:       fr ? 'Console de Gestion'          : 'Platform Management Console',
+    adm_businesses:    fr ? 'Entreprises'                 : 'Businesses',
+    adm_biz_name:      fr ? "Nom de l'Entreprise"         : 'Business Name',
+    adm_biz_id:        fr ? 'ID Entreprise'               : 'Biz ID',
+    adm_owner:         fr ? 'Propriétaire'                : 'Owner',
+    adm_owner_name:    fr ? 'Nom Propriétaire'            : 'Owner Name',
+    adm_owner_email:   fr ? 'Email Propriétaire'          : 'Owner Email',
+    adm_owner_login:   fr ? 'Connexion Propriétaire'      : 'Owner Login',
+    adm_login_email:   fr ? 'Email de Connexion'          : 'Login Email',
+    adm_plan:          fr ? 'Formule'                     : 'Subscription Plan',
+    adm_expiry:        fr ? 'Expiration'                  : 'Expiry',
+    adm_sub_expiry:    fr ? 'Expiration Abonnement'       : 'Subscription Expiry',
+    adm_billing_cycle: fr ? 'Cycle de Facturation'        : 'Billing Cycle',
+    adm_billing_act:   fr ? 'Actions de Facturation'      : 'Billing Actions',
+    adm_all_billing:   fr ? 'Toute la Facturation'        : 'All Billing',
+    adm_all_plans:     fr ? 'Toutes les Formules'         : 'All Plans',
+    adm_all_statuses:  fr ? 'Tous les Statuts'            : 'All Statuses',
+    adm_all_biz:       fr ? 'Toutes les entreprises'      : 'All businesses',
+    adm_signed_up:     fr ? 'Inscrit le'                  : 'Signed Up',
+    adm_premium:       fr ? 'Premium'                     : 'Premium',
+    adm_trial:         fr ? 'Essai'                       : 'Trial',
+    adm_trials:        fr ? 'Essais'                      : 'Trials',
+    adm_active:        fr ? 'Actif'                       : 'Active',
+    adm_inactive:      fr ? 'Inactif'                     : 'Inactive',
+    adm_suspended:     fr ? 'Suspendu'                    : 'Suspended',
+    adm_overdue:       fr ? 'En Retard'                   : 'Overdue',
+    adm_activate:      fr ? 'Activer'                     : 'Activate',
+    adm_biz_type:      fr ? "Type d'Entreprise"           : 'Business Type',
+    adm_biz_profile:   fr ? 'Profil Entreprise'           : 'Business Profile',
+    adm_acct_status:   fr ? 'Statut du Compte'            : 'Account Status',
+    adm_total:         fr ? 'Total'                       : 'Total',
+    adm_charge_now:    fr ? 'Facturer maintenant'         : 'Charge now',
+    adm_send_remind:   fr ? 'Envoyer des rappels'         : 'Send reminders',
+    adm_open_panel:    fr ? 'Ouvrir le panneau complet'   : 'Open full management panel',
+    adm_new_pass:      fr ? 'Nouveau Mot de Passe'        : 'New Password',
+    adm_temp_pass:     fr ? 'Mot de Passe Temporaire'     : 'Temporary Password',
+    adm_copy_pass:     fr ? 'Copier le mot de passe'      : 'Copy password',
+    adm_regenerate:    fr ? 'Régénérer'                   : 'Regenerate',
+    adm_delete_perm:   fr ? 'Supprimer définitivement'    : 'Delete permanently',
+    adm_doc_reason:    fr ? 'Documenter la raison'        : 'Document the reason for deletion',
+    adm_non_payment:   fr ? 'Non-paiement'                : 'Non-payment',
+    adm_campay:        fr ? 'Envoyer demande CamPay'      : 'Send CamPay charge request',
+    adm_token_exp:     fr ? 'Expiration Token'            : 'Token Expires',
+    adm_platform_users:fr ? 'Utilisateurs Plateforme'     : 'Platform Users',
+    adm_platform_mgmt: fr ? 'Gestion Utilisateurs'        : 'Platform User Management',
+    adm_platform_lvl:  fr ? 'Niveau Plateforme'           : 'Platform Level',
+    adm_total_users:   fr ? 'Total Utilisateurs'          : 'Total Users',
+    adm_all_biz2:      fr ? 'Toutes les Entreprises'      : 'All Businesses',
+    adm_all_levels:    fr ? 'Tous les Niveaux'            : 'All Levels',
+    adm_all_status2:   fr ? 'Tous les Statuts'            : 'All Status',
+    adm_level:         fr ? 'Niveau'                      : 'Level',
+    adm_last_login:    fr ? 'Dernière Connexion'          : 'Last Login',
+    adm_expires:       fr ? 'Expire le'                   : 'Expires',
+    adm_super_admin:   fr ? 'Super Admin'                 : 'Super Admin',
+    adm_owner_role:    fr ? 'Propriétaire'                : 'Business Owner',
+    adm_manager:       fr ? 'Manager'                     : 'Manager',
+    adm_accountant:    fr ? 'Comptable'                   : 'Accountant',
+    adm_staff:         fr ? 'Personnel'                   : 'Staff',
+    adm_managers:      fr ? 'Managers'                    : 'Managers',
+    adm_accountants:   fr ? 'Comptables'                  : 'Accountants',
+    adm_store_staff:   fr ? 'Personnel Boutique'          : 'Store Staff',
+    adm_owners:        fr ? 'Propriétaires'               : 'Owners',
+    adm_suspend:       fr ? 'Suspendre'                   : 'Suspend',
+    adm_reactivate:    fr ? 'Réactiver'                   : 'Reactivate',
+    adm_profile_access:fr ? 'Accès Profil'                : 'Profile Access',
+    adm_req_access:    fr ? "Demander l'accès propriétaire" : 'Request owner approval to view this profile',
+    adm_access_submitted: fr ? "Demande d'accès soumise." : 'Access request submitted.',
+    adm_owner_confirm: fr ? 'Confirmation Propriétaire Requise' : 'Owner Confirmation Required',
+    adm_owner_notified:fr ? 'Propriétaire notifié'        : 'Owner notified',
+    adm_owner_to_notify:fr ? 'À notifier au propriétaire' : 'Owner to notify',
+    adm_no_request:    fr ? 'Pas de demande'              : 'No request',
+    adm_requested:     fr ? 'Demandé'                     : 'Requested',
+    adm_cancel_req:    fr ? 'Annuler la demande'          : 'Cancel Request',
+    adm_acct_verif:    fr ? 'Vérification du compte'      : 'Account verification',
+    adm_billing_dispute:fr? 'Litige de facturation'       : 'Billing dispute investigation',
+    adm_security_audit:fr ? 'Audit de sécurité'           : 'Security audit',
+    adm_compliance:    fr ? 'Contrôle de conformité'      : 'Routine compliance check',
+    adm_support_req:   fr ? 'Demande de support'          : 'Support request from business',
+    adm_revoke:        fr ? 'Révoquer'                    : 'Revoke',
+    adm_affiliates:    fr ? 'Affiliés'                    : 'Affiliates',
+    adm_affiliate:     fr ? 'Affilié'                     : 'Affiliate',
+    adm_add_aff:       fr ? 'Ajouter Affilié'             : 'Add Affiliate',
+    adm_total_aff:     fr ? 'Total Affiliés'              : 'Total Affiliates',
+    adm_total_conv:    fr ? 'Total Conversions'           : 'Total Conversions',
+    adm_approved:      fr ? 'Approuvé'                    : 'Approved',
+    adm_pending_app:   fr ? "En attente d'approbation"    : 'Pending Approval',
+    adm_clicks:        fr ? 'Clics'                       : 'Clicks',
+    adm_conv:          fr ? 'Conv.'                       : 'Conv.',
+    adm_earned:        fr ? 'Gagné'                       : 'Earned',
+    adm_joined:        fr ? 'Inscrit'                     : 'Joined',
+    adm_commission:    fr ? 'Commission %'                : 'Commission %',
+    adm_mark_paid:     fr ? 'Marquer Payé'                : 'Mark as Fully Paid',
+    adm_unpaid_bal:    fr ? 'Solde impayé à régler'       : 'Unpaid balance to clear',
+    adm_resend_aff:    fr ? 'Renvoyer email affilié'      : 'Resend approval email with affiliate link',
+    adm_edit_aff_code: fr ? 'Modifier le Code Affilié'    : 'Edit Affiliate Code',
+    adm_analytics:     fr ? 'Analytiques Plateforme'      : 'Platform Analytics',
+    adm_total_biz:     fr ? 'Total Entreprises'           : 'Total Businesses',
+    adm_reg_users:     fr ? 'Utilisateurs Inscrits'       : 'Registered Users',
+    adm_plan_dist:     fr ? 'Répartition des Formules'    : 'Plan Distribution',
+    adm_biz_status:    fr ? 'Répartition Statut Entreprises' : 'Business Status Breakdown',
+    adm_receipts:      fr ? 'Reçus'                       : 'Receipts',
+    adm_biz_registry:  fr ? 'Registre des Entreprises'    : 'Business Registry',
+    adm_onboarded:     fr ? 'Créé le'                     : 'Onboarded',
+    adm_pending_setup: fr ? 'Config. en attente'          : 'Pending Setup',
+    adm_total_unpaid:  fr ? 'Total Impayé'                : 'Total Unpaid',
+    adm_users:         fr ? 'Utilisateurs'                : 'Users',
+    adm_extend_by:     fr ? 'Prolonger de'                : 'Extend By',
+    adm_after_pay:     fr ? 'Après paiement'              : 'After payment',
+    adm_current_exp:   fr ? 'Expiration Actuelle'         : 'Current Expiry',
+    adm_mobile_money:  fr ? 'Mobile Money'                : 'Mobile Money',
+    adm_mtn:           fr ? 'MTN Mobile Money'            : 'MTN Mobile Money',
+    adm_paypal:        fr ? 'PayPal'                      : 'PayPal',
+    adm_no_pay_hist:   fr ? 'Aucun historique de paiement.' : 'No payment history yet.',
+    adm_msg_preview:   fr ? 'Aperçu du Message'           : 'Message Preview',
+    adm_enter_amount:  fr ? 'Saisir le montant...'        : 'Enter amount...',
+    adm_drop_files:    fr ? 'Déposer fichiers ici ou'     : 'Drop files here or',
+    adm_set_default:   fr ? 'Définir Formule par Défaut —' : 'Set Default Plan —',
+    // ── SA Settings ───────────────────────────────────────────
+    sa_settings:       fr ? 'Paramètres Super Admin'      : 'Platform Settings',
+    sa_profile:        fr ? 'Profil Super Admin'          : 'Super Admin Profile',
+    sa_security:       fr ? 'Paramètres Sécurité'         : 'Security Settings',
+    sa_notif:          fr ? 'Préférences Notifications'   : 'Notification Preferences',
+    sa_access_log:     fr ? "Journal d'Accès"             : 'Access Log',
+    sa_avatar:         fr ? 'Couleur Avatar'              : 'Avatar colour',
+    sa_full_name:      fr ? 'Nom Complet'                 : 'Full Name',
+    sa_job_title:      fr ? 'Titre du Poste'              : 'Job Title',
+    sa_phone:          fr ? 'Numéro de Téléphone'         : 'Phone Number',
+    sa_email:          fr ? 'Adresse E-mail'              : 'Email Address',
+    sa_website:        fr ? 'Site Web'                    : 'Website',
+    sa_contact:        fr ? 'Coordonnées'                 : 'Contact Details',
+    sa_profile_prev:   fr ? 'Aperçu Profil'               : 'Profile Preview',
+    sa_prev_hint:      fr ? "L'aperçu se met à jour après l'enregistrement." : 'This preview updates after you save.',
+    sa_change_pass:    fr ? 'Changer le Mot de Passe'     : 'Change Password',
+    sa_cur_pass:       fr ? 'Mot de Passe Actuel'         : 'Current Password',
+    sa_new_pass:       fr ? 'Nouveau Mot de Passe'        : 'New Password',
+    sa_confirm_pass:   fr ? 'Confirmer'                   : 'Confirm',
+    sa_confirm_new:    fr ? 'Confirmer Nouveau Mot de Passe' : 'Confirm New Password',
+    sa_repeat:         fr ? 'Répéter le nouveau'          : 'Repeat new password',
+    sa_full_name_ph:   fr ? 'Votre nom complet'           : 'Your full name',
+    sa_enforcement:    fr ? 'Activer la Supervision'      : 'Enable Enforcement',
+    sa_testing_mode:   fr ? 'Mode Test'                   : 'Switch to Testing Mode',
+    sa_set_default_plan: fr ? 'Définir comme Formule par Défaut' : 'Set as Default Plan',
+    sa_revoke:         fr ? 'Révoquer'                    : 'Revoke',
+    sa_settings_title: fr ? 'Paramètres'                  : 'Settings',
+    // ── Services page ─────────────────────────────────────────
+    svc_title:         fr ? 'Services'                    : 'Services',
+    svc_add:           fr ? '+ Ajouter un Service'        : '+ Add Service',
+    svc_name_ph:       fr ? 'Nom du Service'              : 'Service Name',
+    svc_dur:           fr ? 'Durée (min)'                 : 'Duration (min)',
+    svc_col_name:      fr ? 'Service'                     : 'Service',
+    svc_col_dur:       fr ? 'Durée'                       : 'Duration',
+    svc_col_status:    fr ? 'Statut'                      : 'Status',
+
+    // ── Additional modal and dynamic strings ────────────────
+    // Rental modals
+    rent_create_title: fr ? 'Créer une Location'          : 'Create Rental Booking',
+    rent_del_title:    fr ? 'Supprimer la Location —'     : 'Delete Rental —',
+    rent_del_sale:     fr ? 'Supprimer la Vente —'        : 'Delete Sale —',
+    rent_del_po:       fr ? 'Supprimer le BC —'           : 'Delete PO —',
+    // Inventory modals
+    inv_del_title:     fr ? 'Supprimer l\'Article —'     : 'Delete Item —',
+    inv_cant_del:      fr ? 'Impossible de Supprimer'     : _s.inv_cant_del,
+    inv_desc_ph:       fr ? 'Description du produit...'   : 'Description',
+    // Customer/Vendor delete
+    cust_del_title:    fr ? 'Supprimer le Client —'       : 'Delete Customer —',
+    vend_del_title:    fr ? 'Supprimer le Fournisseur —'  : 'Delete Vendor —',
+    cust_cant_del:     fr ? 'Impossible de Supprimer le Client' : _s.cust_cant_del,
+    vend_cant_del:     fr ? 'Impossible de Supprimer le Fournisseur' : _s.vend_cant_del,
+    // Service modals
+    svc_del_title:     fr ? 'Supprimer le Service —'      : 'Delete Service —',
+    svc_cant_del:      fr ? 'Impossible de Supprimer le Service' : _s.svc_cant_del,
+    svc_colour:        fr ? 'Couleur'                     : 'Colour',
+    svc_price_model:   fr ? 'Modèle de Prix'              : 'Pricing Model',
+    // Sales modals
+    sal_create_title:  fr ? 'Créer une Vente'             : 'Create New Sale',
+    sal_edit_title:    fr ? 'Modifier la Vente'           : 'Edit Sale',
+    sal_cogs:          fr ? 'Coût des marchandises vendues' : 'Cost of goods sold',
+    sal_dup_all:       fr ? 'Tout Dupliquer'              : 'Duplicate All',
+    // Purchase modals
+    po_record_title:   fr ? 'Enregistrer un Bon de Commande' : 'Record Purchase Order',
+    po_items_desc:     fr ? 'Description des Articles'    : 'Items Description',
+    po_edit_delivery:  fr ? 'Livraison prévue'            : 'Expected Delivery',
+    // Appointment edit
+    appt_edit_title:   fr ? 'Modifier le RDV'             : 'Edit Completed Appointment',
+    // Add/Edit user modals
+    usr_business:      fr ? 'Entreprise'                  : 'Business',
+    usr_temp_pass:     fr ? 'Mot de Passe Temporaire'     : 'Temporary Password',
+    usr_hidden:        fr ? 'Masqué'                      : 'Hidden',
+    usr_level_def:     fr ? 'Niveau par Défaut'           : 'Level Default',
+    usr_module:        fr ? 'Module'                      : 'Module',
+    usr_this_user:     fr ? 'Cet Utilisateur'             : 'This User',
+    // Add customer/vendor modals
+    cust_add_title:    fr ? 'Ajouter un Client'           : 'Add Customer',
+    vend_edit_title:   fr ? 'Modifier le Fournisseur —'   : 'Edit Vendor —',
+    cust_edit_title:   fr ? 'Modifier le Client —'        : 'Edit Customer —',
+    // Booking settings
+    book_accept:       fr ? 'Accepter les Réservations en Ligne' : 'Accept Online Bookings',
+    book_page:         fr ? 'Page de Réservation'         : 'Booking Page',
+    book_clients_can:  fr ? 'Les clients peuvent réserver via votre lien' : 'Clients can book via your link',
+    book_how:          fr ? 'Comment ça marche'           : 'How It Works',
+    book_confirm_msg:  fr ? 'Message de Confirmation'     : 'Confirmation Message',
+    // Approved profile view
+    prof_module_rights:fr ? 'Droits d\'Accès aux Modules' : 'Module Access Rights',
+    prof_not_now:      fr ? 'Pas maintenant'              : 'Not now',
+    prof_read_only:    fr ? 'Lecture seule'               : 'Read-only view',
+    // Services page
+    svc_inactive:      fr ? 'Inactif'                     : 'Inactive',
+    svc_no_services:   fr ? 'Aucun service'               : 'No services yet',
+    // Admin business detail
+    adm_biz_profile_inc: fr ? 'Profil Entreprise incomplet' : 'Business Profile incomplete',
+    adm_confirm_pass:  fr ? 'Confirmer le Mot de Passe'   : 'Confirm Password',
+    adm_repeat_pass:   fr ? 'Répéter le mot de passe'     : 'Repeat password',
+    adm_records:       fr ? 'Enregistrements'             : 'Records',
+    // Plans modal
+    plan_biz_name:     fr ? 'Nom de l\'Entreprise'       : 'Business Name',
+    // Vendor edit
+    vend_edit_modal:   fr ? 'Modifier le Fournisseur'     : 'Edit Vendor —',
+    // Reports extra
+    rpt_expense:       fr ? 'Dépense'                     : 'Expense',
+    rpt_start:         fr ? 'Début'                       : 'Start',
+    rpt_due_date2:     fr ? 'Date d\'Échéance'           : 'Due Date',
+    rpt_available:     fr ? 'Disponible'                  : 'Available',
+    rpt_active:        fr ? 'Actif'                       : 'Active',
+    rpt_custom2:       fr ? 'Personnalisé'                : 'Custom',
+    // Appt remaining
+    appt_cancel2:      fr ? 'Annuler'                     : 'Cancel',
+    // Purchase view remaining
+    pov_status:        fr ? 'Statut'                      : 'Status',
+    pov_amount:        fr ? 'Montant'                     : 'Amount',
+    pov_notes:         fr ? 'Notes'                       : 'Notes',
+    // Catalog remaining
+    cat_all_cats:      fr ? 'Toutes les Catégories'       : 'All Categories',
+    cat_show_p:        fr ? 'Afficher les Prix'           : 'Show Prices',
+    // Settings SA remaining
+    sa_active:         fr ? 'Actif'                       : 'Active',
+    sa_monthly:        fr ? 'Mensuel'                     : 'Monthly',
   };
 }
 
@@ -25967,12 +26400,12 @@ function _rptSalesPDF(){const _s=_L();
   var total=sales.reduce(function(a,s){return a+(s.total||s.amt);},0);
   var paid=sales.reduce(function(a,s){return a+s.paid;},0);
   var summary='<div class="summary">'
-    +'<div class="sum-box"><div class="sum-lbl">Total Revenue</div><div class="sum-val green">'+fmt(total)+'</div></div>'
-    +'<div class="sum-box"><div class="sum-lbl">Cash Collected</div><div class="sum-val blue">'+fmt(paid)+'</div></div>'
+    +'<div class="sum-box"><div class="sum-lbl">${_s.rpt_total_rev}</div><div class="sum-val green">'+fmt(total)+'</div></div>'
+    +'<div class="sum-box"><div class="sum-lbl">${_s.rpt_cash_coll}</div><div class="sum-val blue">'+fmt(paid)+'</div></div>'
     +'<div class="sum-box"><div class="sum-lbl">Outstanding</div><div class="sum-val red">'+fmt(total-paid)+'</div></div>'
     +'</div>';
   var rows=sales.map(function(s){var t=s.total||s.amt;return '<tr><td>'+s.id+'</td><td>'+s.dt+'</td><td>'+_esc(s.cust)+'</td><td>'+_esc(s.items.substring(0,40))+'</td><td class="num">'+fmt(t)+'</td><td class="num">'+fmt(s.paid)+'</td><td class="num '+(t-s.paid>0?'red':'green')+'">'+fmt(t-s.paid)+'</td><td>'+s.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>Items</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>${_s.sal_col_items}</th><th class="num">${_s.ui_total}</th><th class="num">Paid</th><th class="num">Balance</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Sales Report', summary, table);
 }
 
@@ -25982,7 +26415,7 @@ function _rptRevProductPDF(){const _s=_L();
   var sorted=Object.entries(byProd).sort(function(a,b){return b[1]-a[1];});
   var total=sorted.reduce(function(a,r){return a+r[1];},0);
   var rows=sorted.map(function(r){return '<tr><td>'+_esc(r[0])+'</td><td class="num green">'+fmt(r[1])+'</td><td class="num">'+Math.round(r[1]/total*100)+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Product</th><th class="num">Revenue</th><th class="num">Share</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.rpt_product}</th><th class="num">${_s.rpt_revenue}</th><th class="num">${_s.rpt_share}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Revenue by Product', null, table);
 }
 
@@ -25997,15 +26430,15 @@ function _rptRevCustPDF(){const _s=_L();
 
 function _rptProfitPDF(){const _s=_L();
   var rows=D.sales.map(function(s){var tot=s.total||s.amt;var gp=s.profit!==undefined?s.profit:(tot-s.cost);return '<tr><td>'+s.id+'</td><td>'+_esc(s.cust)+'</td><td>'+_esc(s.items.substring(0,35))+'</td><td class="num">'+fmt(tot)+'</td><td class="num green">'+fmt(gp)+'</td><td class="num">'+(tot>0?Math.round(gp/tot*100):0)+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Sale</th><th>${_s.ui_customer}</th><th>Items</th><th class="num">Revenue</th><th class="num">Gross Profit</th><th class="num">Margin</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>Sale</th><th>${_s.ui_customer}</th><th>${_s.sal_col_items}</th><th class="num">${_s.rpt_revenue}</th><th class="num">${_s.rpt_gp}</th><th class="num">${_s.rpt_margin}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Product Profitability', null, table);
 }
 
 function _rptRentalsPDF(){const _s=_L();
   var rows=D.rentals.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.start+'</td><td>'+r.due+'</td><td class="num green">'+fmt(r.fee)+'</td><td class="num">'+fmt(r.dep)+'</td><td>'+r.st+'</td></tr>';}).join('');
   var totFee=D.rentals.reduce(function(a,r){return a+r.fee;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Rental Revenue</div><div class="sum-val green">'+fmt(totFee)+'</div></div><div class="sum-box"><div class="sum-lbl">Active Rentals</div><div class="sum-val blue">'+D.rentals.filter(function(r){return r.st==='Checked Out';}).length+'</div></div><div class="sum-box"><div class="sum-lbl">Overdue</div><div class="sum-val red">'+D.rentals.filter(function(r){return r.st==='Overdue';}).length+'</div></div></div>';
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Start</th><th>Due</th><th class="num">Fee</th><th class="num">Deposit</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Rental Revenue</div><div class="sum-val green">'+fmt(totFee)+'</div></div><div class="sum-box"><div class="sum-lbl">Active Rentals</div><div class="sum-val blue">'+D.rentals.filter(function(r){return r.st==='Checked Out';}).length+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.adm_overdue}</div><div class="sum-val red">'+D.rentals.filter(function(r){return r.st==='Overdue';}).length+'</div></div></div>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.appt_start}</th><th>Due</th><th class="num">Fee</th><th class="num">${_s.rpt_deposit}</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Rentals Report', summary, table);
 }
 
@@ -26014,23 +26447,23 @@ function _rptDepositsPDF(){const _s=_L();
   var total=active.reduce(function(a,r){return a+r.dep;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Deposit Liability</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Active Rentals</div><div class="sum-val blue">'+active.length+'</div></div></div>';
   var rows=active.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td class="num red">'+fmt(r.dep)+'</td><td>'+r.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th class="num">Deposit</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th class="num">${_s.rpt_deposit}</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Deposit Liability Report', summary, table);
 }
 
 function _rptLateFeesPDF(){const _s=_L();
   var late=D.rentals.filter(function(r){return r.lf>0;});
   var total=late.reduce(function(a,r){return a+r.lf;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Late Fees</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.rpt_total_late}</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
   var rows=late.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.due+'</td><td class="num red">'+fmt(r.lf)+'</td><td>'+r.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due Date</th><th class="num">Late Fee</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.rpt_due_date}</th><th class="num">${_s.rpt_late_fee}</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Late Fees Report', summary, table);
 }
 
 function _rptOverduePDF(){const _s=_L();
   var od=D.rentals.filter(function(r){return r.st==='Overdue';});
   var rows=od.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.due+'</td><td class="num red">'+fmt(r.lf)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due Date</th><th class="num">Late Fee</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.rpt_due_date}</th><th class="num">${_s.rpt_late_fee}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Overdue Rentals', null, table);
 }
 
@@ -26038,7 +26471,7 @@ function _rptInvValPDF(){const _s=_L();
   var total=D.inv.reduce(function(a,i){return a+(i.cost||0)*(i.qty||0);},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Inventory Value</div><div class="sum-val green">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.inv_total_items}</div><div class="sum-val blue">'+D.inv.length+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.inv_rented_out}</div><div class="sum-val">'+D.inv.reduce(function(a,i){return a+i.rented;},0)+'</div></div></div>';
   var rows=D.inv.map(function(i){return '<tr><td>'+_esc(i.name)+'</td><td>'+_esc(i.cat)+'</td><td>'+i.sku+'</td><td class="num">'+fmt(i.cost)+'</td><td>'+i.qty+'</td><td>'+i.rented+'</td><td class="num green">'+fmt((i.cost||0)*(i.qty||0))+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.ui_category}</th><th>SKU</th><th class="num">Cost</th><th>Qty</th><th>Rented</th><th class="num">Value</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.ui_category}</th><th>SKU</th><th class="num">Cost</th><th>Qty</th><th>${_s.inv_rented}</th><th class="num">Value</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Inventory Valuation', summary, table);
 }
 
@@ -26060,23 +26493,23 @@ function _rptLowStockPDF(){const _s=_L();
       +'<td class="num">'+(thr>0?'≤ '+thr:'—')+'</td>'
       +'<td>'+status+'</td></tr>';
   }).join('');
-  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.ui_category}</th><th>SKU</th><th class="num">Available</th><th class="num">Total Qty</th><th class="num">Threshold</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.ui_category}</th><th>SKU</th><th class="num">${_s.rpt_available}</th><th class="num">${_s.rpt_total_qty}</th><th class="num">${_s.rpt_threshold}</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Low Stock & Out of Stock Report', null, table);
 }
 
 function _rptGPPDF(){const _s=_L();
   var k=refreshLiveKpis();
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Revenue</div><div class="sum-val blue">'+fmt(k.rev)+'</div></div><div class="sum-box"><div class="sum-lbl">COGS</div><div class="sum-val red">'+fmt(k.cogs)+'</div></div><div class="sum-box"><div class="sum-lbl">Gross Profit</div><div class="sum-val green">'+fmt(k.gp)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.rpt_revenue}</div><div class="sum-val blue">'+fmt(k.rev)+'</div></div><div class="sum-box"><div class="sum-lbl">COGS</div><div class="sum-val red">'+fmt(k.cogs)+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.rpt_gp}</div><div class="sum-val green">'+fmt(k.gp)+'</div></div></div>';
   var rows=D.sales.map(function(s){var t=s.total||s.amt;var gp=s.profit!==undefined?s.profit:(t-(s.cost||0));return '<tr><td>'+s.id+'</td><td>'+_esc(s.cust)+'</td><td class="num">'+fmt(t)+'</td><td class="num">'+fmt(s.cost||0)+'</td><td class="num green">'+fmt(gp)+'</td><td class="num">'+(t>0?Math.round(gp/t*100):0)+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Sale</th><th>${_s.ui_customer}</th><th class="num">Revenue</th><th class="num">COGS</th><th class="num">Gross Profit</th><th class="num">Margin</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>Sale</th><th>${_s.ui_customer}</th><th class="num">${_s.rpt_revenue}</th><th class="num">COGS</th><th class="num">${_s.rpt_gp}</th><th class="num">${_s.rpt_margin}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Gross Profit Report', summary, table);
 }
 
 function _rptNPPDF(){const _s=_L();
   var k=refreshLiveKpis();
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Gross Profit</div><div class="sum-val green">'+fmt(k.gp)+'</div></div><div class="sum-box"><div class="sum-lbl">Overhead</div><div class="sum-val red">'+fmt(k.oh)+'</div></div><div class="sum-box"><div class="sum-lbl">Net Profit</div><div class="sum-val '+(k.np>=0?'green':'red')+'">'+fmt(k.np)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.rpt_gp}</div><div class="sum-val green">'+fmt(k.gp)+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.rpt_overhead}</div><div class="sum-val red">'+fmt(k.oh)+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.rpt_np}</div><div class="sum-val '+(k.np>=0?'green':'red')+'">'+fmt(k.np)+'</div></div></div>';
   var rows=D.exp.map(function(e){return '<tr><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee)+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+e.method+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">Amount</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">${_s.ui_amount}</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Net Profit Report', summary, table);
 }
 
@@ -26107,7 +26540,7 @@ function _rptARPDF(){const _s=_L();
   var total=debtors.reduce(function(a,c){return a+c.bal;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.acc_total_ar}</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Customers Owing</div><div class="sum-val blue">'+debtors.length+'</div></div></div>';
   var rows=debtors.sort(function(a,b){return b.bal-a.bal;}).map(function(c){var sales=D.sales.filter(function(s){return (s.custId===c.id||s.cust===c.name)&&s.st!=='Paid';});return '<tr><td>'+_esc(c.name)+'</td><td>'+_esc(c.phone||c.whatsapp||'')+'</td><td>'+sales.length+' unpaid</td><td class="num red">'+fmt(c.bal)+'</td><td>'+_esc(c.last||'—')+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_customer}</th><th>${_s.ui_contact}</th><th>Open Invoices</th><th class="num">Balance</th><th>${_s.cust_col_last}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_customer}</th><th>${_s.ui_contact}</th><th>${_s.rpt_open_inv}</th><th class="num">Balance</th><th>${_s.cust_col_last}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Accounts Receivable (AR)', summary, table);
 }
 
@@ -26116,7 +26549,7 @@ function _rptAPPDF(){const _s=_L();
   var total=creditors.reduce(function(a,v){return a+v.bal;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.acc_total_ap}</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Vendors Owed</div><div class="sum-val blue">'+creditors.length+'</div></div></div>';
   var rows=creditors.sort(function(a,b){return b.bal-a.bal;}).map(function(v){return '<tr><td>'+_esc(v.name)+'</td><td>'+_esc(v.country||'')+'</td><td>'+_esc(v.terms||'—')+'</td><td class="num red">'+fmt(v.bal)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_vendor}</th><th>Country</th><th>Terms</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_vendor}</th><th>${_s.ui_country}</th><th>${_s.rpt_terms}</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Accounts Payable (AP)', summary, table);
 }
 
@@ -26133,7 +26566,7 @@ function _rptRevCatPDF(){const _s=_L();
   var sorted=Object.entries(cats).sort(function(a,b){return b[1]-a[1];});
   var total=sorted.reduce(function(a,r){return a+r[1];},0);
   var rows=sorted.map(function(r){return '<tr><td>'+_esc(r[0])+'</td><td class="num green">'+fmt(r[1])+'</td><td class="num">'+Math.round(r[1]/Math.max(total,1)*100)+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_category}</th><th class="num">Revenue</th><th class="num">Share</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_category}</th><th class="num">${_s.rpt_revenue}</th><th class="num">${_s.rpt_share}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Revenue by Category', null, table);
 }
 
@@ -26161,16 +26594,16 @@ function _rptVendorPurchPDF(){const _s=_L();
   var paid=D.purchases.filter(function(p){return p.st==='Paid';}).reduce(function(a,p){return a+(p.total||0);},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.vend_col_spent}</div><div class="sum-val blue">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Paid</div><div class="sum-val green">'+fmt(paid)+'</div></div><div class="sum-box"><div class="sum-lbl">Outstanding</div><div class="sum-val red">'+fmt(total-paid)+'</div></div></div>';
   var rows=D.purchases.map(function(p){return '<tr><td>'+p.id+'</td><td>'+p.dt+'</td><td>'+_esc(p.vendor)+'</td><td>'+_esc((p.items||'').substring(0,35))+'</td><td class="num green">'+fmt(p.total||0)+'</td><td>'+p.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>PO</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>Items</th><th class="num">Total</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>PO</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>${_s.sal_col_items}</th><th class="num">${_s.ui_total}</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Vendor Purchases Report', summary, table);
 }
 
 function _rptPayHistPDF(){const _s=_L();
   var paid=D.sales.filter(function(s){return (s.paid||0)>0;}).sort(function(a,b){return b.dt.localeCompare(a.dt);});
   var totalCollected=paid.reduce(function(a,s){return a+(s.paid||0);},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Collected</div><div class="sum-val green">'+fmt(totalCollected)+'</div></div><div class="sum-box"><div class="sum-lbl">Transactions</div><div class="sum-val blue">'+paid.length+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Collected</div><div class="sum-val green">'+fmt(totalCollected)+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.rpt_transactions}</div><div class="sum-val blue">'+paid.length+'</div></div></div>';
   var rows=paid.map(function(s){var tot=s.total||s.amt;var bal=tot-(s.paid||0);return '<tr><td>'+s.id+'</td><td>'+s.dt+'</td><td>'+_esc(s.cust)+'</td><td class="num">'+fmt(tot)+'</td><td class="num green">'+fmt(s.paid||0)+'</td><td class="num '+(bal>0?'red':'green')+'">'+fmt(bal)+'</td><td>'+s.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th class="num">${_s.ui_total}</th><th class="num">Paid</th><th class="num">Balance</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Payment History', summary, table);
 }
 
@@ -26178,30 +26611,30 @@ function _rptExpFullPDF(){const _s=_L();
   var total=D.exp.reduce(function(a,e){return a+e.amt;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.exp_kpi_total}</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Entries</div><div class="sum-val blue">'+D.exp.length+'</div></div></div>';
   var rows=D.exp.map(function(e){return '<tr><td>'+e.id+'</td><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee||'')+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+_esc(e.method||'')+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">Amount</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">${_s.ui_amount}</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Full Expense Report', summary, table);
 }
 
 function _rptRepairsPDF(){const _s=_L();
   var rep=D.exp.filter(function(e){return e.cat==='Repairs'||e.cat==='Cleaning'||e.cat==='Maintenance';});
   var total=rep.reduce(function(a,e){return a+e.amt;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.adm_total}</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
   var rows=rep.map(function(e){return '<tr><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee||'')+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+_esc(e.method||'')+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">Amount</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">${_s.ui_amount}</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Repairs & Maintenance Report', summary, table);
 }
 
 function _rptRentalUtilPDF(){const _s=_L();
   var util=D.inv.filter(function(i){return i.rp;}).map(function(i){return {name:i.name,qty:i.qty,rented:i.rented||0,rate:Math.round((i.rented||0)/Math.max(i.qty,1)*100)};}).sort(function(a,b){return b.rate-a.rate;});
   var rows=util.map(function(u){return '<tr><td>'+_esc(u.name)+'</td><td class="num">'+u.qty+'</td><td class="num blue">'+u.rented+'</td><td class="num '+(u.rate>60?'green':u.rate>30?'':'red')+'">'+u.rate+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th class="num">Total Qty</th><th class="num">Rented</th><th class="num">Utilization</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th class="num">${_s.rpt_total_qty}</th><th class="num">${_s.inv_rented}</th><th class="num">${_s.rpt_utilization}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Rental Utilization Report', null, table);
 }
 
 function _rptRentedOutPDF(){const _s=_L();
   var out=D.inv.filter(function(i){return (i.rented||0)>0;});
   var rows=out.map(function(i){return '<tr><td>'+_esc(i.name)+'</td><td>'+i.qty+'</td><td class="num blue">'+i.rented+'</td><td class="num '+(i.qty-i.rented>0?'green':'red')+'">'+(i.qty-i.rented)+'</td><td class="num">'+fmt(i.rp||0)+'/day</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>Total Qty</th><th class="num">${_s.inv_rented_out}</th><th class="num">${_s.inv_available}</th><th class="num">${_s.inv_col_sp}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.rpt_total_qty}</th><th class="num">${_s.inv_rented_out}</th><th class="num">${_s.inv_available}</th><th class="num">${_s.inv_col_sp}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Items Currently Rented Out', null, table);
 }
 
@@ -26328,7 +26761,7 @@ function exportSalesPDF(){const _s=_L();
       <div class="sum-box"><div class="sum-lbl">Outstanding</div><div class="sum-val ${unpaid>0?'red':'green'}">${fmt(unpaid)}</div></div>
     </div>
     <table>
-      <thead><tr><th>Sale #</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>Items</th><th class="num">Amount</th><th class="num">Paid</th><th>${_s.ui_method}</th><th>${_s.ui_status}</th></tr></thead>
+      <thead><tr><th>Sale #</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>${_s.sal_col_items}</th><th class="num">${_s.ui_amount}</th><th class="num">Paid</th><th>${_s.ui_method}</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${sales.map(s=>`<tr>
         <td><strong>${s.id}</strong></td>
         <td>${s.dt}</td>
@@ -26353,11 +26786,11 @@ function exportRentalsPDF(){const _s=_L();
     <div class="doc-title">Rentals Report</div>
     <div class="summary">
       <div class="sum-box"><div class="sum-lbl">Active Rentals</div><div class="sum-val blue">${active}</div></div>
-      <div class="sum-box"><div class="sum-lbl">Overdue</div><div class="sum-val ${overdue>0?'red':'green'}">${overdue}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.adm_overdue}</div><div class="sum-val ${overdue>0?'red':'green'}">${overdue}</div></div>
       <div class="sum-box"><div class="sum-lbl">Revenue (returned)</div><div class="sum-val green">${fmt(revenue)}</div></div>
     </div>
     <table>
-      <thead><tr><th>Rental #</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Start</th><th>Due</th><th class="num">Fee</th><th class="num">Deposit</th><th>${_s.ui_status}</th></tr></thead>
+      <thead><tr><th>Rental #</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.appt_start}</th><th>Due</th><th class="num">Fee</th><th class="num">${_s.rpt_deposit}</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${rents.map(r=>`<tr>
         <td><strong>${r.id}</strong></td>
         <td>${r.cust}</td>
@@ -26385,7 +26818,7 @@ function exportInventoryPDF(){const _s=_L();
       <div class="sum-box"><div class="sum-lbl">Total Value</div><div class="sum-val blue">${fmt(totalVal)}</div></div>
     </div>
     <table>
-      <thead><tr><th>SKU</th><th>Name</th><th>${_s.ui_category}</th><th>${_s.inv_brand_lbl}</th><th>${_s.ui_status}</th><th>Condition</th><th class="num">Cost</th><th class="num">Sale Price</th><th class="num">Qty</th></tr></thead>
+      <thead><tr><th>SKU</th><th>Name</th><th>${_s.ui_category}</th><th>${_s.inv_brand_lbl}</th><th>${_s.ui_status}</th><th>${_s.inv_cond_lbl}</th><th class="num">Cost</th><th class="num">Sale Price</th><th class="num">Qty</th></tr></thead>
       <tbody>${inv.map(i=>`<tr>
         <td style="font-family:monospace;font-size:11px">${i.sku||'—'}</td>
         <td><strong>${i.name}</strong></td>
@@ -26411,10 +26844,10 @@ function exportCustomersPDF(){const _s=_L();
     <div class="summary">
       <div class="sum-box"><div class="sum-lbl">Total Customers</div><div class="sum-val blue">${custs.length}</div></div>
       <div class="sum-box"><div class="sum-lbl">VIP Customers</div><div class="sum-val" style="color:${BIZ.primaryColor||'#4361ee'}">${vips}</div></div>
-      <div class="sum-box"><div class="sum-lbl">Total Revenue</div><div class="sum-val green">${fmt(totalSpend)}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.rpt_total_rev}</div><div class="sum-val green">${fmt(totalSpend)}</div></div>
     </div>
     <table>
-      <thead><tr><th>Name</th><th>Phone</th><th>City</th><th>${_s.ui_type}</th><th class="num">Total Spend</th><th class="num">Orders</th><th>${_s.ui_status}</th></tr></thead>
+      <thead><tr><th>Name</th><th<th>${_s.ui_phone}</th><th>City</th><th>${_s.ui_type}</th><th class="num">Total Spend</th><th class="num">Orders</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${custs.map(c=>`<tr>
         <td><strong>${c.name}</strong>${c.vip?' <span class="badge badge-p">VIP</span>':''}</td>
         <td>${c.phone||c.whatsapp||'—'}</td>
@@ -26440,7 +26873,7 @@ function exportVendorsPDF(){const _s=_L();
       <div class="sum-box"><div class="sum-lbl">AP Outstanding</div><div class="sum-val ${totalAP>0?'red':'green'}">${fmt(totalAP)}</div></div>
     </div>
     <table>
-      <thead><tr><th>Vendor Name</th><th>${_s.ui_category}</th><th>Country</th><th>${_s.ui_contact}</th><th>Phone</th><th>Terms</th><th class="num">Balance</th><th>${_s.ui_status}</th></tr></thead>
+      <thead><tr><th>Vendor Name</th><th>${_s.ui_category}</th><th>${_s.ui_country}</th><th>${_s.ui_contact}</th><th<th>${_s.ui_phone}</th><th>${_s.rpt_terms}</th><th class="num">Balance</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${vends.map(v=>`<tr>
         <td><strong>${v.name}</strong></td>
         <td>${v.cat||'—'}</td>
@@ -26473,7 +26906,7 @@ function exportExpensesPDF(){const _s=_L();
     </div>
     ${topCat?`<p style="font-size:11px;color:#64748b;margin-bottom:14px">Top categories: ${topCat}</p>`:''}
     <table>
-      <thead><tr><th>Exp #</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">Amount</th><th>${_s.ui_type}</th><th>${_s.ui_method}</th><th>${_s.ui_status}</th></tr></thead>
+      <thead><tr><th>Exp #</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">${_s.ui_amount}</th><th>${_s.ui_type}</th><th>${_s.ui_method}</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${exps.map(e=>`<tr>
         <td style="font-family:monospace;font-size:11px">${e.id}</td>
         <td>${e.dt}</td>
@@ -26501,7 +26934,7 @@ function exportPurchasesPDF(){const _s=_L();
       <div class="sum-box"><div class="sum-lbl">Total Value</div><div class="sum-val blue">${fmt(total)}</div></div>
     </div>
     <table>
-      <thead><tr><th>PO #</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>Items</th><th class="num">Subtotal</th><th class="num">Freight</th><th class="num">Total</th><th>${_s.ui_status}</th></tr></thead>
+      <thead><tr><th>PO #</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>${_s.sal_col_items}</th><th class="num">Subtotal</th><th class="num">${_s.po_view_freight}</th><th class="num">${_s.ui_total}</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${pos.map(p=>`<tr>
         <td><strong>${p.id}</strong></td>
         <td>${p.dt}</td>
@@ -26526,10 +26959,10 @@ function exportAppointmentsPDF(){const _s=_L();
     <div class="summary">
       <div class="sum-box"><div class="sum-lbl">Total Appointments</div><div class="sum-val blue">${appts.length}</div></div>
       <div class="sum-box"><div class="sum-lbl">${_s.ui_st_completed}</div><div class="sum-val green">${completed}</div></div>
-      <div class="sum-box"><div class="sum-lbl">Revenue</div><div class="sum-val green">${fmt(revenue)}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.rpt_revenue}</div><div class="sum-val green">${fmt(revenue)}</div></div>
     </div>
     <table>
-      <thead><tr><th>ID</th><th>${_s.ui_date}</th><th>Time</th><th>${_s.ui_customer}</th><th>Service</th><th>Staff</th><th class="num">Amount</th><th>${_s.ui_status}</th></tr></thead>
+      <thead><tr><th>ID</th><th>${_s.ui_date}</th><th>Time</th><th>${_s.ui_customer}</th><th>${_s.svc_col_name}</th><th>${_s.appt_staff}</th><th class="num">${_s.ui_amount}</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${appts.map(a=>`<tr>
         <td style="font-family:monospace;font-size:11px">${a.id}</td>
         <td>${a.date}</td>
@@ -26551,21 +26984,21 @@ function exportFinancialSummaryPDF(){const _s=_L();
   const body = `
     <div class="doc-title">Financial Summary — ${period}</div>
     <div class="summary" style="grid-template-columns:repeat(4,1fr)">
-      <div class="sum-box"><div class="sum-lbl">Total Revenue</div><div class="sum-val blue">${fmt(k.rev)}</div></div>
-      <div class="sum-box"><div class="sum-lbl">Gross Profit</div><div class="sum-val green">${fmt(k.gp)}</div></div>
-      <div class="sum-box"><div class="sum-lbl">Net Profit</div><div class="sum-val ${k.np>=0?'green':'red'}">${fmt(k.np)}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.rpt_total_rev}</div><div class="sum-val blue">${fmt(k.rev)}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.rpt_gp}</div><div class="sum-val green">${fmt(k.gp)}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.rpt_np}</div><div class="sum-val ${k.np>=0?'green':'red'}">${fmt(k.np)}</div></div>
       <div class="sum-box"><div class="sum-lbl">${_s.acc_row_expenses}</div><div class="sum-val red">${fmt(k.exp||0)}</div></div>
     </div>
     <table>
-      <thead><tr><th>Metric</th><th class="num">Amount</th></tr></thead>
+      <thead><tr><th>Metric</th><th class="num">${_s.ui_amount}</th></tr></thead>
       <tbody>
         <tr><td>Sales Revenue</td><td class="num blue">${fmt(k.saleRev)}</td></tr>
         <tr><td>Rental Revenue</td><td class="num blue">${fmt(k.rentRev)}</td></tr>
-        <tr><td><strong>Total Revenue</strong></td><td class="num blue"><strong>${fmt(k.rev)}</strong></td></tr>
+        <tr><td><strong>${_s.rpt_total_rev}</strong></td><td class="num blue"><strong>${fmt(k.rev)}</strong></td></tr>
         <tr><td>&nbsp;&nbsp;Cost of Goods Sold (COGS)</td><td class="num red">(${fmt(k.cogs)})</td></tr>
-        <tr><td><strong>Gross Profit</strong> (${k.rev>0?Math.round(k.gp/k.rev*100):0}% margin)</td><td class="num green"><strong>${fmt(k.gp)}</strong></td></tr>
+        <tr><td><strong>${_s.rpt_gp}</strong> (${k.rev>0?Math.round(k.gp/k.rev*100):0}% margin)</td><td class="num green"><strong>${fmt(k.gp)}</strong></td></tr>
         <tr><td>&nbsp;&nbsp;Operating Expenses</td><td class="num red">(${fmt(k.oh||0)})</td></tr>
-        <tr style="border-top:2px solid #1e293b"><td><strong>Net Profit</strong> (${k.rev>0?Math.round(k.np/k.rev*100):0}% margin)</td><td class="num ${k.np>=0?'green':'red'}"><strong>${fmt(k.np)}</strong></td></tr>
+        <tr style="border-top:2px solid #1e293b"><td><strong>${_s.rpt_np}</strong> (${k.rev>0?Math.round(k.np/k.rev*100):0}% margin)</td><td class="num ${k.np>=0?'green':'red'}"><strong>${fmt(k.np)}</strong></td></tr>
         <tr><td>Accounts Receivable (owed to you)</td><td class="num ${k.ar>0?'red':''}">${fmt(k.ar)}</td></tr>
         <tr><td>Accounts Payable (owed by you)</td><td class="num ${k.ap>0?'red':''}">${fmt(k.ap)}</td></tr>
         <tr><td>Inventory Value</td><td class="num blue">${fmt(k.invVal)}</td></tr>
@@ -27541,7 +27974,7 @@ function mEditApptCompleted(id){const _s=_L();
     +'<textarea class="ft" id="eac-notes" style="min-height:60px">'+(a.notes||'')+'</textarea></div>';
   var footer = '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +' <button class="btn btn-p" id="eac-save-btn">${_s.ui_save}</button>';
-  modal('Edit Completed Appointment', body, footer, 'sm');
+  modal(_s.appt_edit_title, body, footer, 'sm');
   // Wire save button after modal renders (avoids all quote-nesting)
   setTimeout(function(){
     var btn = document.getElementById('eac-save-btn');
@@ -27667,7 +28100,7 @@ function genApptInvoice(id){
 }
 
 
-function mViewAppt(id){
+function mViewAppt(id){const _s=_L();
   var a = D.appointments.find(function(x){return x.id===id;});
   if(!a){ toast('Appointment not found','error'); return; }
   var svc        = D.services.find(function(s){return s.id===a.serviceId;});
@@ -27678,7 +28111,7 @@ function mViewAppt(id){
 
   var statusHtml = '<div style="background:'+col+'18;border:1px solid '+col+'40;border-radius:var(--r8);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
     +'<span style="font-weight:700;color:'+col+';font-size:14px">'+a.st
-    +(a.walkIn?'&nbsp;<span style="font-size:10px;background:var(--o-dim);color:var(--o);padding:2px 6px;border-radius:10px">Walk-in</span>':'')
+    +(a.walkIn?'&nbsp;<span style="font-size:10px;background:var(--o-dim);color:var(--o);padding:2px 6px;border-radius:10px">${_s.appt_walkin}</span>':'')
     +'</span><span style="font-size:11px;color:var(--text2)">'+a.id+'</span></div>';
 
   var grid = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'
@@ -27687,24 +28120,24 @@ function mViewAppt(id){
       +'<div style="font-weight:700;color:var(--ink)">'+a.date+'</div>'
       +'<div style="font-size:11px;color:var(--text2)">'+_timeLabel(a.startTime)+(a.endTime?' \u2013 '+_timeLabel(a.endTime):'')+'</div></div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px">'
-      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">Customer</div>'
+      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">${_s.ui_customer}</div>'
       +'<div style="font-weight:700;color:var(--ink)">'+a.custName+'</div>'
       +(a.custPhone?'<div style="font-size:11px;color:var(--a)">'+a.custPhone+'</div>':'')+'</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px">'
-      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">Service</div>'
+      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">${_s.svc_col_name}</div>'
       +'<div style="font-weight:700;color:var(--ink)">'+a.serviceName+'</div>'
       +(svc?'<div style="font-size:11px;color:var(--text2)">'+svc.duration+' min</div>':'')+'</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px">'
-      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">Amount</div>'
+      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">${_s.ui_amount}</div>'
       +'<div style="font-weight:700;color:var(--ink)">'+(a.totalAmt>0?fmt(a.totalAmt):'\u2014')+'</div>'
-      +(a.saleId?'<div style="font-size:11px;color:var(--g)">\u2713 Sale '+a.saleId+'</div>':canCheckout?'<div style="font-size:11px;color:var(--y)">Pending checkout</div>':'')+'</div>'
-    +(a.staffName?'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">Staff</div><div style="font-weight:700;color:var(--ink)">'+a.staffName+'</div></div>':'')
+      +(a.saleId?'<div style="font-size:11px;color:var(--g)">\u2713 Sale '+a.saleId+'</div>':canCheckout?'<div style="font-size:11px;color:var(--y)">${_s.appt_pending_co}</div>':'')+'</div>'
+    +(a.staffName?'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">${_s.appt_staff}</div><div style="font-weight:700;color:var(--ink)">'+a.staffName+'</div></div>':'')
     +'</div>';
 
   var notesHtml = a.notes ? '<div style="background:var(--bg3);border-radius:var(--r8);padding:10px 12px;margin-bottom:12px;font-size:12px">\uD83D\uDCDD '+a.notes+'</div>' : '';
 
   var statusRow = canEdit
-    ? '<div class="fg-2"><div class="fg"><label class="fl">Update Status</label>'
+    ? '<div class="fg-2"><div class="fg"><label class="fl">${_s.appt_update_status}</label>'
       +'<select class="fs" id="va-st">'
       +['Reserved','Confirmed','In Progress','Completed','No-Show','Cancelled'].map(function(s){return '<option'+(s===a.st?' selected':'')+'>'+s+'</option>';}).join('')
       +'</select></div>'
@@ -27736,14 +28169,14 @@ function mNewAppt(date){const _s=_L();
   const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId).map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
   modal('📅 New Appointment',`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Service</label>
+    <div class="fg"><label class="fl">${_s.appt_service}</label>
       <div id="na-s-wrap" style="position:relative"></div><input type="hidden" id="na-s" value=""/>
     </div>
     <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" id="na-d" type="date" value="${td}"/></div>
   </div>
   <div class="fg-2">
-    <div class="fg"><label class="fl">Start Time</label><input class="fi" id="na-t" type="time" value="09:00" oninput="_naSync()"/></div>
-    <div class="fg"><label class="fl">End Time</label><input class="fi" id="na-e" type="time" value="10:00" style="background:var(--bg3);color:var(--text2)" readonly/></div>
+    <div class="fg"><label class="fl">${_s.appt_start_time}</label><input class="fi" id="na-t" type="time" value="09:00" oninput="_naSync()"/></div>
+    <div class="fg"><label class="fl">${_s.appt_end_time}</label><input class="fi" id="na-e" type="time" value="10:00" style="background:var(--bg3);color:var(--text2)" readonly/></div>
   </div>
   <div class="fg">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
@@ -27754,9 +28187,9 @@ function mNewAppt(date){const _s=_L();
     <input type="hidden" id="na-c" value=""/>
   </div>
   <div id="na-new-cust-form" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);padding:12px;margin-bottom:8px">
-    <div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">New Customer Details</div>
+    <div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">${_s.appt_new_cust}</div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="na-nc-name" placeholder="Customer name"/></div>
+      <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="na-nc-name" placeholder="${_s.appt_cust_name_ph}"/></div>
       <div class="fg"><label class="fl">Phone *</label><input class="fi" id="na-nc-phone" type="tel" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     </div>
     <div class="fg-2">
@@ -27768,9 +28201,9 @@ function mNewAppt(date){const _s=_L();
       <button type="button" class="btn btn-s btn-sm" onclick="_apptCancelNewCust()">${_s.ui_cancel}</button>
     </div>
   </div>
-  <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="na-ph" placeholder="Auto-filled from customer"/></div>
+  <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="na-ph" placeholder="${_s.appt_auto_cust}"/></div>
   <div class="fg-2">
-    <div class="fg"><label class="fl">Staff</label><select class="fs" id="na-st"><option value="">Any Available</option>${stO}</select></div>
+    <div class="fg"><label class="fl">${_s.appt_staff}</label><select class="fs" id="na-st"><option value="">${_s.appt_any_staff}</option>${stO}</select></div>
     <div class="fg"><label class="fl">${_s.ui_amount}</label><input class="fi" id="na-amt" type="number" placeholder="${_s.sal_price_lbl}" step="0.01" oninput="this._t=true"/></div>
   </div>
   <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="na-n" rows="2" placeholder="Special requests, notes…"></textarea></div>
