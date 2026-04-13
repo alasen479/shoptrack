@@ -17346,13 +17346,13 @@ function _setupScoreBar(){
   return '<div id="setup-score-bar" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r8);padding:12px 16px;margin-bottom:14px">'
     +'<div style="display:flex;align-items:center;gap:12px">'
       +'<div style="flex:1">'
-        +'<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px">\uD83D\uDE80 Get set up \u2014 '+st.completed+' of '+st.total+' steps done</div>'
+        +'<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px">\uD83D\uDE80 '+(_L().dash_setup_title||'Get set up')+' \u2014 '+st.completed+' '+(_L().dash_setup_of||'of')+' '+st.total+' '+(_L().dash_setup_done||'steps done')+'</div>'
         +'<div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden">'
           +'<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--a),var(--g));border-radius:4px;transition:width .4s"></div>'
         +'</div>'
       +'</div>'
       +'<span style="font-size:18px;font-weight:800;color:var(--a);font-family:var(--mono);min-width:40px;text-align:right">'+pct+'%</span>'
-      +'<button onclick="var _d=document.getElementById(\'setup-bar-detail\');_d.style.display=_d.style.display===\'none\'?\'block\':\'none\'" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;padding:0 4px">Details \u25be</button>'
+      +'<button onclick="var _d=document.getElementById(\'setup-bar-detail\');_d.style.display=_d.style.display===\'none\'?\'block\':\'none\'" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;padding:0 4px">'+(_L().dash_setup_details||'Details')+' \u25be</button>'
     +'</div>'
     +'<div id="setup-bar-detail" style="display:none;margin-top:10px">'+rows+'</div>'
   +'</div>';
@@ -21508,7 +21508,7 @@ function setDashPeriod(el, period){
   el.classList.add('on');
   const range = PERIOD_RANGES[period];
   const lbl = document.getElementById('dash-period-label');
-  if(lbl) lbl.textContent = range.label + ' — Business performance at a glance';
+  if(lbl) lbl.textContent = range.label + ' \u2014 ' + _L().dash_subtitle;
   const k = computeKPIs(range);
 
   // Update KPI tiles
@@ -21526,15 +21526,16 @@ function setDashPeriod(el, period){
   const rentCount   = k.rentals.length;
   const apptCount   = (D.appointments||[]).filter(a=>a.st==='Completed'&&inRange(a.date,range)).length;
   const totalTx     = salesCount + rentCount + apptCount;
-  _setKpiSub('dash-kpi-rev-sub',  totalTx + ' transaction' + (totalTx!==1?'s':''));
-  _setKpiSub('dash-kpi-sale-sub', salesCount + ' sale' + (salesCount!==1?'s':''));
-  _setKpiSub('dash-kpi-rent-sub', rentCount + ' rental' + (rentCount!==1?'s':''));
-  _setKpiSub('dash-kpi-appt-sub', apptCount + ' appointment' + (apptCount!==1?'s':''));
-  _setKpiSub('dash-kpi-gp-sub',   k.rev>0 ? Math.round(k.gp/k.rev*100)+'% margin' : '');
-  _setKpiSub('dash-kpi-np-sub',   k.rev>0 ? Math.round(k.np/k.rev*100)+'% margin' : '');
-  _setKpiSub('dash-kpi-ar-sub',   D.cust.filter(c=>c.bal>0).length + ' customer' + (D.cust.filter(c=>c.bal>0).length!==1?'s':'')+' owe');
-  _setKpiSub('dash-kpi-ap-sub',   D.vendors.filter(v=>v.bal>0).length + ' vendor' + (D.vendors.filter(v=>v.bal>0).length!==1?'s':'')+' to pay');
-  _setKpiSub('dash-kpi-inv-sub',  D.inv.length + ' active item' + (D.inv.length!==1?'s':''));
+  var _sl = _L();
+  _setKpiSub('dash-kpi-rev-sub',  totalTx + ' ' + (_sl.dash_sub_transactions || 'transactions'));
+  _setKpiSub('dash-kpi-sale-sub', salesCount + ' ' + (_sl.dash_sub_sales || 'sales'));
+  _setKpiSub('dash-kpi-rent-sub', rentCount + ' ' + (_sl.dash_sub_rentals || 'rentals'));
+  _setKpiSub('dash-kpi-appt-sub', apptCount + ' ' + (_sl.dash_sub_appointments || 'appointments'));
+  _setKpiSub('dash-kpi-gp-sub',   k.rev>0 ? Math.round(k.gp/k.rev*100)+'% ' + (_sl.dash_sub_margin || 'margin') : '');
+  _setKpiSub('dash-kpi-np-sub',   k.rev>0 ? Math.round(k.np/k.rev*100)+'% ' + (_sl.dash_sub_margin || 'margin') : '');
+  _setKpiSub('dash-kpi-ar-sub',   D.cust.filter(c=>c.bal>0).length + ' ' + _sl.dash_cust_owe);
+  _setKpiSub('dash-kpi-ap-sub',   D.vendors.filter(v=>v.bal>0).length + ' ' + _sl.dash_vend_pay);
+  _setKpiSub('dash-kpi-inv-sub',  D.inv.length + ' ' + (_sl.dash_sub_items || 'active items'));
 
   // Update charts with filtered data
   _updateDashCharts(k, period);
@@ -21582,7 +21583,7 @@ function _updateDashCharts(k, period){
     salesData = wDays.map(x=>Math.round(D.sales.filter(s=>s.dt===x.iso).reduce((a,s)=>a+s.amt,0)*r));
     rentData  = wDays.map(x=>Math.round(D.rentals.filter(rr=>rr.start===x.iso).reduce((a,rr)=>a+rr.fee,0)*r));
   } else if(period==='month'){
-    labels=['Week 1','Week 2','Week 3','Week 4'];
+    labels=[(_L().dash_week||'Week')+' 1',(_L().dash_week||'Week')+' 2',(_L().dash_week||'Week')+' 3',(_L().dash_week||'Week')+' 4'];
     const ms=PERIOD_RANGES.month.start; // e.g. 2026-03-01
     const my=ms.substring(0,4); const mm=ms.substring(5,7);
     const w=i=>{const s=`${my}-${mm}-${String(i*7-6).padStart(2,'0')}`;const e=`${my}-${mm}-${String(Math.min(i*7,new Date(+my,+mm,0).getDate())).padStart(2,'0')}`;return{s,e};};
@@ -21635,12 +21636,12 @@ function _updateDashCharts(k, period){
     }};
 
   mkChart('revChart',{type:'bar',data:{labels,datasets:[
-    {label:'Sales',data:salesData,backgroundColor:'rgba(45,212,160,.75)',borderRadius:4,borderSkipped:false},
-    {label:'Rentals',data:rentData,backgroundColor:'rgba(91,127,255,.75)',borderRadius:4,borderSkipped:false}
+    {label:_L().nav_sales||'Sales',data:salesData,backgroundColor:'rgba(45,212,160,.75)',borderRadius:4,borderSkipped:false},
+    {label:_L().nav_rentals||'Rentals',data:rentData,backgroundColor:'rgba(91,127,255,.75)',borderRadius:4,borderSkipped:false}
   ]},options:chartOpts});
 
   mkChart('donutChart',{type:'doughnut',
-    data:{labels:['Net Profit','COGS','Overhead'],
+    data:{labels:[_L().dash_chart_np||'Net Profit',_L().dash_chart_cogs||'COGS',_L().dash_chart_oh||'Overhead'],
       datasets:[{data:[Math.round(Math.max(0,k.np)*r),Math.round(k.cogs*r),Math.round(k.oh*r)],
         backgroundColor:['#2dd4a0','#ff5f7a','#f5c842'],borderWidth:0,hoverOffset:5}]},
     options:{responsive:true,maintainAspectRatio:false,
@@ -25343,6 +25344,23 @@ dash_rev_trend:    fr ? 'Évolution du CA'              : 'Revenue Trend',
 dash_6months:      fr ? '6 mois'                       : '6 months',
 dash_profit_break: fr ? 'Répartition des Bénéfices'   : 'Profit Breakdown',
 dash_this_month_lbl: fr ? 'Ce mois'                   : 'This month',
+// Chart labels
+dash_week:         fr ? 'Semaine'                      : 'Week',
+dash_chart_np:     fr ? 'Bénéfice Net'                 : 'Net Profit',
+dash_chart_cogs:   fr ? 'Coût des Ventes'              : 'COGS',
+dash_chart_oh:     fr ? 'Charges Générales'            : 'Overhead',
+// KPI sub-labels
+dash_sub_transactions: fr ? 'transactions'             : 'transactions',
+dash_sub_sales:    fr ? 'ventes'                       : 'sales',
+dash_sub_rentals:  fr ? 'locations'                    : 'rentals',
+dash_sub_appointments: fr ? 'rendez-vous'              : 'appointments',
+dash_sub_margin:   fr ? 'marge'                        : 'margin',
+dash_sub_items:    fr ? 'article(s) actif(s)'          : 'active items',
+// Setup bar
+dash_setup_title:  fr ? 'Configuration'                : 'Get set up',
+dash_setup_of:     fr ? 'sur'                          : 'of',
+dash_setup_done:   fr ? 'étapes terminées'             : 'steps done',
+dash_setup_details:fr ? 'Détails'                      : 'Details',
 // P&L Summary
 dash_pl:           fr ? 'Résumé C.R.'                  : 'P&L Summary',
 dash_pl_full:      fr ? 'Vue complète'                 : 'Full View',
