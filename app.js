@@ -18901,22 +18901,25 @@ ${(function(){
   };
 
   var _payMethod = _isUSD() ? 'Stripe (Card)' : 'Mobile Money (MTN/Orange)';
-  var howToPayHtml = '<div class="card-hd"><div class="card-ttl">How to Pay &mdash; '+_payMethod+'</div></div>'
+  var _fr = (BIZ.language||'en')==='fr';
+  var howToPayHtml = '<div class="card-hd"><div class="card-ttl">'+(_fr?'Comment Payer':'How to Pay')+' &mdash; '+_payMethod+'</div></div>'
     + '<div style="display:flex;flex-direction:column;gap:14px;padding:4px 0">'
-    + _htpStep('1','Tap &quot;Pay Now&quot;','The button appears here and on your Dashboard when your subscription is within 30 days of expiry.')
+    + _htpStep('1',_fr?'Appuyez sur &quot;Payer Maintenant&quot;':'Tap &quot;Pay Now&quot;',_fr?'Le bouton apparaît ici et sur votre tableau de bord lorsque votre abonnement est à moins de 30 jours de l\u2019expiration.':'The button appears here and on your Dashboard when your subscription is within 30 days of expiry.')
     + (_isUsdBiz
-        ? _htpStep('2','Enter your card details on Stripe','You will be redirected to a secure Stripe checkout page. All major credit and debit cards accepted.')
-          + _htpStep('3','Confirm your payment','Complete checkout on Stripe. Your subscription extends immediately from the current expiry date &mdash; not from today.')
-          + _htpStep('&#10003;','Done &mdash; account activates automatically','Your new expiry date updates instantly. Early payments always extend from your current expiry date.','var(--g)')
-        : _htpStep('2','Enter your MTN or Orange number','The Mobile Money payment request is sent instantly to your phone.')
-          + _htpStep('3','Approve on your phone','Enter your Mobile Money PIN. Your subscription is extended immediately from the current expiry date &mdash; not from today.')
-          + _htpStep('&#10003;','Done &mdash; no interruption','Your new expiry date updates instantly. You can pay at any time &mdash; early payments always extend from your current expiry.','var(--g)')
+        ? _htpStep('2',_fr?'Entrez vos coordonnées bancaires sur Stripe':'Enter your card details on Stripe',_fr?'Vous serez redirigé vers une page de paiement Stripe sécurisée. Toutes les cartes bancaires sont acceptées.':'You will be redirected to a secure Stripe checkout page. All major credit and debit cards accepted.')
+          + _htpStep('3',_fr?'Confirmez votre paiement':'Confirm your payment',_fr?'Finalisez le paiement sur Stripe. Votre abonnement est prolongé immédiatement à partir de la date d\u2019expiration actuelle.':'Complete checkout on Stripe. Your subscription extends immediately from the current expiry date &mdash; not from today.')
+          + _htpStep('&#10003;',_fr?'Terminé &mdash; activation automatique':'Done &mdash; account activates automatically',_fr?'Votre nouvelle date d\u2019expiration est mise à jour instantanément. Les paiements anticipés prolongent toujours à partir de votre date d\u2019expiration actuelle.':'Your new expiry date updates instantly. Early payments always extend from your current expiry date.','var(--g)')
+        : _htpStep('2',_fr?'Entrez votre numéro MTN ou Orange':'Enter your MTN or Orange number',_fr?'La demande de paiement Mobile Money est envoyée instantanément sur votre téléphone.':'The Mobile Money payment request is sent instantly to your phone.')
+          + _htpStep('3',_fr?'Approuvez sur votre téléphone':'Approve on your phone',_fr?'Entrez votre code PIN Mobile Money. Votre abonnement est prolongé immédiatement à partir de la date d\u2019expiration actuelle.':'Enter your Mobile Money PIN. Your subscription is extended immediately from the current expiry date &mdash; not from today.')
+          + _htpStep('&#10003;',_fr?'Terminé &mdash; sans interruption':'Done &mdash; no interruption',_fr?'Votre nouvelle date d\u2019expiration est mise à jour instantanément. Vous pouvez payer à tout moment &mdash; les paiements anticipés prolongent toujours à partir de votre expiration actuelle.':'Your new expiry date updates instantly. You can pay at any time &mdash; early payments always extend from your current expiry.','var(--g)')
       )
     + '</div>'
     + '<div style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:var(--r6);font-size:11px;color:var(--text2)">'
     + (_isUsdBiz
         ? '&#128274; <strong>${_s.set_stripe_note_inner}</strong> We never store your card details. You will be returned to ShopTrack automatically after payment.'
-        : '&#128161; <strong>Pay early, keep your date.</strong> If your plan expires on the 31st and you pay on the 20th, your new expiry will be the following 31st &mdash; not 30 days from the 20th.'
+        : _fr
+          ? '&#128161; <strong>Payez tôt, gardez votre date.</strong> Si votre formule expire le 31 et que vous payez le 20, votre nouvelle expiration sera le 31 suivant &mdash; pas 30 jours après le 20.'
+          : '&#128161; <strong>Pay early, keep your date.</strong> If your plan expires on the 31st and you pay on the 20th, your new expiry will be the following 31st &mdash; not 30 days from the 20th.'
       )
     + '</div>';
 
@@ -18925,7 +18928,9 @@ ${(function(){
     : '';
   var urgentNote = (!isFree && !isTrial && d !== null && d <= 5)
     ? '<div class="alrt '+(d<=0?'alrt-r':'alrt-y')+'" style="margin-top:12px;font-size:12px">'
-      +(d<=0?'⛔ Your subscription has expired. Tap Pay Now to restore full access.':'⚠ Expires in '+d+' day'+(d>1?'s':'')+' on '+exp+'. Tap Pay Now to renew without interruption.')
+      +(d<=0
+        ?(_fr?'⛔ Votre abonnement a expiré. Appuyez sur Payer Maintenant pour restaurer l\u2019accès complet.':'⛔ Your subscription has expired. Tap Pay Now to restore full access.')
+        :(_fr?'⚠ Expire dans '+d+' jour'+(d>1?'s':'')+' le '+exp+'. Appuyez sur Payer Maintenant pour renouveler sans interruption.':'⚠ Expires in '+d+' day'+(d>1?'s':'')+' on '+exp+'. Tap Pay Now to renew without interruption.'))
       +'</div>'
     : '';
 
