@@ -4456,7 +4456,7 @@ ${D.sales.length===0?'<div style="background:var(--bg2);border:1px dashed var(--
         <button class="btn btn-g btn-xs" onclick="mRecordPayment('${s.id}')" title="Record Payment">💰</button>
         <button class="btn btn-g btn-xs" onclick="mEditSale('${s.id}')" title="Edit">✏</button>
         <button class="btn btn-g btn-xs" onclick="mDuplicateSale('${s.id}')" title="Duplicate">⧉</button>
-        <button class="btn btn-d btn-xs" onclick="deleteSale('${s.id}')" title="Delete">🗑</button>
+        <button class="btn btn-d btn-xs" onclick="deleteSale('${s.id}')" title="${_s.set_delete_cat}">🗑</button>
       </div></td>
     </tr>`).join('')}
     </tbody>
@@ -18369,7 +18369,7 @@ function pgSettings(){
   var expCatPills = D.expCats.map(function(c,i){
     return '<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 10px 5px 13px">'
       +'<span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c)+'</span>'
-      +'<button type="button" onclick="_delExpCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="Delete">\u2715</button>'
+      +'<button type="button" onclick="_delExpCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="'+_s.set_delete_cat+'">\u2715</button>'
       +'</div>';
   }).join('');
   var userRows = BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId;}).map(function(u){
@@ -18404,7 +18404,7 @@ function pgSettings(){
   var ownerWAHint = ownerWASet
     ? '<div style="font-size:11px;color:var(--g);margin-bottom:10px">&#10003; Sending to: +' + ownerWANum + '</div>'
     : '<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--r6);margin-bottom:10px;font-size:11px;color:#92400e">'
-      + '<span>&#9888;</span><span><strong>Set your WhatsApp number</strong> in Settings &rarr; Business Profile to receive owner alerts.</span></div>';
+      + '<span>&#9888;</span><span><strong>'+_s.set_notif_wa_owner+'</strong> '+_s.set_notif_wa_hint+'</span></div>';
   var notifDefs = [
     {section:_s.set_n_sec_push, hint:_s.set_n_sec_push_h},
     {key:'newSale',        label:_s.set_n_newSale, desc:_s.set_n_newSale_d},
@@ -18415,7 +18415,7 @@ function pgSettings(){
     {key:'lowStock',       label:_s.set_n_lowStock, desc:_s.set_n_lowStock_d},
     {key:'arOutstanding',  label:_s.set_n_arOut, desc:_s.set_n_arOut_d},
     {key:'apPaymentDue',   label:_s.set_n_apPay, desc:_s.set_n_apPay_d},
-    {section:'📱 WhatsApp Alerts to YOU (Owner)',hint: ownerWAHint + 'These open WhatsApp with a pre-written message so you can review and send.'},
+    {section:_s.set_n_sec_owner, hint: ownerWAHint + 'These open WhatsApp with a pre-written message so you can review and send.'},
     {key:'waOwnerNewSale',    label:_s.set_n_waSale, desc:_s.set_n_waSale_d},
     {key:'waOwnerLargeOrder', label:_s.set_n_waLarge, desc:_s.set_n_waLarge_d},
     {key:'waOwnerMinBlock',   label:_s.set_n_waMin, desc:_s.set_n_waMin_d},
@@ -18433,10 +18433,10 @@ function pgSettings(){
   ];
   var pushState = (typeof Notification !== 'undefined') ? Notification.permission : 'unsupported';
   var pushBanner = pushState === 'granted'
-    ? '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--r8);margin-bottom:14px;font-size:12px;color:#166534"><span>✅</span><strong>Push notifications enabled</strong></div>'
+    ? '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--r8);margin-bottom:14px;font-size:12px;color:#166534"><span>✅</span><strong>'+( (BIZ.language||'en')==='fr' ? 'Notifications push activées' : 'Push notifications enabled')+'</strong></div>'
     : pushState === 'denied'
-    ? '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r8);margin-bottom:14px;font-size:12px;color:#991b1b"><span>⚠</span><span><strong>Push blocked by browser</strong> — enable in browser Site Settings → Notifications</span></div>'
-    : '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(67,97,238,.06);border:1px solid rgba(67,97,238,.2);border-radius:var(--r8);margin-bottom:14px"><div style="font-size:13px;font-weight:600;color:var(--a)">🔔 Enable Push Notifications</div><button class="btn btn-p btn-sm" onclick="_requestPushPermission()">Enable Now</button></div>';
+    ? '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r8);margin-bottom:14px;font-size:12px;color:#991b1b"><span>⚠</span><span>'+_s.set_notif_push_blocked+'</span></div>'
+    : '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(67,97,238,.06);border:1px solid rgba(67,97,238,.2);border-radius:var(--r8);margin-bottom:14px"><div style="font-size:13px;font-weight:600;color:var(--a)">🔔 Enable Push Notifications</div><button class="btn btn-p btn-sm" onclick="_requestPushPermission()">'+_s.set_notif_enable_now+'</button></div>';
 
   var notifRows = pushBanner + notifDefs.map(function(p){
     if(p.section){
@@ -18464,15 +18464,15 @@ function pgSettings(){
     // Per-row extra controls
     var extraBtn = '';
     if(p.key === 'waOwnerNewSale'){
-      extraBtn = '<button class="btn btn-p btn-xs" style="margin-left:6px" title="Send a test alert to your WhatsApp" onclick="_waOwnerNewSale({id:\'TEST\',cust:\'Test Customer\',items:\'Sample Item\',total:99,paid:99,method:\'Cash\'},\'Staff\');_markWATestDone()">\uD83D\uDCF1 Send Test</button>';
+      extraBtn = '<button class="btn btn-p btn-xs" style="margin-left:6px" title="'+_s.set_notif_send_test+' onclick="_waOwnerNewSale({id:\'TEST\',cust:\'Test Customer\',items:\'Sample Item\',total:99,paid:99,method:\'Cash\'},\'Staff\');_markWATestDone()">\uD83D\uDCF1 Send Test</button>';
     } else if(p.key === 'waOwnerMinBlock'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="Test this alert" onclick="_waOwnerMinBlock(\'Sample Item\',18*CUR.rate,25,\'Staff\')">Test</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerMinBlock(\'Sample Item\',18*CUR.rate,25,\'Staff\')">Test</button>';
     } else if(p.key === 'waOwnerPayment'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="Test this alert" onclick="_waOwnerPayment(250,\'Test Customer\',\'TEST-001\',\'Cash\')">Test</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerPayment(250,\'Test Customer\',\'TEST-001\',\'Cash\')">Test</button>';
     } else if(p.key === 'waOwnerLowStock'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="Test this alert" onclick="_waOwnerLowStock(\'Test Item\',2,5)">Test</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerLowStock(\'Test Item\',2,5)">Test</button>';
     } else if(p.key === 'waOwnerNewBooking'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="Test this alert" onclick="_waOwnerNewBooking({custName:\'Test Client\',custPhone:\'0000\',serviceName:\'Test Service\',date:\''+localDateStr()+'\',startTime:\'10:00\',totalAmt:50})">Test</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerNewBooking({custName:\'Test Client\',custPhone:\'0000\',serviceName:\'Test Service\',date:\''+localDateStr()+'\',startTime:\'10:00\',totalAmt:50})">Test</button>';
     }
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg3);border-radius:var(--r6);margin-bottom:6px;border-left:3px solid '+borderColor+'">'
       + '<div style="flex:1;min-width:0">'
@@ -18507,11 +18507,11 @@ function pgSettings(){
     +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">${_s.set_doc_invoice}</div>'
     +'<div class="fg"><label class="fl">${_s.set_doc_terms}</label>'
     +'<select class="fs" id="doc-payment-terms">'+_ptOpts+'</select></div>'
-    +'<div class="fg"><label class="fl">Accepted Payment Methods <span style="font-size:10px;color:var(--text2)">(shown on invoice)</span></label>'
-    +'<input class="fi" id="doc-pay-methods" value="'+_esc(BIZ.paymentMethods||'Cash, Bank Transfer, Mobile Money (MTN), Orange Money')+'" placeholder="e.g. Cash, Bank Transfer, Mobile Money"/>'
+    +'<div class="fg"><label class="fl">'+_s.set_doc_methods+'</label>'
+    +'<input class="fi" id="doc-pay-methods" value="'+_esc(BIZ.paymentMethods||'Cash, Bank Transfer, Mobile Money (MTN), Orange Money')+'" placeholder="'+_s.set_doc_methods_ph+'"/>'
     +'<div style="font-size:10px;color:var(--text2);margin-top:3px">${_s.set_doc_methods_hint}</div></div>'
-    +'<div class="fg"><label class="fl">Bank / Payment Details <span style="font-size:10px;color:var(--text2)">(shown on invoice)</span></label>'
-    +'<textarea class="ft" id="doc-bank-details" rows="4" placeholder="Bank name, account name, account number...">'+_esc(BIZ.bankDetails||'')+'</textarea></div>'
+    +'<div class="fg"><label class="fl">'+_s.set_doc_bank+'</label>'
+    +'<textarea class="ft" id="doc-bank-details" rows="4" placeholder="'+_s.set_doc_bank_ph+'">'+_esc(BIZ.bankDetails||'')+'</textarea></div>'
     +'<div class="fg"><label class="fl">${_s.set_doc_footer}</label>'
     +'<textarea class="ft" id="biz-invoice-note" rows="2" placeholder="e.g. Thank you for your business! Payment due within 7 days.">'+_esc(BIZ.invoiceNote||'')+'</textarea></div>'
     +'<div class="fg"><label class="fl">${_s.set_doc_tax}</label>'
@@ -18527,7 +18527,7 @@ function pgSettings(){
     +'<label style="display:inline-flex;align-items:center;gap:7px;background:var(--a-dim);border:1px solid var(--a);color:var(--a);padding:7px 12px;border-radius:var(--r6);cursor:pointer;font-size:12px;font-weight:600">'
     +'&#128247; Upload<input type="file" accept="image/*" style="display:none" onchange="_uploadDocImage(this,\'sign\')"/></label>'
     +_signRemoveBtn+'</div>'
-    +'<div style="font-size:10px;color:var(--text2);margin-top:6px">PNG with transparent background recommended</div>'
+    +'<div style="font-size:10px;color:var(--text2);margin-top:6px">'+_s.set_doc_png_hint+'</div>'
     +'</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:16px;border:1px solid var(--border2)">'
     +'<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px">${_s.set_doc_stamp}</div>'
@@ -18536,7 +18536,7 @@ function pgSettings(){
     +'<label style="display:inline-flex;align-items:center;gap:7px;background:var(--a-dim);border:1px solid var(--a);color:var(--a);padding:7px 12px;border-radius:var(--r6);cursor:pointer;font-size:12px;font-weight:600">'
     +'&#128247; Upload<input type="file" accept="image/*" style="display:none" onchange="_uploadDocImage(this,\'stamp\')"/></label>'
     +_stampRemoveBtn+'</div>'
-    +'<div style="font-size:10px;color:var(--text2);margin-top:6px">PNG with transparent background recommended</div>'
+    +'<div style="font-size:10px;color:var(--text2);margin-top:6px">'+_s.set_doc_png_hint+'</div>'
     +'</div></div></div></div></div>'
     +'<div class="card" style="margin-top:20px">'
     +'<div class="card-hd"><div class="card-ttl">&#128218; '
@@ -18617,7 +18617,6 @@ function pgSettings(){
         </select>
       </div>
     </div>
-    <div class="fg"><label class="fl">Business Type</label><select class="fs"><option selected>Bridal Shop (Sale + Rental)</option><option>Fashion Boutique</option><option>Equipment Rental</option><option>General Retail</option></select></div>
     <div class="fg-2">
       <div class="fg"><label class="fl">${_s.set_email}</label><input class="fi" id="biz-email" type="email" value="${BIZ.email}"/></div>
       <div class="fg"><label class="fl">${_s.set_phone}</label><input class="fi" id="biz-phone" value="${BIZ.phone}"/></div>
@@ -18704,7 +18703,7 @@ function pgSettings(){
           .catch(function(e){btn.disabled=false;btn.textContent='Test Key';toast('❌ '+e.message,'error');});
       ">${_s.set_ai_key_test}</button>`:''}
       <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px">
-        <label class="fl" style="margin-bottom:6px">OpenAI API Key <span style="font-weight:400;color:var(--text3)">(for AI Product Photo — DALL-E 3, ~$0.04/image)</span></label>
+        <label class="fl" style="margin-bottom:6px">${_s.set_openai_lbl}</label>
         <div style="display:flex;gap:8px;align-items:center">
           <input class="fi" id="biz-openai-key" type="password"
             value="${BIZ.openAiKey||''}"
@@ -18865,27 +18864,27 @@ ${(function(){
     </div>
     <div style="background:var(--bg3);border-radius:var(--r8);padding:13px 14px;display:flex;flex-direction:column;gap:10px;font-size:13px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="color:var(--text2)">Status</span>
+        <span style="color:var(--text2)">${_s.set_sub_status}</span>
         <span style="font-weight:600;color:${statusColor}">${statusLabel}</span>
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--text2)">Expiry date</span>
+        <span style="color:var(--text2)">${_s.set_sub_expiry}</span>
         <strong style="font-family:var(--mono)">${exp||'—'}</strong>
       </div>
       ${!isFree?`
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--text2)">Renewal amount</span>
+        <span style="color:var(--text2)">${_s.set_sub_renewal}</span>
         <strong style="font-family:var(--mono);color:var(--g)">${_isUsdBiz?_usdAmt:amt.toLocaleString()+' XAF'} / ${cycle==='Annual'?'year':'month'}</strong>
       </div>`:''}
       ${BIZ.pendingPlan ? `
       <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border)">
-        <span style="color:var(--text2)">Pending plan change</span>
+        <span style="color:var(--text2)">${_s.set_sub_pending}</span>
         <span style="font-weight:600;color:var(--a)">${_esc(BIZ.pendingPlan)} from ${_esc(BIZ.pendingPlanFrom||exp||'expiry')}</span>
       </div>` : ''}
     </div>
     ${payBtn}
     ${urgentNote}
-    ${isTrial?'<div class="alrt alrt-b" style="margin-top:12px;font-size:12px">🎁 You are on a <strong>30-day free trial</strong> with full Premium access. Trial ends <strong>'+(BIZ.trialEnd||BIZ.subExpires||'')+'</strong>.</div>':isFree?'<div class="alrt alrt-b" style="margin-top:12px;font-size:12px">You are on the <strong>Free plan</strong>. <button class="btn btn-p btn-xs" onclick="mChangePlan()">🚀 Upgrade to Premium</button></div>':''}
+    ${isTrial?'<div class="alrt alrt-b" style="margin-top:12px;font-size:12px">🎁 You are on a <strong>30-day free trial</strong> with full Premium access. Trial ends <strong>'+(BIZ.trialEnd||BIZ.subExpires||'')+'</strong>.</div>':isFree?'<div class="alrt alrt-b" style="margin-top:12px;font-size:12px">${_s.set_sub_free} <button class="btn btn-p btn-xs" onclick="mChangePlan()">${_s.set_sub_upgrade}</button></div>':''}
     <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
       <button class="btn btn-p btn-sm" onclick="mChangePlan()" style="width:100%">🔄 Change Plan</button>
       <button class="btn btn-s btn-sm" onclick="mViewPlans()" style="width:100%">📋 View All Plans</button>
@@ -18935,7 +18934,7 @@ ${tabDocsHtml}
       </label>
     </div>
   </div>
-  <div style="font-size:12px;color:var(--text2);margin-bottom:16px">When enabled, a <strong style="color:var(--ink)">Generate Contract</strong> button appears on every rental. Contracts are pre-filled with rental details and can be signed on any device.</div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:16px">${_s.set_con_hint}</div>
 
   <div id="contract-body-wrap">
     <div style="background:var(--bg3);border-radius:var(--r8);padding:14px 16px;margin-bottom:16px;font-size:12px;color:var(--text)">
@@ -19002,16 +19001,16 @@ ${tabDocsHtml}
 
   <div style="padding-top:16px;border-top:1px solid var(--border)">
     <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px">${_s.set_cat_cost}</div>
-    <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Used in the inventory cost breakdown panel. Add custom categories for your business type — e.g. Land Survey, Import Bond, Staging Fee, Site Clearance.</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:10px">${_s.set_cat_cost_hint}</div>
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Built-in (15)</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">
       ${_COST_CATS_DEFAULT.map(function(c){return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:3px 9px;font-size:11px;color:var(--text2)"><span>'+c.icon+'</span><span>'+c.label+'</span></span>';}).join('')}
     </div>
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Your Custom Categories</div>
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">${_s.set_cat_custom}</div>
     <div id="cost-cats-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
       ${(function(){
         var cats=BIZ.costCats||[];
-        if(!cats.length) return '<span style="font-size:11px;color:var(--text3)">None yet — add one below or from the Cost Breakdown panel when adding inventory</span>';
+        if(!cats.length) return '<span style="font-size:11px;color:var(--text3)">' + _s.set_cat_none + '</span>';
         return cats.map(function(c,i){
           return '<div style="display:inline-flex;align-items:center;gap:6px;background:var(--a-dim);border:1px solid rgba(99,102,241,.25);border-radius:20px;padding:5px 10px 5px 13px">'
             +'<span>'+c.icon+'</span><span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c.label)+'</span>'
@@ -19079,12 +19078,10 @@ ${tabDocsHtml}
     </div>
     <div>
       <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px">${_s.set_fin_tax}</div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:12px">
-        Pre-filled from your country. Customise as needed — applied to all invoices and documents.
-      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:12px">${_s.set_fin_tax_hint}</div>
       <div class="fg-2">
         <div class="fg">
-          <label class="fl">Tax Name <span style="font-size:10px;color:var(--text2)">(e.g. VAT, TVA, GST)</span></label>
+          <label class="fl">${_s.set_fin_tax_name}</label>
           <input class="fi" id="fin-tax-name" value="${BIZ.taxName||COUNTRY_TAX_DEFAULTS[BIZ.country]?.name||'VAT'}" placeholder="VAT / GST / TVA"/>
         </div>
         <div class="fg">
@@ -19095,7 +19092,7 @@ ${tabDocsHtml}
       </div>
       <div class="fg">
         <label class="fl" id="fin-tax-reg-lbl">${COUNTRY_TAX_DEFAULTS[BIZ.country]?.reg||'Tax Registration Number'} <span style="font-size:10px;color:var(--text2)">(printed on invoices)</span></label>
-        <input class="fi" id="fin-tax-num" value="${BIZ.taxRegNumber||''}" placeholder="Optional"/>
+        <input class="fi" id="fin-tax-num" value="${BIZ.taxRegNumber||''}" placeholder="${_s.set_optional}"/>
       </div>
       <div class="fg" style="background:var(--bg3);border-radius:var(--r8);padding:10px 12px;font-size:11px;color:var(--text2)">
         <strong style="color:var(--ink)">Preview:</strong>
