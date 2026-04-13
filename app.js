@@ -1545,7 +1545,7 @@ function _freePlanBlocked(actionLabel, checkType){
       +'<span>✅ AI Studio assistant</span>'
       +'</div></div></div>',
       '<button class="btn btn-s" onclick="closeModal()">Maybe Later</button>'
-      +'<button class="btn btn-p" onclick="closeModal();_showSubscriptionSettings()">🚀 Upgrade — 8,900 XAF/mo</button>'
+      +'<button class="btn btn-p" onclick="closeModal();_showSubscriptionSettings()">🚀 Upgrade — 4,900 XAF/mo</button>'
     );
     return true;
   }
@@ -1644,7 +1644,7 @@ function _renderTrialCountdown(){
       +'</div>'
       +'<div style="font-size:10px;color:var(--text2);margin-top:3px">Full Premium access until '+(BIZ.trialEnd||BIZ.subExpires||'')+'</div>'
     +'</div>'
-    +'<button class="btn btn-p btn-sm" onclick="_showSubscriptionSettings()" style="white-space:nowrap;flex-shrink:0">🚀 Upgrade — 8,900 Frs/mo</button>'
+    +'<button class="btn btn-p btn-sm" onclick="_showSubscriptionSettings()" style="white-space:nowrap;flex-shrink:0">🚀 Upgrade — 4,900 Frs/mo</button>'
     +'<button onclick="this.parentNode.remove()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:0 4px;line-height:1;flex-shrink:0">×</button>';
 
   // Inject after setup score bar or at top of page content
@@ -1693,7 +1693,7 @@ function _showPremiumUpgradePrompt(page){
     +'<div style="font-size:18px;font-weight:900;color:var(--ink);margin-bottom:6px">'+info.name+' — Premium</div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6">'+info.desc+'</div>'
     +'<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r10);padding:16px;margin-bottom:20px;text-align:left">'
-      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">Included in Premium (8,900 Frs/mo)</div>'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">Included in Premium (4,900 Frs/mo)</div>'
       +'<div style="display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--ink)">'
         +'<span>\u2705 Rental management \u2014 deposits, contracts, late fees</span>'
         +'<span>\u2705 Appointments & multi-staff booking page</span>'
@@ -1704,12 +1704,12 @@ function _showPremiumUpgradePrompt(page){
         +'<span>\u2705 Up to 5 staff users + unlimited inventory</span>'
       +'</div>'
     +'</div>'
-    +'<div style="font-size:13px;font-weight:800;color:var(--a)">8,900 Frs / month</div>'
+    +'<div style="font-size:13px;font-weight:800;color:var(--a)">4,900 Frs / month</div>'
     +'<div style="font-size:11px;color:var(--text2);margin-top:3px">Cancel anytime \u00b7 No contract \u00b7 All data retained</div>'
   +'</div>';
   modal('\uD83D\uDD12 Premium Feature', html,
     '<button class="btn btn-s" onclick="closeModal();nav(\'dashboard\')">&#8592; Back to Dashboard</button>'
-    +'<button class="btn btn-p" onclick="closeModal();mChangePlan()">\uD83D\uDE80 Upgrade to Premium \u2014 8,900 Frs/mo</button>'
+    +'<button class="btn btn-p" onclick="closeModal();mChangePlan()">\uD83D\uDE80 Upgrade to Premium \u2014 4,900 Frs/mo</button>'
   );
 }
 
@@ -2336,7 +2336,7 @@ const SUB_PLAN_USD = {
 
 const SUB_PLAN_XAF = {
   'Free':          { monthly: 0,     yearly: 0      },
-  'Premium':       { monthly: 8900,  yearly: 89000  },
+  'Premium':       { monthly: 4900,  yearly: 49000  },
   
   
   'Demo Test':    { monthly: 10,    yearly: 10     }, // CamPay demo only — max 25 XAF
@@ -2353,7 +2353,7 @@ function _subDaysLeft(){
 
 function _subAmtXAF(){
   var activePl=_activePlan(); if(activePl==='trial'||activePl==='free') return 0;
-  var p=SUB_PLAN_XAF['Premium']||SUB_PLAN_XAF['Pro']||SUB_PLAN_XAF['Starter']||{monthly:8900,yearly:89000};
+  var p=SUB_PLAN_XAF['Premium']||SUB_PLAN_XAF['Pro']||SUB_PLAN_XAF['Starter']||{monthly:4900,yearly:49000};
   return (BIZ.billingCycle||'monthly')==='yearly'?p.yearly:p.monthly;
 }
 
@@ -2423,7 +2423,7 @@ function _showPlanSelectionModal(){
     },
     {
       id:'Premium', emoji:'\uD83D\uDE80', color:'#5b7fff', colorRgb:'91,127,255',
-      xaf:8900, yearly:89000, badge:_curPlan==='trial'?null:'Most Popular',
+      xaf:4900, yearly:49000, badge:_curPlan==='trial'?null:'Most Popular',
       desc:'Full power to run and grow your business',
       features:['Unlimited inventory & customers','Unlimited vendors & purchases',
                  'All reports — PDF & CSV export','WhatsApp automation','AI Studio assistant',
@@ -2589,7 +2589,7 @@ function mSubPayNow(){const _s=_L();
   if(_isUSD()){ mSubPayNowStripe(); return; }
   const d      = _subDaysLeft();
   const plan   = 'Premium'; // CamPay payment = upgrading to Premium
-  const amt    = _subAmtXAF() || 8900; // XAF: 8,900/mo for Premium
+  const amt    = _subAmtXAF() || 4900; // XAF: 4,900/mo for Premium
   const expiry = BIZ.subExpires || BIZ.trialEnd || '';
   const phone  = BIZ.subPhone || BIZ.whatsapp || BIZ.phone || '';
 
@@ -2646,7 +2646,7 @@ function mChangePlan(){
   var _isUsdCtx = _isUSD();
   const plans = [
     { id:'Free',    name:'Free',    price:0,       desc:'Essential tools to get started',           emoji:'\uD83C\uDF31' },
-    { id:'Premium', name:'Premium', price:_isUsdCtx?18:8900, desc:'Full power to run and grow your business', emoji:'\uD83D\uDE80' },
+    { id:'Premium', name:'Premium', price:_isUsdCtx?18:4900, desc:'Full power to run and grow your business', emoji:'\uD83D\uDE80' },
   ];
 
   const planCards = plans.map(function(p){
@@ -12242,13 +12242,13 @@ function _getPlanTier(){
 function _showUpsell(reason){const _s=_L();
   window._pwSelectedPlan='Premium';
   modal('\uD83D\uDE80 Upgrade to Premium',
-    '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px">\uD83D\uDE80 Premium \u2014 8,900 XAF/month</div>'
+    '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px">\uD83D\uDE80 Premium \u2014 4,900 XAF/month</div>'
     +'<p style="font-size:13px;color:var(--text2);line-height:1.7;margin:0 0 16px">Upgrade to Premium for unlimited inventory, customers, rentals, AI Studio, WhatsApp automation and full reports.</p>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:12px;color:var(--text2)">'
     +'<strong style="color:var(--ink)">Includes:</strong> Unlimited everything \u00b7 5 users \u00b7 AI Studio \u00b7 Rentals \u00b7 No watermark'
     +'</div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.prof_not_now}</button>'
-    +'<button class="btn btn-p" onclick="closeModal();_pwProceed()">\u25b6 Upgrade \u2014 8,900 XAF/mo</button>'
+    +'<button class="btn btn-p" onclick="closeModal();_pwProceed()">\u25b6 Upgrade \u2014 4,900 XAF/mo</button>'
   );
 }
 function mAddBizUser(){const _s=_L();
@@ -12553,15 +12553,15 @@ function pgAdminAnalytics(){const _s=_L();
 const BILLING_PLANS = {
   'free':             { monthly: 0,     yearly: 0      },
   'Free':             { monthly: 0,     yearly: 0      },
-  'premium':          { monthly: 8900,  yearly: 89000  },
-  'Premium':          { monthly: 8900,  yearly: 89000  },
+  'premium':          { monthly: 4900,  yearly: 49000  },
+  'Premium':          { monthly: 4900,  yearly: 49000  },
   'trial':            { monthly: 0,     yearly: 0      },
   'Trial (30 Days)':  { monthly: 0,     yearly: 0      },
   // Legacy aliases
-  'Starter':          { monthly: 8900,  yearly: 89000  },
-  'Pro':              { monthly: 8900,  yearly: 89000  },
-  'Professional':     { monthly: 8900,  yearly: 89000  },
-  'Enterprise':       { monthly: 8900,  yearly: 89000  },
+  'Starter':          { monthly: 4900,  yearly: 49000  },
+  'Pro':              { monthly: 4900,  yearly: 49000  },
+  'Professional':     { monthly: 4900,  yearly: 49000  },
+  'Enterprise':       { monthly: 4900,  yearly: 49000  },
   'Demo Test':        { monthly: 10,    yearly: 10     },
 };
 
@@ -15510,7 +15510,7 @@ const SUBSCRIPTION_PLANS = [
   {
     id:'premium', name:'Premium', emoji:'🚀',
     tagline:'Full power to run and grow your business',
-    monthlyXAF:8900, yearlyXAF:89000,
+    monthlyXAF:4900, yearlyXAF:49000,
     color:'#5b7fff', colorDim:'rgba(91,127,255,.12)', badge:'Most Popular',
     highlight: true,
     limits:{staff:'Up to 5 users', customers:'Unlimited', products:'Unlimited', invoices:'Unlimited'},
@@ -23359,7 +23359,7 @@ function _showTrialPaywall(daysLeft, hardBlock){const _s=_L();
       +'<div style="background:var(--bg3);border:2px solid var(--a);border-radius:10px;padding:16px;margin-bottom:14px;position:relative">'
         +'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--a);color:#fff;font-size:9px;font-weight:800;padding:2px 12px;border-radius:20px;white-space:nowrap">\u2b50 PREMIUM</div>'
         +'<div style="font-size:10px;font-weight:700;color:var(--a);margin-bottom:6px">\uD83D\uDE80 PREMIUM PLAN</div>'
-        +'<div style="font-size:22px;font-weight:900;color:var(--ink)">8,900 <span style="font-size:12px;font-weight:400;color:var(--text2)">XAF/mo</span></div>'
+        +'<div style="font-size:22px;font-weight:900;color:var(--ink)">4,900 <span style="font-size:12px;font-weight:400;color:var(--text2)">XAF/mo</span></div>'
         +'<div style="font-size:11px;color:var(--text2);margin-top:5px">Unlimited inventory \u00b7 5 users \u00b7 AI Studio \u00b7 Rentals \u00b7 WhatsApp automation</div>'
       +'</div>'
     +'<div style="padding:0 24px 20px">'
@@ -23376,7 +23376,7 @@ function _showTrialPaywall(daysLeft, hardBlock){const _s=_L();
 function _pwSelectPlan(plan){const _s=_L();
   window._pwSelectedPlan = 'Premium';
   var btn=document.getElementById('pw-upgrade-btn');
-  if(btn) btn.textContent='\u25b6 Upgrade to Premium \u2014 8,900 XAF/mo';
+  if(btn) btn.textContent='\u25b6 Upgrade to Premium \u2014 4,900 XAF/mo';
 }
 
 function _pwDismiss(){const _s=_L();

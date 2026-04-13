@@ -20,7 +20,7 @@
 //
 // ── Plan prices (XAF) ─────────────────────────────────────────
 //   Free:       0 XAF/month  (permanent free plan)
-//   Premium:    8,900 XAF/month | 89,000 XAF/year
+//   Premium:    4,900 XAF/month | 49,000 XAF/year
 //   (Legacy aliases Starter/Pro/Professional/Enterprise → Premium pricing)
 //
 // ── Subscription lifecycle ────────────────────────────────────
@@ -48,13 +48,13 @@
 // ── Plan definitions ──────────────────────────────────────────
 const PLANS = {
   'Free':            { monthly: 0,    yearly: 0     },  // permanent free plan
-  'Premium':         { monthly: 8900, yearly: 89000 },  // 8,900 FCFA/month
+  'Premium':         { monthly: 4900, yearly: 49000 },  // 4,900 FCFA/month
   'Trial (30 Days)': { monthly: 0,    yearly: 0     },  // 30-day full trial
   // Legacy aliases — kept for backwards compatibility with old Supabase records
-  'Starter':         { monthly: 8900, yearly: 89000 },  // maps to Premium pricing
-  'Pro':             { monthly: 8900, yearly: 89000 },
-  'Professional':    { monthly: 8900, yearly: 89000 },
-  'Enterprise':      { monthly: 8900, yearly: 89000 },
+  'Starter':         { monthly: 4900, yearly: 49000 },  // maps to Premium pricing
+  'Pro':             { monthly: 4900, yearly: 49000 },
+  'Professional':    { monthly: 4900, yearly: 49000 },
+  'Enterprise':      { monthly: 4900, yearly: 49000 },
   'Demo Test':       { monthly: 10,   yearly: 10    },  // CamPay demo — max 25 XAF
 };
 

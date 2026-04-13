@@ -325,7 +325,7 @@ function buildEmail({ key, firstName, bizName, lang, stats, siteUrl }) {
             ? '1 utilisateur · 30 produits · 30 clients · Ventes et dépenses illimitées'
             : '1 user · 30 products · 30 customers · Unlimited sales & expenses'
           }</div>
-          <div style="font-weight:700;color:#5b7fff;margin-bottom:10px">⭐ Premium — 8,900 XAF/mois</div>
+          <div style="font-weight:700;color:#5b7fff;margin-bottom:10px">⭐ Premium — 4,900 XAF/mois</div>
           <div style="font-size:13px;color:#1d4ed8;line-height:1.6">${fr
             ? 'Jusqu\'à 5 utilisateurs · Illimité · Studio IA · Locations · Rendez-vous · WhatsApp complet'
             : 'Up to 5 users · Unlimited everything · AI Studio · Rentals · Bookings · Full WhatsApp'
@@ -357,8 +357,8 @@ function buildEmail({ key, firstName, bizName, lang, stats, siteUrl }) {
       }</p>
       ${btn(appUrl, fr ? '▶ Mettre à niveau maintenant — garder mes données' : '▶ Upgrade now — keep my data')}
       <p style="font-size:13px;color:#4a5275;margin:0">${fr
-        ? 'Gratuit : 0 XAF/mois · Premium : 8,900 XAF/mois · Résiliez à tout moment'
-        : 'Free: 0 XAF/mo · Premium: 8,900 XAF/mo · Cancel anytime'
+        ? 'Gratuit : 0 XAF/mois · Premium : 4,900 XAF/mois · Résiliez à tout moment'
+        : 'Free: 0 XAF/mo · Premium: 4,900 XAF/mo · Cancel anytime'
       }</p>`),
 
     d30_expired: wrap(`
@@ -379,7 +379,7 @@ function buildEmail({ key, firstName, bizName, lang, stats, siteUrl }) {
         ? 'Pour continuer à enregistrer des ventes et accéder à tous vos rapports, mettez à niveau en 2 minutes.'
         : 'To continue recording sales and accessing all your reports, upgrade in 2 minutes.'
       }</p>
-      ${btn(appUrl, fr ? '▶ Passer à Premium — 8,900 XAF/mois' : '▶ Upgrade to Premium — 8,900 XAF/mo')}
+      ${btn(appUrl, fr ? '▶ Passer à Premium — 4,900 XAF/mois' : '▶ Upgrade to Premium — 4,900 XAF/mo')}
       <p style="font-size:13px;color:#4a5275;margin:0">${fr
         ? 'Des questions ? Répondez à cet e-mail ou contactez-nous sur WhatsApp : +1 304 503 3113'
         : 'Questions? Reply to this email or contact us on WhatsApp: +1 304 503 3113'
