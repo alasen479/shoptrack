@@ -2864,7 +2864,7 @@ function pgDash(){
   </div>
 </div>
 
-${(()=>{const od=D.rentals.filter(r=>r.st==='Overdue');return od.length?'<div class="alrt alrt-r">⚠ <strong>'+od.length+' overdue rental'+(od.length>1?'s':'')+'</strong> accumulating late fees — <span style="color:var(--a);cursor:pointer" onclick="nav(\'rentals\');setTimeout(filterRentalsOverdue,100)">View now →</span></div>':''})()}
+${(()=>{const od=D.rentals.filter(r=>r.st==='Overdue');if(!od.length)return '';const _fr=(BIZ.language||'en')==='fr';const _n=od.length;return '<div class="alrt alrt-r">⚠ <strong>'+_n+(_fr?' location'+(_n>1?'s':'')+' en retard':' overdue rental'+(_n>1?'s':''))+' — </strong>'+(_fr?'frais de retard en cours — ':'accumulating late fees — ')+'<span style="color:var(--a);cursor:pointer" onclick="nav(\'rentals\');setTimeout(filterRentalsOverdue,100)">'+(_fr?'Voir maintenant →':'View now →')+'</span></div>';})()}
 
 ${_subExpiryBanner()}
 ${_setupScoreBar()}
@@ -2874,8 +2874,8 @@ ${_setupScoreBar()}
   ${DC.kpis.includes('saleRev')?`<div class="kpi g" onclick="_navWithPeriod('sales',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">${_s.dash_kpi_sale}</div><div id="dash-kpi-sale" class="kpi-val g">${fmtKpi(k.saleRev)}</div><div class="kpi-sub" id="dash-kpi-sale-sub"></div></div>`:''}
   ${DC.kpis.includes('rentRev')?`<div class="kpi c" onclick="_navWithPeriod('rentals',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">${_s.dash_kpi_rent}</div><div id="dash-kpi-rent" class="kpi-val c">${fmtKpi(k.rentRev)}</div><div class="kpi-sub" id="dash-kpi-rent-sub"></div></div>`:''}
   ${DC.kpis.includes('apptRev')?`<div class="kpi p" onclick="mServicesRevenue()" style="cursor:pointer" title="${_s.dash_kpi_appt_title}"><div class="kpi-lbl">${_s.dash_kpi_appt}</div><div id="dash-kpi-appt" class="kpi-val p">${fmtKpi(k.apptRev||0)}</div><div class="kpi-sub" id="dash-kpi-appt-sub">${_s.dash_kpi_appt_sub}</div></div>`:''}
-  ${DC.kpis.includes('gp')?`<div class="kpi p"><div class="kpi-lbl">${_s.dash_kpi_gp}</div><div id="dash-kpi-gp" class="kpi-val p">${fmtKpi(k.gp)}</div><div class="kpi-sub">Margin: <strong id="dash-kpi-gp-pct" style="color:var(--p)">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</strong></div></div>`:''}
-  ${DC.kpis.includes('np')?`<div class="kpi g"><div class="kpi-lbl">${_s.dash_kpi_np}</div><div id="dash-kpi-np" class="kpi-val g">${fmtKpi(k.np)}</div><div class="kpi-sub">Margin: <strong id="dash-kpi-np-pct" style="color:var(--g)">${k.rev>0?Math.round(k.np/k.rev*100):0}%</strong></div></div>`:''}
+  ${DC.kpis.includes('gp')?`<div class="kpi p"><div class="kpi-lbl">${_s.dash_kpi_gp}</div><div id="dash-kpi-gp" class="kpi-val p">${fmtKpi(k.gp)}</div><div class="kpi-sub">${_s.dash_kpi_margin}<strong id="dash-kpi-gp-pct" style="color:var(--p)">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</strong></div></div>`:''}
+  ${DC.kpis.includes('np')?`<div class="kpi g"><div class="kpi-lbl">${_s.dash_kpi_np}</div><div id="dash-kpi-np" class="kpi-val g">${fmtKpi(k.np)}</div><div class="kpi-sub">${_s.dash_kpi_margin}<strong id="dash-kpi-np-pct" style="color:var(--g)">${k.rev>0?Math.round(k.np/k.rev*100):0}%</strong></div></div>`:''}
   ${DC.kpis.includes('ar')?`<div class="kpi r" onclick="mARDetail()" style="cursor:pointer" title="${_s.dash_kpi_ar_title}"><div class="kpi-lbl">${_s.dash_kpi_ar}</div><div id="dash-kpi-ar" class="kpi-val r">${fmtKpi(k.ar)}</div><div class="kpi-sub" id="dash-kpi-ar-sub">${D.cust.filter(c=>c.bal>0).length} ${_s.dash_cust_owe}</div></div>`:''}
   ${DC.kpis.includes('ap')?`<div class="kpi r" onclick="mAPDetail()" style="cursor:pointer" title="${_s.dash_kpi_ap_title}"><div class="kpi-lbl">${_s.dash_kpi_ap}</div><div id="dash-kpi-ap" class="kpi-val r">${fmtKpi(k.ap)}</div><div class="kpi-sub" id="dash-kpi-ap-sub">${D.vendors.filter(v=>v.bal>0).length} ${_s.dash_vend_pay}</div></div>`:''}
   ${DC.kpis.includes('invVal')?`<div class="kpi b" onclick="nav('inventory')" style="cursor:pointer" title="${_s.dash_kpi_inv_title}"><div class="kpi-lbl">${_s.dash_kpi_inv}</div><div id="dash-kpi-inv" class="kpi-val b">${fmtKpi(k.invVal)}</div><div class="kpi-sub">${D.inv.length} ${_s.dash_items}</div></div>`:''}
@@ -2919,12 +2919,12 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
     <div class="card-hd"><div class="card-ttl">${_s.dash_today_sched}</div><button class="btn btn-p btn-sm" onclick="nav('appointments')">${_s.dash_view_all}</button></div>
     ${(()=>{
       const todayA=(D.appointments||[]).filter(a=>a.date===localDateStr()&&a.st!=='Cancelled').sort((a,b)=>a.startTime>b.startTime?1:-1);
-      if(!todayA.length) return '<div style="text-align:center;padding:16px;color:var(--text2);font-size:13px">No appointments today<br><button class="btn btn-p btn-sm" style="margin-top:8px" onclick="mNewAppt()">+ Book Now</button></div>';
+      if(!todayA.length) return '<div style="text-align:center;padding:16px;color:var(--text2);font-size:13px">'+_s.dash_no_appts_today+'<br><button class="btn btn-p btn-sm" style="margin-top:8px" onclick="mNewAppt()">'+_s.dash_book_now+'</button></div>';
       return todayA.slice(0,5).map(a=>`<div style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="mViewAppt('${a.id}')">
         <div style="width:50px;text-align:center;flex-shrink:0"><div style="font-size:11px;font-weight:700;color:var(--ink)">${_timeLabel(a.startTime)}</div><div style="font-size:10px;color:var(--text2)">${a.endTime?_timeLabel(a.endTime):''}</div></div>
         <div style="width:3px;height:32px;background:${_apptCol(a.st)};border-radius:2px;flex-shrink:0"></div>
         <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">${_esc(a.custName)}</div><div style="font-size:11px;color:var(--text2)">${_esc(a.serviceName)}${a.staffName?' · '+_esc(a.staffName):''}</div></div>
-        <span style="background:${_apptBg(a.st)};color:${_apptCol(a.st)};border-radius:12px;padding:2px 7px;font-size:10px;font-weight:700">${a.st}</span>
+        <span style="background:${_apptBg(a.st)};color:${_apptCol(a.st)};border-radius:12px;padding:2px 7px;font-size:10px;font-weight:700">${_s.dash_appt_st(a.st)}</span>
       </div>`).join('');
     })()}
   </div>
@@ -2934,7 +2934,7 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
   ${DC.sections.includes('overdueRentals')?`<div class="card">
     <div class="card-hd"><div class="card-ttl" style="color:var(--r)">${_s.dash_overdue}</div><button class="btn btn-g btn-sm" onclick="nav('rentals')">${_s.dash_view_all}</button></div>
     <div class="tbl-wrap"><table><thead><tr><th>${_s.dash_col_rental}</th><th>${_s.dash_col_cust}</th><th>${_s.dash_col_late}</th><th>${_s.dash_col_status}</th></tr></thead><tbody>
-    ${D.rentals.filter(r=>r.st==='Overdue').map(r=>`<tr style="cursor:pointer" onclick="mRentalDetail('${r.id}')"><td>${mono(r.id,'a')}</td><td><strong>${_esc(r.cust)}</strong></td><td>${mono(fmt(r.lf),'r')}</td><td>${badge(r.st)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--g);padding:12px">✅ No overdue rentals</td></tr>'}
+    ${D.rentals.filter(r=>r.st==='Overdue').map(r=>`<tr style="cursor:pointer" onclick="mRentalDetail('${r.id}')"><td>${mono(r.id,'a')}</td><td><strong>${_esc(r.cust)}</strong></td><td>${mono(fmt(r.lf),'r')}</td><td>${badge(r.st)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--g);padding:12px">'+_s.dash_no_overdue_row+'</td></tr>'}
     </tbody></table></div>
   </div>`:'<div></div>'}
 
@@ -25316,6 +25316,12 @@ dash_reorder:      fr ? 'Commander'                   : 'Reorder',
 dash_more:         fr ? 'de plus —'                   : 'more —',
 dash_top_prod:     fr ? 'Top Produits'                : 'Top Products',
 dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activity',
+    dash_no_appts_today: fr ? "Aucun RDV aujourd'hui"    : 'No appointments today',
+    dash_book_now:       fr ? '+ Réserver'                : '+ Book Now',
+    dash_no_overdue_row: fr ? '✅ Aucune location en retard' : '✅ No overdue rentals',
+    dash_kpi_margin:     fr ? 'Marge : '                  : 'Margin: ',
+    dash_appt_st:        fr ? function(st){ var m={Confirmed:'Confirmé',Pending:'En attente',Completed:'Terminé',Cancelled:'Annulé','No-show':'Absent'}; return m[st]||st; }
+                           : function(st){ return st; },
 
   };
 }
