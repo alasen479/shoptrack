@@ -13703,8 +13703,9 @@ async function _dbLoadBizData(bizId){
 
 var _idb = null; // IndexedDB instance (set once on open)
 var _IDB_NAME    = 'shoptrack-cache';
-var _IDB_VERSION = 1;
+var _IDB_VERSION = 2;          // bumped: adds write-queue store
 var _IDB_STORE   = 'biz-data';
+var _IDB_QUEUE   = 'write-queue'; // offline write queue
 
 // ── Open (or upgrade) the IndexedDB database ─────────────────
 function _idbOpen(){
@@ -13715,6 +13716,11 @@ function _idbOpen(){
       var db = e.target.result;
       if(!db.objectStoreNames.contains(_IDB_STORE)){
         db.createObjectStore(_IDB_STORE, { keyPath: 'key' });
+      }
+      // v2: write-queue store for offline writes
+      if(!db.objectStoreNames.contains(_IDB_QUEUE)){
+        var qs = db.createObjectStore(_IDB_QUEUE, { keyPath: 'qid', autoIncrement: true });
+        qs.createIndex('by_bizId', 'bizId', { unique: false });
       }
     };
     req.onsuccess = function(e){
@@ -13791,6 +13797,232 @@ async function _idbClear(bizId){
       req.onerror = function(){ resolve(); };
     });
   }catch(e){ console.warn('[IDB] Clear error:', e.message); }
+}
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  Phase 2, Step 2 — Offline Write Queue                     ║
+// ║  When offline, writes are queued to IDB.                   ║
+// ║  On reconnect, queue drains automatically to Supabase.     ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+var _queueDraining = false;
+var _queueBadgeEl  = null;
+
+// ── Enqueue one write operation ───────────────────────────────
+async function _queueEnqueue(bizId, table, payload){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx = db.transaction(_IDB_QUEUE, 'readwrite');
+      var st = tx.objectStore(_IDB_QUEUE);
+      st.add({
+        bizId:     bizId,
+        table:     table,
+        payload:   payload,
+        queuedAt:  Date.now(),
+        attempts:  0,
+      });
+      tx.oncomplete = resolve;
+      tx.onerror    = function(){ resolve(); };
+    });
+  }catch(e){ console.warn('[Queue] Enqueue error:', e.message); }
+}
+
+// ── Count pending items for this business ─────────────────────
+async function _queueCount(bizId){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx  = db.transaction(_IDB_QUEUE, 'readonly');
+      var idx = tx.objectStore(_IDB_QUEUE).index('by_bizId');
+      var req = idx.count(IDBKeyRange.only(bizId));
+      req.onsuccess = function(){ resolve(req.result || 0); };
+      req.onerror   = function(){ resolve(0); };
+    });
+  }catch(e){ return 0; }
+}
+
+// ── Get all pending items for this business ───────────────────
+async function _queueGetAll(bizId){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx  = db.transaction(_IDB_QUEUE, 'readonly');
+      var idx = tx.objectStore(_IDB_QUEUE).index('by_bizId');
+      var req = idx.getAll(IDBKeyRange.only(bizId));
+      req.onsuccess = function(){ resolve(req.result || []); };
+      req.onerror   = function(){ resolve([]); };
+    });
+  }catch(e){ return []; }
+}
+
+// ── Delete one queue item by its autoincrement key ───────────
+async function _queueDelete(qid){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx = db.transaction(_IDB_QUEUE, 'readwrite');
+      tx.objectStore(_IDB_QUEUE).delete(qid);
+      tx.oncomplete = resolve;
+      tx.onerror    = function(){ resolve(); };
+    });
+  }catch(e){}
+}
+
+// ── Increment attempt count on a queue item ───────────────────
+async function _queueBumpAttempt(item){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx = db.transaction(_IDB_QUEUE, 'readwrite');
+      var st = tx.objectStore(_IDB_QUEUE);
+      item.attempts = (item.attempts||0) + 1;
+      st.put(item);
+      tx.oncomplete = resolve;
+      tx.onerror    = function(){ resolve(); };
+    });
+  }catch(e){}
+}
+
+// ── Drain the queue: push pending writes to Supabase ─────────
+async function _queueDrain(){
+  if(_queueDraining) return;
+  if(!navigator.onLine || !_sb || !SESSION.bizId) return;
+  if(SESSION.isSuperAdmin) return;
+
+  var bizId = SESSION.bizId;
+  var items = await _queueGetAll(bizId);
+  if(!items.length){ _queueUpdateBadge(0); return; }
+
+  _queueDraining = true;
+  _queueUpdateBadge(items.length);
+  console.log('[Queue] Draining', items.length, 'pending write(s)');
+
+  var synced = 0;
+  var failed = 0;
+
+  for(var i = 0; i < items.length; i++){
+    var item = items[i];
+    // Skip items that have failed too many times (max 5 attempts)
+    if((item.attempts||0) >= 5){
+      await _queueDelete(item.qid);
+      console.warn('[Queue] Dropped after 5 failures:', item.table, item.payload.id);
+      continue;
+    }
+    try{
+      var res = await _sb.from(item.table)
+        .upsert(item.payload, { onConflict: 'id,biz_id' })
+        .select();
+      if(res.error){
+        // Column missing — strip optional fields and retry inline
+        if(res.error.code === 'PGRST204' || (res.error.message||'').includes('column')){
+          var safe = Object.assign({}, item.payload);
+          ['dob','birthday','docs','contract_sig_url','contract_signed_date',
+           'contract_signed','photo_data_urls','line_items'].forEach(function(k){ delete safe[k]; });
+          var res2 = await _sb.from(item.table).upsert(safe, {onConflict:'id,biz_id'}).select();
+          if(res2.error){ await _queueBumpAttempt(item); failed++; continue; }
+        } else {
+          await _queueBumpAttempt(item); failed++; continue;
+        }
+      }
+      await _queueDelete(item.qid);
+      synced++;
+    }catch(e){
+      console.warn('[Queue] Sync error:', item.table, e.message);
+      await _queueBumpAttempt(item);
+      failed++;
+    }
+  }
+
+  _queueDraining = false;
+  var remaining = await _queueCount(bizId);
+  _queueUpdateBadge(remaining);
+
+  if(synced > 0){
+    console.log('[Queue] Synced', synced, 'write(s) to Supabase');
+    // Refresh IDB data cache after successful sync
+    _dbLoadBizDataCached(bizId).catch(function(){});
+    if(typeof toast === 'function'){
+      toast(synced + ' offline record' + (synced>1?'s':'') + ' synced ✓', 'success');
+    }
+  }
+  if(failed > 0){
+    console.warn('[Queue] Failed to sync', failed, 'item(s) — will retry on next reconnect');
+  }
+}
+
+// ── Queue badge: show pending count in the topbar ─────────────
+function _queueUpdateBadge(count){
+  if(!_queueBadgeEl){
+    // Create badge anchored to topbar
+    _queueBadgeEl = document.createElement('div');
+    _queueBadgeEl.id = 'idb-queue-badge';
+    _queueBadgeEl.style.cssText = [
+      'position:fixed;top:10px;right:60px;z-index:88887',
+      'background:#f59e0b;color:#000;font-size:11px;font-weight:800',
+      'border-radius:20px;padding:3px 9px;display:none',
+      'font-family:var(--font,sans-serif);cursor:pointer',
+      'box-shadow:0 2px 8px rgba(0,0,0,.3)',
+    ].join(';');
+    _queueBadgeEl.title = 'Pending offline writes — tap to view';
+    _queueBadgeEl.onclick = _queueShowStatus;
+    document.body.appendChild(_queueBadgeEl);
+  }
+  if(count > 0){
+    _queueBadgeEl.textContent = '⏳ ' + count + ' pending';
+    _queueBadgeEl.style.display = 'block';
+  } else {
+    _queueBadgeEl.style.display = 'none';
+  }
+}
+
+// ── Show queue status modal ───────────────────────────────────
+async function _queueShowStatus(){
+  if(!SESSION.bizId) return;
+  var items  = await _queueGetAll(SESSION.bizId);
+  var count  = items.length;
+  var online = navigator.onLine;
+  var rows   = items.slice(0,20).map(function(it){
+    var age  = Math.round((Date.now() - it.queuedAt) / 60000);
+    var ageS = age < 2 ? 'just now' : age < 60 ? age+'m ago' : Math.round(age/60)+'h ago';
+    return '<tr><td style="padding:6px 8px;font-size:12px;color:var(--ink)">'
+      + it.table + '</td><td style="padding:6px 8px;font-size:11px;color:var(--text2)">'
+      + (it.payload.id||'').slice(0,16) + '</td><td style="padding:6px 8px;font-size:11px;color:var(--text2)">'
+      + ageS + '</td></tr>';
+  }).join('');
+
+  modal('⏳ Offline Write Queue',
+    '<div style="font-size:13px;color:var(--text);margin-bottom:12px">'
+    + (online
+        ? count + ' write' + (count!==1?'s':'') + ' waiting to sync. <strong>You are online</strong> — sync will complete shortly.'
+        : count + ' write' + (count!==1?'s':'') + ' waiting. <strong>No internet connection</strong> — will sync automatically when you reconnect.')
+    + '</div>'
+    + (rows ? '<div style="max-height:200px;overflow-y:auto"><table style="width:100%;border-collapse:collapse">'
+        + '<thead><tr><th style="text-align:left;padding:4px 8px;font-size:11px;color:var(--text2)">Table</th>'
+        + '<th style="text-align:left;padding:4px 8px;font-size:11px;color:var(--text2)">ID</th>'
+        + '<th style="text-align:left;padding:4px 8px;font-size:11px;color:var(--text2)">Queued</th></tr></thead>'
+        + '<tbody>' + rows + '</tbody></table></div>' : '')
+    + '<div style="margin-top:10px;font-size:12px;color:var(--text2)">Your data is saved locally and will not be lost.</div>',
+    '<button class="btn btn-s" onclick="closeModal()">Close</button>'
+    + (online ? '<button class="btn btn-p btn-sm" onclick="closeModal();_queueDrain()">Sync Now</button>' : '')
+  );
+}
+
+// ── Boot: drain queue + watch for reconnect ───────────────────
+function _queueBoot(){
+  // Drain on load if already online
+  if(navigator.onLine) setTimeout(_queueDrain, 2000);
+
+  // Drain on reconnect
+  window.addEventListener('online', function(){
+    console.log('[Queue] Online — draining queue');
+    setTimeout(_queueDrain, 1000);
+  });
+
+  // Show badge if there are pending items
+  if(SESSION && SESSION.bizId && !SESSION.isSuperAdmin){
+    _queueCount(SESSION.bizId).then(_queueUpdateBadge);
+  }
 }
 
 // ── Write the current D object to IDB (called after Supabase load) ──
@@ -13930,6 +14162,8 @@ async function _dbLoadBizDataCached(bizId){
   }finally{
     _idbLoadInProgress = false;
   }
+  // Step 5: Boot the queue (idempotent — safe to call multiple times)
+  _queueBoot();
 }
 
 // ── Cache-age banner ──────────────────────────────────────────
@@ -14130,12 +14364,40 @@ async function _dbLoadBizProfile(bizId){
 // ── Safe upsert: retries without 'docs'/'dob' if PGRST204 (column not in schema)
 async function _safeUpsert(table, payload, ctx){
   if(!_sb||!SESSION.bizId) return {ok:false};
+
+  // ── Offline: queue the write for later sync ───────────────
+  if(!navigator.onLine){
+    try{
+      await _queueEnqueue(SESSION.bizId, table, payload);
+      var qc = await _queueCount(SESSION.bizId);
+      _queueUpdateBadge(qc);
+      console.log('['+ctx+'] Offline — queued write to', table, '| queue size:', qc);
+      // Return a synthetic success so callers update their UI normally
+      return {ok:true, queued:true, data:[payload]};
+    }catch(qe){
+      console.warn('['+ctx+'] Queue error:', qe.message);
+      toast('⚠ Offline — could not queue this change','error');
+      return {ok:false, error:qe};
+    }
+  }
+
+  // ── Online: write directly to Supabase ────────────────────
   try{
-    // Attempt 1: try without the 'id' field — let Supabase generate/match by biz_id+name or PK
-    // Actually: try INSERT first, fallback to UPDATE if duplicate
     var result = await _sbUpsertWithFallback(table, payload, ctx);
     return result;
   }catch(e){
+    // Network failed mid-request — queue it
+    if(!navigator.onLine || e.message.includes('Failed to fetch') || e.message.includes('NetworkError')){
+      try{
+        await _queueEnqueue(SESSION.bizId, table, payload);
+        var qc2 = await _queueCount(SESSION.bizId);
+        _queueUpdateBadge(qc2);
+        console.warn('['+ctx+'] Network drop — queued write to', table);
+        return {ok:true, queued:true, data:[payload]};
+      }catch(qe2){
+        console.warn('['+ctx+'] Queue fallback error:', qe2.message);
+      }
+    }
     console.error('['+ctx+'] exception:', e.message);
     toast('⚠ Save error: '+e.message.slice(0,80),'error');
     return {ok:false, error:e};
@@ -15311,10 +15573,12 @@ async function doResetPwd(email, btn){
 
 function doLogout(){
   addAudit('Logout', (SESSION.name||SESSION.email||'User')+' signed out');
-  // Clear IDB cache for this business on logout (security — next user starts fresh)
+  // Clear IDB cache AND write queue on logout (security — next user starts fresh)
   if(SESSION.bizId && SESSION.bizId !== 'BIZ-001' && SESSION.bizId !== 'BIZ-107'){
     _idbClear(SESSION.bizId).catch(function(){});
   }
+  if(_queueBadgeEl){ _queueBadgeEl.style.display='none'; }
+  _queueDraining = false;
   try{ localStorage.removeItem('st_session'); sessionStorage.removeItem('st_session'); }catch(e){}
   const ls = document.getElementById('login-screen');
   if(ls){ ls.style.opacity='1'; ls.style.transition='none'; ls.style.display='flex'; }
