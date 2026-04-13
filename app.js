@@ -1017,7 +1017,7 @@ function toast(msg,type='info'){
 
 function _addInvCat(){
   var val=document.getElementById('ai-newcat-inp').value.trim();
-  if(!val){toast('Enter a category name','error');return;}
+  if(!val){toast(_s.t_cat_name,'error');return;}
   if(D.invCats.indexOf(val)===-1){
     D.invCats.push(val);
     if(SESSION.bizId&&!SESSION.isSuperAdmin) _dbSaveCategories(SESSION.bizId);
@@ -1031,7 +1031,7 @@ function _addInvCat(){
   }
   document.getElementById('ai-newcat-inp').value='';
   var row=document.getElementById('ai-newcat-row'); if(row) row.style.display='none';
-  toast('✅ Category "'+val+'" added','success');
+  toast(_s.t_cat_prefix+val+'" added','success');
 }
 
 function _renderInvCatPills(){
@@ -1064,8 +1064,8 @@ function _delInvCat(idx){
 }
 function _addInvCatSettings(){
   var val=(document.getElementById('settings-new-cat-inp')?.value||'').trim();
-  if(!val){toast('Enter a category name','error');return;}
-  if(D.invCats.indexOf(val)!==-1){toast('Category already exists','error');return;}
+  if(!val){toast(_s.t_cat_name,'error');return;}
+  if(D.invCats.indexOf(val)!==-1){toast(_s.t_cat_exists,'error');return;}
   D.invCats.push(val);
   if(SESSION.bizId&&!SESSION.isSuperAdmin) _dbSaveCategories(SESSION.bizId);
   document.getElementById('settings-new-cat-inp').value='';
@@ -1081,8 +1081,8 @@ function _delExpCat(idx){
 }
 function _addExpCatSettings(){
   var val=(document.getElementById('settings-new-expcat-inp')?.value||'').trim();
-  if(!val){toast('Enter a category name','error');return;}
-  if(D.expCats.indexOf(val)!==-1){toast('Category already exists','error');return;}
+  if(!val){toast(_s.t_cat_name,'error');return;}
+  if(D.expCats.indexOf(val)!==-1){toast(_s.t_cat_exists,'error');return;}
   D.expCats.push(val);
   if(SESSION.bizId&&!SESSION.isSuperAdmin) _dbSaveCategories(SESSION.bizId);
   document.getElementById('settings-new-expcat-inp').value='';
@@ -1110,9 +1110,9 @@ function _delSvcCat(idx){
 }
 function _addSvcCatSettings(){
   var val=(document.getElementById('settings-new-svccat-inp')?.value||'').trim();
-  if(!val){toast('Enter a category name','error');return;}
+  if(!val){toast(_s.t_cat_name,'error');return;}
   if(!D.svcCats) D.svcCats=[];
-  if(D.svcCats.indexOf(val)!==-1){toast('Category already exists','error');return;}
+  if(D.svcCats.indexOf(val)!==-1){toast(_s.t_cat_exists,'error');return;}
   D.svcCats.push(val);
   if(SESSION.bizId&&!SESSION.isSuperAdmin) _dbSaveCategories(SESSION.bizId);
   document.getElementById('settings-new-svccat-inp').value='';
@@ -1122,7 +1122,7 @@ function _addSvcCatSettings(){
 
 function _addVendorCat(){
   var val=document.getElementById('av-newcat-inp').value.trim();
-  if(!val){toast('Enter a category name','error');return;}
+  if(!val){toast(_s.t_cat_name,'error');return;}
   if(D.vendorCats.indexOf(val)===-1) D.vendorCats.push(val);
   var sel=document.getElementById('av-cat');
   if(!sel.querySelector('option[value="'+val+'"]')){
@@ -1131,12 +1131,12 @@ function _addVendorCat(){
   sel.value=val;
   document.getElementById('av-newcat-inp').value='';
   document.getElementById('av-newcat-row').style.display='none';
-  toast('✅ Category "'+val+'" added','success');
+  toast(_s.t_cat_prefix+val+'" added','success');
 }
 
 function _addExpCat(){
   var val=document.getElementById('ae-newcat-inp').value.trim();
-  if(!val){toast('Enter a category name','error');return;}
+  if(!val){toast(_s.t_cat_name,'error');return;}
   if(D.expCats.indexOf(val)===-1) D.expCats.push(val);
   // Update hidden input
   var hidden=document.getElementById('ae-cat');
@@ -1148,7 +1148,7 @@ function _addExpCat(){
   }
   document.getElementById('ae-newcat-inp').value='';
   var row=document.getElementById('ae-newcat-row'); if(row) row.style.display='none';
-  toast('Category "'+val+'" added','success');
+  toast(_s.t_cat_prefix2+val+'" added','success');
 }
 
 
@@ -1745,7 +1745,7 @@ function nav(p){
   }
   // Rule 2: Business users can NEVER access SA platform pages — no toast during boot
   if(!SESSION.isSuperAdmin && ADMIN_ONLY_PAGES.has(p)){
-    if(_navUserTriggered) toast('Platform Admin access required','error');
+    if(_navUserTriggered) toast(_s.t_admin_req,'error');
     p = 'dashboard';
   }
   // Rule 3: Plan gate
@@ -1900,7 +1900,7 @@ function _sendBirthdayWA(custId){const _s=_L();
   var cu = D.cust.find(function(x){return x.id===custId;});
   if(!cu) return;
   var ph = (cu.whatsapp||cu.phone||'').replace(/\D/g,'');
-  if(!ph){ toast('No phone number on file','error'); return; }
+  if(!ph){ toast(_s.t_no_phone,'error'); return; }
   var msg = 'Happy Birthday '+cu.name+'! 🎂\n\nWishing you a wonderful day from all of us at '+(BIZ.name||'ShopTrack')+'!';
   window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msg),'_blank');
 }
@@ -1909,7 +1909,7 @@ function _sendBirthdayWA(custId){const _s=_L();
 // ── Bulk AR collection ─────────────────────────────────────────────────
 function _arBulkCollect(){const _s=_L();
   var debtors = D.cust.filter(function(cu){return cu.bal>0;}).sort(function(a,b){return b.bal-a.bal;});
-  if(!debtors.length){ toast('No outstanding balances ✓','success'); return; }
+  if(!debtors.length){ toast(_s.t_no_bal,'success'); return; }
   var today = localDateStr();
   var rows = debtors.map(function(cu){
     var unpaidSales = D.sales.filter(function(s){return (s.custId===cu.id||s.cust===cu.name)&&s.st!=='Paid';});
@@ -1982,7 +1982,7 @@ function _arBulkCollectSave(dt){
   closeModal();
   refreshLiveKpis();
   if(collected>0) toast('✅ '+collected+' payment'+(collected!==1?'s':'')+' recorded','success');
-  else toast('No payments selected','info');
+  else toast(_s.t_no_payment,'info');
   if(typeof pgCust==='function'&&curPage==='customers') nav('customers');
 }
 
@@ -2024,7 +2024,7 @@ function _qaNav(pg,lbl){
     case 'expenses':  nav('expenses');  setTimeout(()=>mAddExp(), 80); return;
     case 'customers': nav('customers'); setTimeout(()=>mAddCustomer(), 80); return;
     case 'vendors':   nav('vendors');   setTimeout(()=>mAddVendor(), 80); return;
-    case 'purchases': nav('purchases'); setTimeout(()=>{ const b=document.getElementById('po-add-btn'); if(b)b.click(); else toast('Click + New PO to add','info'); }, 80); return;
+    case 'purchases': nav('purchases'); setTimeout(()=>{ const b=document.getElementById('po-add-btn'); if(b)b.click(); else toast(_s.t_click_po,'info'); }, 80); return;
     case 'appointments': nav('appointments'); setTimeout(()=>mNewAppt(), 80); return;
     case 'services':     nav('services'); return;
     default: if(pg) nav(pg); else toast(lbl+' opened');
@@ -2107,13 +2107,13 @@ function _dashConfigSave(){
   _saveDashConfig(cfg);
   closeModal();
   nav('dashboard');
-  toast('Dashboard updated ✓','success');
+  toast(_s.t_dash_saved,'success');
 }
 function _dashConfigReset(){
   _saveDashConfig(_DASH_DEFAULT);
   closeModal();
   nav('dashboard');
-  toast('Dashboard reset to defaults','success');
+  toast(_s.t_dash_reset,'success');
 }
 function _buildDashQA(DC){
   if(!DC.sections.includes('quickActions')) return '';
@@ -2282,7 +2282,7 @@ function _buildTopProducts(range){
 
 function _showProductSales(invId){const _s=_L();
   var inv = D.inv.find(function(x){return x.id===invId;});
-  if(!inv){ toast('Product not found','error'); return; }
+  if(!inv){ toast(_s.t_prod_notfound,'error'); return; }
   var range = PERIOD_RANGES[_dashPeriod];
   var sales = D.sales.filter(function(s){
     return s.invId===invId && (!range||inRange(s.dt,range));
@@ -2502,7 +2502,7 @@ function _pgSelectPlan(planId){
 
 async function _pgConfirmPlan(){
   var planId = (document.getElementById('pg-selected-plan')||{}).value||'';
-  if(!planId){ toast('Please select a plan first','error'); return; }
+  if(!planId){ toast(_s.t_select_plan,'error'); return; }
   // Normalize plan IDs
   if(planId==='Starter'||planId==='starter') planId='Free';
   if(planId==='Pro'||planId==='pro') planId='Premium';
@@ -2519,10 +2519,10 @@ async function _pgConfirmPlan(){
     BIZ.plan = planId;
     addAudit('Plan selected',planId+' chosen during onboarding');
     closeModal();
-    toast('\u2705 '+planId+' plan activated \u2014 your 30-day free trial has started!','success');
+    toast('✅ '+planId+' plan activated \u2014 your 30-day free trial has started!','success');
     nav('dashboard');
   } catch(e){
-    toast('Could not save plan \u2014 '+e.message,'error');
+    toast(_s.t_could_not_save+e.message,'error');
     if(btn){ btn.textContent='\u25b6 Start Free Trial'; btn.disabled=false; }
   }
 }
@@ -2575,11 +2575,11 @@ async function _doStripeCheckout(plan,cycle,newExpiry){
     if(data.url){
       window.location.href=data.url;
     } else {
-      toast('Stripe checkout failed: '+(data.error||'unknown error'),'error');
+      toast(_s.t_stripe_failed2+(data.error||'unknown error'),'error');
       if(btn){btn.disabled=false;btn.textContent='\uD83D\uDD12 Pay via Stripe';}
     }
   }catch(e){
-    toast('Checkout error: '+e.message,'error');
+    toast(_s.t_checkout_error+e.message,'error');
     if(btn){btn.disabled=false;btn.textContent='\uD83D\uDD12 Pay via Stripe';}
   }
 }
@@ -2697,21 +2697,21 @@ function mChangePlan(){
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" id="cp-confirm-btn" disabled onclick="(function(){
      var sel = document.getElementById('cp-selected').value;
-     if(!sel){ toast('Please select a plan','error'); return; }
+     if(!sel){ toast(_s.t_select_plan,'error'); return; }
      if(sel === '${_esc(currentPlan)}'){
-       toast('You are already on this plan','info'); return;
+       toast(_s.t_settings_saved,'info'); return;
      }
      closeModal();
      if(sel==='Free'){
        // Downgrade to Free -- no payment needed
        if(_sb){
          _sb.from('businesses').update({plan:'free'}).eq('id',SESSION.bizId).then(function(r){
-           if(r.error){ toast('Could not update: '+r.error.message,'error'); return; }
+           if(r.error){ toast(_s.t_could_not_upd + ': '+r.error.message,'error'); return; }
            BIZ.plan='free';
-           toast('\u2705 Switched to Free plan.','success');
+           toast(_s.t_free_switched,'success');
            nav('settings');
          });
-       } else { BIZ.plan='free'; toast('\u2705 Switched to Free plan.','success'); }
+       } else { BIZ.plan='free'; toast(_s.t_free_switched,'success'); }
      } else {
        // Upgrade to Premium -- route to payment (Stripe for USD, CamPay for XAF)
        setTimeout(function(){ mSubPayNow(); }, 200);
@@ -2739,7 +2739,7 @@ function _subDetectCarrier(raw){
 async function _doSubPayNow(currentExpiry, newExpiry, amtXAF){
   const phone = (document.getElementById('spn-phone')?.value||'').trim();
   const btn   = document.getElementById('spn-pay-btn');
-  if(!phone){ toast('Please enter your phone number','error'); return; }
+  if(!phone){ toast(_s.t_phone_req,'error'); return; }
 
   if(btn){ btn.disabled=true; btn.textContent='⏳ Sending request…'; }
 
@@ -2751,7 +2751,7 @@ async function _doSubPayNow(currentExpiry, newExpiry, amtXAF){
     let data;
     try { data = await resp.json(); } catch(e) {
       if(btn){ btn.disabled=false; btn.textContent='📱 Request Payment — '+amtXAF.toLocaleString()+' XAF'; }
-      toast('❌ Server error — check Netlify function logs','error'); return;
+      toast(_s.t_server_error,'error'); return;
     }
 
     if(!resp.ok || (data.errors && data.errors.length)){
@@ -2813,7 +2813,7 @@ async function _doSubPayNow(currentExpiry, newExpiry, amtXAF){
 
   } catch(err){
     if(btn){ btn.disabled=false; btn.textContent='📱 Request Payment — '+amtXAF.toLocaleString()+' XAF'; }
-    toast('Error: '+err.message,'error');
+    toast(_s.t_error_prefix+err.message,'error');
   }
 }
 
@@ -2828,7 +2828,7 @@ function _subPaymentConfirmed(newExpiry, amtXAF){const _s=_L();
   setTimeout(function(){
     closeModal();
     addAudit('Subscription self-payment confirmed', SESSION.bizId+' — '+amtXAF.toLocaleString()+' XAF — expires '+newExpiry);
-    toast('✅ Subscription renewed! Your plan is active until '+newExpiry,'success');
+    toast(_s.t_sub_renewed2+newExpiry,'success');
     nav('dashboard'); // refresh dashboard to remove banner
   }, 2000);
 }
@@ -3273,7 +3273,7 @@ function switchInvView(el,mode){const _s=_L();
 function _saveItemPrices(id){
   var r2=CUR.rate;
   var itx=D.inv.find(function(i){return i.id===id;});
-  if(!itx){toast('Item not found','error');return;}
+  if(!itx){toast(_s.t_item_notfound,'error');return;}
   var spEl=document.getElementById('mi-sp-'+id);
   var rpEl=document.getElementById('mi-rp-'+id);
   var msEl=document.getElementById('mi-minsp-'+id);
@@ -3290,7 +3290,7 @@ function _saveItemPrices(id){
   _dbSaveInv(itx);
   refreshLiveKpis();
   addAudit('Prices updated',itx.id+' SP='+fmt(itx.sp)+' RP='+fmt(itx.rp)+' MinSP='+fmt(itx.minSp));
-  toast('Prices saved ✓','success');
+  toast(_s.t_prices_saved,'success');
   closeModal();nav('inventory');
 }
 
@@ -3302,7 +3302,7 @@ function _adjStock(id, delta){
   _dbSaveInv(it, delta); // pass delta for conflict-safe offline sync
   refreshLiveKpis();
   addAudit('Stock adjusted',id+' qty:'+newQty);
-  toast('Stock updated: '+newQty+' units','success');
+  toast(_s.t_stock_updated+newQty+' units','success');
 }
 function _invStatusBadge(st){
   var cfg = {
@@ -3609,10 +3609,10 @@ window._cbSaveCustomCat=function(){
   var name=((document.getElementById('cbc-name')||{}).value||'').trim();
   var icon=((document.getElementById('cbc-icon')||{}).value||'').trim()||'\uD83D\uDCCB';
   var hint=((document.getElementById('cbc-hint')||{}).value||'').trim();
-  if(!name){toast('Enter a category name','error');return;}
+  if(!name){toast(_s.t_cat_name,'error');return;}
   var id=name.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/__+/g,'_').slice(0,30);
   if(_getCostCats().some(function(c){return c.id===id||c.label.toLowerCase()===name.toLowerCase();})){
-    toast('Category already exists','error');return;
+    toast(_s.t_cat_exists,'error');return;
   }
   if(!BIZ.costCats)BIZ.costCats=[];
   BIZ.costCats.push({id:id,label:name,icon:icon,placeholder:hint||'Enter amount\u2026',custom:true});
@@ -3657,12 +3657,12 @@ function _renderCostCatPills(){
 function _addCustomCostCatSettings(){
   var icon=((document.getElementById('settings-new-costcat-icon')||{}).value||'').trim()||'\uD83D\uDCCB';
   var name=((document.getElementById('settings-new-costcat-inp')||{}).value||'').trim();
-  if(!name){toast('Enter a category name','error');return;}
+  if(!name){toast(_s.t_cat_name,'error');return;}
   var id=name.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/__+/g,'_').slice(0,30);
   if(!BIZ.costCats)BIZ.costCats=[];
   if(BIZ.costCats.some(function(c){return c.label.toLowerCase()===name.toLowerCase();})||
      _COST_CATS_DEFAULT.some(function(c){return c.label.toLowerCase()===name.toLowerCase();})){
-    toast('Category already exists','error');return;
+    toast(_s.t_cat_exists,'error');return;
   }
   BIZ.costCats.push({id:id,label:name,icon:icon,placeholder:'Enter '+name.toLowerCase()+' amount\u2026',custom:true});
   _dbSaveBizProfile(SESSION.bizId);
@@ -3906,7 +3906,7 @@ function _saveNewItem(){
   if(_planWriteBlocked('Adding a product','inv')) return;
   if(D.inv.length===0) _track('First Product Added');
   var name = document.getElementById('ai-name').value.trim();
-  if(!name){ toast('Product name is required','error'); return; }
+  if(!name){ toast(_s.t_prod_req,'error'); return; }
   var rr3 = CUR.rate;
   // Collision-safe ID: use max existing numeric suffix + 1
   var maxInvNum = D.inv.reduce(function(m,i){
@@ -3947,7 +3947,7 @@ function _saveNewItem(){
   var _aiSp    = (parseFloat(document.getElementById('ai-sp').value)||0);
   var _aiMinSp = (parseFloat(document.getElementById('ai-minsp').value)||0);
   if(_aiSp > 0 && _aiMinSp > 0 && _aiSp < _aiMinSp){
-    toast('Selling price (' + fmt(_aiSp/CUR.rate) + ') is below the minimum sell price (' + fmt(_aiMinSp/CUR.rate) + ').', 'error');
+    toast(_s.t_selling_price + fmt(_aiSp/CUR.rate) + ') is below the minimum sell price (' + fmt(_aiMinSp/CUR.rate) + ').', 'error');
     return;
   }
   function doFinish(){
@@ -3982,7 +3982,7 @@ function _ciCostManual(){
 
 async function mEditItem(id){const _s=_L();
   await _syncCatsFromDB(); // always get latest user-created categories
-  if(!can('edit_inventory')) { toast('⛔ Edit Inventory — permission denied','error'); return; }
+  if(!can('edit_inventory')) { toast(_s.t_perm_denied,'error'); return; }
   const it=D.inv.find(i=>i.id===id);if(!it)return;
   const showCost = canAccess('inventory_cost');
   const editCost = canEdit('inventory_cost');
@@ -4066,7 +4066,7 @@ function removeItemPhoto(id, idx){
   // Sync primary imgDataUrl
   it.imgDataUrl = it.photoDataUrls.length ? it.photoDataUrls[0] : null;
   _dbSaveInv(it); // persist immediately — previously lost on refresh
-  toast('Photo removed','success');
+  toast(_s.t_photo_removed,'success');
   mEditItem(id);
 }
 
@@ -4165,7 +4165,7 @@ function mDuplicateItem(id){
   // NOTE: do NOT call _dbSaveInv here — saveEditItem will be the first write
   // This prevents a race where the pre-save overwrites the user's edited version
   addAudit('Item duplicated', newId+' copied from '+id+' — '+src.name);
-  toast('Item duplicated — edit to customise','success');
+  toast(_s.t_item_dup,'success');
   nav('inventory');
   setTimeout(()=>mEditItem(newId),200);
 }
@@ -4230,9 +4230,9 @@ const IMPORT_CONFIGS = {
 
 function mBulkImport(type){const _s=_L();
   if(!_hasPlan()){ _showPlanSelectionModal(); return; }
-  if(!can('bulk_import')) { toast('⛔ Bulk Import — permission denied for your role','error'); return; }
+  if(!can('bulk_import')) { toast(_s.t_perm_denied,'error'); return; }
   const cfg=IMPORT_CONFIGS[type];
-  if(!cfg){ toast('Import type not found','error'); return; }
+  if(!cfg){ toast(_s.t_import_type,'error'); return; }
   modal(`⬆ Bulk Import — ${cfg.title}`,`
   <div class="alrt alrt-b" style="margin-bottom:14px">
     <strong>How to import:</strong><br>
@@ -4268,7 +4268,7 @@ function mBulkImport(type){const _s=_L();
 
 function downloadImportTemplate(type, withSample){
   const cfg=IMPORT_CONFIGS[type];
-  if(!cfg){ toast('Unknown import type','error'); return; }
+  if(!cfg){ toast(_s.t_unknown_import,'error'); return; }
   // Build CSV with BOM so Excel opens it correctly
   const BOM = '\uFEFF';
   const esc = v => `"${String(v).replace(/"/g,'""')}"`;
@@ -4318,7 +4318,7 @@ function previewImportCSV(input, type){
   const reader=new FileReader();
   reader.onload=(e)=>{
     const rows=parseCSV(e.target.result.replace(/^\uFEFF/,''));
-    if(rows.length<2){ toast('CSV has no data rows — check the file','error'); return; }
+    if(rows.length<2){ toast(_s.t_import_no_data,'error'); return; }
     const headers=rows[0];
     const dataRows=rows.slice(1).filter(r=>r.some(v=>v)); // skip blank rows
     const expected=cfg.cols;
@@ -4353,13 +4353,13 @@ function previewImportCSV(input, type){
     if(prevDiv) prevDiv.style.display='block';
     window._pendingImport={type, headers, rows:dataRows};
   };
-  reader.onerror=()=>toast('Could not read file — try again','error');
+  reader.onerror=()=>toast(_s.t_file_err,'error');
   reader.readAsText(file);
 }
 
 async function confirmBulkImport(type){
   const pending=window._pendingImport;
-  if(!pending||pending.type!==type){ toast('Please select and preview a file first','error'); return; }
+  if(!pending||pending.type!==type){ toast(_s.t_preview_first,'error'); return; }
   const cfg=IMPORT_CONFIGS[type];
   if(!cfg) return;
   try {
@@ -4403,7 +4403,7 @@ async function confirmBulkImport(type){
       toast(`Import visible now but save failed — refresh may lose data. Error: ${dbErr.message}`,'error');
     }
   } catch(err) {
-    toast('Import failed: '+err.message,'error');
+    toast(_s.t_import_failed+err.message,'error');
   }
 }
 
@@ -4673,7 +4673,7 @@ function _saveSale(){
   if(_trialWriteBlocked('Recording a sale')) return;
   if(D.sales.length===0) _track('First Sale Recorded');
   var custId=(document.getElementById('cs-cust-sel')||{}).value||(document.getElementById('cs-cust')||{}).value||(document.getElementById('cs-cust-sel')||{}).value||document.getElementById('cs-cust')?.value||_ssGetVal('cs-cust-wrap');
-  if(!custId){toast('Please select a customer','error');return;}
+  if(!custId){toast(_s.t_select_cust,'error');return;}
   // Collect line items
   var lineRows = Array.from(document.querySelectorAll('#cs-line-rows .cs-line-row'));
   var lineItems = lineRows.map(function(row){
@@ -4693,7 +4693,7 @@ function _saveSale(){
   var invId = (lineItems.find(function(r){return r.invId&&r.invId!=='__custom__';})||{invId:''}).invId||'__custom__';
   var amtFrs = lineItems.reduce(function(a,r){return a+r.qty*r.price;},0);
   var totalFrs=parseFloat(document.getElementById('cs-total').value)||amtFrs;
-  if(!amtFrs){toast('Please add at least one item with a price','error');return;}
+  if(!amtFrs){toast(_s.t_add_item_price,'error');return;}
   // ── Minimum price enforcement ──────────────────────────────
   var _minBlock=false, _minOwnerWarn=[];
   lineItems.forEach(function(li){
@@ -4800,9 +4800,9 @@ function _saveSale(){
 
 function mInvoice(id){const _s=_L();
   // Open the proper branded PDF invoice
-  if(!id){ toast('Invoice ID missing','error'); return; }
+  if(!id){ toast(_s.t_not_found,'error'); return; }
   var s = D.sales.find(function(x){return x.id===id;});
-  if(!s){ toast('Sale not found','error'); return; }
+  if(!s){ toast(_s.t_sale_notfound,'error'); return; }
   genInvoiceDoc(id);
 }
 
@@ -4970,7 +4970,7 @@ function _recalcCustBal(custId){
 function _saveRecordPayment(){
   if(_trialWriteBlocked('Recording a payment')) return;
   const amtDisplay = parseFloat(document.getElementById('rp-amt')?.value)||0;
-  if(!amtDisplay){ toast('Please enter an amount','error'); return; }
+  if(!amtDisplay){ toast(_s.t_amount_enter,'error'); return; }
   const amtUsd  = amtDisplay / CUR.rate;
   const method  = document.getElementById('rp-method')?.value||'Cash';
   const refno   = document.getElementById('rp-refno')?.value||'';
@@ -5003,7 +5003,7 @@ function _saveRecordPayment(){
       addAudit('Payment recorded', refVal+' — '+fmt(amtUsd)+' via '+method);
       // WA alert to owner on payment
       _waOwnerPayment(amtUsd, custName, refVal, method);
-      toast('✅ Payment of '+fmt(amtUsd)+' recorded — Sale '+refVal+' now '+sale.st,'success');
+      toast(_s.t_pay_prefix+fmt(amtUsd)+' recorded — Sale '+refVal+' now '+sale.st,'success');
       closeModal(); nav('sales'); return;
     }
     const rental = D.rentals.find(r2=>r2.id===refVal);
@@ -5022,14 +5022,14 @@ function _saveRecordPayment(){
       }
       addAudit('Rental payment recorded', refVal+' — '+fmt(amtUsd)+' via '+method);
       refreshLiveKpis();
-      toast('✅ Payment of '+fmt(amtUsd)+' recorded for rental '+refVal,'success');
+      toast(_s.t_pay_prefix+fmt(amtUsd)+' recorded for rental '+refVal,'success');
       closeModal(); nav('rentals'); return;
     }
     const appt = (D.appointments||[]).find(a=>a.id===refVal);
     if(appt){
       appt.paid = (appt.paid||0)+amtUsd;
       addAudit('Appointment payment recorded', refVal+' — '+fmt(amtUsd)+' via '+method);
-      toast('✅ Payment of '+fmt(amtUsd)+' recorded for appointment '+refVal,'success');
+      toast(_s.t_pay_prefix+fmt(amtUsd)+' recorded for appointment '+refVal,'success');
       closeModal(); nav('appointments'); return;
     }
   }
@@ -5045,7 +5045,7 @@ function _saveRecordPayment(){
   _dbSaveSale(D.sales[0]);
   if(cust){ cust.spent=(cust.spent||0)+amtUsd; cust.orders=(cust.orders||0)+1; _dbSaveCust(cust); }
   addAudit('Cash payment recorded', newId+' — '+custName+' — '+fmt(amtUsd)+' via '+method);
-  toast('✅ Payment of '+fmt(amtUsd)+' recorded as '+newId,'success');
+  toast(_s.t_pay_prefix+fmt(amtUsd)+' recorded as '+newId,'success');
   closeModal();
   nav('sales');
 }
@@ -5200,7 +5200,7 @@ function _invTypeChanged(){
 function _invAddFromCatalogue(){
   const sel   = document.getElementById('inv-item-sel');
   const opt   = sel?.options[sel.selectedIndex];
-  if(!opt||!opt.value){ toast('Please select an item from the list first','info'); return; }
+  if(!opt||!opt.value){ toast(_s.t_select_item2,'info'); return; }
   const name  = opt.value;
   const price = parseFloat(opt.dataset.price)||0;
   _invAddRow(name, price);
@@ -5260,7 +5260,7 @@ function _invUpdateTotals(){
 // ── Save the invoice as a sale record ─────────────────────────
 function _saveInvoice(){
   const cust = document.getElementById('inv-cust')?.value?.trim();
-  if(!cust){ toast('Please select a customer','error'); return; }
+  if(!cust){ toast(_s.t_select_cust,'error'); return; }
 
   // Collect line items
   const rows = document.querySelectorAll('#inv-lines-body .inv-line-row');
@@ -5271,7 +5271,7 @@ function _saveInvoice(){
     const price = parseFloat(row.querySelector('.inv-price')?.value)||0;
     if(desc||price>0) lines.push({desc, qty:qty||1, price});
   });
-  if(!lines.length){ toast('Please add at least one line item with a price','error'); return; }
+  if(!lines.length){ toast(_s.t_add_line_price,'error'); return; }
 
   const itemsStr = lines.map(function(l){ return (l.qty>1?l.qty+'× ':'')+l.desc; }).filter(Boolean).join(', ') || 'Invoice';
   const rr = CUR.rate||1;
@@ -5280,7 +5280,7 @@ function _saveInvoice(){
   const disc   = (parseFloat(document.getElementById('inv-discount')?.value)||0) / rr;
   const total  = Math.max(0, sub + sub*taxPct/100 - disc);
 
-  if(!total){ toast('Total amount is 0 — please enter line item prices','error'); return; }
+  if(!total){ toast(_s.t_no_amount,'error'); return; }
 
   const paidStatus = document.getElementById('inv-paid-status')?.value||'Unpaid';
   const paid = paidStatus==='Paid' ? total : paidStatus==='Partial' ? total/2 : 0;
@@ -5323,7 +5323,7 @@ function _saveInvoice(){
   refreshLiveKpis();
   addAudit('Invoice created', newId+' — '+cust+' — '+fmt(total));
   closeModal();
-  toast('Invoice '+newId+' created ✓','success');
+  toast(_s.t_sale_prefix +newId+' created ✓','success');
   setTimeout(function(){ genInvoiceDoc(newId); }, 150);
   nav('sales');
 }
@@ -5455,23 +5455,23 @@ function _savePhotoUpload(){
   const tab = activeTab ? (activeTab.textContent.includes('Sale')?'sale':activeTab.textContent.includes('Rental')?'rental':'service') : 'sale';
   const sel = document.getElementById('photo-sel-'+tab);
   const id  = sel?.value;
-  if(!id){ toast('Please select an item first','error'); sel?.focus(); return; }
+  if(!id){ toast(_s.t_select_item,'error'); sel?.focus(); return; }
 
   const imgs = document.querySelectorAll('#photoPreviewGrid img');
   const urls = Array.from(imgs).map(img=>img.src).filter(s=>s.startsWith('data:'));
-  if(!urls.length){ toast('Please select at least one photo','error'); return; }
+  if(!urls.length){ toast(_s.t_select_photo,'error'); return; }
 
   if(tab==='service'){
     const svc=(D.services||[]).find(s=>s.id===id);
-    if(!svc){ toast('Service not found','error'); return; }
+    if(!svc){ toast(_s.t_svc_notfound,'error'); return; }
     svc.imgDataUrl = urls[0]; // services: single featured image
     // Save to DB
     if(typeof _dbSaveService==='function') _dbSaveService(svc);
     addAudit('Service photo updated', svc.name);
-    toast('Photo saved for '+svc.name+' ✓','success');
+    toast(_s.t_photo_saved+svc.name+' ✓','success');
   } else {
     const item=D.inv.find(i=>i.id===id);
-    if(!item){ toast('Item not found','error'); return; }
+    if(!item){ toast(_s.t_item_notfound,'error'); return; }
     item.photoDataUrls = urls;
     item.imgDataUrl    = urls[0];
     _dbSaveInv(item);
@@ -5538,9 +5538,9 @@ function docChip(d){const _s=_L();
 
 function _docView(key){
   const doc = _DOC_STORE[key];
-  if(!doc){ toast('File data not available — re-attach the document','error'); return; }
+  if(!doc){ toast(_s.t_file_data_err,'error'); return; }
   const win = window.open();
-  if(!win){ toast('Pop-up blocked — allow pop-ups for this site to view documents','error'); return; }
+  if(!win){ toast(_s.t_popup_blocked,'error'); return; }
   if(doc.dataUrl.startsWith('data:image')){
     win.document.write('<html><body style="margin:0;background:#111;display:flex;justify-content:center;align-items:center;min-height:100vh"><img loading="lazy" src="'+doc.dataUrl+'" style="max-width:100%;max-height:100vh;object-fit:contain"/></body></html>');
   } else {
@@ -5551,14 +5551,14 @@ function _docView(key){
 
 function _docDownload(key){
   const doc = _DOC_STORE[key];
-  if(!doc){ toast('File data not available — re-attach the document','error'); return; }
+  if(!doc){ toast(_s.t_file_data_err,'error'); return; }
   const a = document.createElement('a');
   a.href = doc.dataUrl;
   a.download = doc.name;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  toast('Downloading '+doc.name+'…','success');
+  toast(_s.t_downloading+doc.name+'…','success');
 }
 
 function handleDocAttach(input, listId){
@@ -5610,8 +5610,8 @@ function handleDocAttach(input, listId){
 
 function shareDoc(name){const _s=_L();
   const url=window.location.href.split('?')[0]+'?doc='+encodeURIComponent(name);
-  if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>toast('Share link copied ✓','success')).catch(()=>toast('Link: '+url));}
-  else{toast('Share link: '+url);}
+  if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>toast(_s.t_share_copied,'success')).catch(()=>toast(_s.t_link_copied+url));}
+  else{toast(_s.t_share_copied+url);}
 }
 
 function pgRentals(){const _s=_L();const _ui=_s;
@@ -5716,11 +5716,11 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
 // Send WA overdue reminder for a rental — always looks up fresh customer phone
 function _rentalWARemind(id){
   var r = D.rentals.find(function(x){return x.id===id;});
-  if(!r){ toast('Rental not found','error'); return; }
+  if(!r){ toast(_s.t_rental_notfound,'error'); return; }
   // Look up fresh phone from D.cust (picks up any edits)
   var cust = D.cust.find(function(c){return c.id===r.custId||c.name===r.cust;});
   var ph = (cust&&(cust.whatsapp||cust.phone||cust.ph)||'').replace(/[^0-9]/g,'');
-  if(!ph){ toast('No phone number for '+r.cust+'. Please edit the customer and add a phone number.','error'); return; }
+  if(!ph){ toast(_s.t_no_phone_for+r.cust+'. Please edit the customer and add a phone number.','error'); return; }
   var custName = (cust&&cust.name)||r.cust||'Customer';
   var msg = 'Hi '+custName.split(' ')[0]+'! Your rental from *'+BIZ.name+'* is overdue.\n\n'
     + 'Item: '+r.item+'\n'
@@ -5833,13 +5833,13 @@ async function mCreateRental(startDate){const _s=_L();
     var custId=(document.getElementById('cr-cust-sel')||{}).value||document.getElementById('cr-cust')?.value||(document.getElementById('cr-cust-sel')||{}).value||document.getElementById('cr-cust')?.value||_ssGetVal('cr-cust-wrap')||(document.getElementById('cr-cust-sel')||document.getElementById('cr-cust')||{}).value||'';
     var start=document.getElementById('cr-start').value;
     var due=document.getElementById('cr-due').value;
-    if(!custId){toast('Please select a customer','error');return;}
-    if(!start||!due){toast('Please set rental dates','error');return;}
+    if(!custId){toast(_s.t_select_cust,'error');return;}
+    if(!start||!due){toast(_s.t_enter_dates,'error');return;}
     // Collect all selected items from line rows
     var crItems=Array.from(document.querySelectorAll('#cr-line-rows .cr-item-sel'))
       .map(function(s){return s.value?D.inv.find(function(i){return i.id===s.value;}):null;})
       .filter(Boolean);
-    if(!crItems.length){toast('Please select at least one item','error');return;}
+    if(!crItems.length){toast(_s.t_select_item,'error');return;}
     var custObj=D.cust.find(function(x){return x.id===custId;});
     var cust=custObj?custObj.name:custId;
     var r2=CUR.rate;
@@ -5994,7 +5994,7 @@ function deleteSale(id){const _s=_L();
       D.sales=D.sales.filter(function(x){return x.id!==mid;});
       _dbDelSale(mid); refreshLiveKpis();
       addAudit('Sale deleted',mid);
-      closeModal(); toast('Sale '+mid+' deleted','success'); nav('sales');
+      closeModal(); toast(_s.t_sale_prefix +mid+' deleted','success'); nav('sales');
     };
   },30);
 }
@@ -6038,7 +6038,7 @@ function deleteRental(id){const _s=_L();
       D.rentals=D.rentals.filter(function(x){return x.id!==mid;});
       _dbDelRental(mid); refreshLiveKpis(); refreshNotifPanel();
       addAudit('Rental deleted',mid);
-      closeModal(); toast('Rental '+mid+' deleted','success'); nav('rentals');
+      closeModal(); toast(_s.t_sale_prefix +mid+' deleted','success'); nav('rentals');
     };
   },30);
 }
@@ -6061,14 +6061,14 @@ function deletePurchase(id){const _s=_L();
       D.purchases=D.purchases.filter(function(x){return x.id!==mid;});
       _dbDelPurchase(mid); refreshLiveKpis();
       addAudit('PO deleted',mid+' — '+_p.vendor+' — '+fmt(_p.total));
-      closeModal(); toast('PO '+mid+' deleted','success'); nav('purchases');
+      closeModal(); toast(_s.t_sale_prefix +mid+' deleted','success'); nav('purchases');
     };
   },30);
 }
 
 // ── Rental Receipt Document ───────────────────────────────────
 function genRentalReceiptDoc(id){
-  var r=D.rentals.find(function(x){return x.id===id;}); if(!r){ toast('Rental not found','error'); return; }
+  var r=D.rentals.find(function(x){return x.id===id;}); if(!r){ toast(_s.t_rental_notfound,'error'); return; }
   var primary=BIZ.primaryColor||'#4361ee';
   var accent=BIZ.accentColor||'#059669';
   var cust=D.cust.find(function(c){return c.id===r.custId||c.name===r.cust;})||{};
@@ -6152,7 +6152,7 @@ function processReturn(rid){
   var cond=document.getElementById('ret-cond-'+rid).value;
   var notes2=document.getElementById('ret-notes-'+rid).value;
   var rental=D.rentals.find(function(x){return x.id===rid;});
-  if(!rental){toast('Rental not found','error');return;}
+  if(!rental){toast(_s.t_rental_notfound,'error');return;}
   rental.st='Returned';
   rental.ca=cond;
   rental.returnNotes=notes2;
@@ -6178,7 +6178,7 @@ function processReturn(rid){
   _dbSaveRental(rental);
   refreshNotifPanel();
   closeModal();
-  toast('Return processed'+(rental.refund>0?' — refund: '+fmt(rental.refund):''),'success');
+  toast(_s.t_return_done+(rental.refund>0?' — refund: '+fmt(rental.refund):''),'success');
   nav('rentals');
 }
 
@@ -6412,7 +6412,7 @@ function mRentalContract(id){const _s=_L();
     <div style="background:var(--g-dim);border:1px solid rgba(45,212,160,.3);border-radius:var(--r8);padding:12px 16px;margin-bottom:14px">
       <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:8px">✓ Contract signed on ${r.contractSignedDate}</div>
       <img loading="lazy" src="${r.contractSigUrl}" style="max-width:220px;max-height:70px;background:#fff;border-radius:4px;padding:4px;display:block">
-      <button class="btn btn-s btn-sm" style="margin-top:10px" onclick="if(confirm('Clear the existing signature and reset to unsigned?')){D.rentals.find(x=>x.id==='${id}').contractSigned=false;D.rentals.find(x=>x.id==='${id}').contractSigUrl=null;D.rentals.find(x=>x.id==='${id}').contractSignedDate=null;closeModal();mRentalContract('${id}');toast('Signature cleared','success')}">↺ Clear &amp; Re-sign</button>
+      <button class="btn btn-s btn-sm" style="margin-top:10px" onclick="if(confirm('Clear the existing signature and reset to unsigned?')){D.rentals.find(x=>x.id==='${id}').contractSigned=false;D.rentals.find(x=>x.id==='${id}').contractSigUrl=null;D.rentals.find(x=>x.id==='${id}').contractSignedDate=null;closeModal();mRentalContract('${id}');toast(_s.t_sig_cleared,'success')}">↺ Clear &amp; Re-sign</button>
     </div>`:`
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Ask the customer to sign below using their finger or mouse. Works on any touchscreen device.</div>
     <div style="position:relative;background:#fff;border-radius:var(--r8);border:2px solid var(--border2);overflow:hidden;margin-bottom:10px">
@@ -6502,16 +6502,16 @@ function _sigIsBlank(canvas){
 
 function _sigSave(rentalId, canvasId){
   const canvas=document.getElementById(canvasId);
-  if(!canvas){ toast('Signature canvas not found','error'); return; }
-  if(_sigIsBlank(canvas)){ toast('Please draw a signature first','error'); return; }
+  if(!canvas){ toast(_s.t_not_found,'error'); return; }
+  if(_sigIsBlank(canvas)){ toast(_s.t_sig_first,'error'); return; }
   const dataUrl=canvas.toDataURL('image/png');
-  const r=D.rentals.find(x=>x.id===rentalId); if(!r){ toast('Rental not found','error'); return; }
+  const r=D.rentals.find(x=>x.id===rentalId); if(!r){ toast(_s.t_rental_notfound,'error'); return; }
   r.contractSigned=true;
   r.contractSigUrl=dataUrl;
   r.contractSignedDate=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
   addAudit('Contract signed','Rental '+rentalId+' — '+r.cust+' signed rental contract');
   _dbSaveRental(r);
-  toast('Signature saved — contract is now executed ✓','success');
+  toast(_s.t_sig_saved,'success');
   closeModal();
   mRentalContract(rentalId); // reopen to show signed state
 }
@@ -6535,11 +6535,11 @@ function _contractShare(rentalId){
   // Copy the URL so they can paste into WhatsApp / email
   if(navigator.clipboard){
     navigator.clipboard.writeText(url).then(()=>{
-      toast('Contract link copied — paste it to share (valid this session only)','success');
+      toast(_s.t_contract_copied,'success');
     }).catch(()=>{ window.open(url,'_blank'); });
   } else {
     window.open(url,'_blank');
-    toast('Contract opened in new tab','success');
+    toast(_s.t_contract_tab,'success');
   }
 }
 
@@ -6553,7 +6553,7 @@ function saveContractTemplate(){
   if(tog)     BIZ.contractEnabled  = tog.checked;
   addAudit('Contract template saved','Rental contract template updated');
   _dbSaveBizProfile(SESSION.bizId);
-  toast('Contract template saved ✓','success');
+  toast(_s.t_contract_saved,'success');
 }
 
 // ── Settings: reset to default ────────────────────────────────
@@ -6565,7 +6565,7 @@ function resetContractTemplate(){
   const titleEl = document.getElementById('contract-title-input');
   if(bodyEl)  bodyEl.value  = _CONTRACT_DEFAULT;
   if(titleEl) titleEl.value = 'RENTAL AGREEMENT';
-  toast('Template reset to default','success');
+  toast(_s.t_template_reset,'success');
 }
 
 // ── Settings: preview with sample data ───────────────────────
@@ -6840,7 +6840,7 @@ function savePO(){
   if(_trialWriteBlocked('Creating a purchase order')) return;
   if(_planWriteBlocked('Creating a purchase order','purchases')) return;
   var vendorId=(document.getElementById('po-vendor-sel')||{}).value||document.getElementById('po-vendor')?.value||(document.getElementById('po-vendor-sel')||{}).value||document.getElementById('po-vendor')?.value||_ssGetVal('po-vendor-wrap')||'';
-  if(!vendorId){toast('Please select a vendor','error');return;}
+  if(!vendorId){toast(_s.t_select_vendor,'error');return;}
   var rr=CUR.rate;
   // Collect line rows
   var poLines=Array.from(document.querySelectorAll('#po-line-rows .po-line-row')).map(function(row){
@@ -6861,7 +6861,7 @@ function savePO(){
   var taxes=(parseFloat(document.getElementById('po-taxes').value)||0)/rr;
   var other=(parseFloat(document.getElementById('po-other').value)||0)/rr;
   var total=sub+freight+duties+taxes+other;
-  if(!total&&!items){toast('Please add at least one item with a cost','error');return;}
+  if(!total&&!items){toast(_s.t_add_item_cost,'error');return;}
   var vendorObj=D.vendors.find(function(x){return x.id===vendorId;});
   var vendor=vendorObj?vendorObj.name:vendorId;
   var poSt=document.getElementById('po-st').value;
@@ -7067,7 +7067,7 @@ function mAddCustomer(_returnSelectId){const _s=_L();
     if(_planWriteBlocked('Adding a customer','cust')) return;
     if(!SESSION.isSuperAdmin && _isFreePlan() && D.cust.length>=200){ _showUpsell('customers'); closeModal(); return; }
     var name=document.getElementById('ac-name').value.trim();
-    if(!name){toast('Customer name is required','error');return;}
+    if(!name){toast(_s.t_cust_req,'error');return;}
     var type=document.getElementById('ac-type').value;
     var _maxCNum=D.cust.reduce(function(m,c){var n=parseInt((c.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
     var nid='C-'+String(_maxCNum+1).padStart(3,'0');
@@ -7138,7 +7138,7 @@ function _saveEditCustomer(id){
   var c = D.cust.find(function(x){ return x.id===id; });
   if(!c) return;
   var name = document.getElementById('ec-name').value.trim();
-  if(!name){ toast('Customer name is required','error'); return; }
+  if(!name){ toast(_s.t_cust_req,'error'); return; }
   c.name     = name;
   c.type     = document.getElementById('ec-type').value;
   c.tier     = c.type; // keep tier in sync
@@ -7315,7 +7315,7 @@ function mCustomerStatement(id){const _s=_L();
 function _custStmtWA(custId){
   const c = D.cust.find(x=>x.id===custId); if(!c) return;
   const ph = (c.whatsapp||c.phone||c.ph||'').replace(/[^0-9]/g,'');
-  if(!ph){ toast('No WhatsApp number on record for this customer','error'); return; }
+  if(!ph){ toast(_s.t_no_wa_cust,'error'); return; }
   const firstName = (c.name||'').split(' ')[0]||'there';
   const msg = 'Hi '+firstName+', here is a summary of your account with '+(BIZ.name||'us')+'.'
     +(c.bal>0?' Outstanding balance: '+fmt(c.bal)+'. Please contact us to arrange payment.':' Your account is fully cleared. Thank you!')
@@ -7500,7 +7500,7 @@ function mCollectBalance(custId){const _s=_L();
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="(function(){
      var amt=parseFloat(document.getElementById('col-amt').value)||0;
-     if(!amt||amt<=0){toast('Enter a valid amount','error');return;}
+     if(!amt||amt<=0){toast(_s.t_amount_valid,'error');return;}
      var amtBase=amt/CUR.rate;
      var cobj=D.cust.find(x=>x.id==='${custId}');
      if(!cobj)return;
@@ -7524,7 +7524,7 @@ function mCollectBalance(custId){const _s=_L();
      refreshLiveKpis();
      addAudit('Customer payment collected','${custId} — ${_esc(c.name)} — '+fmt(amtBase));
      closeModal();
-     toast('Payment of '+fmt(amtBase)+' recorded for ${_esc(c.name)} ✓','success');
+     toast(_s.t_sale_prefix +fmt(amtBase)+' recorded for ${_esc(c.name)} ✓','success');
      nav('customers');
    })()">💰 Record Collection</button>`);
 }
@@ -7584,7 +7584,7 @@ function mRecordVendorPayment(vendorId){const _s=_L();
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="(function(){
      var amt=parseFloat(document.getElementById('vp-amt').value)||0;
-     if(!amt||amt<=0){toast('Please enter a valid amount','error');return;}
+     if(!amt||amt<=0){toast(_s.t_amount_valid,'error');return;}
      var amtBase=amt/CUR.rate;
      var vobj=D.vendors.find(function(x){return x.id==='${vendorId}';});
      if(!vobj)return;
@@ -7603,7 +7603,7 @@ function mRecordVendorPayment(vendorId){const _s=_L();
      D.exp.unshift(expRec); _dbSaveExp(expRec);
      refreshLiveKpis();
      addAudit('Vendor AP payment recorded', '${vendorId} — ${_esc(v.name)} — '+fmt(amtBase));
-     closeModal(); toast('Payment of '+fmt(amtBase)+' recorded ✓','success'); nav('vendors');
+     closeModal(); toast(_s.t_sale_prefix +fmt(amtBase)+' recorded ✓','success'); nav('vendors');
    })()">💳 Record Payment</button>`);
 }
 
@@ -7782,7 +7782,7 @@ async function mAddVendor(_returnSelectId){const _s=_L();
    <button class="btn btn-p" onclick="
     if(_planWriteBlocked('Adding a vendor','vendor')) return;
     var name=document.getElementById('av-name').value.trim();
-    if(!name){toast('Vendor name is required','error');return;}
+    if(!name){toast(_s.t_vend_req,'error');return;}
     var nid='V-'+String((D.vendors.reduce(function(m,v){var n=parseInt((v.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0))+1).padStart(3,'0');
     D.vendors.unshift({
       id:nid,name,
@@ -7858,7 +7858,7 @@ function _saveEditVendor(id){const _s=_L();
   var v = D.vendors.find(function(x){ return x.id===id; });
   if(!v) return;
   var name = document.getElementById('ev-name').value.trim();
-  if(!name){ toast('Vendor name is required','error'); return; }
+  if(!name){ toast(_s.t_vend_req,'error'); return; }
   v.name    = name;
   v.cat     = _ssGetVal('ev-cat-wrap')||document.getElementById('ev-cat')?.value||v.cat;
   v.country = document.getElementById('ev-country').value.trim();
@@ -7941,7 +7941,7 @@ function mViewVendor(id){const _s=_L();
     </div>
     <div class="btn-row" style="justify-content:center;gap:10px">
       <button class="btn btn-g btn-sm" onclick="genVendorStatementPDF('${v.id}')">⬇ Download PDF</button>
-      <button class="btn btn-g btn-sm" onclick="(function(){var vc=D.vendors.find(function(x){return x.id==='${v.id}';});if(!vc)return;var ph=(vc.whatsapp||vc.phone||'').replace(/[^0-9]/g,'');if(ph){window.open('https://wa.me/'+ph,'_blank');}else{toast('No WhatsApp number set for this vendor','error');}})()">💬 WhatsApp</button>
+      <button class="btn btn-g btn-sm" onclick="(function(){var vc=D.vendors.find(function(x){return x.id==='${v.id}';});if(!vc)return;var ph=(vc.whatsapp||vc.phone||'').replace(/[^0-9]/g,'');if(ph){window.open('https://wa.me/'+ph,'_blank');}else{toast(_s.t_no_wa_vendor,'error');}})()">💬 WhatsApp</button>
       ${v.bal>0?`<button class="btn btn-p btn-sm" onclick="closeModal();mRecordVendorPayment('${v.id}')">💳 Record Payment</button>`:''}
     </div>
   </div>
@@ -7984,8 +7984,8 @@ function vndTab(el, showId){const _s=_L();
 
 function shareVendorStatement(vid){const _s=_L();
   const url=window.location.href.split('?')[0]+'?stmt=vendor&id='+vid;
-  if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>toast('Shareable link copied to clipboard ✓','success')).catch(()=>toast('Link: '+url));}
-  else{toast('Statement link: '+url);}
+  if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>toast(_s.t_share_clip,'success')).catch(()=>toast(_s.t_link_copied+url));}
+  else{toast(_s.t_share_copied+url);}
 }
 
 
@@ -8179,8 +8179,8 @@ async function mAddExp(){const _s=_L();
     if(_trialWriteBlocked('Recording an expense')) return;
     var payee=document.getElementById('ae-payee').value.trim();
     var amt=parseFloat(document.getElementById('ae-amt').value)||0;
-    if(!payee){toast('Please enter payee / vendor','error');return;}
-    if(!amt||amt<=0){toast('Please enter a valid amount','error');return;}
+    if(!payee){toast(_s.t_payee_req,'error');return;}
+    if(!amt||amt<=0){toast(_s.t_amount_valid,'error');return;}
     var amtBase=amt/CUR.rate;
     var maxN=D.exp.reduce(function(m,e){var n=parseInt((e.id||'').replace(/\\D/g,''),10)||0;return n>m?n:m;},0);
     var id='EX-'+String(maxN+1).padStart(3,'0');
@@ -8199,7 +8199,7 @@ async function mAddExp(){const _s=_L();
     refreshLiveKpis();
     addAudit('Expense recorded', id+' — '+payee+' — '+fmt(amtBase));
     closeModal();
-    toast('✅ Expense recorded','success');
+    toast(_s.t_expense_rec,'success');
     nav('expenses');
    })()">💾 Record Expense</button>`);
 }
@@ -8224,7 +8224,7 @@ function _doDeleteExp(id){const _s=_L();
   _dbDelExp(id); // offline-aware: queues if offline, deletes direct if online
   refreshLiveKpis();
   addAudit('Expense deleted',id);
-  toast('Expense deleted','success');
+  toast(_s.t_expense_deleted,'success');
   nav('expenses');
 }
 function mViewExp(id){const _s=_L();
@@ -8536,7 +8536,7 @@ function pgReports(){const _s=_L();const _ui=_L();
       {n:'Expense by Category',fn:"rptExpCat()"},
       {n:'Repairs & Maintenance',fn:"rptRepairs()"},
       {n:'Audit Trail Report',fn:"nav('auditlog')"},
-      {n:'Staff Activity Log',fn:"toast('Staff report generated','success')"}
+      {n:'Staff Activity Log',fn:"toast(_s.t_staff_report,'success')"}
     ]},
   ];
   return `
@@ -8759,7 +8759,7 @@ function rptOverdue(){const _s=_L();
   <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due</th><th>Fee</th><th>${_s.rpt_late_fee}</th></tr></thead><tbody>
   ${od.map(r=>`<tr><td>${mono(r.id)}</td><td><strong style="color:var(--r)">${r.cust}</strong></td><td style="font-size:12px">${r.item}</td><td style="color:var(--r);font-weight:600">${r.due}</td><td>${mono(fmt(r.fee))}</td><td>${mono(fmt(r.lf),'r')}</td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptOverduePDF()">⬇ PDF</button><button class="btn btn-r btn-sm" onclick="toast('Reminder SMS sent to all overdue customers','success');closeModal()">📲 Send All Reminders</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptOverduePDF()">⬇ PDF</button><button class="btn btn-r btn-sm" onclick="toast(_s.t_reminders_sent,'success');closeModal()">📲 Send All Reminders</button>`);
 }
 
 function rptInvVal(){const _s=_L();
@@ -9754,13 +9754,13 @@ function _renderAIFlyer(copy, prod, bizName, tagline, primary, accent, phone, em
   if(pdfBtn){ pdfBtn.disabled=false; }
   if(waRow)  waRow.style.display='block';
 
-  toast('Flyer ready — save as PNG or print as PDF ✓','success');
+  toast(_s.t_flyer_ready,'success');
 }
 
 function _aiFlyerDownloadPNG(){
   const flyerDiv = document.getElementById('ai-flyer-div');
   if(!flyerDiv || !flyerDiv.innerHTML.includes('headline') && !flyerDiv.querySelector('[style*="font-weight:900"]')){
-    toast('Generate a flyer first','error'); return;
+    toast(_s.t_gen_flyer_first,'error'); return;
   }
   const btn = document.getElementById('ai-flyer-png-btn');
   if(btn){ btn.disabled=true; btn.textContent='⏳ Capturing…'; }
@@ -9781,11 +9781,11 @@ function _aiFlyerDownloadPNG(){
       link.click();
       document.body.removeChild(link);
       window._lastFlyerDataUrl = link.href;
-      toast('Flyer saved as PNG ✓','success');
+      toast(_s.t_flyer_saved,'success');
       if(btn){ btn.disabled=false; btn.textContent='⬇ Save as PNG'; }
     }).catch(function(err){
       console.error('html2canvas error:', err);
-      toast('PNG capture failed — try Print/PDF instead','error');
+      toast(_s.t_png_failed,'error');
       if(btn){ btn.disabled=false; btn.textContent='⬇ Save as PNG'; }
     });
   }
@@ -9797,7 +9797,7 @@ function _aiFlyerDownloadPNG(){
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
     script.onload = doCapture;
     script.onerror = function(){
-      toast('Could not load image library — try Print/PDF instead','error');
+      toast(_s.t_img_lib_err,'error');
       if(btn){ btn.disabled=false; btn.textContent='⬇ Save as PNG'; }
     };
     document.head.appendChild(script);
@@ -9806,14 +9806,14 @@ function _aiFlyerDownloadPNG(){
 
 function _aiFlyerPrint(){
   const flyerDiv = document.getElementById('ai-flyer-div');
-  if(!flyerDiv || !flyerDiv.children.length){ toast('Generate a flyer first','error'); return; }
+  if(!flyerDiv || !flyerDiv.children.length){ toast(_s.t_gen_flyer_first,'error'); return; }
   const primary = BIZ.primaryColor||'#e8667a';
   const printHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}@media print{body{background:#fff;padding:0}@page{margin:0}}</style></head><body>${flyerDiv.outerHTML}<script>window.onload=function(){window.print()}<\/script></body></html>`;
   try{
     const w=window.open('','_blank','width=580,height=820');
     if(w){ w.document.write(printHtml); w.document.close(); }
-    else  toast('Allow popups to print','error');
-  }catch(e){ toast('Could not open print window','error'); }
+    else  toast(_s.t_allow_print,'error');
+  }catch(e){ toast(_s.t_open_print,'error'); }
 }
 
 function _aiFlyerWhatsApp(){
@@ -9823,9 +9823,9 @@ function _aiFlyerWhatsApp(){
   const url   = waNum ? `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
   // Prompt to save PNG first
   if(window._lastFlyerDataUrl){
-    toast('Opening WhatsApp — attach the saved PNG image manually','info');
+    toast(_s.t_open_wa,'info');
   } else {
-    toast('Tip: Save as PNG first, then attach the image in WhatsApp','info');
+    toast(_s.t_wa_tip,'info');
   }
   setTimeout(()=>window.open(url,'_blank'), 800);
 }
@@ -9883,7 +9883,7 @@ function _genDALLEImage(prod, ctx, btn, btnTxt, btnIco){
       if(btn){ btn.disabled=false; }
       if(btnTxt) btnTxt.textContent='Regenerate Image';
       if(btnIco) btnIco.textContent='🔄';
-      toast('AI image ready — download or share ✓','success');
+      toast(_s.t_ai_image_ready,'success');
     })
     .catch(function(e){
       const msg = e&&e.message?e.message:String(e);
@@ -9897,11 +9897,11 @@ function _genDALLEImage(prod, ctx, btn, btnTxt, btnIco){
 
 function _aiImgDownload(){
   const url = window._lastAiImgUrl;
-  if(!url){ toast('Generate an image first','error'); return; }
+  if(!url){ toast(_s.t_gen_image_first,'error'); return; }
   const prod = (_aiGetProd()||'product').replace(/[^a-z0-9]/gi,'_').toLowerCase();
   // For DALL-E URLs (external), open in new tab — user can long-press to save
   if(url.startsWith('http')){
-    toast('Opening image — long-press or right-click to save','info');
+    toast(_s.t_open_img,'info');
     window.open(url,'_blank');
     return;
   }
@@ -9914,11 +9914,11 @@ function _aiImgDownload(){
 
 function _aiImgWhatsApp(){
   const url = window._lastAiImgUrl;
-  if(!url){ toast('Generate an image first','error'); return; }
+  if(!url){ toast(_s.t_gen_image_first,'error'); return; }
   const prod = _aiGetProd() || 'our featured product';
   const waNum = (BIZ.whatsapp||BIZ.phone||'').replace(/[^0-9]/g,'');
   const msg = `✨ Check out *${prod}* from *${BIZ.name||'us'}*!\n\nAvailable now — contact us to order.\n${BIZ.phone?'📞 '+BIZ.phone:''}`;
-  toast('Opening WhatsApp — note: image must be attached manually','info');
+  toast(_s.t_open_wa2,'info');
   setTimeout(function(){
     const waUrl = waNum ? `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(waUrl,'_blank');
@@ -9992,13 +9992,13 @@ function _aiCopy(){
   const out = document.getElementById('aiOut');
   if(!out) return;
   const text = out.textContent;
-  if(!text || text.includes('Configure your settings')) { toast('Nothing to copy — generate content first','error'); return; }
+  if(!text || text.includes('Configure your settings')) { toast(_s.t_nothing_copy,'error'); return; }
   navigator.clipboard?.writeText(text)
-    .then(()=>{ toast('Copied to clipboard ✓','success'); _aiFlashBtn('📋 Copy','✓ Copied!'); })
+    .then(()=>{ toast(_s.t_copied,'success'); _aiFlashBtn('📋 Copy','✓ Copied!'); })
     .catch(()=>{ 
       const ta=document.createElement('textarea'); ta.value=text;
       document.body.appendChild(ta); ta.select(); document.execCommand('copy');
-      document.body.removeChild(ta); toast('Copied ✓','success');
+      document.body.removeChild(ta); toast(_s.t_copied,'success');
     });
 }
 
@@ -10011,7 +10011,7 @@ function _aiFlashBtn(oldText, newText){
 function _aiWhatsApp(){
   const out = document.getElementById('aiOut');
   const text = out?.textContent||'';
-  if(!text || text.includes('Configure your settings')) { toast('Generate content first','error'); return; }
+  if(!text || text.includes('Configure your settings')) { toast(_s.t_gen_first,'error'); return; }
   const waNum = (BIZ.whatsapp||BIZ.phone||'').replace(/[^0-9]/g,'');
   const url = waNum
     ? `https://wa.me/${waNum}?text=${encodeURIComponent(text)}`
@@ -10023,9 +10023,9 @@ function _aiWhatsApp(){
 function _aiInstagram(){
   const out = document.getElementById('aiOut');
   const text = out?.textContent||'';
-  if(!text || text.includes('Configure your settings')) { toast('Generate content first','error'); return; }
+  if(!text || text.includes('Configure your settings')) { toast(_s.t_gen_first,'error'); return; }
   navigator.clipboard?.writeText(text).then(()=>{
-    toast('Caption copied — opening Instagram…','success');
+    toast(_s.t_caption_copied,'success');
     setTimeout(()=>window.open('https://www.instagram.com/','_blank'), 800);
   }).catch(()=>window.open('https://www.instagram.com/','_blank'));
 }
@@ -10034,13 +10034,13 @@ function _aiInstagram(){
 function _aiSaveToHistory(){
   const out = document.getElementById('aiOut');
   const text = out?.textContent||'';
-  if(!text || text.includes('Configure your settings')) { toast('Nothing to save','error'); return; }
+  if(!text || text.includes('Configure your settings')) { toast(_s.t_no_save,'error'); return; }
   const prod = _aiGetProdLabel();
   const entry = {type:_aiType, prod, tone:_tone, text, ts: new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}), saved_at: new Date().toISOString()};
   _aiHistory.unshift(entry);
   if(_aiHistory.length > 20) _aiHistory.pop();
   _aiRenderHistory();
-  toast('Saved ✓','success');
+  toast(_s.t_saved,'success');
   // Persist to Supabase if available, else localStorage
   _aiPersistHistory();
 }
@@ -10107,7 +10107,7 @@ function _aiLoadHistItem(i){
   _aiShowActionBar();
   _aiUpdateCharCount(h.text);
   out?.scrollIntoView({behavior:'smooth', block:'nearest'});
-  toast('Loaded from history','success');
+  toast(_s.t_history_loaded,'success');
 }
 
 function _aiDeleteHistItem(i){
@@ -10124,7 +10124,7 @@ async function _aiClearHistory(){
   }
   try{ localStorage.removeItem('shoptrack_ai_history'); }catch(e){}
   _aiRenderHistory();
-  toast('History cleared','success');
+  toast(_s.t_history_cleared,'success');
 }
 
 function _aiShowActionBar(){
@@ -10286,7 +10286,7 @@ function _aiCall(payload){
 // ── Bulk Content Calendar Generator ──────────────────────────
 async function _genAIBulk(btn, btnTxt, btnIco){
   const sels = Array.from(document.querySelectorAll('.ai-bulk-prod-sel')).map(s=>s.value).filter(Boolean);
-  if(!sels.length){ toast('Select at least one product','error'); return; }
+  if(!sels.length){ toast(_s.t_select_product,'error'); return; }
   const bulkType = document.getElementById('ai-bulk-type-sel')?.value || 'Instagram Caption';
   const loading  = document.getElementById('ai-bulk-loading');
   const output   = document.getElementById('ai-bulk-output');
@@ -10335,7 +10335,7 @@ async function _genAIBulk(btn, btnTxt, btnIco){
 
 function _aiBulkDownload(){
   const content = window._lastBulkContent;
-  if(!content){ toast('Generate content first','error'); return; }
+  if(!content){ toast(_s.t_gen_first,'error'); return; }
   const blob = new Blob([content], {type:'text/plain'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
@@ -10343,7 +10343,7 @@ function _aiBulkDownload(){
   a.download = (BIZ.name||'shoptrack').replace(/\s+/g,'_')+'_content_calendar_'+new Date().toISOString().slice(0,10)+'.txt';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast('Content calendar downloaded ✓','success');
+  toast(_s.t_calendar_dl,'success');
 }
 
 // ── AI Customer Message Draft ─────────────────────────────────
@@ -10368,7 +10368,7 @@ function _aiCustDraftPreview(){
 async function _genAICustDraft(btn, btnTxt, btnIco){
   const sel = document.getElementById('ai-cust-draft-sel');
   const opt = sel?.options[sel?.selectedIndex];
-  if(!opt||!opt.value){ toast('Select a customer first','error'); return; }
+  if(!opt||!opt.value){ toast(_s.t_select_cust2,'error'); return; }
 
   const custName  = opt.dataset.name||opt.text;
   const situation = opt.dataset.situation||'general';
@@ -10401,9 +10401,9 @@ async function _genAICustDraft(btn, btnTxt, btnIco){
     const textEl = document.getElementById('ai-cust-draft-text');
     if(textEl) textEl.textContent = text;
     document.getElementById('ai-cust-draft-output').style.display='block';
-    toast('Message drafted ✓','success');
+    toast(_s.t_msg_drafted,'success');
   }catch(e){
-    toast('Draft failed: '+(e.message||'Error'),'error');
+    toast(_s.t_draft_failed+(e.message||'Error'),'error');
   }finally{
     if(btn){ btn.disabled=false; }
     if(btnTxt) btnTxt.textContent='Generate Content';
@@ -10413,16 +10413,16 @@ async function _genAICustDraft(btn, btnTxt, btnIco){
 
 function _aiCustDraftCopy(){
   const text = window._lastCustDraftText||'';
-  if(!text){ toast('Generate a draft first','error'); return; }
-  navigator.clipboard?.writeText(text).then(()=>toast('Copied ✓','success')).catch(()=>{
-    const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Copied ✓','success');
+  if(!text){ toast(_s.t_gen_draft_first,'error'); return; }
+  navigator.clipboard?.writeText(text).then(()=>toast(_s.t_copied,'success')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast(_s.t_copied,'success');
   });
 }
 
 function _aiCustDraftWhatsApp(){
   const text  = window._lastCustDraftText||'';
   const phone = (window._lastCustDraftPhone||'').replace(/[^0-9]/g,'');
-  if(!text){ toast('Generate a draft first','error'); return; }
+  if(!text){ toast(_s.t_gen_draft_first,'error'); return; }
   const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
   window.open(url,'_blank');
 }
@@ -10742,7 +10742,7 @@ RULES (follow exactly):
       _aiShowActionBar();
       _aiUpdateCharCount(text);
       window._lastAiText = text;
-      toast('Using template — add API key in Settings for real AI','warn');
+      toast(_s.t_using_template,'warn');
     } else {
       out.innerHTML='<span style="color:var(--r)">Error: '+msg+'</span>';
     }
@@ -11482,7 +11482,7 @@ async function _mbSave(bizId){
       trial_end:     plan.toLowerCase().includes('trial') ? (expiry||null) : null,
     };
     const {error} = await _sb.from('businesses').update(upd).eq('id', bizId);
-    if(error){ toast('Save failed: '+error.message,'error'); return; }
+    if(error){ toast(_s.t_save_failed+error.message,'error'); return; }
   }
 
   addAudit('Business updated', bizId+' — '+name+' | Plan:'+plan+' | Status:'+status+' | Expiry:'+(expiry||'none'));
@@ -11503,7 +11503,7 @@ function _mbResetLogin(bizId){const _s=_L();
       <span style="color:var(--text2)">${_s.adm_new_pass}</span>
       <div style="display:flex;align-items:center;gap:8px">
         <strong style="font-family:var(--mono);color:var(--g);background:rgba(45,212,160,.1);padding:3px 10px;border-radius:5px">${newPass}</strong>
-        <button onclick="navigator.clipboard.writeText('${newPass}').then(()=>toast('Copied','success'))" style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px;color:var(--text);font-family:inherit">📋</button>
+        <button onclick="navigator.clipboard.writeText('${newPass}').then(()=>toast(_s.t_copied2,'success'))" style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px;color:var(--text);font-family:inherit">📋</button>
       </div>
     </div>
   </div>`,
@@ -11513,7 +11513,7 @@ function _mbResetLogin(bizId){const _s=_L();
      if(AUTH_STORE[em]) AUTH_STORE[em].password='${newPass}';
      if(_sb) _sb.from('platform_users').update({password_hash:'${newPass}'}).eq('biz_id','${bizId}').eq('level','owner');
      addAudit('Owner password reset','${bizId} — ${_esc(b.name)}');
-     closeModal();toast('Password reset for ${_esc(b.name)} ✓','success');
+     closeModal();toast(_s.t_pass_reset + _esc(b.name) + ' ✓','success');
    })()">🔑 Reset Password</button>`);
 }
 
@@ -11536,8 +11536,8 @@ function adminBizAction(bizId, action){const _s=_L();
      <button class="btn btn-d" id="do-perm-del-btn" data-biz-id="${_cancelBizId}" onclick="
        var _chk=document.getElementById('cancel-confirm-chk');
        var _rsn=document.getElementById('cancel-reason');
-       if(!_chk||!_chk.checked){toast('Please tick the confirmation checkbox','error');return;}
-       if(!_rsn||!_rsn.value.trim()){toast('Please enter a reason','error');return;}
+       if(!_chk||!_chk.checked){toast(_s.t_check_confirm,'error');return;}
+       if(!_rsn||!_rsn.value.trim()){toast(_s.t_no_reason,'error');return;}
        this.disabled=true;this.textContent='⏳ Deleting…';
        var _bid=this.dataset.bizId;
        var _bobj=D.adminBiz.find(function(x){return x.id===_bid;});
@@ -11591,9 +11591,9 @@ function _updateTrialPreview(){
 async function _confirmTrialExtend(bizId){
   var days = window._trialExtDays || parseInt(document.getElementById('trial-custom-days')?.value)||0;
   var newDate = window._trialExtNewDate;
-  if(!newDate||!days){ toast('Please select how many days to add','error'); return; }
+  if(!newDate||!days){ toast(_s.t_no_days,'error'); return; }
   var b = D.adminBiz.find(function(x){return x.id===bizId;});
-  if(!b){ toast('Business not found','error'); return; }
+  if(!b){ toast(_s.t_biz_notfound,'error'); return; }
   b.trialEnd = newDate;
   if(_sb){ await _sb.from('businesses').update({trial_end:newDate}).eq('id',bizId); }
   addAudit('Trial extended', bizId+' — '+b.name+' | New expiry: '+newDate+' (+'+days+' days)');
@@ -11619,7 +11619,7 @@ async function _convertBizPlan(bizId, plan){const _s=_L();
 }
 
 function mProvision(){const _s=_L();
-  if(!SESSION.isSuperAdmin){ toast('Super Admin access required','error'); return; }
+  if(!SESSION.isSuperAdmin){ toast(_s.t_sa_only,'error'); return; }
   const tempPass = _genTempPassword();
   modal('🛡️ Onboard New Business',`
   <div class="alrt alrt-p" style="margin-bottom:16px">
@@ -11667,7 +11667,7 @@ function mProvision(){const _s=_L();
         <span style="font-size:12px;color:var(--text)">${_s.adm_temp_pass}</span>
         <div style="display:flex;align-items:center;gap:8px">
           <span id="prov-pass-display" style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--g);background:rgba(45,212,160,.1);padding:3px 10px;border-radius:5px">${tempPass}</span>
-          <button onclick="navigator.clipboard.writeText(document.getElementById('prov-pass-display').textContent).then(()=>toast('Password copied','success'))" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text2)" title="${_s.adm_copy_pass}">📋</button>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('prov-pass-display').textContent).then(()=>toast(_s.t_creds_copied,'success'))" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text2)" title="${_s.adm_copy_pass}">📋</button>
           <button onclick="document.getElementById('prov-pass-display').textContent=_genTempPassword()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--a);font-family:inherit" title="Regenerate">↻ New</button>
         </div>
       </div>
@@ -11693,7 +11693,7 @@ function provAutoFill(email){
 }
 
 function doProvision(){
-  if(!SESSION.isSuperAdmin){ toast('Super Admin access required','error'); return; }
+  if(!SESSION.isSuperAdmin){ toast(_s.t_sa_only,'error'); return; }
 
   const email   = (document.getElementById('prov-email')?.value  || '').toLowerCase().trim();
   const name    = (document.getElementById('prov-name')?.value   || '').trim();
@@ -11787,7 +11787,7 @@ function doProvision(){
         <span style="color:var(--text2)">Temp Password</span>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-family:var(--mono);font-weight:700;color:var(--g);background:rgba(45,212,160,.1);padding:3px 10px;border-radius:5px">${pass}</span>
-          <button onclick="navigator.clipboard.writeText('Email: ${email}\\nPassword: ${pass}').then(()=>toast('Credentials copied','success'))" style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px;color:var(--text);font-family:inherit">📋 Copy all</button>
+          <button onclick="navigator.clipboard.writeText('Email: ${email}\\nPassword: ${pass}').then(()=>toast(_s.t_creds_copied,'success'))" style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px;color:var(--text);font-family:inherit">📋 Copy all</button>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Plan</span>${bx(plan,'bx-b')}</div>
@@ -11815,15 +11815,15 @@ async function _purgeUnverifiedBiz(bizId, bizName){
     const tbody = document.querySelector('#tab-unverified tbody');
     if(tbody && !tbody.children.length) nav('admin-biz');
     addAudit('Purged unverified signup', bizId+' — '+bizName);
-    toast('✔ Deleted unverified signup: '+bizName,'success');
+    toast(_s.t_del_unverified+bizName,'success');
   } catch(e){
-    toast('Could not delete: '+e.message,'error');
+    toast(_s.t_could_not_del+e.message,'error');
   }
 }
 
 async function _purgeAllUnverified(){
   const list = D.adminBizUnverified||[];
-  if(!list.length){ toast('No unverified signups to purge','info'); return; }
+  if(!list.length){ toast(_s.t_no_unverified,'info'); return; }
   if(!confirm('Delete ALL '+list.length+' unverified signup(s)? This cannot be undone.')) return;
   let deleted = 0, failed = 0;
   for(const b of list){
@@ -11841,7 +11841,7 @@ async function _purgeAllUnverified(){
   }
   D.adminBizUnverified = [];
   addAudit('Purged all unverified signups', deleted+' deleted'+(failed?' | '+failed+' failed':''));
-  toast('✔ Purged '+deleted+' unverified signup(s)'+(failed?' ('+failed+' failed)':''),'success');
+  toast(_s.t_purged+deleted+' unverified signup(s)'+(failed?' ('+failed+' failed)':''),'success');
   nav('admin-biz');
 }
 
@@ -11970,7 +11970,7 @@ ${pendingBanner}
 
 // Super Admin clicks "👤 View Profile" — sends a request to the business owner
 function mRequestProfileAccess(userId){const _s=_L();
-  if(!SESSION.isSuperAdmin){ toast('Super Admin only','error'); return; }
+  if(!SESSION.isSuperAdmin){ toast(_s.t_sa_only2,'error'); return; }
   const u = BIZ_USERS.find(x=>x.id===userId); if(!u) return;
   const biz = D.adminBiz.find(b=>b.id===u.bizId);
   const ownerEntry = Object.entries(AUTH_STORE).find(([,v])=>v.bizId===u.bizId&&v.level==='owner');
@@ -11990,7 +11990,7 @@ function mRequestProfileAccess(userId){const _s=_L();
     `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
      <button class="btn btn-d btn-sm" onclick="
        ACCESS_REQUESTS.splice(ACCESS_REQUESTS.findIndex(r=>r.id==='${existing.id}'),1);
-       closeModal(); toast('Request cancelled','success'); nav('admin-users');
+       closeModal(); toast(_s.t_req_cancelled,'success'); nav('admin-users');
      ">${_s.adm_cancel_req}</button>`);
     return;
   }
@@ -12045,7 +12045,7 @@ function doSubmitProfileRequest(userId, ownerEmail, ownerName, bizId){const _s=_
   const sel   = document.getElementById('par-reason-sel')?.value;
   const other = document.getElementById('par-reason-other')?.value?.trim();
   const reason = sel === 'Other' ? other : sel;
-  if(!reason){ toast('Please select a reason for the request','error'); return; }
+  if(!reason){ toast(_s.t_select_reason,'error'); return; }
 
   const u   = BIZ_USERS.find(x=>x.id===userId);
   const biz = D.adminBiz.find(b=>b.id===bizId);
@@ -12147,15 +12147,15 @@ function resolveAccessRequest(reqId, newStatus){const _s=_L();
   closeModal();
   refreshNotifPanel();
   if(newStatus === 'approved'){
-    toast('Access approved — Super Admin can now view the profile','success');
+    toast(_s.t_access_approved,'success');
     // Show profile immediately if SA is resolving (demo: SA approves own request)
     if(SESSION.isSuperAdmin) setTimeout(()=>mViewApprovedProfile(req.userId, reqId), 300);
-    else { toast('The platform admin has been notified of your approval','success'); nav('admin-users'); }
+    else { toast(_s.t_admin_notified,'success'); nav('admin-users'); }
   } else if(newStatus === 'denied'){
-    toast('Access request denied — owner has been notified','success');
+    toast(_s.t_access_denied,'success');
     nav('admin-users');
   } else {
-    toast('Request cancelled','success');
+    toast(_s.t_req_cancelled,'success');
     nav('admin-users');
   }
 }
@@ -12164,7 +12164,7 @@ function resolveAccessRequest(reqId, newStatus){const _s=_L();
 function mViewApprovedProfile(userId, reqId){const _s=_L();
   const req = ACCESS_REQUESTS.find(r=>r.id===reqId);
   if(!req || req.status !== 'approved'){
-    toast('Access not approved — request owner confirmation first','error'); return;
+    toast(_s.t_access_not_appr,'error'); return;
   }
   const u   = BIZ_USERS.find(x=>x.id===userId); if(!u) return;
   const biz = D.adminBiz.find(b=>b.id===u.bizId);
@@ -12252,7 +12252,7 @@ function _showUpsell(reason){const _s=_L();
   );
 }
 function mAddBizUser(){const _s=_L();
-  if(!can('manage_users')){ toast('⛔ Manage Users — permission denied','error'); return; }
+  if(!can('manage_users')){ toast(_s.t_perm_denied,'error'); return; }
   // Free plan: max 1 user (owner only) -- Premium allows up to 5
   if(!SESSION.isSuperAdmin && _isFreePlan()){
     var _curU=BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId&&u.st==='Active';}).length;
@@ -12304,10 +12304,10 @@ function _doAddBizUser(){
   var biz = document.getElementById('abu-biz')?.value||SESSION.bizId||'';
   var lvl = document.getElementById('abu-level')?.value||'staff';
   var pwd = (document.getElementById('abu-pass')?.value||'').trim();
-  if(!nm){ toast('Name is required','error'); return; }
-  if(!em||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){ toast('Valid email is required','error'); return; }
-  if(AUTH_STORE[em]){ toast('This email is already registered','error'); return; }
-  if(!pwd||pwd.length<6){ toast('Password must be at least 6 characters','error'); return; }
+  if(!nm){ toast(_s.t_name_req,'error'); return; }
+  if(!em||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){ toast(_s.t_email_valid,'error'); return; }
+  if(AUTH_STORE[em]){ toast(_s.t_email_registered,'error'); return; }
+  if(!pwd||pwd.length<6){ toast(_s.t_pass_min6,'error'); return; }
   var maxId = BIZ_USERS.reduce(function(m,u){ var n=parseInt((u.id||'').replace(/\D/g,''),10)||0; return n>m?n:m; },0);
   var newUid = 'U-'+String(maxId+1).padStart(3,'0');
   var newUser = {id:newUid,name:nm,email:em,level:lvl,bizId:biz,st:'Active',last:'Never',rights:null};
@@ -12323,7 +12323,7 @@ function _doAddBizUser(){
 }
 
 function mEditBizUser(uid){const _s=_L();
-  if(!can('manage_users')){ toast('⛔ Manage Users — permission denied','error'); return; }
+  if(!can('manage_users')){ toast(_s.t_perm_denied,'error'); return; }
   const u=BIZ_USERS.find(x=>x.id===uid); if(!u) return;
   // SA sees a full business dropdown; owners see their own business locked as read-only
   var bizFieldHTML;
@@ -12369,8 +12369,8 @@ function _doEditBizUser(uid){
   var newEmail = (document.getElementById('eu-email')?.value||'').trim() || u2.email;
   var newBiz   = document.getElementById('eu-biz')?.value                || u2.bizId;
   var newLvl   = document.getElementById('eu-level')?.value              || u2.level;
-  if(!newName){ toast('Name is required','error'); return; }
-  if(!newEmail||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)){ toast('Valid email required','error'); return; }
+  if(!newName){ toast(_s.t_name_req,'error'); return; }
+  if(!newEmail||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)){ toast(_s.t_email_req,'error'); return; }
   if(newLvl !== u2.level) u2.rights = null;
   u2.name  = newName;
   u2.email = newEmail;
@@ -12409,7 +12409,7 @@ function tierBadge(t){
 }
 
 function mUserRights(uid){const _s=_L();
-  if(!can('manage_users')){ toast('⛔ Manage Users — permission denied','error'); return; }
+  if(!can('manage_users')){ toast(_s.t_perm_denied,'error'); return; }
   const u=BIZ_USERS.find(x=>x.id===uid);if(!u)return;
   const defR = DEFAULT_RIGHTS[u.level]||{};
   const curR = u.rights || defR;
@@ -12447,7 +12447,7 @@ function mUserRights(uid){const _s=_L();
   </div>`,
   `<button class="btn btn-d btn-sm" onclick="
     const u2=BIZ_USERS.find(x=>x.id==='${uid}');
-    u2.rights=null;closeModal();toast('Rights reset to level defaults','success')
+    u2.rights=null;closeModal();toast(_s.t_rights_reset,'success')
   ">↺ Reset to Level Defaults</button>
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveUserRights('${uid}')">💾 Save Rights</button>`,'lg');
@@ -12463,11 +12463,11 @@ function saveUserRights(uid){const _s=_L();
   u2.rights=r;
   addAudit('User rights updated', u2.name+' ('+uid+') — permissions saved');
   closeModal();
-  toast('Rights saved for '+u2.name,'success');
+  toast(_s.t_rights_saved+u2.name,'success');
 }
 
 function mManageRights(){const _s=_L();
-  if(!can('manage_users')){ toast('⛔ Manage Users — permission denied','error'); return; }
+  if(!can('manage_users')){ toast(_s.t_perm_denied,'error'); return; }
   const modEntries = Object.entries(RIGHT_MODULES);
   const levels = USER_LEVELS;
   const headerRow=`<tr><th>${_s.usr_module}</th>${levels.map(l=>`<th style="text-align:center;font-size:10px;min-width:80px">${USER_LEVEL_LABELS[l]}</th>`).join('')}</tr>`;
@@ -12619,7 +12619,7 @@ function _billingWAMsg(biz, daysLeft){
 async function _sendWA(phone, message, opts){
   const digits = String(phone||'').replace(/\D/g,'');
   if(!digits || digits.length < 7){
-    toast('No valid WhatsApp number','error'); return { success:false };
+    toast(_s.t_no_wa_valid,'error'); return { success:false };
   }
   // Try real API first
   try {
@@ -12629,12 +12629,12 @@ async function _sendWA(phone, message, opts){
     });
     const data = await resp.json();
     if(data.success){
-      toast('✅ WhatsApp message sent!','success');
+      toast(_s.t_wa_msg_sent,'success');
       return { success:true, messageId: data.messageId };
     }
     // API returned an error — show it and fall back to wa.me
     console.warn('[WA] API send failed:', data.error);
-    toast('WhatsApp API: '+( data.error||'failed')+'\nOpening WhatsApp instead…','warn');
+    toast(_s.t_wa_api+( data.error||'failed')+'\nOpening WhatsApp instead…','warn');
   } catch(e){
     console.warn('[WA] fetch error:', e.message);
   }
@@ -12650,7 +12650,7 @@ function _openWA(phone, message){const _s=_L();
   const norm = digits.length === 10 ? '1'+digits
              : digits.length === 11 && digits.startsWith('1') ? digits
              : digits;
-  if(!norm || norm.length < 7){ toast('No valid phone number','error'); return; }
+  if(!norm || norm.length < 7){ toast(_s.t_no_valid_phone,'error'); return; }
   const url = 'https://wa.me/'+norm+'?text='+encodeURIComponent(message);
   window.open(url, '_blank');
 }
@@ -12680,7 +12680,7 @@ async function mBillingCharge(bizId){const _s=_L();
   const amt = _billingAmtXAF(b);
   if(!amt){ toast(b.name+' is on a free trial — no charge needed','info'); return; }
   if(!(b.phone||b.whatsapp)){
-    toast('No phone number on record for '+b.name+'. Edit the business to add one.','error'); return;
+    toast(_s.t_no_phone2 + ' ' + b.name +'. Edit the business to add one.','error'); return;
   }
   const phone = b.phone||b.whatsapp;
   modal('📱 Charge Subscription — '+_esc(b.name),`
@@ -12704,7 +12704,7 @@ async function mBillingCharge(bizId){const _s=_L();
        console.log('[mBillingCharge] result:', r);
        if(r.charged&&r.charged.length){
          closeModal();
-         toast('✅ Payment request sent to ${_esc(b.owner||b.name)} — waiting for approval','success');
+         toast(_s.t_pay_req_sent + _esc(b.owner||b.name) + ' — ' + (_s.t_saved2 || 'waiting'),'success');
          addAudit('Subscription charge initiated','${bizId} — ${_esc(b.name)} — ${amt} XAF');
        } else if(r.errors&&r.errors.length){
          var errMsg = r.errors[0].error || 'Unknown error';
@@ -12712,10 +12712,10 @@ async function mBillingCharge(bizId){const _s=_L();
          btn.disabled=false; btn.textContent='📱 Send Request';
        } else if(r.skipped&&r.skipped.length){
          var skipMsg = r.skipped[0].reason || 'Business was skipped';
-         toast('⚠ Skipped: '+skipMsg,'error');
+         toast(_s.t_skipped+skipMsg,'error');
          btn.disabled=false; btn.textContent='📱 Send Request';
        } else {
-         toast('⚠ No response from CamPay — check Netlify function logs','error');
+         toast(_s.t_campay_warn,'error');
          btn.disabled=false; btn.textContent='📱 Send Request';
        }
      }catch(e){
@@ -12803,7 +12803,7 @@ function mBillingRunReminders(){const _s=_L();
     return d !== null && d < 0 && b.st === 'Active' && _billingAmtXAF(b) > 0;
   });
   const all = [...expiring, ...overdue];
-  if(!all.length){ toast('No businesses need reminders right now','info'); return; }
+  if(!all.length){ toast(_s.t_no_remind_biz,'info'); return; }
 
   // Store reminder list in window so onclick can access it safely
   window._reminderQueue = all.map(function(b){ return b.id; });
@@ -12834,7 +12834,7 @@ function _sendReminderQueue(){
   var i = 0;
   function next(){
     if(i >= queue.length){
-      toast('Reminders opened for '+queue.length+' business'+(queue.length>1?'es':''),'success');
+      toast(_s.t_reminders_for+queue.length+' business'+(queue.length>1?'es':''),'success');
       return;
     }
     var bizId = queue[i]; i++;
@@ -12851,7 +12851,7 @@ async function mBillingChargeAll(){
     const d = _billingDaysLeft(b);
     return d !== null && d <= 0 && b.st === 'Active' && _billingAmtXAF(b) > 0 && (b.phone||b.whatsapp);
   });
-  if(!due.length){ toast('No overdue businesses with phone numbers to charge','info'); return; }
+  if(!due.length){ toast(_s.t_no_overdue_phone,'info'); return; }
 
   const listHtml = due.map(function(b){
     const amt = _billingAmtXAF(b);
@@ -12984,7 +12984,7 @@ function _affViewReceipt(dataUrl, fileName){const _s=_L();
   if(dataUrl.startsWith('data:application/pdf')){
     var w = window.open('','_blank');
     if(w) w.document.write('<iframe src="'+dataUrl+'" style="width:100%;height:100vh;border:none"></iframe>');
-    else toast('Allow popups to view PDF','info');
+    else toast(_s.t_allow_pdf,'info');
   } else {
     modal('🧾 Receipt'+(fileName?' — '+_esc(fileName):''),
       '<div style="text-align:center"><img src="'+dataUrl+'" style="max-width:100%;max-height:70vh;border-radius:var(--r8)"/></div>'+
@@ -13001,7 +13001,7 @@ window._affVR = function(pi, ri){
   var p = hist[pi];
   var receipts = p.receipts || (p.receipt_data_url ? [{name:'Receipt',type:'image/',dataUrl:p.receipt_data_url}] : []);
   var r = receipts[ri];
-  if(!r || !r.dataUrl){ toast('Receipt not found','info'); return; }
+  if(!r || !r.dataUrl){ toast(_s.t_receipt_notfound,'info'); return; }
   _affViewReceipt(r.dataUrl, r.name||'Receipt');
 };
 
@@ -13011,7 +13011,7 @@ function _affViewReceiptByIdx(affId, payIdx, recIdx){const _s=_L();
   var p = a.payment_history[payIdx];
   var receipts = p.receipts || (p.receipt_data_url ? [{name:'Receipt',type:'image/',dataUrl:p.receipt_data_url}] : []);
   var r = receipts[recIdx||0];
-  if(!r || !r.dataUrl){ toast('Receipt not found','info'); return; }
+  if(!r || !r.dataUrl){ toast(_s.t_receipt_notfound,'info'); return; }
   _affViewReceipt(r.dataUrl, r.name||'Receipt');
 }
 
@@ -13105,8 +13105,8 @@ async function _affDoPayPartial(id, totalUnpaid){
   var notes = ((document.getElementById('aff-pay-notes')||{}).value||'').trim();
   var receipts = _affReceiptList.slice(); // [{name,type,dataUrl}]
 
-  if(!amt || amt <= 0){ toast('Enter a valid payment amount','error'); return; }
-  if(amt > totalUnpaid){ toast('Amount exceeds unpaid balance of '+fmt(totalUnpaid)+' XAF','error'); return; }
+  if(!amt || amt <= 0){ toast(_s.t_amount_valid2,'error'); return; }
+  if(amt > totalUnpaid){ toast(_s.t_exceeds_balance+fmt(totalUnpaid)+' XAF','error'); return; }
 
   var newUnpaid = Math.max(0, Math.round(totalUnpaid - amt));
   var isFullPayment = newUnpaid === 0;
@@ -13136,7 +13136,7 @@ async function _affDoPayPartial(id, totalUnpaid){
       : '✅ Partial payment of '+fmt(amt)+' XAF processed — '+fmt(newUnpaid)+' XAF remaining',
       'success');
   } else {
-    toast('Payment failed: '+(r.error||'Unknown error'),'error');
+    toast(_s.t_pay_failed2+(r.error||'Unknown error'),'error');
   }
 }
 
@@ -13357,7 +13357,7 @@ async function _affApprove(id){const _s=_L();
   var code = a.affiliate_code&&!a.affiliate_code.startsWith('PENDING') ? a.affiliate_code : '';
   // If still has PENDING code, require SA to set a real code first
   if(!code){
-    toast('Set a real affiliate code first before approving','error');
+    toast(_s.t_set_code_first,'error');
     _affSetCode(id); return;
   }
   var r=await _affManage('approve',id);
@@ -13369,7 +13369,7 @@ async function _affApprove(id){const _s=_L();
     if(!isReactivate && a.email){
       _affSendApprovalEmail(a);
     }
-  } else toast('Error: '+r.error,'error');
+  } else toast(_s.t_error_prefix+r.error,'error');
 }
 
 async function _affSendApprovalEmail(a){const _s=_L();
@@ -13386,24 +13386,24 @@ async function _affSendApprovalEmail(a){const _s=_L();
     });
     var rb = await res.json().catch(function(){return{};});
     if(res.ok && rb.success){
-      toast('Approval email sent to '+a.email+' ✓','success');
+      toast(_s.t_approval_sent+a.email+' ✓','success');
     } else {
       var errMsg = rb.error||('HTTP '+res.status);
       console.warn('[aff-approve-email] Failed:',errMsg, rb.brevo||'');
-      toast('Email failed — '+errMsg,'error');
+      toast(_s.t_email_failed+errMsg,'error');
     }
   }catch(e){
     console.warn('[aff-approve-email] Error:',e.message);
-    toast('Email could not be sent: '+e.message,'error');
+    toast(_s.t_could_not_email+e.message,'error');
   }
 }
 
 // Allow SA to manually resend the approval email from the table
 async function _affResendApprovalEmail(id){const _s=_L();
   var a=_affiliates.find(function(x){return x.id===id;});
-  if(!a||!a.email){ toast('No email on file for this affiliate','error'); return; }
-  if(a.status!=='approved'){ toast('Affiliate must be approved first','error'); return; }
-  toast('Sending approval email…','info');
+  if(!a||!a.email){ toast(_s.t_no_aff_email,'error'); return; }
+  if(a.status!=='approved'){ toast(_s.t_aff_approve_first,'error'); return; }
+  toast(_s.t_sending_approval,'info');
   await _affSendApprovalEmail(a);
 }
 
@@ -13422,15 +13422,15 @@ async function _doAffSuspend(id){const _s=_L();
     var a=_affiliates.find(function(x){return x.id===id;});
     if(a) a.status='suspended';
     _affUpdateKPIs(); _affRenderTable();
-    toast('Affiliate suspended','success');
-  } else toast('Error: '+r.error,'error');
+    toast(_s.t_aff_suspended,'success');
+  } else toast(_s.t_error_prefix+r.error,'error');
 }
 
 async function _affMarkPaid(id){const _s=_L();
   var a=_affiliates.find(function(x){return x.id===id;});
   if(!a) return;
   var unpaid=a.unpaid_xaf||0;
-  if(unpaid===0){ toast('No unpaid balance','info'); return; }
+  if(unpaid===0){ toast(_s.t_no_ba,'info'); return; }
   modal('Mark as Fully Paid',
     '<div class="alrt alrt-b" style="margin-bottom:12px">Clear full unpaid balance for <strong>'+_esc(a.name)+'</strong>?</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:13px;display:flex;justify-content:space-between">'
@@ -13445,8 +13445,8 @@ async function _doAffMarkPaid(id){const _s=_L();
     var a=_affiliates.find(function(x){return x.id===id;});
     if(a) a.unpaid_xaf=0;
     _affUpdateKPIs(); _affRenderTable();
-    toast('Marked as paid \u2713','success');
-  } else toast('Error: '+r.error,'error');
+    toast(_s.t_marked_paid,'success');
+  } else toast(_s.t_error_prefix+r.error,'error');
 }
 
 function _affSetCode(id){const _s=_L();
@@ -13465,13 +13465,13 @@ function _affSetCode(id){const _s=_L();
 }
 async function _doAffSetCode(id){const _s=_L();
   var code=((document.getElementById('aff-code-inp')||{}).value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-  if(code.length<3){ toast('Code must be at least 3 characters','error'); return; }
+  if(code.length<3){ toast(_s.t_code_min,'error'); return; }
   var r=await _affManage('set-code',id,{affiliate_code:code});
   if(r.ok){
     var a=_affiliates.find(function(x){return x.id===id;}); if(a) a.affiliate_code=code;
     closeModal(); _affRenderTable();
-    toast('Code updated to '+code,'success');
-  } else toast('Error: '+r.error,'error');
+    toast(_s.t_code_updated+code,'success');
+  } else toast(_s.t_error_prefix+r.error,'error');
 }
 
 async function _affDelete(id){const _s=_L();
@@ -13489,17 +13489,17 @@ async function _doAffDelete(id){const _s=_L();
   if(r.ok){
     _affiliates=_affiliates.filter(function(x){return x.id!==id;});
     _affUpdateKPIs(); _affRenderTable();
-    toast('Affiliate deleted','success');
+    toast(_s.t_aff_deleted,'success');
     setTimeout(_affLoad,1500);
   } else {
     console.error('[_affDelete] failed:',r.error);
-    toast('Delete failed: '+r.error,'error');
+    toast(_s.t_delete_failed+r.error,'error');
   }
 }
 
 
 function _affCopyLink(link){
-  navigator.clipboard.writeText(link).then(function(){ toast('Link copied!','success'); }).catch(function(){ toast(link,'info'); });
+  navigator.clipboard.writeText(link).then(function(){ toast(_s.t_link_copied,'success'); }).catch(function(){ toast(link,'info'); });
 }
 
 function _affAddManual(){const _s=_L();
@@ -13520,21 +13520,21 @@ async function _affDoAddManual(){
   var code   = (document.getElementById('aff-mn-code')?.value||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
   var handle = (document.getElementById('aff-mn-handle')?.value||'').trim();
   var pct    = parseFloat(document.getElementById('aff-mn-pct')?.value||'20')||20;
-  if(!name)  { toast('Name is required','error'); return; }
-  if(!email||!email.includes('@')) { toast('Valid email required','error'); return; }
-  if(!code||code.length<3) { toast('Code must be at least 3 characters','error'); return; }
+  if(!name)  { toast(_s.t_name_req,'error'); return; }
+  if(!email||!email.includes('@')) { toast(_s.t_email_req,'error'); return; }
+  if(!code||code.length<3) { toast(_s.t_code_min,'error'); return; }
   var r=await _affManage('add','new',{
     name:name, email:email, affiliate_code:code, social_handle:handle,
     status:'approved', clicks:0, conversions:0,
     total_earned_xaf:0, unpaid_xaf:0, commission_pct:pct,
     created_at:new Date().toISOString()
   });
-  if(r.ok){ closeModal(); toast('Affiliate added: '+name,'success'); _affLoad(); }
-  else toast('Error: '+r.error,'error');
+  if(r.ok){ closeModal(); toast(_s.t_aff_added+name,'success'); _affLoad(); }
+  else toast(_s.t_error_prefix+r.error,'error');
 }
 
 function _affExportCSV(){
-  if(!_affiliates.length){ toast('No affiliates to export','info'); return; }
+  if(!_affiliates.length){ toast(_s.t_no_aff_export,'info'); return; }
   var headers = ['Name','Email','Code','Handle','Status','Commission%','Clicks','Conversions','Total Earned XAF','Unpaid XAF','Joined'];
   var rows = _affiliates.map(a=>[
     a.name||'', a.email||'', a.affiliate_code||'', a.social_handle||'', a.status||'',
@@ -14630,7 +14630,7 @@ async function _safeUpsert(table, payload, ctx){
       return {ok:true, queued:true, data:[payload]};
     }catch(qe){
       console.warn('['+ctx+'] Queue error:', qe.message);
-      toast('⚠ Offline — could not queue this change','error');
+      toast(_s.t_offline_queue,'error');
       return {ok:false, error:qe};
     }
   }
@@ -14653,7 +14653,7 @@ async function _safeUpsert(table, payload, ctx){
       }
     }
     console.error('['+ctx+'] exception:', e.message);
-    toast('⚠ Save error: '+e.message.slice(0,80),'error');
+    toast(_s.t_save_error+e.message.slice(0,80),'error');
     return {ok:false, error:e};
   }
 }
@@ -14688,7 +14688,7 @@ async function _sbUpsertWithFallback(table, payload, ctx){
   }
 
   console.error('['+ctx+'] FAILED:', error.code, error.message);
-  toast('Save error ('+error.code+'): '+error.message.slice(0,80),'error');
+  toast(_s.t_save_error+error.code+'): '+error.message.slice(0,80),'error');
   return {ok:false, error};
 }
 
@@ -15748,8 +15748,8 @@ function doLogin(){const _s=_L();
   const email = (document.getElementById('ln-email')?.value || '').toLowerCase().trim();
   const pass  = document.getElementById('ln-pass')?.value || '';
 
-  if(!email){ showLoginError('Please enter your email address.'); return; }
-  if(!pass) { showLoginError('Please enter your password.');      return; }
+  if(!email){ showLoginError(_s.t_email_req); return; }
+  if(!pass) { showLoginError(_s.t_name_req);      return; }
 
   // Show loading state
   const btn = document.getElementById('ln-btn');
@@ -15954,14 +15954,14 @@ function doLogin(){const _s=_L();
   `<button class="btn btn-p" style="width:100%" onclick="
     const np=document.getElementById('fp-new')?.value||'';
     const cf=document.getElementById('fp-conf')?.value||'';
-    if(np.length<8){toast('Password must be at least 8 characters','error');return;}
-    if(!/[0-9]/.test(np)){toast('Password must contain at least one number','error');return;}
-    if(!/[^a-zA-Z0-9]/.test(np)){toast('Password must contain at least one special character','error');return;}
-    if(np!==cf){toast('Passwords do not match','error');return;}
+    if(np.length<8){toast(_s.t_pass_min8_2,'error');return;}
+    if(!/[0-9]/.test(np)){toast(_s.t_pass_num,'error');return;}
+    if(!/[^a-zA-Z0-9]/.test(np)){toast(_s.t_pass_special,'error');return;}
+    if(np!==cf){toast(_s.t_pass_no_match,'error');return;}
     AUTH_STORE['${_email}'] && (AUTH_STORE['${_email}'].password=np);
     AUTH_STORE['${_email}'] && (AUTH_STORE['${_email}'].mustChangePassword=false);
     _dbUpdatePassword('${_email}', np);
-    toast('Password updated — keep it safe! ✓','success');
+    toast(_s.t_pass_updated,'success');
     closeModal();
   ">Set New Password</button>`,'sm');
       }, 500);
@@ -15978,7 +15978,7 @@ function doLogin(){const _s=_L();
       BIZ.plan='Premium'; // Stripe payment = Premium plan
       window._trialReadOnly=false; window._trialHardBlock=false;
       setTimeout(function(){
-        toast('\u2705 Premium activated! Your subscription is active until '+_ss.expiry,'success');
+        toast(_s.t_premium_prefix+_ss.expiry,'success');
         _track('Trial Converted',{plan:BIZ.plan||'Starter',method:'stripe'});
         nav('dashboard');
       },800);
@@ -15986,7 +15986,7 @@ function doLogin(){const _s=_L();
   }
   if(window._stripeCancel){
     window._stripeCancel=false;
-    setTimeout(function(){toast('Payment cancelled. You can try again any time.','info');},800);
+    setTimeout(function(){toast(_s.t_pay_cancel,'info');},800);
   }
     setTimeout(()=>{
       const ud = document.getElementById('sb-user-name');
@@ -16132,10 +16132,10 @@ function _savePasswordFromTab(){const _s=_L();
   var cur  = (document.getElementById('biz-sec-cur')?.value||'').trim();
   var nw   = (document.getElementById('biz-sec-new')?.value||'').trim();
   var conf = (document.getElementById('biz-sec-conf')?.value||'').trim();
-  if(!cur){ toast('Enter your current password','error'); document.getElementById('biz-sec-cur')?.focus(); return; }
-  if(nw.length<8){ toast('New password must be at least 8 characters','error'); return; }
-  if(!/[0-9]/.test(nw)){ toast('Password must include at least 1 number','error'); return; }
-  if(nw!==conf){ toast('Passwords do not match','error'); return; }
+  if(!cur){ toast(_s.t_pass_enter_cur,'error'); document.getElementById('biz-sec-cur')?.focus(); return; }
+  if(nw.length<8){ toast(_s.t_pass_min8_2,'error'); return; }
+  if(!/[0-9]/.test(nw)){ toast(_s.t_pass_num2,'error'); return; }
+  if(nw!==conf){ toast(_s.t_pass_no_match,'error'); return; }
   _doChangePasswordDirect(cur, nw);
 }
 async function _doChangePasswordDirect(cur, nw){const _s=_L();
@@ -16149,7 +16149,7 @@ async function _doChangePasswordDirect(cur, nw){const _s=_L();
       curHash=ud?.password_hash||'';
     }
     var matched=await _pwdMatch(cur,curHash);
-    if(!matched){toast('Current password is incorrect','error');return;}
+    if(!matched){toast(_s.t_pass_cur_wrong,'error');return;}
     // Hash new password
     var enc=new TextEncoder().encode(nw);
     var buf=await crypto.subtle.digest('SHA-256',enc);
@@ -16159,8 +16159,8 @@ async function _doChangePasswordDirect(cur, nw){const _s=_L();
       var el=document.getElementById(id);if(el)el.value='';
     });
     addAudit('Password changed',SESSION.name);
-    toast('Password changed successfully \u2713','success');
-  }catch(e){toast('Error: '+e.message,'error');}
+    toast(_s.t_pass_changed,'success');
+  }catch(e){toast(_s.t_error_prefix+e.message,'error');}
   finally{if(btn){btn.disabled=false;btn.textContent='\uD83D\uDD12 Change Password';}}
 }
 function mChangePassword(){const _s=_L();
@@ -16181,11 +16181,11 @@ async function _doChangePassword(){
   const np  = document.getElementById('cp-new')?.value || '';
   const cf  = document.getElementById('cp-conf')?.value || '';
 
-  if(!cur){ toast('Enter your current password','error'); return; }
-  if(!np || np.length < 8){ toast('New password must be at least 8 characters','error'); return; }
-  if(!/[0-9]/.test(np)){ toast('New password must contain at least one number','error'); return; }
-  if(!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(np)){ toast('New password must contain at least one special character','error'); return; }
-  if(np !== cf){ toast('Passwords do not match','error'); return; }
+  if(!cur){ toast(_s.t_pass_enter_cur,'error'); return; }
+  if(!np || np.length < 8){ toast(_s.t_pass_min8_2,'error'); return; }
+  if(!/[0-9]/.test(np)){ toast(_s.t_pass_num,'error'); return; }
+  if(!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(np)){ toast(_s.t_pass_special,'error'); return; }
+  if(np !== cf){ toast(_s.t_pass_no_match,'error'); return; }
 
   const btn = document.querySelector('#mc .btn-p');
   if(btn){ btn.textContent='Updating…'; btn.disabled=true; }
@@ -16207,7 +16207,7 @@ async function _doChangePassword(){
   }
 
   if(!storedHash || !userEmail){
-    toast('Could not verify your identity — please log out and back in','error');
+    toast(_s.t_identity_err,'error');
     if(btn){ btn.textContent='Update Password'; btn.disabled=false; }
     return;
   }
@@ -16215,7 +16215,7 @@ async function _doChangePassword(){
   // Verify current password (supports plaintext legacy AND SHA-256)
   const matched = await _pwdMatch(cur, storedHash);
   if(!matched){
-    toast('Current password is incorrect','error');
+    toast(_s.t_pass_cur_wrong,'error');
     if(btn){ btn.textContent='Update Password'; btn.disabled=false; }
     return;
   }
@@ -16234,7 +16234,7 @@ async function _doChangePassword(){
   // Keep AUTH_STORE in sync for demo accounts
   if(AUTH_STORE[userEmail]) AUTH_STORE[userEmail].password = newHash;
 
-  toast('Password changed successfully ✓','success');
+  toast(_s.t_pass_changed,'success');
   closeModal();
 }
 
@@ -16288,8 +16288,8 @@ function _inlineCancelNewCust(prefix){
 function _inlineSaveNewCust(prefix){
   const name  = (document.getElementById(prefix+'-nc-name')?.value||'').trim();
   const phone = (document.getElementById(prefix+'-nc-phone')?.value||'').trim();
-  if(!name){ toast('Customer name is required','error'); document.getElementById(prefix+'-nc-name')?.focus(); return; }
-  if(!phone){ toast('Phone number is required','error'); document.getElementById(prefix+'-nc-phone')?.focus(); return; }
+  if(!name){ toast(_s.t_cust_req,'error'); document.getElementById(prefix+'-nc-name')?.focus(); return; }
+  if(!phone){ toast(_s.t_phone_req,'error'); document.getElementById(prefix+'-nc-phone')?.focus(); return; }
 
   // Generate unique ID
   var _maxC=D.cust.reduce(function(m,cu){var n=parseInt((cu.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
@@ -16398,7 +16398,7 @@ function _inlineSaveNewVendor(prefix){
   const phone   = (document.getElementById(prefix+'-nv-phone')?.value||'').trim();
   const email   = (document.getElementById(prefix+'-nv-email')?.value||'').trim();
   const country = (document.getElementById(prefix+'-nv-country')?.value||'').trim();
-  if(!name){ toast('Vendor name is required','error'); document.getElementById(prefix+'-nv-name')?.focus(); return; }
+  if(!name){ toast(_s.t_vend_req,'error'); document.getElementById(prefix+'-nv-name')?.focus(); return; }
 
   const newId = 'V-NEW-'+String(Date.now()).slice(-6);
   const newVendor = {
@@ -16983,9 +16983,9 @@ async function _submitSignup(){
     console.error('Signup error:', e);
     if(btn){ btn.textContent = '\ud83d\ude80 Start Free Trial'; btn.disabled = false; }
     if((e.message||'').includes('duplicate')||(e.message||'').includes('unique')){
-      toast('Email already registered. Please log in.','error');
+      toast(_s.t_email_registered,'error');
     } else {
-      toast('Signup failed \u2014 '+(e.message||'please try again'),'error');
+      toast(_s.t_signup_failed+(e.message||'please try again'),'error');
     }
   }
 }
@@ -17013,7 +17013,7 @@ function _showEmailVerifyScreen(email, firstName, emailSent, userId, bizId, pwd,
        </div>
        <div style="background:var(--bg3);border:2px dashed var(--border2);border-radius:10px;padding:14px;text-align:center;margin-bottom:6px">
          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:6px">Your Verification Code</div>
-         <div id="sv-fallback-code" style="font-size:36px;font-weight:900;letter-spacing:10px;font-family:monospace;color:var(--a);cursor:pointer" title="Click to copy" onclick="navigator.clipboard?.writeText(this.textContent.trim());toast('Code copied','success')">${signupPayload?.token||''}</div>
+         <div id="sv-fallback-code" style="font-size:36px;font-weight:900;letter-spacing:10px;font-family:monospace;color:var(--a);cursor:pointer" title="Click to copy" onclick="navigator.clipboard?.writeText(this.textContent.trim());toast(_s.t_code_copied,'success')">${signupPayload?.token||''}</div>
          <div style="font-size:10px;color:var(--text2);margin-top:4px">Click the code to copy it &mdash; then paste it in the box below</div>
        </div>`
     }
@@ -17049,7 +17049,7 @@ function _showEmailVerifyScreen(email, firstName, emailSent, userId, bizId, pwd,
 }
 
 async function _resendVerifyToken(){
-  if(!_pendingVerify){ toast('Session expired — please sign up again','error'); return; }
+  if(!_pendingVerify){ toast(_s.t_session_expired,'error'); return; }
   const {email, userId, bizId, signupPayload} = _pendingVerify;
 
   // Rate-limit: 60 second cooldown
@@ -17058,7 +17058,7 @@ async function _resendVerifyToken(){
     const last = parseInt(sessionStorage.getItem(_rk)||'0');
     if(Date.now() - last < 60000){
       const secs = Math.ceil((60000-(Date.now()-last))/1000);
-      toast('Please wait '+secs+'s before requesting a new code','warn'); return;
+      toast(_s.t_please_wait + secs + 's before requesting a new code','warn'); return;
     }
     sessionStorage.setItem(_rk, String(Date.now()));
   }catch(e){}
@@ -17080,18 +17080,18 @@ async function _resendVerifyToken(){
       body: JSON.stringify({email, name:firstName, bizName, token:newToken, userId, bizId, lang:_pendingVerify?.lang||'en'})
     });
     if(_rvResp.ok){
-      toast('New code sent to '+email,'success');
+      toast(_s.t_new_code_sent+email,'success');
     } else {
       let _rvErr = {};
       try{ _rvErr = await _rvResp.json(); }catch(_){}
       const _rvMsg = _rvErr.error || _rvErr.message || ('HTTP '+_rvResp.status);
       console.warn('[resend-verify] failed:', _rvMsg);
-      toast('Could not send email — '+_rvMsg,'error');
+      toast(_s.t_could_not_email+_rvMsg,'error');
     }
-  } catch(e){ toast('Failed to resend — '+e.message,'error'); }
+  } catch(e){ toast(_s.t_resend_failed+e.message,'error'); }
 }
 async function _confirmVerifyToken(){
-  if(!_pendingVerify){ toast('Session expired — please sign up again','error'); return; }
+  if(!_pendingVerify){ toast(_s.t_session_expired,'error'); return; }
   const {email, userId, bizId, pwd, signupPayload} = _pendingVerify;
 
   const enteredToken = (document.getElementById('sv-token')?.value||'').trim();
@@ -17260,7 +17260,7 @@ async function _confirmVerifyToken(){
           window._pendingLangApply = null;
           setTimeout(function(){ _applyLanguage(_pla2); }, 50);
         }
-        toast('✔ Email verified — welcome to ShopTrack! 🎉','success');
+        toast(_s.t_email_verified,'success');
         // Re-render sidebar and show setup popup
         ['sb-user-name','sb-user-role','sb-user-avatar'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent='';});
         if(typeof updateSidebarForRole==='function') updateSidebarForRole();
@@ -17274,7 +17274,7 @@ async function _confirmVerifyToken(){
         if(loginEl){ loginEl.style.display='flex'; loginEl.style.opacity='1'; }
         const le = document.getElementById('ln-email'); if(le) le.value = email;
         const lp = document.getElementById('ln-pass');  if(lp) lp.value = pwd;
-        toast('Email verified! Please sign in.','success');
+        toast(_s.t_email_verified,'success');
       }
     }, 300);
   } catch(e){
@@ -17404,7 +17404,7 @@ function _markWATestDone(){
   var key='st_wa_tested_'+(SESSION.bizId||'');
   try{localStorage.setItem(key,'1');}catch(e){}
   if(curPage==='dashboard') nav('dashboard');
-  toast('\u2705 Test alert sent! WhatsApp step complete.','success');
+  toast(_s.t_wa_test_sent,'success');
 }
 function _showLoginScreen(){
   const _ls=document.getElementById('login-screen');
@@ -17763,7 +17763,7 @@ try {
     hideOfflineBanner();
     console.log('[ShopTrack] Back online');
     // Show a brief "reconnected" toast if toast function is available
-    if(typeof toast === 'function') toast('Back online ✓', 'success');
+    if(typeof toast === 'function') toast(_s.t_back_online2, 'success');
   });
 
   // Show immediately if already offline on load
@@ -17900,7 +17900,7 @@ function openDoc(title, htmlContent){
   _currentDoc = { title, html: htmlContent };
   const overlay = document.getElementById('doc-overlay');
   const toolbarTitle = document.getElementById('doc-toolbar-title');
-  if(!overlay){ toast('Document viewer not found — please refresh','error'); return; }
+  if(!overlay){ toast(_s.t_not_found,'error'); return; }
   if(toolbarTitle) toolbarTitle.textContent = title;
 
   // Write content directly into doc-content div
@@ -17929,7 +17929,7 @@ function closeDoc(){
 }
 function printDoc(){
   if(!_currentDoc || !_currentDoc.html){
-    toast('Nothing to print','error'); return;
+    toast(_s.t_no_print,'error'); return;
   }
   try {
     const fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+_currentDoc.title+'</title>'
@@ -17941,7 +17941,7 @@ function printDoc(){
     const w = window.open(url,'_blank');
     if(w){ setTimeout(()=>{ w.print(); setTimeout(()=>URL.revokeObjectURL(url),2000); },700); return; }
   } catch(e){}
-  toast('Please allow pop-ups for shoptrack.org to print documents','error');
+  toast(_s.t_popups_print,'error');
 }
 
 // Build a plain-text version of the current doc for message sharing
@@ -17978,7 +17978,7 @@ function shareDocEmail(){
 }
 
 function shareDocNative(){
-  if(!navigator.share){ toast('Sharing not supported on this browser','error'); return; }
+  if(!navigator.share){ toast(_s.t_sharing_unsup,'error'); return; }
   navigator.share({
     title: _currentDoc.title + ' — ' + BIZ.name,
     text: _docTextSummary(),
@@ -18401,7 +18401,7 @@ function _toggleNotifPref(key, el){const _s=_L();
   if(el.checked && key.startsWith('waOwner')){
     var _waRaw = (BIZ.whatsapp||'').replace(/[^0-9]/g,'');
     if(!_waRaw || _waRaw.length < 7){
-      setTimeout(function(){ toast('Tip: add your WhatsApp number in Settings \u00bb Business Profile to receive these alerts','info'); },400);
+      setTimeout(function(){ toast(_s.t_tip_wa_settings,'info'); },400);
     }
   }
   // Large order note when waOwnerNewSale is off
@@ -18732,8 +18732,8 @@ function pgSettings(){
       <div class="fg" style="margin-top:14px">
         <label class="fl">${_s.set_theme}</label>
         <div style="display:flex;gap:8px;margin-top:6px">
-          <button class="btn btn-sm ${BIZ.theme!=='light'?'btn-p':'btn-s'}" id="theme-dark-btn" onclick="_applyTheme('dark');BIZ.theme='dark';document.getElementById('theme-dark-btn').className='btn btn-sm btn-p';document.getElementById('theme-light-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast('🌙 Dark theme applied','success')">${_s.set_theme_dark}</button>
-          <button class="btn btn-sm ${BIZ.theme==='light'?'btn-p':'btn-s'}" id="theme-light-btn" onclick="_applyTheme('light');BIZ.theme='light';document.getElementById('theme-light-btn').className='btn btn-sm btn-p';document.getElementById('theme-dark-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast('☀️ Light theme applied','success')">${_s.set_theme_light}</button>
+          <button class="btn btn-sm ${BIZ.theme!=='light'?'btn-p':'btn-s'}" id="theme-dark-btn" onclick="_applyTheme('dark');BIZ.theme='dark';document.getElementById('theme-dark-btn').className='btn btn-sm btn-p';document.getElementById('theme-light-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast(_s.t_theme_dark,'success')">${_s.set_theme_dark}</button>
+          <button class="btn btn-sm ${BIZ.theme==='light'?'btn-p':'btn-s'}" id="theme-light-btn" onclick="_applyTheme('light');BIZ.theme='light';document.getElementById('theme-light-btn').className='btn btn-sm btn-p';document.getElementById('theme-dark-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast(_s.t_theme_light,'success')">${_s.set_theme_light}</button>
         </div>
       </div>
     </div>
@@ -18770,10 +18770,10 @@ function pgSettings(){
       ">💾 Save Key</button>
       ${BIZ.aiKey?`<button class="btn btn-g btn-sm" style="margin-top:10px;margin-left:8px" onclick="
         BIZ.aiKey=document.getElementById('biz-ai-key').value.trim();
-        if(!BIZ.aiKey){toast('Enter an API key first','error');return;}
+        if(!BIZ.aiKey){toast(_s.t_enter_api,'error');return;}
         var btn=this;btn.disabled=true;btn.textContent='Testing…';
         _aiCall({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'Hi'}]})
-          .then(function(){btn.disabled=false;btn.textContent='✅ Key works';toast('Custom API key is working ✓','success');})
+          .then(function(){btn.disabled=false;btn.textContent='✅ Key works';toast(_s.t_ai_key_ok,'success');})
           .catch(function(e){btn.disabled=false;btn.textContent='Test Key';toast('❌ '+e.message,'error');});
       ">${_s.set_ai_key_test}</button>`:''}
       <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px">
@@ -18835,12 +18835,12 @@ function pgSettings(){
         var c=document.getElementById('biz-sec-cur').value,
             n=document.getElementById('biz-sec-new').value,
             f=document.getElementById('biz-sec-conf').value;
-        if(!c||!n||!f){toast('Fill all fields','error');return;}
-        if(n!==f){toast('Passwords do not match','error');return;}
-        if(n.length<8){toast('Min 8 characters required','error');return;}
+        if(!c||!n||!f){toast(_s.t_fill_fields,'error');return;}
+        if(n!==f){toast(_s.t_pass_no_match,'error');return;}
+        if(n.length<8){toast(_s.t_pass_min8,'error');return;}
         var em=Object.keys(AUTH_STORE).find(function(k){return AUTH_STORE[k].userId===SESSION.userId;});
         if(em)AUTH_STORE[em].password=n;
-        toast('Password updated successfully','success');
+        toast(_s.t_pass_changed,'success');
         ['biz-sec-cur','biz-sec-new','biz-sec-conf'].forEach(function(id){document.getElementById(id).value='';});
       })()">${_s.set_sec_update}</button>
     </div>
@@ -18976,7 +18976,7 @@ ${(function(){
       <span style="flex:1;font-family:var(--mono);font-size:12px;color:var(--a);word-break:break-all" id="ref-link-display">https://shoptrack.org/?ref=${SESSION.bizId||''}</span>
       <button class="btn btn-p btn-sm" onclick="
         var link='https://shoptrack.org/?ref='+(SESSION.bizId||'');
-        navigator.clipboard.writeText(link).then(function(){toast('\u2705 Referral link copied!','success');}).catch(function(){toast(link,'info');});
+        navigator.clipboard.writeText(link).then(function(){toast(_s.t_link_copied,'success');}).catch(function(){toast(link,'info');});
       ">${_s.set_copy}</button>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -19014,7 +19014,7 @@ ${tabDocsHtml}
     <div style="background:var(--bg3);border-radius:var(--r8);padding:14px 16px;margin-bottom:16px;font-size:12px;color:var(--text)">
       <strong style="color:var(--ink);display:block;margin-bottom:6px">📌 Available placeholders — these are replaced automatically when generating a contract:</strong>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
-        ${['{BUSINESS_NAME}','{CUSTOMER_NAME}','{CUSTOMER_PHONE}','{CUSTOMER_ID}','{DATE}','{ITEM_NAME}','{START_DATE}','{DUE_DATE}','{RENTAL_FEE}','{DEPOSIT}','{CONDITION_BEFORE}','{RENTAL_ID}'].map(p=>`<code style="background:var(--a-dim);color:var(--a);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer" onclick="navigator.clipboard?.writeText('${p}').then(()=>toast('Copied','success'))" title="${_s.set_click_copy}">${p}</code>`).join('')}
+        ${['{BUSINESS_NAME}','{CUSTOMER_NAME}','{CUSTOMER_PHONE}','{CUSTOMER_ID}','{DATE}','{ITEM_NAME}','{START_DATE}','{DUE_DATE}','{RENTAL_FEE}','{DEPOSIT}','{CONDITION_BEFORE}','{RENTAL_ID}'].map(p=>`<code style="background:var(--a-dim);color:var(--a);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer" onclick="navigator.clipboard?.writeText('${p}').then(()=>toast(_s.t_copied2,'success'))" title="${_s.set_click_copy}">${p}</code>`).join('')}
       </div>
     </div>
 
@@ -19041,7 +19041,7 @@ ${tabDocsHtml}
 <div class="card">
   <div class="card-hd">
     <div class="card-ttl">${_s.set_cat_title}</div>
-    <button class="btn btn-p btn-sm" onclick="_dbSaveCategories(SESSION.bizId);toast('All categories saved ✓','success');addAudit('Categories saved','Manual save from Settings')">${_s.set_cat_save}</button>
+    <button class="btn btn-p btn-sm" onclick="_dbSaveCategories(SESSION.bizId);toast(_s.t_cats_saved,'success');addAudit('Categories saved','Manual save from Settings')">${_s.set_cat_save}</button>
   </div>
   <div style="font-size:12px;color:var(--text2);margin-bottom:16px">${_s.set_cat_hint}</div>
   <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">${_s.set_cat_inv}</div>
@@ -19292,11 +19292,11 @@ ${renderPlansTab()}
         const cur=document.getElementById('sec-cur').value;
         const nw=document.getElementById('sec-new').value;
         const cf=document.getElementById('sec-conf').value;
-        if(!cur||!nw||!cf){toast('Please fill all fields','error');return;}
-        if(nw!==cf){toast('Passwords do not match','error');return;}
-        if(nw.length<12){toast('Password must be at least 12 characters','error');return;}
+        if(!cur||!nw||!cf){toast(_s.t_fill_fields2,'error');return;}
+        if(nw!==cf){toast(_s.t_pass_no_match,'error');return;}
+        if(nw.length<12){toast(_s.t_pass_min12,'error');return;}
         AUTH_STORE['admin@shoptrack.work'].password=nw;
-        toast('Password updated successfully','success');
+        toast(_s.t_pass_changed,'success');
         document.getElementById('sec-cur').value='';
         document.getElementById('sec-new').value='';
         document.getElementById('sec-conf').value='';
@@ -19343,7 +19343,7 @@ ${renderPlansTab()}
         <div style="font-size:11px;color:var(--text2);margin-top:2px">${desc}</div>
       </div>
       <label style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;margin-left:12px">
-        <input type="checkbox" ${on?'checked':''} style="opacity:0;width:0;height:0" onchange="toast('Preference saved','success')"/>
+        <input type="checkbox" ${on?'checked':''} style="opacity:0;width:0;height:0" onchange="toast(_s.t_pref_saved,'success')"/>
         <span style="position:absolute;cursor:pointer;inset:0;background:${on?'var(--a)':'var(--bg4)'};border-radius:20px;transition:.2s" onclick="this.style.background=this.previousElementSibling.checked?'var(--bg4)':'var(--a)'"></span>
         <span style="position:absolute;content:'';height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;transform:${on?'translateX(16px)':'translateX(0)'}"></span>
       </label>
@@ -19391,7 +19391,7 @@ function saveSAProfile(){
   }
 
   addAudit('SA profile updated', SA_PROFILE.name+' — profile saved');
-  toast('✅ Profile saved — changes are live', 'success');
+  toast(_s.t_profile_saved, 'success');
 }
 
 // ── Subscription Plans renderer ───────────────────────────────────────────────
@@ -19657,8 +19657,8 @@ function mResetUserPwd(uid){const _s=_L();
 function _doResetUserPwd(uid){
   const np = document.getElementById('rp-new')?.value || '';
   const cf = document.getElementById('rp-conf')?.value || '';
-  if(!np || np.length<8){ toast('Password must be at least 8 characters','error'); return; }
-  if(np !== cf){ toast('Passwords do not match','error'); return; }
+  if(!np || np.length<8){ toast(_s.t_pass_min8_2,'error'); return; }
+  if(np !== cf){ toast(_s.t_pass_no_match,'error'); return; }
   const u = BIZ_USERS.find(x=>x.id===uid); if(!u) return;
   const email = Object.keys(AUTH_STORE).find(k=>AUTH_STORE[k].userId===uid);
   if(email && AUTH_STORE[email]) AUTH_STORE[email].password = np;
@@ -19670,7 +19670,7 @@ function _doResetUserPwd(uid){
   <div style="padding:12px;background:var(--bg3);border-radius:var(--r8);font-size:13px;display:flex;flex-direction:column;gap:8px">
     <div><span style="color:var(--text2)">Login Email: </span><strong style="font-family:var(--mono)">${_esc(email||u.email)}</strong></div>
     <div><span style="color:var(--text2)">New Password: </span><strong style="font-family:var(--mono);color:var(--g)">${_esc(np)}</strong>
-      <button class="btn btn-s btn-xs" style="margin-left:8px" onclick="navigator.clipboard?.writeText('${_esc(np)}').then(function(){toast('Copied','success')})">📋 Copy</button>
+      <button class="btn btn-s btn-xs" style="margin-left:8px" onclick="navigator.clipboard?.writeText('${_esc(np)}').then(function(){toast(_s.t_copied2,'success')})">📋 Copy</button>
     </div>
   </div>
   <div style="margin-top:10px;font-size:11px;color:var(--text2)">Share these credentials securely. The user should change their password on next login.</div>`,
@@ -19687,7 +19687,7 @@ function _loadSheetJS(cb){const _s=_L();
   const s = document.createElement('script');
   s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
   s.onload = cb;
-  s.onerror = ()=>toast('Could not load Excel library — check your connection','error');
+  s.onerror = ()=>toast(_s.t_excel_lib_err,'error');
   document.head.appendChild(s);
 }
 
@@ -19945,7 +19945,7 @@ function downloadImportTemplate(){
     const safeDate = new Date().toISOString().slice(0,10);
     const filename = 'ShopTrack_Import_Template_'+safeDate+'.xlsx';
     XLSX.writeFile(wb, filename);
-    toast('✅ Template downloaded — fill in each sheet and upload when ready','success');
+    toast(_s.t_template_dl,'success');
   });
 }
 function handleImportUpload(input){
@@ -19958,7 +19958,7 @@ function handleImportUpload(input){
     return;
   }
   const file = input.files[0];
-  if(!file.name.match(/\.(xlsx|xls)$/i)){ toast('Please upload an Excel file (.xlsx or .xls)','error'); return; }
+  if(!file.name.match(/\.(xlsx|xls)$/i)){ toast(_s.t_xlsx_only,'error'); return; }
 
   // Update file label
   const fileNameEl = document.getElementById('import-file-name');
@@ -20278,7 +20278,7 @@ function handleLogoUpload(input){
     BIZ.logoDataUrl = e.target.result;
     const prev = document.getElementById('logo-preview');
     if(prev) prev.innerHTML = `<img loading="lazy" src="${BIZ.logoDataUrl}" style="width:100%;height:100%;object-fit:cover"/>`;
-    toast('Logo uploaded successfully','success');
+    toast(_s.t_logo_uploaded,'success');
     // Refresh settings page to show remove button
     nav(curPage);
   };
@@ -20312,7 +20312,7 @@ function saveBizProfile(){
     if(autoCur && autoCur !== CUR.code){
       var flagMap3 = {XAF:'🇨🇲',NGN:'🇳🇬',GHS:'🇬🇭',USD:'🇺🇸',GBP:'🇬🇧',EUR:'🇪🇺'};
       setCurrency(autoCur, flagMap3[autoCur]||'');
-      toast('Currency auto-set to '+autoCur+' for '+newCountry,'info');
+      toast(_s.t_currency_auto+autoCur+' for '+newCountry,'info');
     }
     // Auto-fill tax defaults for the new country
     var taxDef = COUNTRY_TAX_DEFAULTS[newCountry];
@@ -20342,7 +20342,7 @@ function saveBizProfile(){
   if(_tnEl) _tnEl.textContent=BIZ.name;
   // Update document title
   document.title=BIZ.name+' — ShopTrack';
-  toast('Business profile saved \u2713','success');
+  toast(_s.t_biz_saved,'success');
 }
 
 // ============================================================
@@ -20423,13 +20423,13 @@ function saveDocSettings(){const _s=_L();
   BIZ.paymentMethods = document.getElementById('doc-pay-methods')?.value     || BIZ.paymentMethods;
   _dbSaveBizProfile(SESSION.bizId);
   addAudit('Document settings updated', 'Terms: '+BIZ.paymentTerms+' | Bank details: '+(BIZ.bankDetails?'set':'none'));
-  toast('Document settings saved ✓','success');
+  toast(_s.t_doc_saved,'success');
 }
 
 function mRemoveUser(uid){const _s=_L();
   var u=BIZ_USERS.find(function(x){return x.id===uid;});
   if(!u) return;
-  if(u.id===SESSION.userId){ toast('You cannot remove your own account','error'); return; }
+  if(u.id===SESSION.userId){ toast(_s.t_cannot_remove_self,'error'); return; }
   modal('\u26ab Remove User',
     '<div class="alrt alrt-r" style="margin-bottom:12px">Remove <strong>'+_esc(u.name)+'</strong> ('+_esc(u.email)+') from your account?<br>They will no longer be able to log in to ShopTrack.</div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
@@ -20441,7 +20441,7 @@ async function _doRemoveUser(uid){const _s=_L();
   if(!u) return;
   if(_sb){
     var r=await _sb.from('platform_users').update({status:'Inactive'}).eq('id',uid);
-    if(r&&r.error){ toast('Could not remove: '+r.error.message,'error'); return; }
+    if(r&&r.error){ toast(_s.t_could_not_rem+r.error.message,'error'); return; }
   }
   u.st='Inactive';
   // Also mark in BIZ_USERS so the table re-renders correctly
@@ -20455,7 +20455,7 @@ function switchSession(uid){const _s=_L();
   const u=BIZ_USERS.find(x=>x.id===uid);if(!u)return;
   SESSION.userId=u.id;SESSION.level=u.level;SESSION.name=u.name;SESSION.isSuperAdmin=false;
   _updateMobileNav();
-  toast('Session switched to '+u.name+' ('+USER_LEVEL_LABELS[u.level]+')','success');
+  toast(_s.t_session_switched+u.name+' ('+USER_LEVEL_LABELS[u.level]+')','success');
   nav('settings');
 }
 
@@ -20552,7 +20552,7 @@ function saveEditSale(id){
   _dbSaveSale(s);
   refreshLiveKpis();
   addAudit('Sale edited',id+' \u2014 '+fmt(s.total||s.amt)+' paid:'+fmt(s.paid));
-  closeModal();toast('Sale '+id+' updated \u2713','success');nav('sales');
+  closeModal();toast(_s.t_sale_prefix +id+' updated \u2713','success');nav('sales');
 }
 function _esAutoStatus(){
   var t=parseFloat(document.getElementById('es-total')?.value)||0;
@@ -20569,7 +20569,7 @@ function mDuplicateSale(id){
   D.sales.unshift({...src,id:newId,dt:localDateStr(),paid:0,st:'Unpaid'});
   _dbSaveSale(D.sales[0]);
   addAudit('Sale duplicated', newId+' from '+id+' — '+src.cust);
-  toast('Sale duplicated — edit to adjust','success');nav('sales');
+  toast(_s.t_sale_dup,'success');nav('sales');
   setTimeout(()=>mEditSale(newId),200);
 }
 
@@ -20579,7 +20579,7 @@ function mDuplicateCategory(type){const _s=_L();
   var isInv = type === 'inv';
   var items = isInv ? D.inv : (D.services||[]).filter(function(s){return s.active!==false;});
   if(!items.length){
-    toast('No '+(isInv?'inventory items':'services')+' to duplicate','info'); return;
+    toast(_s.t_no_prefix+(isInv?'inventory items':'services')+' to duplicate','info'); return;
   }
   // Build category list with counts
   var catMap = {};
@@ -20622,9 +20622,9 @@ async function _execDuplicate(type, cat){const _s=_L();
     ? (cat==='__all__' ? D.inv.slice() : D.inv.filter(function(i){return (i.cat||'Uncategorised')===cat;}))
     : (cat==='__all__' ? D.services.filter(function(s){return s.active!==false;}) : D.services.filter(function(s){return s.active!==false&&(s.cat||'Uncategorised')===cat;}));
 
-  if(!source.length){ toast('No items found in this category','info'); return; }
+  if(!source.length){ toast(_s.t_no_items_cat,'info'); return; }
   closeModal();
-  toast('Duplicating '+source.length+' item'+(source.length!==1?'s':'')+'…','info');
+  toast(_s.t_duplicating+source.length+' item'+(source.length!==1?'s':'')+'…','info');
 
   var count = 0;
   if(isInv){
@@ -20765,7 +20765,7 @@ function saveEditPurchase(id){
   refreshLiveKpis();
   addAudit('PO edited', id+' — '+p.vendor+' — '+p.st+' — '+fmt(p.total));
   closeModal();
-  toast('Purchase order updated ✓','success');
+  toast(_s.t_po_updated,'success');
   nav('purchases');
 }
 function mDuplicatePurchase(id){const _s=_L();
@@ -20775,7 +20775,7 @@ function mDuplicatePurchase(id){const _s=_L();
   D.purchases.unshift({...src,id:newId,dt:localDateStr(),st:'Pending'});
   _dbSavePurchase(D.purchases[0]);
   addAudit('PO duplicated', newId+' from '+id+' — '+src.vendor);
-  toast('Purchase duplicated — edit to adjust','success');nav('purchases');
+  toast(_s.t_po_dup,'success');nav('purchases');
   setTimeout(()=>mEditPurchase(newId),200);
 }
 
@@ -20790,7 +20790,7 @@ function mDuplicateExp(id){const _s=_L();
   D.exp.unshift({...src, id:newId, dt:localDateStr(), docs:[]});
   _dbSaveExp(D.exp[0]);
   addAudit('Expense duplicated', newId+' from '+id+' — '+src.cat);
-  toast('Expense duplicated — edit to adjust','success');
+  toast(_s.t_exp_dup,'success');
   nav('expenses');
   setTimeout(()=>mEditExp(newId),200);
 }
@@ -20851,7 +20851,7 @@ function saveEditRental(id){
   addAudit('Rental edited',id+' — '+r.cust);
   _dbSaveRental(D.rentals.find(x=>x.id===id));
   refreshLiveKpis();
-  closeModal();toast('Rental updated','success');nav('rentals');
+  closeModal();toast(_s.t_rental_updated,'success');nav('rentals');
 }
 function _updateReturnSettlement(rid){
   const r=D.rentals.find(x=>x.id===rid); if(!r) return;
@@ -20877,7 +20877,7 @@ function mDuplicateRental(id){
   D.rentals.unshift({...src,id:newId,st:'Reserved',lf:0,paid:0,refund:0,returnDate:null,contractSigned:false,docs:[]});
   _dbSaveRental(D.rentals[0]);
   addAudit('Rental duplicated', newId+' from '+id+' — '+src.item);
-  toast('Rental duplicated — edit to adjust','success');nav('rentals');
+  toast(_s.t_rental_dup,'success');nav('rentals');
   setTimeout(()=>mEditRental(newId),200);
 }
 
@@ -21049,7 +21049,7 @@ function mARDetail(){const _s=_L();
   const debtors = D.cust.filter(c=>c.bal>0).sort((a,b)=>b.bal-a.bal);
   const total   = debtors.reduce((a,c)=>a+c.bal,0);
   if(!debtors.length){
-    toast('No outstanding AR — all balances are clear ✓','success'); return;
+    toast(_s.t_no_ar_bal,'success'); return;
   }
   // ── Aging buckets ─────────────────────────────────────────────────
   const today = localDateStr();
@@ -21117,7 +21117,7 @@ function mARDetail(){const _s=_L();
 
 function _arExportPDF(){
   const debtors = D.cust.filter(c=>c.bal>0).sort((a,b)=>b.bal-a.bal);
-  if(!debtors.length){ toast('No AR outstanding to export','info'); return; }
+  if(!debtors.length){ toast(_s.t_no_ar_export,'info'); return; }
   const total   = debtors.reduce((a,c)=>a+c.bal,0);
   const now     = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
   const primary = BIZ.primaryColor||'#e8667a';
@@ -21220,7 +21220,7 @@ function _arExportPDF(){
 function _arSendWA(custId){const _s=_L();
   const c=D.cust.find(x=>x.id===custId); if(!c) return;
   const ph=(c.whatsapp||c.phone||'').replace(/[^0-9]/g,'');
-  if(!ph){ toast('No phone number on record for '+c.name,'error'); return; }
+  if(!ph){ toast(_s.t_no_phone2 + ' ' + c.name,'error'); return; }
 
   // Build invoice breakdown from unpaid/partial sales
   const unpaidSales = D.sales.filter(function(s){
@@ -21281,7 +21281,7 @@ function _arSendWA(custId){const _s=_L();
 async function _arSendWAConfirm(custId, ph){const _s=_L();
   const msgEl = document.getElementById('ar-wa-msg');
   const msg = msgEl ? msgEl.value.trim() : '';
-  if(!msg){ toast('Message cannot be empty','error'); return; }
+  if(!msg){ toast(_s.t_msg_empty,'error'); return; }
   closeModal();
   const result = await _sendWA(ph, msg);
   if(result && result.success){
@@ -21317,7 +21317,7 @@ function _arWriteOffAll(){const _s=_L();
   const debtors=D.cust.filter(c=>c.bal>0);
   const total=debtors.reduce((a,c)=>a+c.bal,0);
   const count=debtors.length;
-  if(!count){ toast('No AR to write off','info'); return; }
+  if(!count){ toast(_s.t_no_ar,'info'); return; }
   modal(_s.vc_write_off_all,
     '<p style="font-size:14px;color:var(--ink);margin-bottom:8px">Write off <strong>'+fmt(total)+'</strong> across <strong>'+count+' customer'+(count!==1?'s':'')+'</strong>?</p>'
     +'<div class="alrt alrt-r">This cannot be undone. All customer AR balances will be zeroed. Original records are preserved.</div>',
@@ -21329,7 +21329,7 @@ function _arWriteOffAll(){const _s=_L();
       D.cust.filter(c=>c.bal>0).forEach(function(c){ c.bal=0; _dbSaveCust(c); });
       addAudit('All AR written off', count+' customers — '+fmt(total));
       refreshLiveKpis();
-      toast('All AR cleared ✓','success');
+      toast(_s.t_ar_cleared,'success');
       closeModal();
     };
   },30);
@@ -21340,7 +21340,7 @@ function mAPDetail(){const _s=_L();
   const creditors = D.vendors.filter(v=>v.bal>0).sort((a,b)=>b.bal-a.bal);
   const total     = creditors.reduce((a,v)=>a+v.bal,0);
   if(!creditors.length){
-    toast('No outstanding AP — all vendor balances are clear ✓','success'); return;
+    toast(_s.t_no_ap_bal,'success'); return;
   }
   const rows = creditors.map(v=>{
     const openPOs = D.purchases.filter(p=>(p.vendor===v.name||p.vendorId===v.id)&&p.st!=='Paid'&&p.st!=='Received');
@@ -21412,7 +21412,7 @@ function mServicesRevenue(){const _s=_L();
   const topSvc=Object.entries(bySvc).sort((a,b)=>b[1]-a[1]);
 
   if(!completed.length){
-    toast('No completed appointments with revenue yet','info'); return;
+    toast(_s.t_no_comp_appts,'info'); return;
   }
 
   const rows = completed.map(a=>{
@@ -22615,7 +22615,7 @@ function mViewPurchase(id){const _s=_L();
         var _updated=p.lines.filter(function(li){return li.invId&&li.invId!=='__custom__';});
         if(_updated.length) _restockSummary=' · '+_updated.length+' item'+ (_updated.length!==1?'s':'')+' restocked';
       }
-      closeModal(); toast('✅ PO received'+_restockSummary,'success'); nav('purchases');
+      closeModal(); toast(_s.t_po_received+_restockSummary,'success'); nav('purchases');
     };
 
     // Mark Paid — clears AP without receiving stock
@@ -22625,7 +22625,7 @@ function mViewPurchase(id){const _s=_L();
       // refreshLiveKpis calls _reconcileVendorTotals which recomputes v.bal from purchases
       _dbSavePurchase(p); refreshLiveKpis();
       addAudit('PO paid',p.id+' — '+(p.vendor||''));
-      closeModal(); toast('PO marked as paid ✓','success'); nav('purchases');
+      closeModal(); toast(_s.t_po_paid,'success'); nav('purchases');
     };
   },30);
 }
@@ -22707,7 +22707,7 @@ function genPODoc(id){
 // ============================================================
 async function mEditExp(id){const _s=_L();
   await _syncCatsFromDB();
-  if(!can('edit_expenses')){ toast('\u26d4 Edit Expenses — permission denied for your role','error'); return; }
+  if(!can('edit_expenses')){ toast(_s.t_perm_denied,'error'); return; }
   const e=D.exp.find(x=>x.id===id);if(!e)return;
   // Use dynamic D.expCats so custom categories are always available
   const typeOpts = ['Recurring','Operating','One-time','Asset Purchase']
@@ -22730,7 +22730,7 @@ async function mEditExp(id){const _s=_L();
   </div>
   <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="edit-exp-notes" placeholder="Additional notes…" style="min-height:52px">${_esc(e.notes||'')}</textarea></div>`,
   `<button class="btn btn-d btn-sm" onclick="confirmDo('Delete this expense?',function(){D.exp=D.exp.filter(function(x){return x.id!==id;});_dbDelExp(id);
-    refreshLiveKpis();addAudit('Expense deleted',id);closeModal();toast('Expense deleted','success');nav('expenses');})">🗑 Delete</button>
+    refreshLiveKpis();addAudit('Expense deleted',id);closeModal();toast(_s.t_expense_deleted,'success');nav('expenses');})">🗑 Delete</button>
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveExpEdit('${id}')">💾 Save Changes</button>`);
   // Init category searchable select with live D.expCats
@@ -22754,8 +22754,8 @@ function saveExpEdit(id){
   const newType  = document.getElementById('edit-exp-type')?.value;
   const newMethod= document.getElementById('edit-exp-method')?.value;
   const newNotes = document.getElementById('edit-exp-notes')?.value??'';
-  if(!newPayee){ toast('Payee is required','error'); return; }
-  if(isNaN(newAmt)||newAmt<=0){ toast('Please enter a valid amount','error'); return; }
+  if(!newPayee){ toast(_s.t_payee_req,'error'); return; }
+  if(isNaN(newAmt)||newAmt<=0){ toast(_s.t_amount_valid,'error'); return; }
   e.dt    = newDt    || e.dt;
   e.cat   = newCat   || e.cat;
   e.payee = newPayee;
@@ -22767,7 +22767,7 @@ function saveExpEdit(id){
   refreshLiveKpis();
   closeModal();
   addAudit('Expense updated', id+' — '+e.cat+' | '+e.payee+' | '+fmt(e.amt));
-  toast('Expense updated ✓','success');
+  toast(_s.t_expense_updated,'success');
   nav('expenses');
 }
 
@@ -22900,9 +22900,9 @@ function exportLedgerCSV(){
 // Reports page: "Export All Data (.xlsx)" button
 // ============================================================
 function exportAllDataXLSX(){
-  if(!canEdit('export_data')){ toast('You do not have permission to export data','error'); return; }
+  if(!canEdit('export_data')){ toast(_s.t_no_perm_export,'error'); return; }
   _loadSheetJS(function(){
-    toast('Building Excel export...','info');
+    toast(_s.t_building_excel,'info');
     var wb  = XLSX.utils.book_new();
     var r   = CUR.rate||1;
     var cur = CUR.code||'USD';
@@ -23104,7 +23104,7 @@ function exportAllDataXLSX(){
     var bizSlug = (BIZ.name||'ShopTrack').replace(/[^a-zA-Z0-9]/g,'_').substring(0,20);
     var filename = bizSlug+'_Full_Export_'+dt+'.xlsx';
     XLSX.writeFile(wb, filename);
-    toast('Excel export ready: '+filename,'success');
+    toast(_s.t_excel_ready+filename,'success');
     addAudit('Full data export downloaded','Excel: '+filename);
   });
 }
@@ -23200,7 +23200,7 @@ function globalSearch(q){const _s=_L();
     D.sales.forEach(s=>{ if((s.id+s.cust+s.items).toLowerCase().includes(term)) results.push({type:'Sale',label:s.id+' — '+s.cust,sub:s.items.slice(0,40),action:`nav('sales')`,icon:'💳'}); });
     // Search rentals
     D.rentals.forEach(r=>{ if((r.id+r.cust+r.item).toLowerCase().includes(term)) results.push({type:'Rental',label:r.id+' — '+r.cust,sub:r.item,action:`nav('rentals')`,icon:'🕐'}); });
-    if(results.length===0){ toast('No results for "'+q+'"','info'); return; }
+    if(results.length===0){ toast(_s.t_no_biz_result+q+'"','info'); return; }
     modal('🔍 Search Results — "'+q+'"',`
     <div style="display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto">
       ${results.slice(0,20).map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg3);border-radius:var(--r6);cursor:pointer;border:1px solid transparent;transition:border-color .13s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='transparent'" onclick="closeModal();${r.action}">
@@ -23219,10 +23219,10 @@ function globalSearch(q){const _s=_L();
 
 // ── Offline/Online detection ─────────────────────────────────────────────
 window.addEventListener('offline', function(){
-  toast('⚠ No internet connection — changes will sync when reconnected','error');
+  toast(_s.t_offline_warn,'error');
 });
 window.addEventListener('online', function(){
-  toast('✅ Back online — syncing data…','success');
+  toast(_s.t_back_online,'success');
   if(SESSION.bizId && SESSION.bizId !== 'BIZ-001' && SESSION.bizId !== 'BIZ-107'){
     _dbLoadBizDataCached(SESSION.bizId);
   }
@@ -23381,7 +23381,7 @@ function _pwSelectPlan(plan){const _s=_L();
 
 function _pwDismiss(){const _s=_L();
   var ov=document.getElementById('trial-paywall-overlay'); if(ov) ov.remove();
-  toast('\uD83D\uDC40 Read-only mode \u2014 you can view your data but not record new transactions','info');
+  toast(_s.t_readonly,'info');
 }
 
 function _pwProceed(){const _s=_L();
@@ -23389,7 +23389,7 @@ function _pwProceed(){const _s=_L();
   var planId = 'Premium';
   if(_sb && SESSION.bizId){
     _sb.from('businesses').update({plan:'Premium'}).eq('id',SESSION.bizId).then(function(r){
-      if(r&&r.error){toast('Could not set plan: '+r.error.message,'error');return;}
+      if(r&&r.error){toast(_s.t_could_not_set+r.error.message,'error');return;}
       BIZ.plan='Premium';
       addAudit('Trial converted via paywall',SESSION.bizId+' to Premium');
     });
@@ -23431,13 +23431,13 @@ function mPayVendor(vendorId){const _s=_L();
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="
      const amtDisplay = parseFloat(document.getElementById('vp-amt').value)||0;
-     if(!amtDisplay){ toast('Enter a payment amount','error'); return; }
+     if(!amtDisplay){ toast(_s.t_amount_enter,'error'); return; }
      const amtUSD = amtDisplay / CUR.rate;
      const dt  = document.getElementById('vp-dt').value||localDateStr();
      const mth = document.getElementById('vp-method').value;
      const ref = document.getElementById('vp-ref').value.trim();
      const vnd = D.vendors.find(x=>x.id==='${vendorId}');
-     if(!vnd){ toast('Vendor not found','error'); return; }
+     if(!vnd){ toast(_s.t_vendor_notfound,'error'); return; }
      const prev = vnd.bal||0;
      vnd.bal = Math.max(0, prev - amtUSD);
      // Record as an expense entry
@@ -23456,7 +23456,7 @@ function mPayVendor(vendorId){const _s=_L();
      refreshLiveKpis();
      addAudit('Vendor payment recorded', vnd.name + ' — ' + fmt(amtUSD) + ' via ' + mth);
      closeModal();
-     toast('Payment of ' + fmt(amtUSD) + ' recorded for ' + vnd.name, 'success');
+     toast(_s.t_saved2 + '  + fmt(amtUSD) + ' recorded for ' + vnd.name, 'success');
      // Refresh current page if on vendors or accounting
      if(curPage==='vendors'||curPage==='accounting'||curPage==='purchases') nav(curPage);
    ">💰 Record Payment</button>`,'sm');
@@ -23501,19 +23501,19 @@ document.addEventListener('keydown', function(e){
 // ── Save indicator (subtle flash after DB write) ─────────────────────────
 let _saveTimer;
 function _syncDataFromCloud(){
-  if(!SESSION.bizId||SESSION.isSuperAdmin||!_sb){ toast('Not connected to cloud','info'); return; }
+  if(!SESSION.bizId||SESSION.isSuperAdmin||!_sb){ toast(_s.t_not_connected,'info'); return; }
   var syncBtn = document.getElementById('topbar-sync-btn');
   if(syncBtn){ syncBtn.textContent='↻'; syncBtn.style.animation='spin .8s linear infinite'; }
   Promise.all([_dbLoadBizProfile(SESSION.bizId), _dbLoadBizDataCached(SESSION.bizId)])
     .then(function(){
       refreshLiveKpis();
       if(syncBtn){ syncBtn.textContent='↻'; syncBtn.style.animation=''; }
-      toast('Data synced from cloud ✓','success');
+      toast(_s.t_synced,'success');
       nav(curPage||'dashboard');
     })
     .catch(function(err){
       if(syncBtn){ syncBtn.textContent='↻'; syncBtn.style.animation=''; }
-      toast('Sync failed — check connection','error');
+      toast(_s.t_sync_failed,'error');
     });
 }
 
@@ -23586,12 +23586,12 @@ async function _dbSaveService(s){
         if(e2){
           // Queue the base payload
           await _queueEnqueue(SESSION.bizId, 'services', base).catch(function(){});
-          toast('Service saved locally — will sync when online','warn');
+          toast(_s.t_svc_saved,'warn');
         } else { _showSaved(); }
       } else {
         // Queue full payload for retry
         await _queueEnqueue(SESSION.bizId, 'services', payload).catch(function(){});
-        toast('Service saved locally — will sync when online','warn');
+        toast(_s.t_svc_saved,'warn');
       }
     } else {
       _showSaved();
@@ -23921,7 +23921,7 @@ function _naCust(){
 
 // ── Inline new customer inside appointment modal ─────────────
 function _apptCheckout(id){
-  const a=D.appointments.find(x=>x.id===id); if(!a){ toast('Not found','error'); return; }
+  const a=D.appointments.find(x=>x.id===id); if(!a){ toast(_s.t_not_found,'error'); return; }
   var _mxSN=D.sales.reduce(function(m,s){var n=parseInt((s.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
   const sid='S-'+String(_mxSN+1).padStart(4,'0');
   const sale={id:sid,dt:a.date||localDateStr(),cust:a.custName,custId:a.custId||'',invId:'__custom__',
@@ -23944,7 +23944,7 @@ function _apptCheckout(id){
   }
   refreshLiveKpis();
   addAudit('Appointment checkout',a.id+' → Sale '+sid+' '+fmt(a.totalAmt));
-  toast('Sale '+sid+' created for '+a.custName+' ✓','success');
+  toast(_s.t_sale_prefix +sid+' created for '+a.custName+' ✓','success');
   closeModal();
   setTimeout(function(){
     modal('Receipt Ready',
@@ -23958,7 +23958,7 @@ function _apptCheckout(id){
 function _apptWA(id){
   const a=D.appointments.find(x=>x.id===id); if(!a) return;
   const ph=(a.custPhone||'').replace(/[^0-9]/g,'');
-  if(!ph){ toast('No phone number on record','error'); return; }
+  if(!ph){ toast(_s.t_no_phone2,'error'); return; }
   const msg=encodeURIComponent('Hi '+a.custName.split(' ')[0]+'! 👋\n\nReminder: appointment at *'+BIZ.name+'*\n\n📋 *'+a.serviceName+'*\n📅 '+a.date+' at '+_timeLabel(a.startTime)+(a.staffName?'\n👤 with '+a.staffName:'')+'\n\nSee you soon! 😊\n\n_'+BIZ.name+'_');
   _sendWA(ph, decodeURIComponent(msg));
 }
@@ -23970,7 +23970,7 @@ function _updAppt(id){
   a.notes=document.getElementById('va-n')?.value||'';
   _dbSaveAppt(a); refreshLiveKpis(); _updateApptBadge();
   addAudit('Appointment updated',id+' → '+a.st);
-  closeModal(); toast('Saved','success'); nav('appointments');
+  closeModal(); toast(_s.t_saved2,'success'); nav('appointments');
 }
 function _delAppt(id){
   // Use the smart delete with rules
@@ -23989,8 +23989,8 @@ function _apptAddNewCust(){
 function _apptSaveNewCust(){
   const name=(document.getElementById('na-nc-name')?.value||'').trim();
   const phone=(document.getElementById('na-nc-phone')?.value||'').trim();
-  if(!name){ toast('Customer name is required','error'); document.getElementById('na-nc-name')?.focus(); return; }
-  if(!phone){ toast('Phone number is required','error'); document.getElementById('na-nc-phone')?.focus(); return; }
+  if(!name){ toast(_s.t_cust_req,'error'); document.getElementById('na-nc-name')?.focus(); return; }
+  if(!phone){ toast(_s.t_phone_req,'error'); document.getElementById('na-nc-phone')?.focus(); return; }
   // Collision-safe ID: timestamp base-36 so it never clashes with existing DB records
   const newId='C-'+Date.now().toString(36).toUpperCase();
   const email=(document.getElementById('na-nc-email')?.value||'').trim();
@@ -24146,10 +24146,10 @@ function pgAppointments(){const _s=_L();
 // ── Sync all in-memory services to Supabase ──────────────────
 async function _syncServicesToCloud(){
   if(!SESSION.bizId){
-    toast('Cannot sync — sign out and back in first','error'); return;
+    toast(_s.t_cannot_sync,'error'); return;
   }
-  if(!_sb){ toast('No cloud connection','error'); return; }
-  if(!(D.services||[]).length){ toast('No services to sync','info'); return; }
+  if(!_sb){ toast(_s.t_no_cloud,'error'); return; }
+  if(!(D.services||[]).length){ toast(_s.t_no_svcs_sync,'info'); return; }
   var btn = document.querySelector('[onclick="_syncServicesToCloud()"]');
   if(btn){ btn.textContent='⏳ Syncing…'; btn.disabled=true; }
   var errors=0;
@@ -24180,7 +24180,7 @@ function _fixServicePrices(){const _s=_L();
     return (s.price||0) >= 100 && CUR.rate >= 100;
   });
   if(!suspicious.length){
-    toast('All service prices look correct (stored in base currency) ✓','success');
+    toast(_s.t_settings_saved,'success');
     return;
   }
   var rows = suspicious.map(function(s){
@@ -24238,7 +24238,7 @@ function pgBookingSettings(){const _s=_L();
     <div class="card-hd"><div class="card-ttl">🔗 Your Booking Link</div></div>
     <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px">
       <span style="font-family:var(--mono);font-size:12px;color:var(--a);word-break:break-all">${link}</span>
-      <button class="btn btn-p btn-sm" style="flex-shrink:0" onclick="navigator.clipboard?.writeText('${link}').then(()=>toast('Link copied! ✓','success'))">📋 Copy</button>
+      <button class="btn btn-p btn-sm" style="flex-shrink:0" onclick="navigator.clipboard?.writeText('${link}').then(()=>toast(_s.t_link_copied2,'success'))">📋 Copy</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-g btn-sm" onclick="const m=encodeURIComponent('Book an appointment with us! 📅\\n\\n${link}\\n\\nChoose your service and time — we confirm right away!');window.open('https://wa.me/?text='+m,'_blank')">💬 Share on WhatsApp</button>
@@ -24258,7 +24258,7 @@ function pgBookingSettings(){const _s=_L();
       </div>
       <input type="checkbox" id="bk-enabled" ${BIZ.bookingsEnabled!==false?'checked':''} style="width:18px;height:18px;accent-color:var(--a);cursor:pointer"/>
     </div>
-    <button class="btn btn-p" style="margin-top:12px;width:100%" onclick="BIZ.bookingNote=document.getElementById('bk-note').value;BIZ.bookingsEnabled=document.getElementById('bk-enabled').checked;_dbSaveBizProfile(SESSION.bizId);toast('Settings saved ✓','success')">💾 Save Settings</button>
+    <button class="btn btn-p" style="margin-top:12px;width:100%" onclick="BIZ.bookingNote=document.getElementById('bk-note').value;BIZ.bookingsEnabled=document.getElementById('bk-enabled').checked;_dbSaveBizProfile(SESSION.bizId);toast(_s.t_settings_saved,'success')">💾 Save Settings</button>
   </div>
 </div>
 <div class="card" style="margin-top:0">
@@ -24434,7 +24434,7 @@ function _apptQuickStatus(id, newSt){const _s=_L();
 
 // ── EDIT APPOINTMENT ─────────────────────────────────────────
 function mEditAppt(id){const _s=_L();
-  var a=D.appointments.find(function(x){return x.id===id;}); if(!a){toast('Not found','error');return;}
+  var a=D.appointments.find(function(x){return x.id===id;}); if(!a){toast(_s.t_not_found,'error');return;}
   var svcOpts=D.services.filter(function(s){return s.active;}).map(function(s){var pt=s.priceType||'flat';var totalDisp=_computeSvcTotal(s.price,pt,s.duration)*CUR.rate;return '<option value="'+s.id+'" data-dur="'+s.duration+'" data-p="'+s.price+'" data-pt="'+pt+'"'+(s.id===a.serviceId?' selected':'')+'>'+s.name+' ('+s.duration+'min · '+fmt(s.price)+'/'+_ptLabel(pt)+')</option>';}).join('');
   var custOpts=D.cust.map(function(c){return '<option value="'+c.id+'" data-ph="'+(c.phone||c.whatsapp||'')+'"'+(c.id===a.custId?' selected':'')+'>'+c.name+'</option>';}).join('');
   var stfOpts=BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId;}).map(function(u){return '<option value="'+u.id+'"'+(u.id===a.staffId?' selected':'')+'>'+u.name+'</option>';}).join('');
@@ -24493,7 +24493,7 @@ function _saveEditAppt(id){const _s=_L();
   _dbSaveAppt(a);
   refreshLiveKpis(); _updateApptBadge();
   addAudit('Appt edited',id+' \u2014 '+a.custName+' '+a.date);
-  toast('Appointment updated \u2713','success'); closeModal(); nav('appointments');
+  toast(_s.t_appt_updated2,'success'); closeModal(); nav('appointments');
 }
 
 // ── CANCEL / NO-SHOW ─────────────────────────────────────────
@@ -24573,7 +24573,7 @@ function _saveReschedule(id){
     var msg=encodeURIComponent('Hi '+a.custName.split(' ')[0]+'! \uD83D\uDC4B\n\nYour appointment at *'+BIZ.name+'* has been rescheduled:\n\n\uD83D\uDCCB *'+a.serviceName+'*\n\uD83D\uDCC5 '+a.date+'\n\uD83D\uDD50 '+_timeLabel(a.startTime)+(a.staffName?' with '+a.staffName:'')+'\n\nApologies for any inconvenience!\n_'+BIZ.name+'_');
     setTimeout(function(){if(confirm('Send reschedule notification to '+a.custName+'?'))_sendWA(ph, decodeURIComponent(msg));},300);
   }
-  toast('Rescheduled to '+a.date+' at '+_timeLabel(a.startTime)+' \u2713','success');
+  toast(_s.t_reschedule+a.date+' at '+_timeLabel(a.startTime)+' \u2713','success');
   closeModal(); nav('appointments');
 }
 
@@ -24581,7 +24581,7 @@ function _saveReschedule(id){
 function _apptBulkConfirm(){const _s=_L();
   var today=localDateStr();
   var reserved=(D.appointments||[]).filter(function(a){return a.st==='Reserved'&&a.date>=today;});
-  if(!reserved.length){toast('No pending appointments to confirm','info');return;}
+  if(!reserved.length){toast(_s.t_no_pending_appts,'info');return;}
   confirmDo('Confirm all <strong>'+reserved.length+'</strong> pending appointments?',function(){
     reserved.forEach(function(a){a.st='Confirmed';_dbSaveAppt(a);});
     refreshLiveKpis(); _updateApptBadge();
@@ -24592,7 +24592,7 @@ function _apptSendReminders(){const _s=_L();
   var tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   var tStr=tomorrow.toISOString().slice(0,10);
   var tmr=(D.appointments||[]).filter(function(a){return a.date===tStr&&a.st!=='Cancelled'&&a.st!=='No-Show'&&a.st!=='Completed'&&a.custPhone;});
-  if(!tmr.length){toast('No appointments tomorrow with phone numbers','info');return;}
+  if(!tmr.length){toast(_s.t_no_aff_tomorrow,'info');return;}
   _bulkWAReminders('appt-tomorrow');
 }
 function mAddService(){ mNewService(); }
@@ -24719,7 +24719,7 @@ async function mEditSvc(id){const _s=_L();
 // Preview selected service photo
 function _svcImgPreview(input){
   var file = input.files[0]; if(!file) return;
-  if(file.size > 2*1024*1024){ toast('Photo too large — max 2MB','error'); input.value=''; return; }
+  if(file.size > 2*1024*1024){ toast(_s.t_photo_large,'error'); input.value=''; return; }
   var reader = new FileReader();
   reader.onload = function(e){
     window._svcImgData = e.target.result;
@@ -24764,7 +24764,7 @@ function _svSyncTotal(){
 
 function _getSvcData(){
   const nm=(document.getElementById('sv-nm')?.value||'').trim();
-  if(!nm){ toast('Name required','error'); return null; }
+  if(!nm){ toast(_s.t_name_req,'error'); return null; }
   const priceType = document.getElementById('sv-pt')?.value || 'flat';
   const cat = document.getElementById('sv-cat')?.value || '';
   // Use newly uploaded image, or preserve existing (set by edit modal)
@@ -24858,7 +24858,7 @@ function _bizCountryChanged(country){
   if(autoCur&&autoCur!==CUR.code){
     var fm={XAF:'\uD83C\uDDE8\uD83C\uDDF2',NGN:'\uD83C\uDDF3\uD83C\uDDEC',GHS:'\uD83C\uDDEC\uD83C\uDDED',USD:'\uD83C\uDDFA\uD83C\uDDF8',GBP:'\uD83C\uDDEC\uD83C\uDDE7',EUR:'\uD83C\uDDEA\uD83C\uDDFA'};
     setCurrency(autoCur,fm[autoCur]||'');
-    toast('Currency updated to '+autoCur+' for '+country,'info');
+    toast(_s.t_currency_updated+autoCur+' for '+country,'info');
   }
   // Apply locale to all form placeholders
   _applyLocaleToForms(autoCur||CUR.code);
@@ -26300,6 +26300,297 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     set_openai_lbl:    fr ? 'Clé API OpenAI <span style="font-weight:400;color:var(--text3)">(pour Photo Produit IA — DALL-E 3, ~0,04$/image)</span>' : 'OpenAI API Key <span style="font-weight:400;color:var(--text3)">(for AI Product Photo — DALL-E 3, ~$0.04/image)</span>',
     set_sub_free:      fr ? 'Vous êtes sur la formule <strong>Gratuite</strong>.' : 'You are on the <strong>Free plan</strong>.',
     usr_add_title:     fr ? 'Ajouter un Utilisateur'       : 'Add User',
+
+    // ── Toast / notification messages ────────────────────────
+    // Validation errors
+    t_name_req:         fr ? 'Nom requis'                           : 'Name is required',
+    t_cust_req:         fr ? 'Nom du client requis'                 : 'Customer name is required',
+    t_vend_req:         fr ? 'Nom du fournisseur requis'            : 'Vendor name is required',
+    t_prod_req:         fr ? 'Nom du produit requis'                : 'Product name is required',
+    t_payee_req:        fr ? 'Bénéficiaire requis'                  : 'Payee is required',
+    t_phone_req:        fr ? 'Numéro de téléphone requis'           : 'Phone number is required',
+    t_email_req:        fr ? 'Email valide requis'                  : 'Valid email required',
+    t_email_valid:      fr ? 'Email valide requis'                  : 'Valid email is required',
+    t_amount_enter:     fr ? 'Entrez un montant'                    : 'Enter a payment amount',
+    t_amount_valid:     fr ? 'Entrez un montant valide'             : 'Enter a valid amount',
+    t_amount_valid2:    fr ? 'Entrez un montant de paiement valide' : 'Enter a valid payment amount',
+    t_fill_fields:      fr ? 'Remplissez tous les champs'           : 'Fill all fields',
+    t_fill_fields2:     fr ? 'Remplissez tous les champs'           : 'Please fill all fields',
+    t_select_cust:      fr ? 'Sélectionnez un client'               : 'Please select a customer',
+    t_select_cust2:     fr ? "Sélectionnez un client d'abord"      : 'Select a customer first',
+    t_select_vendor:    fr ? 'Sélectionnez un fournisseur'          : 'Please select a vendor',
+    t_select_item:      fr ? "Sélectionnez un article d'abord"     : 'Please select an item first',
+    t_select_item2:     fr ? 'Sélectionnez un article dans la liste': 'Please select an item from the list first',
+    t_select_plan:      fr ? "Sélectionnez un abonnement d'abord"  : 'Please select a plan first',
+    t_select_photo:     fr ? 'Sélectionnez au moins une photo'      : 'Please select at least one photo',
+    t_select_product:   fr ? 'Sélectionnez au moins un produit'     : 'Select at least one product',
+    t_no_cust:          fr ? 'Aucun client sélectionné'             : 'No customer selected',
+    t_item_notfound:    fr ? 'Article introuvable'                  : 'Item not found',
+    t_sale_notfound:    fr ? 'Vente introuvable'                    : 'Sale not found',
+    t_rental_notfound:  fr ? 'Location introuvable'                 : 'Rental not found',
+    t_cust_notfound:    fr ? 'Client introuvable'                   : 'Customer not found',
+    t_svc_notfound:     fr ? 'Service introuvable'                  : 'Service not found',
+    t_prod_notfound:    fr ? 'Produit introuvable'                  : 'Product not found',
+    t_not_found:        fr ? 'Introuvable'                          : 'Not found',
+    t_biz_notfound:     fr ? 'Entreprise introuvable'               : 'Business not found',
+    t_receipt_notfound: fr ? 'Reçu introuvable'                     : 'Receipt not found',
+    t_appt_notfound:    fr ? 'Rendez-vous introuvable'              : 'Appointment not found',
+    t_vendor_notfound:  fr ? 'Fournisseur introuvable'              : 'Vendor not found',
+    t_no_amount:        fr ? 'Montant total est 0 — entrez les prix': 'Total amount is 0 — please enter line item prices',
+    t_add_item_price:   fr ? 'Ajoutez au moins un article avec prix': 'Please add at least one item with a price',
+    t_add_item_cost:    fr ? 'Ajoutez au moins un article avec coût': 'Please add at least one item with a cost',
+    t_add_line_price:   fr ? 'Ajoutez au moins une ligne avec prix' : 'Please add at least one line item with a price',
+    t_no_reason:        fr ? 'Entrez une raison'                    : 'Please enter a reason',
+    t_enter_dates:      fr ? 'Définissez les dates de location'     : 'Please set rental dates',
+    t_sig_first:        fr ? "Dessinez d'abord une signature"      : 'Please draw a signature first',
+    t_cat_name:         fr ? 'Entrez un nom de catégorie'           : 'Enter a category name',
+    t_cat_exists:       fr ? 'Catégorie déjà existante'             : 'Category already exists',
+    t_enter_api:        fr ? "Entrez d'abord une clé API"          : 'Enter an API key first',
+    t_gen_first:        fr ? "Générez d'abord du contenu"          : 'Generate content first',
+    t_gen_draft_first:  fr ? "Générez d'abord un brouillon"        : 'Generate a draft first',
+    t_gen_flyer_first:  fr ? "Générez d'abord un flyer"            : 'Generate a flyer first',
+    t_gen_image_first:  fr ? "Générez d'abord une image"           : 'Generate an image first',
+    t_nothing_copy:     fr ? 'Rien à copier — générez du contenu'   : 'Nothing to copy — generate content first',
+    t_msg_empty:        fr ? 'Le message ne peut pas être vide'      : 'Message cannot be empty',
+    t_xlsx_only:        fr ? 'Téléversez un fichier Excel (.xlsx)'  : 'Please upload an Excel file (.xlsx or .xls)',
+    t_code_min:         fr ? 'Le code doit comporter au moins 3 caractères' : 'Code must be at least 3 characters',
+    t_set_code_first:   fr ? "Définissez d'abord un vrai code affilié" : 'Set a real affiliate code first before approving',
+    t_select_reason:    fr ? 'Sélectionnez une raison'              : 'Please select a reason for the request',
+    t_no_payment:       fr ? 'Aucun paiement sélectionné'           : 'No payments selected',
+    t_no_days:          fr ? 'Sélectionnez le nombre de jours'      : 'Please select how many days to add',
+    t_check_confirm:    fr ? 'Cochez la case de confirmation'       : 'Please tick the confirmation checkbox',
+    t_preview_first:    fr ? "Sélectionnez et prévisualisez d'abord un fichier" : 'Please select and preview a file first',
+    t_perm_denied:      fr ? '⛔ Permission refusée'                : 'Permission denied',
+    t_sa_only:          fr ? 'Accès Super Admin requis'             : 'Super Admin access required',
+    t_sa_only2:         fr ? 'Super Admin uniquement'               : 'Super Admin only',
+    t_admin_req:        fr ? 'Accès Administrateur requis'          : 'Platform Admin access required',
+    t_readonly:         fr ? '👁 Mode lecture seule — vos données sont visibles mais sans enregistrement' : '👀 Read-only mode — you can view your data but not record new transactions',
+    t_no_perm_export:   fr ? "Vous n'avez pas la permission d'exporter" : 'You do not have permission to export data',
+    t_cannot_remove_self: fr ? 'Vous ne pouvez pas supprimer votre propre compte' : 'You cannot remove your own account',
+    // Password errors
+    t_pass_min8:        fr ? 'Minimum 8 caractères requis'          : 'Min 8 characters required',
+    t_pass_min6:        fr ? 'Minimum 6 caractères requis'          : 'Password must be at least 6 characters',
+    t_pass_min8_2:      fr ? 'Le mot de passe doit comporter au moins 8 caractères' : 'Password must be at least 8 characters',
+    t_pass_min12:       fr ? 'Le mot de passe doit comporter au moins 12 caractères' : 'Password must be at least 12 characters',
+    t_pass_num:         fr ? 'Le mot de passe doit contenir au moins un chiffre' : 'Password must contain at least one number',
+    t_pass_special:     fr ? 'Le mot de passe doit contenir un caractère spécial' : 'Password must contain at least one special character',
+    t_pass_num2:        fr ? 'Le mot de passe doit inclure au moins 1 chiffre' : 'Password must include at least 1 number',
+    t_pass_no_match:    fr ? 'Les mots de passe ne correspondent pas': 'Passwords do not match',
+    t_pass_cur_wrong:   fr ? 'Mot de passe actuel incorrect'        : 'Current password is incorrect',
+    t_pass_enter_cur:   fr ? 'Entrez votre mot de passe actuel'     : 'Enter your current password',
+    t_pass_changed:     fr ? 'Mot de passe modifié avec succès ✓'  : 'Password changed successfully ✓',
+    t_pass_updated:     fr ? 'Mot de passe mis à jour — gardez-le en sécurité ! ✓' : 'Password updated — keep it safe! ✓',
+    // Success messages
+    t_saved:            fr ? 'Enregistré ✓'                         : 'Saved ✓',
+    t_saved2:           fr ? 'Enregistré'                           : 'Saved',
+    t_profile_saved:    fr ? '✅ Profil enregistré — modifications actives' : '✅ Profile saved — changes are live',
+    t_biz_saved:        fr ? 'Profil entreprise enregistré ✓'       : 'Business profile saved ✓',
+    t_settings_saved:   fr ? 'Paramètres enregistrés ✓'             : 'Settings saved ✓',
+    t_notif_saved:      fr ? 'Préférences de notification enregistrées ✓' : 'Notification preferences saved ✓',
+    t_doc_saved:        fr ? 'Paramètres documents enregistrés ✓'   : 'Document settings saved ✓',
+    t_fin_saved:        fr ? 'Paramètres financiers enregistrés ✓'  : 'Financial settings saved ✓',
+    t_contract_saved:   fr ? 'Modèle de contrat enregistré ✓'       : 'Contract template saved ✓',
+    t_cats_saved:       fr ? 'Toutes les catégories enregistrées ✓' : 'All categories saved ✓',
+    t_prices_saved:     fr ? 'Prix enregistrés ✓'                   : 'Prices saved ✓',
+    t_dash_saved:       fr ? 'Tableau de bord mis à jour ✓'         : 'Dashboard updated ✓',
+    t_dash_reset:       fr ? 'Tableau de bord réinitialisé'         : 'Dashboard reset to defaults',
+    t_rights_saved:     fr ? 'Droits enregistrés pour '             : 'Rights saved for ',
+    t_rights_reset:     fr ? 'Droits réinitialisés aux défauts du niveau' : 'Rights reset to level defaults',
+    t_sig_saved:        fr ? 'Signature enregistrée — contrat signé ✓' : 'Signature saved — contract is now executed ✓',
+    t_sig_cleared:      fr ? 'Signature effacée'                    : 'Signature cleared',
+    t_logo_uploaded:    fr ? 'Logo téléversé avec succès'           : 'Logo uploaded successfully',
+    t_photo_removed:    fr ? 'Photo supprimée'                      : 'Photo removed',
+    t_photo_saved:      fr ? 'Photo enregistrée pour '              : 'Photo saved for ',
+    t_photo_large:      fr ? 'Photo trop grande — max 2 Mo'         : 'Photo too large — max 2MB',
+    t_expense_deleted:  fr ? 'Dépense supprimée'                    : 'Expense deleted',
+    t_expense_updated:  fr ? 'Dépense mise à jour ✓'                : 'Expense updated ✓',
+    t_appt_deleted:     fr ? 'Rendez-vous supprimé'                 : 'Appointment deleted',
+    t_appt_updated:     fr ? 'Rendez-vous mis à jour'               : 'Appointment updated',
+    t_appt_updated2:    fr ? 'Rendez-vous mis à jour ✓'             : 'Appointment updated ✓',
+    t_rental_updated:   fr ? 'Location mise à jour'                 : 'Rental updated',
+    t_return_done:      fr ? 'Retour traité'                        : 'Return processed',
+    t_po_updated:       fr ? 'Bon de commande mis à jour ✓'         : 'Purchase order updated ✓',
+    t_po_paid:          fr ? 'BC marqué comme payé ✓'               : 'PO marked as paid ✓',
+    t_po_received:      fr ? '✅ BC réceptionné'                    : '✅ PO received',
+    t_expense_rec:      fr ? '✅ Dépense enregistrée'               : '✅ Expense recorded',
+    t_marked_paid:      fr ? 'Marqué comme payé ✓'                  : 'Marked as paid ✓',
+    t_stock_updated:    fr ? 'Stock mis à jour : '                  : 'Stock updated: ',
+    t_ar_cleared:       fr ? 'Toutes les créances effacées ✓'       : 'All AR cleared ✓',
+    t_no_ar_export:     fr ? 'Aucune créance à exporter'            : 'No AR outstanding to export',
+    t_no_ar:            fr ? 'Aucune créance à passer en perte'     : 'No AR to write off',
+    t_no_ar_bal:        fr ? '✅ Aucune créance en cours — tous les soldes sont soldés' : 'No outstanding AR — all balances are clear ✓',
+    t_no_ap_bal:        fr ? '✅ Aucune dette fournisseur — tous les soldes sont soldés' : 'No outstanding AP — all vendor balances are clear ✓',
+    t_no_bal:           fr ? 'Aucun solde impayé ✓'                 : 'No outstanding balances ✓',
+    t_no_aff_export:    fr ? 'Aucun affilié à exporter'             : 'No affiliates to export',
+    t_req_cancelled:    fr ? 'Demande annulée'                      : 'Request cancelled',
+    t_reschedule:       fr ? 'Reprogrammé au '                      : 'Rescheduled to ',
+    t_currency_updated: fr ? 'Devise mise à jour : '                : 'Currency updated to ',
+    t_currency_auto:    fr ? 'Devise auto-définie : '               : 'Currency auto-set to ',
+    t_lang_en:          fr ? 'Langue réglée sur Anglais ✓'          : 'Language set to English ✓',
+    t_lang_fr:          fr ? 'Langue réglée sur Français ✓'         : 'Language set to Français ✓',
+    t_copied:           fr ? 'Copié ✓'                              : 'Copied ✓',
+    t_copied2:          fr ? 'Copié'                                : 'Copied',
+    t_code_copied:      fr ? 'Code copié'                           : 'Code copied',
+    t_link_copied:      fr ? 'Lien copié !'                         : 'Link copied!',
+    t_link_copied2:     fr ? 'Lien copié ! ✓'                       : 'Link copied! ✓',
+    t_share_copied:     fr ? 'Lien de partage copié ✓'              : 'Share link copied ✓',
+    t_share_clip:       fr ? 'Lien partageable copié dans le presse-papiers ✓' : 'Shareable link copied to clipboard ✓',
+    t_contract_copied:  fr ? 'Lien contrat copié — partagez-le (valide cette session seulement)' : 'Contract link copied — paste it to share (valid this session only)',
+    t_creds_copied:     fr ? 'Identifiants copiés'                  : 'Credentials copied',
+    t_caption_copied:   fr ? "Légende copiée — ouverture d'Instagram…" : 'Caption copied — opening Instagram…',
+    t_contract_tab:     fr ? 'Contrat ouvert dans un nouvel onglet'  : 'Contract opened in new tab',
+    t_history_cleared:  fr ? 'Historique effacé'                    : 'History cleared',
+    t_history_loaded:   fr ? "Chargé depuis l'historique"          : 'Loaded from history',
+    t_pref_saved:       fr ? 'Préférence enregistrée'               : 'Preference saved',
+    t_template_reset:   fr ? 'Modèle réinitialisé par défaut'       : 'Template reset to default',
+    t_svc_saved:        fr ? 'Service enregistré localement — synchro en ligne' : 'Service saved locally — will sync when online',
+    t_staff_report:     fr ? 'Rapport personnel généré'             : 'Staff report generated',
+    t_code_updated:     fr ? 'Code mis à jour : '                   : 'Code updated to ',
+    t_aff_added:        fr ? 'Affilié ajouté : '                    : 'Affiliate added: ',
+    t_aff_deleted:      fr ? 'Affilié supprimé'                     : 'Affiliate deleted',
+    t_aff_suspended:    fr ? 'Affilié suspendu'                     : 'Affiliate suspended',
+    t_aff_approve_first:fr ? "L'affilié doit d'abord être approuvé" : 'Affiliate must be approved first',
+    t_session_switched: fr ? 'Session basculée sur '                : 'Session switched to ',
+    t_theme_dark:       fr ? '🌙 Thème sombre appliqué'            : '🌙 Dark theme applied',
+    t_theme_light:      fr ? '☀️ Thème clair appliqué'             : '☀️ Light theme applied',
+    t_back_online:      fr ? '✅ De retour en ligne — synchronisation…' : '✅ Back online — syncing data…',
+    t_back_online2:     fr ? 'En ligne ✓'                           : 'Back online ✓',
+    t_offline_warn:     fr ? '⚠ Pas de connexion internet — les modifications seront synchronisées à la reconnexion' : '⚠ No internet connection — changes will sync when reconnected',
+    t_offline_queue:    fr ? "⚠ Hors ligne — impossible de mettre en file d'attente" : '⚠ Offline — could not queue this change',
+    t_no_cloud:         fr ? 'Pas de connexion cloud'               : 'No cloud connection',
+    t_not_connected:    fr ? 'Non connecté au cloud'                : 'Not connected to cloud',
+    t_synced:           fr ? 'Données synchronisées depuis le cloud ✓' : 'Data synced from cloud ✓',
+    t_sync_failed:      fr ? 'Synchronisation échouée — vérifiez la connexion' : 'Sync failed — check connection',
+    t_cannot_sync:      fr ? 'Impossible de synchroniser — déconnectez-vous et reconnectez-vous' : 'Cannot sync — sign out and back in first',
+    t_building_excel:   fr ? "Construction de l'export Excel…"     : 'Building Excel export...',
+    t_excel_ready:      fr ? 'Export Excel prêt : '                 : 'Excel export ready: ',
+    t_excel_lib_err:    fr ? 'Impossible de charger la bibliothèque Excel' : 'Could not load Excel library — check your connection',
+    t_img_lib_err:      fr ? 'Impossible de charger la bibliothèque image' : 'Could not load image library — try Print/PDF instead',
+    t_downloading:      fr ? 'Téléchargement de '                   : 'Downloading ',
+    t_flyer_saved:      fr ? 'Flyer enregistré en PNG ✓'            : 'Flyer saved as PNG ✓',
+    t_flyer_ready:      fr ? 'Flyer prêt — enregistrez en PNG ou imprimez en PDF ✓' : 'Flyer ready — save as PNG or print as PDF ✓',
+    t_ai_image_ready:   fr ? 'Image IA prête — téléchargez ou partagez ✓' : 'AI image ready — download or share ✓',
+    t_calendar_dl:      fr ? 'Calendrier de contenu téléchargé ✓'  : 'Content calendar downloaded ✓',
+    t_png_failed:       fr ? 'Capture PNG échouée — essayez Impression/PDF' : 'PNG capture failed — try Print/PDF instead',
+    t_sharing_unsup:    fr ? 'Partage non pris en charge sur ce navigateur' : 'Sharing not supported on this browser',
+    t_popups_print:     fr ? 'Autorisez les pop-ups pour shoptrack.org pour imprimer' : 'Please allow pop-ups for shoptrack.org to print documents',
+    t_popups_pdf:       fr ? 'Autorisez les pop-ups pour shoptrack.org pour télécharger les PDF' : 'Please allow pop-ups for shoptrack.org to download PDFs',
+    t_popup_blocked:    fr ? 'Pop-up bloqué — autorisez les pop-ups pour ce site' : 'Pop-up blocked — allow pop-ups for this site to view documents',
+    t_allow_print:      fr ? 'Autorisez les pop-ups pour imprimer' : 'Allow popups to print',
+    t_allow_pdf:        fr ? 'Autorisez les pop-ups pour voir le PDF' : 'Allow popups to view PDF',
+    t_open_print:       fr ? "Impossible d'ouvrir la fenêtre dd'mpression" : 'Could not open print window',
+    t_open_wa:          fr ? "Ouverture de WhatsApp — joignez l'image PNG manuellement" : 'Opening WhatsApp — attach the saved PNG image manually',
+    t_open_wa2:         fr ? "Ouverture de WhatsApp — l'image doit être jointe manuellement" : 'Opening WhatsApp — note: image must be attached manually',
+    t_open_img:         fr ? "Ouverture de l'image — appuyez longuement pour enregistrer" : 'Opening image — long-press or right-click to save',
+    t_wa_sent:          fr ? '✅ Alerte WhatsApp envoyée !'         : '✅ WhatsApp alert sent!',
+    t_wa_msg_sent:      fr ? '✅ Message WhatsApp envoyé !'         : '✅ WhatsApp message sent!',
+    t_wa_tip:           fr ? "Conseil : Enregistrez d'abord en PNG, puis joignez l'image sur WhatsApp" : 'Tip: Save as PNG first, then attach the image in WhatsApp',
+    t_wa_add_num:       fr ? 'Ajoutez votre numéro WhatsApp dans Paramètres → Profil Entreprise' : 'Add your WhatsApp number in Settings -> Business Profile to receive owner alerts',
+    t_wa_tip2:          fr ? 'Conseil : ajoutez votre numéro WhatsApp dans Paramètres → Profil Entreprise' : 'Tip: add your WhatsApp number in Settings » Business Profile to receive these alerts',
+    t_wa_test_sent:     fr ? '✅ Alerte test envoyée ! WhatsApp configuré.' : '✅ Test alert sent! WhatsApp step complete.',
+    t_wa_api:           fr ? 'WhatsApp API : '                      : 'WhatsApp API: ',
+    t_no_wa_cust:       fr ? 'Aucun numéro WhatsApp pour ce client' : 'No WhatsApp number on record for this customer',
+    t_no_wa_vendor:     fr ? 'Aucun numéro WhatsApp pour ce fournisseur' : 'No WhatsApp number set for this vendor',
+    t_no_wa_valid:      fr ? 'Aucun numéro WhatsApp valide'         : 'No valid WhatsApp number',
+    t_no_phone:         fr ? 'Aucun numéro de téléphone'            : 'No phone number on file',
+    t_no_phone2:        fr ? 'Aucun numéro de téléphone enregistré' : 'No phone number on record',
+    t_no_phone_for:     fr ? 'Aucun numéro pour '                   : 'No phone for ',
+    t_no_valid_phone:   fr ? 'Aucun numéro de téléphone valide'     : 'No valid phone number',
+    t_no_phones:        fr ? 'Aucun numéro trouvé pour ces contacts': 'No phone numbers found for these contacts',
+    t_reminders_sent:   fr ? 'Rappels SMS envoyés à tous les clients en retard' : 'Reminder SMS sent to all overdue customers',
+    t_reminders_for:    fr ? 'Rappels ouverts pour '                : 'Reminders opened for ',
+    t_approval_sent:    fr ? "Email d'approbation envoyé à "       : 'Approval email sent to ',
+    t_sending_approval: fr ? "Envoi de l'email d'approbation…"   : 'Sending approval email…',
+    t_access_approved:  fr ? 'Accès approuvé — le Super Admin peut voir le profil' : 'Access approved — Super Admin can now view the profile',
+    t_access_not_appr:  fr ? 'Accès non approuvé — confirmation propriétaire requise' : 'Access not approved — request owner confirmation first',
+    t_access_denied:    fr ? 'Accès refusé — le propriétaire a été notifié' : 'Access request denied — owner has been notified',
+    t_admin_notified:   fr ? "L'admin plateforme a été notifié de votre approbation" : 'The platform admin has been notified of your approval',
+    t_no_remind_biz:    fr ? 'Aucune entreprise ne nécessite de rappel'  : 'No businesses need reminders right now',
+    t_no_overdue_phone: fr ? 'Aucune entreprise en retard avec numéro' : 'No overdue businesses with phone numbers to charge',
+    t_sub_renewed:      fr ? "✅ Abonnement renouvelé ! Votre plan est actif jusqu'au " : '✅ Subscription renewed! Your plan is active until ',
+    t_premium_active:   fr ? "✅ Premium activé ! Votre abonnement est actif jusqu'au " : '✅ Premium activated! Your subscription is active until ',
+    t_free_switched:    fr ? '✅ Basculé vers le plan Gratuit.'     : '✅ Switched to Free plan.',
+    t_pay_cancel:       fr ? 'Paiement annulé. Vous pouvez réessayer à tout moment.' : 'Payment cancelled. You can try again any time.',
+    t_pay_failed:       fr ? 'Paiement échoué : '                   : 'Payment failed: ',
+    t_stripe_failed:    fr ? 'Échec du paiement Stripe : '          : 'Stripe checkout failed: ',
+    t_no_aff_tomorrow:  fr ? 'Aucun rendez-vous demain avec numéro' : 'No appointments tomorrow with phone numbers',
+    t_no_pending_appts: fr ? 'Aucun rendez-vous en attente de confirmation' : 'No pending appointments to confirm',
+    t_no_items_cat:     fr ? 'Aucun article dans cette catégorie'   : 'No items found in this category',
+    t_no_svcs_sync:     fr ? 'Aucun service à synchroniser'        : 'No services to sync',
+    t_no_remind_items:  fr ? 'Aucun article à rappeler'            : 'No items to send reminders for',
+    t_no_biz_result:    fr ? 'Aucun résultat pour "'                : 'No results for "',
+    t_no_comp_appts:    fr ? "Aucun rendez-vous complété avec chiffre d'affaires" : 'No completed appointments with revenue yet',
+    t_no_unverified:    fr ? 'Aucune inscription non vérifiée à supprimer' : 'No unverified signups to purge',
+    t_import_failed:    fr ? 'Importation échouée : '               : 'Import failed: ',
+    t_import_no_data:   fr ? 'Le CSV ne contient pas de données — vérifiez le fichier' : 'CSV has no data rows — check the file',
+    t_import_type:      fr ? "Type d'importation inconnu"          : 'Import type not found',
+    t_unknown_import:   fr ? "Type d'importation inconnu"          : 'Unknown import type',
+    t_template_dl:      fr ? '✅ Modèle téléchargé — remplissez chaque feuille et téléversez' : '✅ Template downloaded — fill in each sheet and upload when ready',
+    t_file_err:         fr ? 'Impossible de lire le fichier — réessayez' : 'Could not read file — try again',
+    t_file_data_err:    fr ? 'Données du fichier indisponibles — rattachez le document' : 'File data not available — re-attach the document',
+    t_push_enabled:     fr ? 'Notifications push activées ! ✓'      : 'Push notifications enabled! ✓',
+    t_push_already:     fr ? 'Notifications push déjà activées ✓'  : 'Push notifications are already enabled ✓',
+    t_push_unsup:       fr ? 'Notifications push non prises en charge dans ce navigateur' : 'Push notifications are not supported in this browser',
+    t_perm_blocked:     fr ? 'Permission refusée — activez-la dans les paramètres du navigateur' : 'Permission denied — you can enable this later in browser settings',
+    t_tip_print_pdf:    fr ? "Conseil : Cliquez Imprimer dans la barre d'outils pour sauvegarder en PDF" : 'Tip: Click Print in the toolbar to save as PDF',
+    t_email_registered: fr ? 'Email déjà enregistré. Veuillez vous connecter.' : 'Email already registered. Please log in.',
+    t_email_verified:   fr ? '✔ Email vérifié — bienvenue sur ShopTrack ! 🎉' : '✔ Email verified — welcome to ShopTrack! 🎉',
+    t_email_failed:     fr ? 'Email échoué — '                      : 'Email failed — ',
+    t_session_expired:  fr ? 'Session expirée — veuillez vous réinscrire' : 'Session expired — please sign up again',
+    t_signup_failed:    fr ? 'Inscription échouée — '               : 'Signup failed — ',
+    t_identity_err:     fr ? 'Impossible de vérifier votre identité — déconnectez-vous et reconnectez-vous' : 'Could not verify your identity — please log out and back in',
+    t_save_error:       fr ? '⚠ Erreur de sauvegarde : '           : '⚠ Save error: ',
+    t_save_failed:      fr ? 'Échec de la sauvegarde : '            : 'Save failed: ',
+    t_server_error:     fr ? '❌ Erreur serveur — vérifiez les logs Netlify' : '❌ Server error — check Netlify function logs',
+    t_campay_warn:      fr ? '⚠ Pas de réponse CamPay — vérifiez les logs' : '⚠ No response from CamPay — check Netlify function logs',
+    t_delete_failed:    fr ? 'Suppression échouée : '               : 'Delete failed: ',
+    t_could_not_del:    fr ? 'Impossible de supprimer : '           : 'Could not delete: ',
+    t_could_not_rem:    fr ? 'Impossible de retirer : '             : 'Could not remove: ',
+    t_could_not_upd:    fr ? 'Impossible de mettre à jour : '       : 'Could not update: ',
+    t_could_not_save:   fr ? "Impossible d'enregistrer le plan — " : 'Could not save plan — ',
+    t_could_not_email:  fr ? "Impossible d'envoyer l'email — "   : 'Could not send email — ',
+    t_could_not_set:    fr ? 'Impossible de définir le plan : '     : 'Could not set plan: ',
+    t_resend_failed:    fr ? 'Renvoi échoué — '                    : 'Failed to resend — ',
+    t_checkout_error:   fr ? "Erreur d'encaissement : "            : 'Checkout error: ',
+    t_draft_failed:     fr ? 'Brouillon échoué : '                  : 'Draft failed: ',
+    t_ai_key_ok:        fr ? 'Clé API personnalisée fonctionnelle ✓': 'Custom API key is working ✓',
+    t_using_template:   fr ? "Utilisation du modèle — ajoutez une clé API pour l'IA réelle" : 'Using template — add API key in Settings for real AI',
+    t_gen_content:      fr ? 'Contenu généré'                       : 'Generated Content',
+    t_msg_drafted:      fr ? 'Message rédigé ✓'                     : 'Message drafted ✓',
+    t_item_dup:         fr ? 'Article dupliqué — modifiez pour personnaliser' : 'Item duplicated — edit to customise',
+    t_exp_dup:          fr ? 'Dépense dupliquée — modifiez pour ajuster' : 'Expense duplicated — edit to adjust',
+    t_rental_dup:       fr ? 'Location dupliquée — modifiez pour ajuster' : 'Rental duplicated — edit to adjust',
+    t_sale_dup:         fr ? 'Vente dupliquée — modifiez pour ajuster' : 'Sale duplicated — edit to adjust',
+    t_po_dup:           fr ? 'BC dupliqué — modifiez pour ajuster'  : 'Purchase duplicated — edit to adjust',
+    t_duplicating:      fr ? 'Duplication de '                      : 'Duplicating ',
+    t_no_print:         fr ? 'Rien à imprimer'                      : 'Nothing to print',
+    t_no_save:          fr ? 'Rien à sauvegarder'                   : 'Nothing to save',
+    t_no_aff_email:     fr ? 'Aucun email pour cet affilié'         : 'No email on file for this affiliate',
+    t_new_code_sent:    fr ? 'Nouveau code envoyé à '               : 'New code sent to ',
+    t_click_po:         fr ? 'Cliquez sur + Nouveau BC pour en ajouter' : 'Click + New PO to add',
+    t_sale_prefix:      fr ? 'Vente '                              : 'Sale ',
+    t_error_prefix:     fr ? 'Erreur : '                            : 'Error: ',
+    t_pay_prefix:       fr ? '✅ Paiement de '                      : '✅ Payment of ',
+    t_cat_prefix:       fr ? '✅ Catégorie "'                      : '✅ Category "',
+    t_cat_prefix2:      fr ? 'Catégorie "'                         : 'Category "',
+    t_sub_renewed2:     fr ? '✅ Abonnement renouvelé ! Actif jusqu\'au ' : '✅ Subscription renewed! Your plan is active until ',
+    t_selling_price:    fr ? 'Prix de vente ('                      : 'Selling price (',
+    t_pass_reset:       fr ? 'Mot de passe réinitialisé pour '      : 'Password reset for ',
+    t_del_unverified:   fr ? '✔ Inscription non vérifiée supprimée : ' : '✔ Deleted unverified signup: ',
+    t_purged:           fr ? '✔ Purgé '                             : '✔ Purged ',
+    t_pay_req_sent:     fr ? '✅ Demande de paiement envoyée à '    : '✅ Payment request sent to ',
+    t_skipped:          fr ? '⚠ Ignoré : '                          : '⚠ Skipped: ',
+    t_exceeds_balance:  fr ? 'Montant dépasse le solde impayé de '  : 'Amount exceeds unpaid balance of ',
+    t_pay_failed2:      fr ? 'Paiement échoué : '                   : 'Payment failed: ',
+    t_premium_prefix:   fr ? '✅ Premium activé ! Actif jusqu\'au ' : '✅ Premium activated! Your subscription is active until ',
+    t_please_wait:      fr ? 'Veuillez patienter '                  : 'Please wait ',
+    t_no_prefix:        fr ? 'Aucun '                               : 'No ',
+    t_opening_wa:       fr ? 'Ouverture de '                        : 'Opening ',
+    t_stripe_failed2:   fr ? 'Échec paiement Stripe : '             : 'Stripe checkout failed: ',
+    t_wa_sent2:         fr ? '✅ Alerte WhatsApp envoyée !'         : '✅ WhatsApp alert sent!',
+    t_pls_save_first:   fr ? 'Cliquez sur "Enregistrer & Sélectionner" pour ajouter le nouveau client' : 'Please click "Save & Select" to add the new customer first',
+    t_tip_wa_settings:  fr ? 'Conseil : ajoutez votre numéro WhatsApp dans Paramètres → Profil Entreprise' : 'Tip: add your WhatsApp number in Settings » Business Profile to receive these alerts',
+    t_no_ba:            fr ? 'Aucun solde impayé'                  : 'No unpaid balance',
   };
 }
 
@@ -26408,9 +26699,9 @@ function _applyLanguage(lang){
   if(typeof curPage !== 'undefined' && curPage) nav(curPage);
 
   if(lang==='fr'){
-    toast('Langue réglée sur Français — l\'interface et les documents sont en français ✓','success');
+    toast(_s.t_lang_fr,'success');
   } else {
-    toast('Language set to English ✓','info');
+    toast(_s.t_lang_en,'info');
   }
 }
 function _onCurSettingsChange(code){
@@ -26453,7 +26744,7 @@ function _saveFinancialSettings(){const _s=_L();
   const prev = document.getElementById('fin-tax-preview');
   if(prev) prev.textContent = taxRate>0 ? taxName+' ('+taxRate+'%)' : 'No tax applied';
   addAudit('Financial settings saved','Currency: '+CUR.code+', Tax: '+taxRate+'% '+taxName+(taxNum?' | Reg: '+taxNum:''));
-  toast('Financial settings saved ✓','success');
+  toast(_s.t_fin_saved,'success');
 }
 
 
@@ -26659,7 +26950,7 @@ function _rptRevCatPDF(){const _s=_L();
 function _rptCustStmtPDF(){const _s=_L();
   var custId=window._stmtCustId;
   var cust=custId?D.cust.find(function(c){return c.id===custId;}):D.cust[0];
-  if(!cust){ toast('No customer selected','error'); return; }
+  if(!cust){ toast(_s.t_no_cust,'error'); return; }
   var sales=D.sales.filter(function(s){return s.custId===cust.id||s.cust===cust.name;}).sort(function(a,b){return b.dt.localeCompare(a.dt);});
   var rentals=D.rentals.filter(function(r){return r.custId===cust.id||r.cust===cust.name;});
   var totalInvoiced=sales.reduce(function(a,s){return a+(s.total||s.amt||0);},0)+rentals.reduce(function(a,r){return a+r.fee;},0);
@@ -26826,10 +27117,10 @@ function _pdfOpen(title, body){
     overlay.style.display = 'flex';
     overlay.classList.add('open');
     _currentDoc = {title:title, html:fullPage};
-    toast('Tip: Click Print in the toolbar to save as PDF','info');
+    toast(_s.t_tip_print_pdf,'info');
     return;
   }
-  toast('Please allow pop-ups for shoptrack.org to download PDFs','error');
+  toast(_s.t_popups_pdf,'error');
 }
 
 
@@ -27131,7 +27422,7 @@ function _waOwner(msg) {
 function _waOwnerCheck() {
   var raw = (BIZ.whatsapp || '').replace(/[^0-9]/g, '');
   if (!raw || raw.length < 7) {
-    toast('Add your WhatsApp number in Settings -> Business Profile to receive owner alerts', 'info');
+    toast(_s.t_wa_add_num, 'info');
     return false;
   }
   return true;
@@ -27176,7 +27467,7 @@ function _waOwnerNewSale(sale, staffName) {const _s=_L();
     })
   }).then(function(r){ return r.json(); }).then(function(data){
     if(data.success){
-      toast('✅ WhatsApp alert sent!','success');
+      toast(_s.t_wa_sent2,'success');
       var _waKey='st_wa1_'+(SESSION.bizId||'');
       try{
         if(!localStorage.getItem(_waKey)){
@@ -27338,11 +27629,11 @@ function _pushNotif(title, body, opts){
 // ── Request push permission ───────────────────────────────────
 async function _requestPushPermission(){
   if(typeof Notification === 'undefined'){
-    toast('Push notifications are not supported in this browser','error');
+    toast(_s.t_push_unsup,'error');
     return;
   }
   if(Notification.permission === 'granted'){
-    toast('Push notifications are already enabled ✓','success');
+    toast(_s.t_push_already,'success');
     _testPushNotif();
     return;
   }
@@ -27353,12 +27644,12 @@ async function _requestPushPermission(){
   try{
     const result = await Notification.requestPermission();
     if(result === 'granted'){
-      toast('Push notifications enabled! ✓','success');
+      toast(_s.t_push_enabled,'success');
       _testPushNotif();
       // Re-render settings to show updated state
       if(curPage === 'settings') nav('settings');
     } else {
-      toast('Permission denied — you can enable this later in browser settings','error');
+      toast(_s.t_perm_blocked,'error');
     }
   }catch(e){
     console.error('Permission request failed:', e);
@@ -27405,7 +27696,7 @@ function _saveNotifPrefs(){
       });
   }
   addAudit('Notification preferences saved', Object.entries(NOTIF_PREFS).filter(([,v])=>v).map(([k])=>k).join(', '));
-  toast('Notification preferences saved ✓','success');
+  toast(_s.t_notif_saved,'success');
 }
 
 // ── Restore notification preferences ─────────────────────────
@@ -27683,11 +27974,11 @@ function _bulkWAReminders(type){
     };
   }
 
-  if(!items.length){ toast('No items to send reminders for','info'); return; }
+  if(!items.length){ toast(_s.t_no_remind_items,'info'); return; }
 
   // Build modal showing who will receive reminders
   const recipients = items.map(getMsgFn).filter(Boolean);
-  if(!recipients.length){ toast('No phone numbers found for these contacts','error'); return; }
+  if(!recipients.length){ toast(_s.t_no_phones,'error'); return; }
 
   modal('💬 Send WhatsApp Reminders',`
     <div class="alrt alrt-b" style="margin-bottom:12px">
@@ -27708,7 +27999,7 @@ function _bulkWAReminders(type){
      <button class="btn btn-p" onclick="(function(){
        ${recipients.map((r,i)=>`setTimeout(()=>window.open('https://wa.me/${r.ph}?text=${r.msg}','_blank'),${i*1200})`).join(';')};
        closeModal();
-       toast('Opening ${recipients.length} WhatsApp messages…','success');
+       toast(_s.t_opening_wa + recipients.length + ' WhatsApp messages…','success');
      }())">💬 Open All (${recipients.length})</button>`
   , 'sm');
 }
@@ -27960,7 +28251,7 @@ function _saveAppt(){
   if(_isFreePlan()){ _showPremiumUpgradePrompt('appointments'); return; }
   if(_planWriteBlocked('Booking an appointment')) return;
   const date=document.getElementById('na-d')?.value;
-  if(!date){ toast('Select a date','error'); return; }
+  if(!date){ toast(_s.t_fill_fields,'error'); return; }
   const svcId=_ssGetVal('na-s-wrap')||(document.getElementById('na-s')||{}).value||'';
   const svc=D.services.find(s=>s.id===svcId);
   const st=document.getElementById('na-t')?.value||'09:00';
@@ -27981,7 +28272,7 @@ function _saveAppt(){
   const ncForm=document.getElementById('na-new-cust-form');
   if(ncForm && ncForm.style.display!=='none'){
     const ncName=document.getElementById('na-nc-name')?.value?.trim();
-    if(ncName){ toast('Please click "Save & Select" to add the new customer first','error'); return; }
+    if(ncName){ toast(_s.t_pls_save_first,'error'); return; }
   }
   // ── Double-booking conflict check ─────────────────────────────────
   if(st && et){
@@ -28015,7 +28306,7 @@ function _saveAppt(){
 
 function _deleteAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;});
-  if(!a){ toast('Not found','error'); return; }
+  if(!a){ toast(_s.t_not_found,'error'); return; }
   var linkedSale=a.saleId?D.sales.find(function(s){return s.id===a.saleId;}):null;
   var isActive=a.st!=='Completed'&&a.st!=='Cancelled';
   var warnHtml='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(a.id)+'</strong> — '+_esc(a.custName)+' / '+_esc(a.serviceName)+' on '+a.date+'?</p>';
@@ -28032,14 +28323,14 @@ function _deleteAppt(id){const _s=_L();
       D.appointments=(D.appointments||[]).filter(function(x){return x.id!==mid;});
       _dbDelAppt(mid); refreshLiveKpis();
       addAudit('Appointment deleted',mid);
-      closeModal(); toast('Appointment deleted','success'); nav('appointments');
+      closeModal(); toast(_s.t_appt_deleted,'success'); nav('appointments');
     };
   },30);
 }
 
 function mEditApptCompleted(id){const _s=_L();
   var a = D.appointments.find(function(x){return x.id===id;});
-  if(!a){ toast('Not found','error'); return; }
+  if(!a){ toast(_s.t_not_found,'error'); return; }
   var rate = CUR.rate||1;
   var sym  = CUR.symbol;
   var body = '<div class="fg-2">'
@@ -28071,7 +28362,7 @@ function mEditApptCompleted(id){const _s=_L();
 
 function _saveApptEdit(id){
   var a = D.appointments.find(function(x){return x.id===id;});
-  if(!a){ toast('Not found','error'); return; }
+  if(!a){ toast(_s.t_not_found,'error'); return; }
   var rate    = CUR.rate||1;
   var newAmt  = (parseFloat((document.getElementById('eac-amt')||{}).value)||0)/rate;
   var newDate = (document.getElementById('eac-date')||{}).value||a.date;
@@ -28095,13 +28386,13 @@ function _saveApptEdit(id){
   refreshLiveKpis();
   addAudit('Appointment edited', id+' '+fmt(newAmt));
   closeModal();
-  toast('Appointment updated','success');
+  toast(_s.t_appt_updated,'success');
   nav('appointments');
 }
 
 function genApptInvoice(id){
   var a = D.appointments.find(function(x){return x.id===id;});
-  if(!a){ toast('Appointment not found','error'); return; }
+  if(!a){ toast(_s.t_appt_notfound,'error'); return; }
   var primary  = BIZ.primaryColor||'#4361EE';
   var accent   = BIZ.accentColor||'#059669';
   var rate     = CUR.rate||1;
@@ -28188,7 +28479,7 @@ function genApptInvoice(id){
 
 function mViewAppt(id){const _s=_L();
   var a = D.appointments.find(function(x){return x.id===id;});
-  if(!a){ toast('Appointment not found','error'); return; }
+  if(!a){ toast(_s.t_appt_notfound,'error'); return; }
   var svc        = D.services.find(function(s){return s.id===a.serviceId;});
   var canEdit    = a.st!=='Completed' && a.st!=='Cancelled';
   var canEditAmt = a.st==='Completed';
