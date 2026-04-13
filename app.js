@@ -19400,7 +19400,7 @@ function saveSAProfile(){
 
 // ── Subscription Plans renderer ───────────────────────────────────────────────
 function renderPlansTab(){const _s=_L();
-  var _fr = (BIZ.lang||localStorage.getItem('st_lang')||'en')==='fr';
+  var _fr = (BIZ.language||'en')==='fr';
   // Build plan cards using string concatenation — no nested template literals
   var cards = SUBSCRIPTION_PLANS.map(function(plan){
     var planName = _fr && plan.name_fr ? plan.name_fr : plan.name;
