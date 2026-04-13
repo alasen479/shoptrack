@@ -14135,11 +14135,11 @@ function _queueUpdateBadge(count){
     _queueBadgeEl = document.createElement('div');
     _queueBadgeEl.id = 'idb-queue-badge';
     _queueBadgeEl.style.cssText = [
-      'position:fixed;top:10px;right:60px;z-index:88887',
-      'background:#f59e0b;color:#000;font-size:11px;font-weight:800',
-      'border-radius:20px;padding:3px 9px;display:none',
-      'font-family:var(--font,sans-serif);cursor:pointer',
-      'box-shadow:0 2px 8px rgba(0,0,0,.3)',
+      'position:fixed;top:14px;right:64px;z-index:88887',
+      'background:#f59e0b;color:#1a1000;font-size:10.5px;font-weight:800',
+      'border-radius:20px;padding:3px 10px;display:none',
+      'font-family:var(--font,sans-serif);cursor:pointer;line-height:1.4',
+      'box-shadow:0 1px 6px rgba(0,0,0,.4)',
     ].join(';');
     _queueBadgeEl.title = 'Pending offline writes — tap to view';
     _queueBadgeEl.onclick = _queueShowStatus;
@@ -14246,14 +14246,18 @@ async function _queueLoadConflicts(){
 }
 
 // ── Boot: drain queue + watch for reconnect ───────────────────
+var _queueBooted = false;
 function _queueBoot(){
+  if(_queueBooted) return; // idempotent — only run once per session
+  _queueBooted = true;
+
   // Load conflict history from IDB
   _queueLoadConflicts().catch(function(){});
 
   // Drain on load if already online
   if(navigator.onLine) setTimeout(_queueDrain, 2000);
 
-  // Drain on reconnect
+  // Drain on reconnect — single listener, never duplicated
   window.addEventListener('online', function(){
     console.log('[Queue] Online — draining queue');
     setTimeout(_queueDrain, 1000);
@@ -14263,6 +14267,11 @@ function _queueBoot(){
   if(SESSION && SESSION.bizId && !SESSION.isSuperAdmin){
     _queueCount(SESSION.bizId).then(_queueUpdateBadge);
   }
+
+  // Also reset on logout so it can be re-booted on next login
+  window.addEventListener('shoptrack-logout', function(){
+    _queueBooted = false;
+  });
 }
 
 // ── Write the current D object to IDB (called after Supabase load) ──
@@ -14426,11 +14435,11 @@ function _idbShowCacheBanner(bizId){
     _idbBanner = document.createElement('div');
     _idbBanner.id = 'idb-cache-banner';
     _idbBanner.style.cssText = [
-      'position:fixed;top:0;left:0;right:0;z-index:88888',
-      'background:#1e293b;border-bottom:1px solid #334155',
-      'padding:6px 16px;display:flex;align-items:center;gap:8px',
-      'font-family:var(--font,sans-serif);font-size:12px;color:#94a3b8',
-      'transform:translateY(-100%);transition:transform .25s ease',
+      'position:fixed;top:54px;left:0;right:0;z-index:88888',
+      'background:#1e3a52;border-bottom:1px solid #2a5a7c;border-top:1px solid #2a5a7c',
+      'padding:5px 16px;display:flex;align-items:center;gap:8px',
+      'font-family:var(--font,sans-serif);font-size:11.5px;color:#94a3b8',
+      'transform:translateY(-110%);transition:transform .25s ease',
     ].join(';');
     _idbBanner.innerHTML =
       '<span style="color:#f59e0b;font-size:13px">⏱</span>'
@@ -16033,6 +16042,8 @@ function doLogout(){
   // Clear form
   ['ln-email','ln-pass'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   const err=document.getElementById('ln-error'); if(err) err.style.display='none';
+  // Signal queue system to reset so next login re-boots cleanly
+  try{ window.dispatchEvent(new Event('shoptrack-logout')); }catch(_e){}
 }
 
 // Manage passwords from Settings → Security tab
@@ -17648,9 +17659,10 @@ try {
     _offlineBanner.style.cssText = [
       'position:fixed;bottom:0;left:0;right:0;z-index:99999',
       'background:#1e293b;border-top:2px solid #ef4444',
-      'padding:10px 16px;display:flex;align-items:center;gap:10px',
-      'font-family:var(--font,sans-serif);font-size:13px;color:#f1f5f9',
+      'padding:8px 16px;display:flex;align-items:center;gap:10px',
+      'font-family:var(--font,sans-serif);font-size:12.5px;color:#f1f5f9',
       'transform:translateY(100%);transition:transform .3s ease',
+      'padding-bottom:max(8px,env(safe-area-inset-bottom))',
     ].join(';');
     _offlineBanner.innerHTML = '<span style="font-size:16px">📡</span>'
       + '<span style="flex:1"><strong>No internet connection</strong> — ShopTrack is running in read-only mode. New data cannot be saved until you reconnect.</span>'
