@@ -5970,12 +5970,12 @@ function deleteSale(id){
         _s.lineItems.forEach(function(li){
           if(li.invId&&li.invId!=='__custom__'&&li.invId!=='__deleted__'){
             var _inv=D.inv.find(function(x){return x.id===li.invId;});
-            if(_inv&&_inv.qty!==undefined){ _inv.qty+=li.qty||1; _dbSaveInv(_inv); }
+            if(_inv&&_inv.qty!==undefined){ var _dq=li.qty||1; _inv.qty+=_dq; _dbSaveInv(_inv,+_dq); }
           }
         });
       } else if(_s.invId&&_s.invId!=='__custom__'&&_s.invId!=='__deleted__'){
         var _inv=D.inv.find(function(x){return x.id===_s.invId;});
-        if(_inv&&_inv.qty!==undefined){ _inv.qty++; _dbSaveInv(_inv); }
+        if(_inv&&_inv.qty!==undefined){ _inv.qty++; _dbSaveInv(_inv,+1); }
       }
       // ── Cancel AR: reverse both spent and outstanding balance ──
       var _sTotal  = (_s.total||_s.amt);
@@ -6876,7 +6876,7 @@ function savePO(){
         if(invObj){
           invObj.qty=(invObj.qty||0)+li.qty;
           if(li.uc) invObj.cost=Math.round((li.uc/rr)*10000)/10000;
-          _dbSaveInv(invObj);
+          _dbSaveInv(invObj,+li.qty);
         }
       }
     });
@@ -8220,7 +8220,7 @@ function mDeleteExp(id){
 }
 function _doDeleteExp(id){
   D.exp=D.exp.filter(function(x){return x.id!==id;});
-  if(_sb&&SESSION.bizId) _sb.from('expenses').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  _dbDelExp(id); // offline-aware: queues if offline, deletes direct if online
   refreshLiveKpis();
   addAudit('Expense deleted',id);
   toast('Expense deleted','success');
@@ -20650,9 +20650,10 @@ function saveEditPurchase(id){
         if(li.invId && li.invId!=='__custom__'){
           var _inv=D.inv.find(function(x){return x.id===li.invId;});
           if(_inv){
-            _inv.qty=(_inv.qty||0)+(li.qty||1);
+            var _poQty=li.qty||1;
+            _inv.qty=(_inv.qty||0)+_poQty;
             if(li.uc) _inv.cost=Math.round((li.uc/_rr)*10000)/10000;
-            _dbSaveInv(_inv);
+            _dbSaveInv(_inv,+_poQty);
           }
         }
       });
@@ -22516,7 +22517,7 @@ function mViewPurchase(id){
         p.lines.forEach(function(li){
           if(li.invId&&li.invId!=='__custom__'){
             var inv=D.inv.find(function(i){return i.id===li.invId;});
-            if(inv){ inv.qty=(inv.qty||0)+li.qty; _dbSaveInv(inv); }
+            if(inv){ var _pq2=li.qty||1; inv.qty=(inv.qty||0)+_pq2; _dbSaveInv(inv,+_pq2); }
           }
         });
       }
