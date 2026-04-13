@@ -26746,9 +26746,9 @@ function _applyLanguage(lang){
   if(typeof curPage !== 'undefined' && curPage) nav(curPage);
 
   if(lang==='fr'){
-    toast(_s.t_lang_fr,'success');
+    toast(L.t_lang_fr,'success');
   } else {
-    toast(_s.t_lang_en,'info');
+    toast(L.t_lang_en,'info');
   }
 }
 function _onCurSettingsChange(code){
