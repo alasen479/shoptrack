@@ -1844,7 +1844,7 @@ function _checkRecurringExpenses(){
   banner.innerHTML='<span style="font-size:22px;flex-shrink:0">🔁</span>'
     +'<div><div style="font-size:13px;font-weight:700;color:var(--y);margin-bottom:3px">Recurring expenses may be due this month</div>'
     +'<div style="font-size:12px;color:var(--text2)">'+items+more+'</div>'
-    +'<div style="font-size:11px;color:var(--a);margin-top:6px;font-weight:600">Tap to record → Expenses</div></div>';
+    +'<div style="font-size:11px;color:var(--a);margin-top:6px;font-weight:600">${_s.acc_row_expenses}</div></div>';
   banner.onclick=function(){ nav('expenses'); document.getElementById('rec-exp-banner')?.remove(); };
   var pg=document.getElementById('page');
   if(pg&&pg.firstChild) pg.insertBefore(banner,pg.firstChild);
@@ -3066,7 +3066,7 @@ ${_invOverBanner}<div class="ph">
   <div class="kpi c"><div class="kpi-lbl">${_s.inv_rented_out}</div><div class="kpi-val c">${D.inv.reduce((a,i)=>a+(i.rented||0),0)}</div><div class="kpi-sub">${_s.inv_active_rent}</div></div>
   <div class="kpi p" style="cursor:pointer" title="${_s.inv_click_stock_tbl}"><div class="kpi-lbl">${_s.inv_stock_val_cost}</div><div class="kpi-val p">${fmtKpi(D.inv.reduce((a,i)=>a+(i.cost||0)*(i.qty||0),0))}</div><div class="kpi-sub">${_s.inv_at_cost}</div></div>
   <div class="kpi g" style="cursor:pointer" title="Total retail value of all stock"><div class="kpi-lbl">${_s.inv_retail_val}</div><div class="kpi-val g">${fmtKpi(D.inv.reduce((a,i)=>a+(i.sp||0)*(i.qty||0),0))}</div><div class="kpi-sub">${_s.inv_at_sell}</div></div>
-  <div class="kpi y" style="cursor:pointer" onclick="_filterInvLowStock()"><div class="kpi-lbl">Low Stock</div><div class="kpi-val y">${D.inv.filter(i=>{const avail=(i.qty||0)-(i.rented||0);const min=i.minStock||i.minQty||0;return min>0&&avail<=min&&avail>0;}).length}</div><div class="kpi-sub">${_s.cust_click_filter}</div></div>
+  <div class="kpi y" style="cursor:pointer" onclick="_filterInvLowStock()"><div class="kpi-lbl">${_s.inv_low_stock}</div><div class="kpi-val y">${D.inv.filter(i=>{const avail=(i.qty||0)-(i.rented||0);const min=i.minStock||i.minQty||0;return min>0&&avail<=min&&avail>0;}).length}</div><div class="kpi-sub">${_s.cust_click_filter}</div></div>
 </div>
 <div class="stabs">
   <button class="stab on" onclick="switchInvView(this,'grid')">${_s.inv_grid}</button>
@@ -3087,7 +3087,7 @@ ${_invOverBanner}<div class="ph">
       <option value="sp-asc">Price: Low first</option>
       <option value="sp-desc">Price: High first</option>
       <option value="cost-desc">Cost: High first</option>
-      <option value="cat-asc">Category A–Z</option>
+      <option value="cat-asc">${_s.ui_category} A–Z</option>
     </select>
   ${(_invFilterQ||_invFilterCat||_invFilterSt||_invFilterCond)?`<button class="btn btn-s btn-xs" onclick="_invClearFilters()" style="flex-shrink:0">✕ Clear</button>`:''}
 </div>
@@ -3194,7 +3194,7 @@ function _buildInvGridFiltered(items){const _s=_L();
       +stockBadge
       +'<div class="icard-bot">'
         +'<div class="cond '+cc(it.cond)+'"><div class="cdot"></div><span style="font-size:11px;color:var(--text)">'+it.cond+'</span></div>'
-        +'<span style="font-size:10px;color:var(--text2)">Avail: '+avail+'</span>'
+        +'<span style="font-size:10px;color:var(--text2)">'+_s.inv_col_avail+': '+avail+'</span>'
       +'</div>'
       +(stockVal>0?'<div style="font-size:10px;color:var(--text2);margin-top:3px">Stock value: <strong style="color:var(--ink)">'+fmt(stockVal)+'</strong></div>':'')
       +(it.rented>0?'<div style="font-size:10px;color:var(--c);margin-top:2px">🔄 '+(it.rented||0)+' rented out</div>':'')
@@ -3225,7 +3225,7 @@ function switchInvView(el,mode){const _s=_L();
   const v=$('inv-view');
   if(mode==='table'){
     v.style.display='block';
-    v.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>${_s.inv_col_sku}</th><th>Name</th><th>${_s.ui_category}</th><th>${_s.ui_status}</th><th>Qty</th><th>Rented</th><th>Avail</th><th>${_s.inv_col_cost}</th><th>Sell</th><th>Rent/Day</th><th class="num">Stock Value</th><th>Cond.</th><th>${_s.ui_actions}</th></tr></thead><tbody>
+    v.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>${_s.inv_col_sku}</th><th>Name</th><th>${_s.ui_category}</th><th>${_s.ui_status}</th><th>Qty</th><th>Rented</th><th>${_s.inv_col_avail}</th><th>${_s.inv_col_cost}</th><th>Sell</th><th>${_s.inv_rental_day}</th><th class="num">Stock Value</th><th>${_s.inv_cond_short}</th><th>${_s.ui_actions}</th></tr></thead><tbody>
     ${D.inv.map(i=>{const sv=(i.cost||0)*(i.qty||0); return `<tr>
       <td>${mono(i.sku)}</td><td><strong style="color:var(--ink);cursor:pointer" onclick="mItem('${i.id}')">${i.name}</strong></td><td>${i.cat}</td><td>${badge(i.st)}</td>
       <td>${i.qty}</td><td style="color:var(--c)">${i.rented}</td><td style="color:var(--g)">${i.qty-i.rented}</td>
@@ -3233,7 +3233,7 @@ function switchInvView(el,mode){const _s=_L();
       <td class="num">${canAccess('inventory_cost')?`<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--b,var(--a))">${fmt(sv)}</span>`:'<span style="color:var(--text3)">🔒</span>'}</td>
       <td><div class="cond ${cc(i.cond)}"><div class="cdot"></div><span style="font-size:11px">${i.cond}</span></div></td>
       <td><div class="btn-row">
-        <button class="btn btn-g btn-xs" onclick="mItem('${i.id}')">View</button>
+        <button class="btn btn-g btn-xs" onclick="mItem('${i.id}')">${_s.ui_view}</button>
         <button class="btn btn-g btn-xs" onclick="mEditItem('${i.id}')">✏</button>
         <button class="btn btn-g btn-xs" onclick="mDuplicateItem('${i.id}')">⧉</button>
         <button class="btn btn-d btn-xs" onclick="_mItemDelete('${i.id}')">🗑</button>
@@ -3327,7 +3327,7 @@ function mItem(id){
     ? it.photoDataUrls.map(function(url,pi){
         return '<div class="pthumb" style="overflow:hidden;cursor:pointer" onclick="window.open(this.querySelector(\'img\').src,\'_blank\')" title="${_s.inv_click_fullsize}"><img loading="lazy" src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r6)"/></div>';
       }).join('')
-    : '<div style="grid-column:1/-1;font-size:12px;color:var(--text2);padding:14px 0;text-align:center">\uD83D\uDCF7 No photos yet \u2014 use <strong>Edit</strong> to add photos</div>';
+    : '<div style="grid-column:1/-1;font-size:12px;color:var(--text2);padding:14px 0;text-align:center">\uD83D\uDCF7 No photos yet \u2014 use <strong>${_s.inv_edit_lbl}</strong> ${_s.inv_edit_photos_use2}</div>';
   modal(it.name,`
   <div class="stabs" style="margin-bottom:14px">
     <button class="stab on" onclick="mItemTab(this,'mi-details')">${_s.inv_tab_details}</button>
@@ -3347,18 +3347,18 @@ function mItem(id){
     </div>
   </div>
   <div class="fg-2">
-    <div><div class="fl">Category</div><div>${it.cat}</div></div>
-    <div><div class="fl">Brand</div><div>${it.brand||'—'}</div></div>
-    <div><div class="fl">Color</div><div>${it.color||'—'}</div></div>
-    <div><div class="fl">Size</div><div>${it.sz||'—'}</div></div>
-      <div><div class="fl">Qty on Hand</div>
+    <div><div class="fl">${_s.ui_category}</div><div>${it.cat}</div></div>
+    <div><div class="fl">${_s.inv_brand_lbl}</div><div>${it.brand||'—'}</div></div>
+    <div><div class="fl">${_s.inv_color_lbl}</div><div>${it.color||'—'}</div></div>
+    <div><div class="fl">${_s.inv_size_lbl}</div><div>${it.sz||'—'}</div></div>
+      <div><div class="fl">${_s.inv_qty_lbl}</div>
         <div style="display:flex;align-items:center;gap:6px">
           <button onclick="_adjStock('\${it.id}',-1)" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">-</button>
           <span id="inv-qty-\${it.id}" style="font-weight:700;color:var(--ink);min-width:28px;text-align:center">\${it.qty}</span>
           <button onclick="_adjStock('\${it.id}',1)" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">+</button>
           <span style="font-size:11px;color:var(--text2);margin-left:2px">(click to adjust)</span>
         </div></div>
-    <div><div class="fl">Available</div><div style="font-weight:600;color:var(--g)">${it.qty-it.rented}</div></div>
+    <div><div class="fl">${_s.inv_available}</div><div style="font-weight:600;color:var(--g)">${it.qty-it.rented}</div></div>
     ${it.rented>0?`<div><div class="fl">${_s.inv_rented_out}</div><div style="font-weight:600;color:var(--c)">${it.rented}</div></div>`:''}
     <div><div class="fl">${_s.inv_stock_val}</div><div style="font-weight:700;color:var(--a);font-family:var(--mono)">${fmt((it.cost||0)*(it.qty||0))}</div></div>
   </div>
@@ -3537,7 +3537,7 @@ function _costBreakdownHTML(prefix, existingLines){
 
       // Column headers
       +'<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:170px 1fr 70px 80px 90px 30px;gap:6px;align-items:center;margin-bottom:8px;padding:0 2px;min-width:560px">'
-        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Category</div>'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">${_s.ui_category}</div>'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Description</div>'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Unit</div>'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Qty</div>'
@@ -3998,12 +3998,12 @@ async function mEditItem(id){const _s=_L();
     <div class="fg"><label class="fl">${_s.inv_cond_lbl}</label><select class="fs" id="ei-cond"><option${it.cond==='New'?' selected':''}>New</option><option${it.cond==='Excellent'?' selected':''}>${_s.rent_cond_exc}</option><option${it.cond==='Good'?' selected':''}>${_s.rent_cond_good}</option><option${it.cond==='Fair'?' selected':''}>${_s.rent_cond_fair}</option><option${it.cond==='Worn'?' selected':''}>${_s.rent_cond_worn}</option></select></div>
   </div>
   <div class="fg-3">
-    ${showCost?`<div class="fg"><label class="fl">Cost Price ${!editCost?'🔒':''} <span style="font-size:10px;color:var(--text3);font-weight:400">auto-filled by breakdown ↓</span></label><input class="fi" id="ei-cost" type="number" value="${Math.round((it.cost||0)*CUR.rate)}" ${!editCost?'readonly style="opacity:.5"':''}/>${!editCost?'<div class="fh">${_s.inv_read_only}</div>':''}</div>`:'<div class="fg"><label class="fl" style="color:var(--text2)">Cost Price</label><div style="font-size:12px;color:var(--text2);padding:8px 0">🔒 Hidden</div></div>'}
+    ${showCost?`<div class="fg"><label class="fl">Cost Price ${!editCost?'🔒':''} <span style="font-size:10px;color:var(--text3);font-weight:400">auto-filled by breakdown ↓</span></label><input class="fi" id="ei-cost" type="number" value="${Math.round((it.cost||0)*CUR.rate)}" ${!editCost?'readonly style="opacity:.5"':''}/>${!editCost?'<div class="fh">${_s.inv_read_only}</div>':''}</div>`:'<div class="fg"><label class="fl" style="color:var(--text2)">${_s.inv_cost_lbl}</label><div style="font-size:12px;color:var(--text2);padding:8px 0">🔒 Hidden</div></div>'}
     <div class="fg"><label class="fl">${_s.inv_selling_lbl}</label><input class="fi" id="ei-sp" type="number" value="${Math.round((it.sp||0)*CUR.rate)}"/></div>
     <div class="fg"><label class="fl">${_s.inv_rental_day}</label><input class="fi" id="ei-rp" type="number" value="${Math.round((it.rp||0)*CUR.rate)}"/></div>
     ${showMin?`<div class="fg"><label class="fl" style="display:flex;align-items:center;gap:5px">Min Sell Price 🔒 ${!editMin?'<span style="font-size:10px;color:var(--y)">(read-only)</span>':''}</label><input class="fi" id="ei-minsp" type="number" value="${Math.round((it.minSp||0)*CUR.rate)}" ${!editMin?'readonly style="opacity:.5"':''}/><div class="fh">${editMin?'Staff cannot sell below this price':'You can view but not edit this field'}</div></div>`:''}
     <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" id="ei-qty" type="number" value="${it.qty}"/></div>
-    <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">Optional</span></label><input class="fi" id="ei-minstock" type="number" value="${it.minStock||''}" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert when available qty ≤ this number. Leave blank or 0 to disable.</div></div>
+    <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">${_s.set_optional}</span></label><input class="fi" id="ei-minstock" type="number" value="${it.minStock||''}" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert when available qty ≤ this number. Leave blank or 0 to disable.</div></div>
     <div class="fg"><label class="fl">${_s.inv_color_lbl}</label><input class="fi" id="ei-color" value="${it.color||''}"/></div>
     <div class="fg"><label class="fl">${_s.inv_size_lbl}</label><input class="fi" id="ei-sz" value="${it.sz||''}"/></div>
   </div>
@@ -5079,7 +5079,7 @@ function mInvoiceNew(){
         <option value="Sale">Sale</option>
         <option value="Rental">Rental</option>
         <option value="Service">Service</option>
-        <option value="Deposit">Deposit</option>
+        <option value="Deposit">${_s.rent_dep_lbl}</option>
       </select>
     </div>
   </div>
@@ -5110,7 +5110,7 @@ function mInvoiceNew(){
     <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);overflow:hidden">
       <table style="width:100%">
         <thead><tr style="border-bottom:1px solid var(--border)">
-          <th style="padding:7px;font-size:11px;text-align:left;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Description</th>
+          <th style="padding:7px;font-size:11px;text-align:left;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">${_s.ui_description}</th>
           <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Qty</th>
           <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Unit Price</th>
           <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Total</th>
@@ -5651,7 +5651,7 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
     <div class="kpi-sub" style="font-size:10.5px;color:var(--r);margin-top:4px">${overdue.length>0?'View list →':'All clear ✓'}</div>
   </div>
   <div class="kpi g" style="cursor:pointer" title="${_s.rent_click_returned}" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(4)'),'Returned')">
-    <div class="kpi-lbl">Returned Today</div>
+    <div class="kpi-lbl">${_s.rent_tab_today}</div>
     <div class="kpi-val g">${D.rentals.filter(r=>r.st==='Returned'&&r.returnDate===localDateStr()).length}</div>
     <div class="kpi-sub" style="font-size:10.5px;color:var(--g);margin-top:4px">View returned →</div>
   </div>
@@ -5702,7 +5702,7 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
         ${r.st==='Overdue'?`<button class="btn btn-g btn-xs" onclick="_rentalWARemind('${r.id}')" title="${_s.rent_send_wa}">💬</button>`:''}        ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-xs" onclick="mReturn('${r.id}')">↩ Return</button>`:''}
         ${BIZ.contractEnabled?`<button class="btn btn-c btn-xs" onclick="mRentalContract('${r.id}')" title="Generate Contract">${r.contractSigned?'📋✓':'📋'}</button>`:''}
         <button class="btn btn-g btn-xs" onclick="genRentalReceiptDoc('${r.id}')" title="Rental Receipt">🧾</button>
-        <button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')">View</button>
+        <button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')">${_s.ui_view}</button>
         <button class="btn btn-g btn-xs" onclick="mEditRental('${r.id}')">✏</button>
         <button class="btn btn-d btn-xs" onclick="deleteRental('${r.id}')" title="${_s.ui_delete}">🗑</button>
       </div></td>
@@ -5819,13 +5819,13 @@ async function mCreateRental(startDate){const _s=_L();
       <input class="fi" type="number" id="cr-dep" placeholder="0" step="any"/>
     </div>
   </div>
-  <div class="fg"><label class="fl">Condition Before Release</label>
+  <div class="fg"><label class="fl">${_s.rent_cond_before}</label>
     <select class="fs" id="cr-cond"><option>New</option><option selected>${_s.rent_cond_exc}</option><option>${_s.rent_cond_good}</option><option>${_s.rent_cond_fair}</option></select>
   </div>
-  <div class="fg"><label class="fl">Pre-existing Damage Notes</label>
+  <div class="fg"><label class="fl">${_s.rent_pre_damage}</label>
     <textarea class="ft" id="cr-notes" placeholder="Note any existing marks or repairs…" style="min-height:48px"></textarea>
   </div>
-  <div class="fg"><label class="fl">Deposit Payment Method</label>
+  <div class="fg"><label class="fl">${_s.rent_dep_method}</label>
     <select class="fs" id="cr-method"><option>${_s.ui_cash}</option><option>${_s.ui_card}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option></select>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
@@ -5908,14 +5908,14 @@ function mReturn(id){const _s=_L();
   modal(`Return: ${id}`,`
   <div class="alrt alrt-${r.lf>0?'r':'b'}">${r.lf>0?'⚠ Late fee: '+fmt(r.lf)+' accumulated':'On time ✓'}</div>
   <div class="fg-2" style="margin-bottom:12px">
-    <div><div class="fl">Customer</div><div>${_esc(r.cust)}</div></div>
-    <div><div class="fl">Item</div><div style="font-size:12px">${_esc(r.item)}</div></div>
+    <div><div class="fl">${_s.ui_customer}</div><div>${_esc(r.cust)}</div></div>
+    <div><div class="fl">${_s.rent_item_lbl}</div><div style="font-size:12px">${_esc(r.item)}</div></div>
     <div><div class="fl">Rental Fee</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.fee)}</div></div>
     <div><div class="fl">${_s.rent_amt_paid}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.paid||0)}</div></div>
     <div><div class="fl">${_s.rent_cond_before2}</div><div>${r.cb}</div></div>
     <div><div class="fl">${_s.rent_dep_held}</div><div style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</div></div>
   </div>
-  <div class="fg"><label class="fl">Condition After Return *</label>
+  <div class="fg"><label class="fl">${_s.rent_cond_after}</label>
     <select class="fs" id="ret-cond-${r.id}"><option selected>${_s.rent_cond_exc}</option><option>${_s.rent_cond_good}</option><option>${_s.rent_cond_fair}</option><option>${_s.rent_cond_worn}</option><option>${_s.rent_cond_damaged}</option></select>
   </div>
   <div class="fg"><label class="fl">Damage Deduction <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label>
@@ -5924,11 +5924,11 @@ function mReturn(id){const _s=_L();
   <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ret-notes-${r.id}" placeholder="Describe any damage…" style="min-height:48px"></textarea></div>
   <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r10);padding:13px;margin-top:4px" id="ret-settlement-${r.id}">
     <div class="fl" style="margin-bottom:9px">${_s.rent_dep_settle}</div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">Deposit Held</span><span style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</span></div>
-    ${r.lf>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">Late Fee</span><span style="font-family:var(--mono);color:var(--r)">− ${fmt(r.lf)}</span></div>`:''}
-    ${unpaidFee>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">Unpaid Rental Fee</span><span style="font-family:var(--mono);color:var(--r)">− ${fmt(unpaidFee)}</span></div>`:''}
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">Damage Deduction</span><span style="font-family:var(--mono);color:var(--r)" id="ret-dmg-display-${r.id}">− ${fmt(0)}</span></div>
-    <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border)"><span style="font-weight:600">Refund to Customer</span><span style="font-family:var(--mono);font-weight:700" id="ret-refund-display-${r.id}" style="color:var(--g)">${fmt(Math.max(0,(r.dep||0)-(r.lf||0)-unpaidFee))}</span></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">${_s.rent_dep_held}</span><span style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</span></div>
+    ${r.lf>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">${_s.rent_late_lbl}</span><span style="font-family:var(--mono);color:var(--r)">− ${fmt(r.lf)}</span></div>`:''}
+    ${unpaidFee>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">${_s.rent_unpaid_fee}</span><span style="font-family:var(--mono);color:var(--r)">− ${fmt(unpaidFee)}</span></div>`:''}
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">${_s.rent_damage}</span><span style="font-family:var(--mono);color:var(--r)" id="ret-dmg-display-${r.id}">− ${fmt(0)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border)"><span style="font-weight:600">${_s.rent_refund}</span><span style="font-family:var(--mono);font-weight:700" id="ret-refund-display-${r.id}" style="color:var(--g)">${fmt(Math.max(0,(r.dep||0)-(r.lf||0)-unpaidFee))}</span></div>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="processReturn('${r.id}')">✅ Process Return</button>`);
@@ -6187,7 +6187,7 @@ function mRentalDetail(id){
   const uid='rent-doc-'+id;
   modal(`Rental ${id} — ${r.cust}`,`
   <div class="stabs" id="rd-tabs-${id}" style="margin-bottom:14px">
-    <button class="stab on" onclick="rdTab(this,'rd-timeline-${id}')">Timeline</button>
+    <button class="stab on" onclick="rdTab(this,'rd-timeline-${id}')">${_s.rent_timeline}</button>
     <button class="stab" onclick="rdTab(this,'rd-docs-${id}')">Documents ${r.docs&&r.docs.length?'<span style=\'background:var(--a);color:#fff;border-radius:10px;padding:0 5px;font-size:10px;margin-left:3px\'>'+r.docs.length+'</span>':'<span style=\'opacity:.4;font-size:10px;margin-left:3px\'>(0)</span>'}</button>
     ${BIZ.contractEnabled?`<button class="stab" onclick="rdTab(this,'rd-contract-${id}')">📋 Contract ${r.contractSigned?'<span style=\'background:var(--g);color:#fff;border-radius:10px;padding:0 5px;font-size:10px;margin-left:3px\'>✓ Signed</span>':'<span style=\'opacity:.4;font-size:10px;margin-left:3px\'>(unsigned)</span>'}</button>`:''}
   </div>
@@ -6199,10 +6199,10 @@ function mRentalDetail(id){
       ${r.st==='Returned'?`<div class="tl-item on"><div class="tl-meta">Returned</div><div class="tl-txt">Returned in <strong>${r.ca}</strong> condition. Deposit settled.</div></div>`:''}
     </div>
     <div class="fg-2" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-      <div><div class="fl">Item</div><div style="font-size:12px">${r.item}</div></div>
-      <div><div class="fl">Period</div><div style="font-size:12px">${r.start} → ${r.due}</div></div>
+      <div><div class="fl">${_s.rent_item_lbl}</div><div style="font-size:12px">${r.item}</div></div>
+      <div><div class="fl">${_s.rent_period}</div><div style="font-size:12px">${r.start} → ${r.due}</div></div>
       <div><div class="fl">Rental Fee</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.fee)}</div></div>
-      <div><div class="fl">Deposit</div><div style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</div></div>
+      <div><div class="fl">${_s.rent_dep_lbl}</div><div style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</div></div>
     </div>
   </div>
   <div id="rd-docs-${id}" style="display:none">
@@ -6356,8 +6356,8 @@ function _buildContractHTML(r, sigDataUrl){
 <div class="sub">Ref: ${r.id} &nbsp;·&nbsp; ${today}</div>
 
 <div class="summary-grid">
-  <div class="sg-cell">Customer</div><div class="sg-cell">${cust.name||r.cust}${cust.phone?` · ${cust.phone}`:''}</div>
-  <div class="sg-cell">Item</div><div class="sg-cell">${r.item}</div>
+  <div class="sg-cell">${_s.ui_customer}</div><div class="sg-cell">${cust.name||r.cust}${cust.phone?` · ${cust.phone}`:''}</div>
+  <div class="sg-cell">${_s.rent_item_lbl}</div><div class="sg-cell">${r.item}</div>
   <div class="sg-cell">${_s.rent_period}</div><div class="sg-cell">${r.start} → ${r.due}</div>
   <div class="sg-cell">Rental Fee</div><div class="sg-cell"><strong style="color:${accent}">${fmt(r.fee)}</strong></div>
   <div class="sg-cell">${_s.rent_sec_dep}</div><div class="sg-cell">${fmt(r.dep)}</div>
@@ -6418,7 +6418,7 @@ function mRentalContract(id){const _s=_L();
     <div style="position:relative;background:#fff;border-radius:var(--r8);border:2px solid var(--border2);overflow:hidden;margin-bottom:10px">
       <canvas id="${sigKey}" width="540" height="180" style="width:100%;height:180px;touch-action:none;cursor:crosshair;display:block"></canvas>
       <div id="${sigKey}-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
-        <span style="font-size:13px;color:#374151;font-style:italic">Sign here</span>
+        <span style="font-size:13px;color:#374151;font-style:italic">${_s.rent_sign_here}</span>
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:6px">
@@ -6697,8 +6697,8 @@ function pgPurchases(){const _s=_L();const _ui=_s;
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr));margin-bottom:14px">
   <div class="kpi b"><div class="kpi-lbl">${_s.vend_spent}</div><div id="po-kpi-total" class="kpi-val b">${fmtKpi(totalSpent)}</div><div class="kpi-sub">${_s.ui_this_month}</div></div>
   <div class="kpi r"><div class="kpi-lbl">${_s.vend_ap}</div><div id="po-kpi-ap" class="kpi-val r">${fmtKpi(apOut)}</div><div class="kpi-sub">${_s.vend_owed}</div></div>
-  <div class="kpi y"><div class="kpi-lbl">Pending</div><div id="po-kpi-pending" class="kpi-val y">${pending}</div><div class="kpi-sub">${_s.po_delivery_note}</div></div>
-  <div class="kpi g"><div class="kpi-lbl">Paid/Received</div><div id="po-kpi-paid" class="kpi-val g">${paid}</div><div class="kpi-sub">Completed</div></div>
+  <div class="kpi y"><div class="kpi-lbl">${_s.ui_st_pending}</div><div id="po-kpi-pending" class="kpi-val y">${pending}</div><div class="kpi-sub">${_s.po_delivery_note}</div></div>
+  <div class="kpi g"><div class="kpi-lbl">${_s.po_received}</div><div id="po-kpi-paid" class="kpi-val g">${paid}</div><div class="kpi-sub">${_s.ui_st_completed}</div></div>
   ${topVendor?`<div class="kpi b"><div class="kpi-lbl">${_s.vend_top}</div><div class="kpi-val" style="font-size:13px;color:var(--b)">${_esc(topVendor[0])}</div><div class="kpi-sub">${fmt(topVendor[1])}</div></div>`:''}
 </div>
 
@@ -6753,7 +6753,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
     <div class="card">
       <div class="card-hd" style="padding-bottom:8px">
         <div class="card-ttl" style="font-size:12px">${_s.po_by_vendor}</div>
-        <span id="po-breakdown-period" style="font-size:10px;color:var(--text2)">This month</span>
+        <span id="po-breakdown-period" style="font-size:10px;color:var(--text2)">${_s.ui_this_month}</span>
       </div>
       <div id="po-vendor-breakdown" style="padding:4px 0">${vBreakdown}</div>
     </div>
@@ -6784,7 +6784,7 @@ function mRecordPurchase(){const _s=_L();
       <div id="po-vendor-wrap" style="position:relative"></div><input type="hidden" id="po-vendor" value=""/>
     ${_inlineVendorFormHTML('po')}
     </div>
-    <div class="fg"><label class="fl">Order Date</label><input class="fi" type="date" id="po-dt" value="${today}"/></div>
+    <div class="fg"><label class="fl">${_s.po_col_date}</label><input class="fi" type="date" id="po-dt" value="${today}"/></div>
     <div class="fg"><label class="fl">${_s.po_delivery}</label><input class="fi" type="date" id="po-delivery" value="${delivery}"/></div>
     <div class="fg"><label class="fl">${_s.po_ref}</label><input class="fi" id="po-ref" placeholder="${_s.po_auto_id}"/></div>
   </div>
@@ -7173,20 +7173,20 @@ function mViewCustomer(id){const _s=_L();
 
   modal(`👤 ${_esc(c.name)}`,`
   <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;gap:8px">
-    <div class="kpi g" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Total Spend</div>
+    <div class="kpi g" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.cust_spend}</div>
       <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(spend)}</div></div>
-    <div class="kpi ${c.bal>0?'r':'g'}" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Balance</div>
+    <div class="kpi ${c.bal>0?'r':'g'}" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.ui_balance}</div>
       <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--${c.bal>0?'r':'g'})">${c.bal>0?fmt(c.bal):'Clear ✓'}</div></div>
-    <div class="kpi b" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Orders</div>
+    <div class="kpi b" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.cust_col_orders}</div>
       <div style="font-size:15px;font-weight:700;color:var(--a)">${custSales.length+custRentals.length}</div></div>
-    <div class="kpi p" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Type</div>
+    <div class="kpi p" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.ui_type}</div>
       <div style="font-size:13px;font-weight:700;color:var(--p)">${_esc(type)}</div></div>
   </div>
   <div class="fg-2" style="margin-bottom:14px">
-    <div><div class="fl">Email</div><div style="font-size:13px;color:var(--text)">${_esc(c.email||'—')}</div></div>
-    <div><div class="fl">Phone</div><div style="font-size:13px;color:var(--text)">${_esc(phone||'—')}</div></div>
-    <div><div class="fl">City</div><div style="font-size:13px;color:var(--text)">${_esc(c.city||c.address||'—')}</div></div>
-    <div><div class="fl">Last Activity</div><div style="font-size:13px;color:var(--text)">${_esc(c.last||'—')}</div></div>
+    <div><div class="fl">${_s.ui_email}</div><div style="font-size:13px;color:var(--text)">${_esc(c.email||'—')}</div></div>
+    <div><div class="fl">${_s.ui_phone}</div><div style="font-size:13px;color:var(--text)">${_esc(phone||'—')}</div></div>
+    <div><div class="fl">${_s.ui_city}</div><div style="font-size:13px;color:var(--text)">${_esc(c.city||c.address||'—')}</div></div>
+    <div><div class="fl">${_s.cust_col_last}</div><div style="font-size:13px;color:var(--text)">${_esc(c.last||'—')}</div></div>
   </div>
   ${c.dob?`<div style="font-size:12px;color:var(--text2);margin-bottom:10px">🎂 Birthday: <strong style="color:var(--ink)">${c.dob.slice(8,10)}/${c.dob.slice(5,7)}</strong></div>`:''}
   ${c.notes?`<div class="alrt alrt-b" style="margin-bottom:12px;font-size:12px">📝 ${_esc(c.notes)}</div>`:''}
@@ -7234,7 +7234,7 @@ function mDeleteCustomer(id){const _s=_L();
     if(activeRentals.length) blocking.push(activeRentals.length+' active rental'+(activeRentals.length!==1?'s':''));
     modal('Cannot Delete Customer',
       '<div class="alrt alrt-r" style="margin-bottom:10px"><strong>'+_esc(c.name)+'</strong> has '+blocking.join(' and ')+'.</div>'+
-      '<p style="font-size:13px;color:var(--text2)">Settle all balances and return active rentals first.</p>',
+      '<p style="font-size:13px;color:var(--text2)">${_s.cust_del_warn}</p>',
       '<button class="btn btn-s" onclick="closeModal()">OK</button>'); return;
   }
   var warnLines=[];
@@ -7302,7 +7302,7 @@ function mCustomerStatement(id){const _s=_L();
       <span style="font-family:var(--mono);color:var(--g)">${fmt(totalPaid)}</span>
     </div>
     <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:2px solid var(--border);margin-top:6px">
-      <span style="font-weight:700;color:var(--ink)">Outstanding Balance</span>
+      <span style="font-weight:700;color:var(--ink)">${_s.cust_outstanding}</span>
       <span style="font-family:var(--mono);font-size:15px;font-weight:800;color:${c.bal>0?'var(--r)':'var(--g)'}">${c.bal>0?fmt(c.bal):'All Clear ✓'}</span>
     </div>
   </div>`,
@@ -7541,7 +7541,7 @@ function mDeleteVendor(id){const _s=_L();
     if(openPOs.length) blocking.push(openPOs.length+' pending PO'+(openPOs.length!==1?'s':''));
     modal('Cannot Delete Vendor',
       '<div class="alrt alrt-r" style="margin-bottom:10px"><strong>'+_esc(v.name)+'</strong> has '+blocking.join(' and ')+'.</div>'+
-      '<p style="font-size:13px;color:var(--text2)">Settle outstanding balances and close pending POs first.</p>',
+      '<p style="font-size:13px;color:var(--text2)">${_s.vend_del_warn}</p>',
       '<button class="btn btn-s" onclick="closeModal()">OK</button>'); return;
   }
   var allPOs=D.purchases.filter(function(p){return p.vendorId===id;});
@@ -7773,7 +7773,7 @@ async function mAddVendor(_returnSelectId){const _s=_L();
     <div class="fg"><label class="fl">${_s.ui_country}</label><input class="fi" id="av-country" placeholder="${_ph('countryPh')}" data-locale="country"/></div>
     <div class="fg"><label class="fl">${_s.vend_contact_ph}</label><input class="fi" id="av-contact" placeholder="${_s.vend_full_name}"/></div>
     <div class="fg"><label class="fl">${_s.vend_email_ph}</label><input class="fi" type="email" id="av-email" placeholder="orders"+'@'+"vendor.com"/></div>
-    <div class="fg"><label class="fl">Phone / WhatsApp</label><input class="fi" id="av-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
+    <div class="fg"><label class="fl">${_s.vend_phone}</label><input class="fi" id="av-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     <div class="fg"><label class="fl">${_s.ui_pay_terms}</label><select class="fs" id="av-terms"><option>${_s.vend_immediate}</option><option>Net 15</option><option>${_s.sal_terms_net30}</option><option>${_s.po_on_delivery}</option></select></div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="av-method"><option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option><option>${_s.po_other}</option></select></div>
   </div>
@@ -7824,7 +7824,7 @@ async function mEditVendor(id){const _s=_L();
     <div class="fg"><label class="fl">${_s.ui_country}</label><input class="fi" id="ev-country" value="${v.country||''}"/></div>
     <div class="fg"><label class="fl">${_s.vend_contact_ph}</label><input class="fi" id="ev-contact" value="${v.contact||''}"/></div>
     <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" type="email" id="ev-email" value="${v.email||''}"/></div>
-    <div class="fg"><label class="fl">Phone / WhatsApp</label><input class="fi" id="ev-phone" value="${v.ph||v.phone||''}"/></div>
+    <div class="fg"><label class="fl">${_s.vend_phone}</label><input class="fi" id="ev-phone" value="${v.ph||v.phone||''}"/></div>
     <div class="fg"><label class="fl">${_s.ui_pay_terms}</label>
       <select class="fs" id="ev-terms">
         <option${(v.terms||'')==='Immediate'?' selected':''}>${_s.vend_immediate}</option>
@@ -7885,9 +7885,9 @@ function mViewVendor(id){const _s=_L();
   const totalOrders=pos.reduce((a,p)=>a+p.total,0);
   modal(`🏭 ${v.name}`,`
   <div class="stabs" style="margin-bottom:14px">
-    <button class="stab on" onclick="vndTab(this,'vnd-overview-${id}')">Overview</button>
+    <button class="stab on" onclick="vndTab(this,'vnd-overview-${id}')">${_s.ui_overview}</button>
     <button class="stab" onclick="vndTab(this,'vnd-stmt-${id}')">${_s.cust_stmt2}</button>
-    <button class="stab" onclick="vndTab(this,'vnd-orders-${id}')">Purchase Orders</button>
+    <button class="stab" onclick="vndTab(this,'vnd-orders-${id}')">${_s.vend_purchases}</button>
   </div>
 
   <div id="vnd-overview-${id}">
@@ -7897,10 +7897,10 @@ function mViewVendor(id){const _s=_L();
       <div class="kpi b" style="padding:11px"><div class="kpi-lbl">${_s.vend_col_orders}</div><div style="font-size:15px;font-weight:700;color:var(--a)">${pos.length}</div></div>
     </div>
     <div class="fg-2">
-      <div><div class="fl">Country</div><div style="font-size:13px;color:var(--text)">${v.country}</div></div>
-      <div><div class="fl">Category</div><div style="font-size:13px;color:var(--text)">${v.cat}</div></div>
-      <div><div class="fl">Email</div><div style="font-size:13px;color:var(--a)">${v.email}</div></div>
-      <div><div class="fl">Payment Method</div><div style="font-size:13px;color:var(--text)">${v.payment||'Bank Transfer'}</div></div>
+      <div><div class="fl">${_s.ui_country}</div><div style="font-size:13px;color:var(--text)">${v.country}</div></div>
+      <div><div class="fl">${_s.ui_category}</div><div style="font-size:13px;color:var(--text)">${v.cat}</div></div>
+      <div><div class="fl">${_s.ui_email}</div><div style="font-size:13px;color:var(--a)">${v.email}</div></div>
+      <div><div class="fl">${_s.ui_pay_method}</div><div style="font-size:13px;color:var(--text)">${v.payment||'Bank Transfer'}</div></div>
     </div>
   </div>
 
@@ -7931,11 +7931,11 @@ function mViewVendor(id){const _s=_L();
         </div>`).join(''):`<div style="font-size:12px;color:var(--text2);padding:8px 0">${_s.vend_no_pos}</div>`}
       </div>
       <div style="display:flex;justify-content:space-between;padding-top:12px;margin-top:4px;border-top:2px solid var(--border2)">
-        <span style="font-weight:700;color:var(--ink)">Total Purchases</span>
+        <span style="font-weight:700;color:var(--ink)">${_s.po_kpi_total}</span>
         <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--g)">${fmt(totalOrders)}</span>
       </div>
       <div style="display:flex;justify-content:space-between;padding-top:7px">
-        <span style="font-weight:700;color:var(--ink)">Amount Outstanding</span>
+        <span style="font-weight:700;color:var(--ink)">${_s.vend_ap}</span>
         <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:${v.bal>0?'var(--r)':'var(--g)'}">${v.bal>0?fmt(v.bal):'Fully Paid ✓'}</span>
       </div>
     </div>
@@ -8051,8 +8051,8 @@ function pgExp(){const _s=_L();const _ui=_s;
 </div>
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr));margin-bottom:14px">
   <div class="kpi r"><div class="kpi-lbl">${_s.exp_kpi_total}</div><div id="exp-kpi-total" class="kpi-val r">${fmtKpi(total)}</div><div class="kpi-sub">${_s.ui_this_month}</div></div>
-  <div class="kpi y"><div class="kpi-lbl">Recurring</div><div id="exp-kpi-rec" class="kpi-val y">${fmtKpi(rec)}</div><div class="kpi-sub">Fixed costs</div></div>
-  <div class="kpi b"><div class="kpi-lbl">One-Time</div><div id="exp-kpi-one" class="kpi-val b">${fmtKpi(one)}</div><div class="kpi-sub">Variable costs</div></div>
+  <div class="kpi y"><div class="kpi-lbl">${_s.exp_type_recur}</div><div id="exp-kpi-rec" class="kpi-val y">${fmtKpi(rec)}</div><div class="kpi-sub">${_s.exp_type_fixed}</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.exp_type_once}</div><div id="exp-kpi-one" class="kpi-val b">${fmtKpi(one)}</div><div class="kpi-sub">${_s.exp_type_var}</div></div>
   ${topCat ? `<div class="kpi r"><div class="kpi-lbl">${_s.exp_kpi_top_cat}</div><div class="kpi-val" style="font-size:14px;color:var(--r)">${_esc(topCat[0])}</div><div class="kpi-sub">${fmt(topCat[1])}</div></div>` : ''}
   <div class="kpi"><div class="kpi-lbl">${_s.exp_kpi_entries}</div><div id="exp-kpi-count" class="kpi-val">${vis.length}</div><div class="kpi-sub">${_s.ui_this_month}</div></div>
 </div>
@@ -8104,8 +8104,8 @@ function pgExp(){const _s=_L();const _ui=_s;
   <div>
     <div class="card">
       <div class="card-hd" style="padding-bottom:8px">
-        <div class="card-ttl" style="font-size:12px">By Category</div>
-        <span id="exp-breakdown-period" style="font-size:10px;color:var(--text2)">This month</span>
+        <div class="card-ttl" style="font-size:12px">${_s.exp_by_cat}</div>
+        <span id="exp-breakdown-period" style="font-size:10px;color:var(--text2)">${_s.ui_this_month}</span>
       </div>
       <div id="exp-cat-breakdown" style="padding:4px 0">${catBreakdown}</div>
     </div>
@@ -8147,7 +8147,7 @@ async function mAddExp(){const _s=_L();
         <button type="button" class="btn btn-s btn-xs" style="height:34px;padding:0 10px" onclick="document.getElementById('ae-newcat-row').style.display='none'">✕</button>
       </div>
     </div>
-    <div class="fg"><label class="fl">Payee / Vendor *</label><input class="fi" id="ae-payee" placeholder="Who was paid?"/></div>
+    <div class="fg"><label class="fl">${_s.exp_payee_ph}</label><input class="fi" id="ae-payee" placeholder="Who was paid?"/></div>
     <div class="fg"><label class="fl">Amount * <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="ae-amt" placeholder="0" step="any" min="0"/></div>
     <div class="fg"><label class="fl">${_s.ui_type}</label>
       <select class="fs" id="ae-type">
@@ -8161,7 +8161,7 @@ async function mAddExp(){const _s=_L();
       </select>
     </div>
   </div>
-  <div class="fg"><label class="fl">Notes / Description</label>
+  <div class="fg"><label class="fl">${_s.exp_notes_ph}</label>
     <textarea class="ft" id="ae-notes" placeholder="What was this expense for? (optional)" style="min-height:52px"></textarea>
   </div>
   <div class="fg">
@@ -8214,7 +8214,7 @@ function mDeleteExp(id){const _s=_L();
   modal('&#x1F5D1; Delete Expense',
     '<div class="alrt alrt-r" style="margin-bottom:12px">Delete <strong>'
     +_esc(e.id)+'</strong> &#x2014; '+_esc(e.payee)+' &#x2014; <strong>'+fmt(e.amt)+'</strong>?'
-    +'<br><span style="font-size:12px">This cannot be undone.</span></div>',
+    +'<br><span style="font-size:12px">${_s.ui_this_cannot}</span></div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-d" onclick="closeModal();_doDeleteExp(\''+id+'\')">&#x1F5D1; Delete</button>'
   );
@@ -8232,14 +8232,14 @@ function mViewExp(id){const _s=_L();
   const uid='view-exp-'+id;
   modal(`💸 Expense — ${e.id}`,`
   <div class="fg-2" style="margin-bottom:14px">
-    <div><div class="fl">Date</div><div style="font-size:13px;color:var(--ink)">${e.dt}</div></div>
-    <div><div class="fl">Category</div><span class="tag">${e.cat}</span></div>
-    <div><div class="fl">Payee</div><div style="font-size:13px;font-weight:600;color:var(--ink)">${e.payee}</div></div>
-    <div><div class="fl">Amount</div><div style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--r)">${fmt(e.amt)}</div></div>
-    <div><div class="fl">Type</div>${bx(e.type,'bx-n')}</div>
-    <div><div class="fl">Method</div><div style="font-size:12px;color:var(--text)">${e.method}</div></div>
+    <div><div class="fl">${_s.ui_date}</div><div style="font-size:13px;color:var(--ink)">${e.dt}</div></div>
+    <div><div class="fl">${_s.ui_category}</div><span class="tag">${e.cat}</span></div>
+    <div><div class="fl">${_s.exp_payee_lbl}</div><div style="font-size:13px;font-weight:600;color:var(--ink)">${e.payee}</div></div>
+    <div><div class="fl">${_s.ui_amount}</div><div style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--r)">${fmt(e.amt)}</div></div>
+    <div><div class="fl">${_s.ui_type}</div>${bx(e.type,'bx-n')}</div>
+    <div><div class="fl">${_s.ui_method}</div><div style="font-size:12px;color:var(--text)">${e.method}</div></div>
   </div>
-  ${e.notes?`<div class="fg" style="margin-bottom:14px"><div class="fl">Notes</div><div style="font-size:13px;color:var(--text2);line-height:1.5">${e.notes}</div></div>`:''}
+  ${e.notes?`<div class="fg" style="margin-bottom:14px"><div class="fl">${_s.ui_notes}</div><div style="font-size:13px;color:var(--text2);line-height:1.5">${e.notes}</div></div>`:''}
   <div class="fl" style="margin-bottom:8px">${_s.po_docs_attach}</div>
   <div id="${uid}-list" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
     ${e.docs&&e.docs.length?e.docs.map(d=>docChip(d)).join(''):`<div style="font-size:12px;color:var(--text2);padding:8px 0">${_s.po_no_docs}</div>`}
@@ -8278,7 +8278,7 @@ function pgAccounting(){const _s=_L();const _ui=_s;
     if(!lines.length) return '<div style="color:var(--text2);font-size:13px;padding:24px;text-align:center">No transactions in '+rng.label+'</div>';
     const totDr=lines.reduce((a,l)=>a+(l.dr||0),0);
     const totCr=lines.reduce((a,l)=>a+(l.cr||0),0);
-    return '<div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>${_s.ui_reference}</th><th>${_s.acc_col_desc}</th><th>Debit (Out)</th><th>Credit (In)</th></tr></thead>'
+    return '<div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>${_s.ui_reference}</th><th>${_s.acc_col_desc}</th><th>${_s.acc_debit_out}</th><th>${_s.acc_credit_in}</th></tr></thead>'
       +'<tbody id="ledger-body">'
       +lines.map(function(l){
         var _apBadge = l.ap!=null ? ' <span style="font-size:10px;background:var(--y-dim);color:var(--y);padding:1px 5px;border-radius:4px">AP " + fmt(l.ap) + "</span>' : '';
@@ -8370,7 +8370,7 @@ function pgAccounting(){const _s=_L();const _ui=_s;
   <div class="card">
     <div class="card-hd">
       <div class="card-ttl" style="color:var(--y)">${_s.acc_ar}</div>
-      <button class="btn btn-g btn-sm" onclick="mARDetail()">Detail</button>
+      <button class="btn btn-g btn-sm" onclick="mARDetail()">${_s.ui_detail}</button>
     </div>
     ${D.cust.filter(c=>c.bal>0).slice(0,5).map(c=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
@@ -8394,7 +8394,7 @@ function pgAccounting(){const _s=_L();const _ui=_s;
   <div class="card">
     <div class="card-hd">
       <div class="card-ttl" style="color:var(--r)">${_s.acc_ap}</div>
-      <button class="btn btn-g btn-sm" onclick="nav('vendors')">Vendors</button>
+      <button class="btn btn-g btn-sm" onclick="nav('vendors')">${_s.acc_row_vendors}</button>
     </div>
     ${D.vendors.filter(v=>v.bal>0).slice(0,5).map(v=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
@@ -8425,11 +8425,11 @@ function pgAccounting(){const _s=_L();const _ui=_s;
   </div>
   <div class="stabs" style="margin-bottom:10px">
     <button class="stab on" onclick="filterLedger(this,'')">All</button>
-    <button class="stab" onclick="filterLedger(this,'sale')">Sales</button>
-    <button class="stab" onclick="filterLedger(this,'rental')">Rentals</button>
-    <button class="stab" onclick="filterLedger(this,'service')">Services</button>
-    <button class="stab" onclick="filterLedger(this,'expense')">Expenses</button>
-    <button class="stab" onclick="filterLedger(this,'purchase')">Purchases</button>
+    <button class="stab" onclick="filterLedger(this,'sale')">${_s.acc_row_sales}</button>
+    <button class="stab" onclick="filterLedger(this,'rental')">${_s.acc_row_rentals}</button>
+    <button class="stab" onclick="filterLedger(this,'service')">${_s.acc_row_services}</button>
+    <button class="stab" onclick="filterLedger(this,'expense')">${_s.acc_row_expenses}</button>
+    <button class="stab" onclick="filterLedger(this,'purchase')">${_s.acc_row_purchases}</button>
   </div>
   <div id="ledger-container">${window._buildLedgerHTML(range)}</div>
 </div>`;
@@ -8578,7 +8578,7 @@ function pgReports(){const _ui=_L();
     ${g.reps.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);gap:10px">
       <span style="font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.n}</span>
       <div style="display:flex;gap:5px;flex-shrink:0">
-        <button class="btn btn-g btn-xs" onclick="${r.fn}">View</button>
+        <button class="btn btn-g btn-xs" onclick="${r.fn}">${_s.ui_view}</button>
         <button class="btn btn-g btn-xs" onclick="exportReportCSV('${r.n}')">⬇</button>
       </div>
     </div>`).join('')}
@@ -8836,7 +8836,7 @@ function rptLowStock(){const _s=_L();
 function rptRentedOut(){const _s=_L();
   const out=D.inv.filter(i=>i.rented>0);
   modal('📊 Items Currently Rented Out',`
-  <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Name</th><th>Total Qty</th><th>Rented</th><th>Available</th><th>Rent/Day</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>${_s.inv_name_col}</th><th>${_s.inv_col_qty}</th><th>${_s.inv_rented}</th><th>${_s.inv_available}</th><th>${_s.inv_rental_day}</th></tr></thead><tbody>
   ${out.map(i=>`<tr><td>${mono(i.sku)}</td><td>${i.name}</td><td>${i.qty}</td><td style="color:var(--c);font-weight:600">${i.rented}</td><td style="color:var(--g)">${i.qty-i.rented}</td><td>${mono(fmt(i.rp||0),'c')}</td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRentedOutPDF()">⬇ PDF</button>`);
@@ -8974,7 +8974,7 @@ function rptExpBreak(){const _s=_L();
   const total=_expPeriod.reduce((a,e)=>a+e.amt,0);
   modal('📊 Expense Breakdown — '+(PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label,`
   <div class="kpi-grid" style="margin-bottom:14px">
-    <div class="kpi r"><div class="kpi-lbl">Total Expenses</div><div class="kpi-val r">${fmtKpi(total)}</div></div>
+    <div class="kpi r"><div class="kpi-lbl">${_s.exp_kpi_total}</div><div class="kpi-val r">${fmtKpi(total)}</div></div>
     <div class="kpi"><div class="kpi-lbl">Categories</div><div class="kpi-val">${Object.keys(cats).length}</div></div>
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_category}</th><th>${_s.ui_amount}</th><th>% of Total</th></tr></thead><tbody>
@@ -9144,7 +9144,7 @@ function _renderCustStmt(custId){const _s=_L();
     <div class="kpi ${cust.bal>0?'r':'g'}"><div class="kpi-lbl">${_s.cust_outstanding}</div><div class="kpi-val ${cust.bal>0?'r':'g'}">${fmtKpi(cust.bal||0)}</div></div>
     <div class="kpi p"><div class="kpi-lbl">Transactions</div><div class="kpi-val p">${sales.length+rentals.length+appts.length}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>Description</th><th>Invoiced</th><th>Paid</th><th>${_s.ui_balance}</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>${_s.ui_description}</th><th>Invoiced</th><th>Paid</th><th>${_s.ui_balance}</th></tr></thead><tbody>
   ${sales.map(s=>{const tot=s.total||s.amt;const bal=tot-(s.paid||0);return`<tr><td>${s.dt}</td><td>${bx('Sale','bx-g')}</td><td style="font-size:12px">${_esc(s.items)}</td><td>${mono(fmt(tot))}</td><td>${mono(fmt(s.paid||0),'g')}</td><td>${mono(fmt(bal),bal>0?'r':'g')}</td></tr>`;}).join('')}
   ${rentals.map(r=>{const paid=r.paid||0;const bal=r.fee-paid;return`<tr><td>${r.start}</td><td>${bx('Rental','bx-c')}</td><td style="font-size:12px">${_esc(r.item)}</td><td>${mono(fmt(r.fee))}</td><td>${mono(fmt(paid),'g')}</td><td>${mono(fmt(bal),bal>0?'r':'g')}</td></tr>`;}).join('')}
   ${appts.map(a=>{return`<tr><td>${a.date}</td><td>${bx('Service','bx-p')}</td><td style="font-size:12px">${_esc(a.serviceName||'')}</td><td>${mono(fmt(a.totalAmt||0))}</td><td>${mono(fmt(a.totalAmt||0),'g')}</td><td>${mono('—')}</td></tr>`;}).join('')}
@@ -9204,7 +9204,7 @@ function rptExpFull(){const _s=_L();
   const _expTotal=_expP.reduce((a,e)=>a+e.amt,0);
   modal('📊 Full Expense Report — '+_rng.label,`
   <div class="kpi-grid" style="margin-bottom:12px">
-    <div class="kpi r"><div class="kpi-lbl">Total Expenses</div><div class="kpi-val r">${fmtKpi(_expTotal)}</div></div>
+    <div class="kpi r"><div class="kpi-lbl">${_s.exp_kpi_total}</div><div class="kpi-val r">${fmtKpi(_expTotal)}</div></div>
     <div class="kpi"><div class="kpi-lbl">Transactions</div><div class="kpi-val">${_expP.length}</div></div>
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th>${_s.ui_amount}</th><th>${_s.ui_type}</th><th>${_s.ui_method}</th></tr></thead><tbody>
@@ -10831,7 +10831,7 @@ function pgAudit(){
       <input class="fi" id="audit-q" placeholder="Action, user, detail…" oninput="filterAuditLog()" style="margin:0"/>
     </div>
     <div>
-      <div class="fl" style="margin-bottom:5px">Category</div>
+      <div class="fl" style="margin-bottom:5px">${_s.ui_category}</div>
       <select class="fs" id="audit-cat" onchange="filterAuditLog()" style="margin:0">
         ${cats.map(c=>`<option>${c}</option>`).join('')}
       </select>
@@ -11127,7 +11127,7 @@ function pgAdminBiz(){
   <div class="kpi r" style="cursor:pointer" onclick="_saFilter('','overdue','')"><div class="kpi-lbl">Overdue</div><div class="kpi-val r">${overdue}</div><div class="kpi-sub">Charge now</div></div>
   <div class="kpi p" style="cursor:pointer" onclick="_saFilter('','expiring','')"><div class="kpi-lbl">Expiring ≤3d</div><div class="kpi-val p">${expiring}</div><div class="kpi-sub">Send reminders</div></div>
   <div class="kpi y" style="cursor:pointer" onclick="_saFilter('Suspended','','')"><div class="kpi-lbl">Suspended</div><div class="kpi-val y">${suspended}</div><div class="kpi-sub">Non-payment</div></div>
-  ${pending?`<div class="kpi" style="cursor:pointer" onclick="_saFilter('Pending','','')"><div class="kpi-lbl">Pending</div><div class="kpi-val">${pending}</div><div class="kpi-sub">Activate</div></div>`:''}
+  ${pending?`<div class="kpi" style="cursor:pointer" onclick="_saFilter('Pending','','')"><div class="kpi-lbl">${_s.ui_st_pending}</div><div class="kpi-val">${pending}</div><div class="kpi-sub">Activate</div></div>`:''}
 </div>
 
 ${alertBars}
@@ -11524,7 +11524,7 @@ function adminBizAction(bizId, action){const _s=_L();
     const _cancelBizId = bizId;
     const _cancelBizName = b.name || bizId;
     modal('✕ Permanently Delete Business',`
-    <div class="alrt alrt-r">⛔ <strong>This cannot be undone.</strong> All data for <strong>${_esc(_cancelBizName)}</strong> will be permanently deleted.</div>
+    <div class="alrt alrt-r">⛔ <strong>${_s.ui_this_cannot}</strong> All data for <strong>${_esc(_cancelBizName)}</strong> will be permanently deleted.</div>
     <div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.3);border-radius:8px;padding:14px;margin-bottom:12px">
       <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;color:var(--r)">
         <input type="checkbox" id="cancel-confirm-chk" style="margin-top:2px;width:16px;height:16px;accent-color:var(--r);flex-shrink:0"/>
@@ -12732,7 +12732,7 @@ function mBillingRemind(bizId, daysOverride){const _s=_L();
   const dLeft = daysOverride !== undefined ? daysOverride : (_billingDaysLeft(b)||0);
   const msg   = _billingWAMsg(b, dLeft);
   modal('💬 WhatsApp Reminder — '+_esc(b.name),`
-  <div class="fg"><label class="fl">Phone / WhatsApp</label>
+  <div class="fg"><label class="fl">${_s.vend_phone}</label>
     <input class="fi" id="br-phone" value="${_esc(phone||'')}" placeholder="237XXXXXXXXX"/>
   </div>
   <div class="fg"><label class="fl">Message Preview</label>
@@ -16290,7 +16290,7 @@ function _inlineSaveNewCust(prefix){
 // Returns the label row HTML with "+ New Customer" button
 function _newCustBtnHTML(prefix){const _s=_L();
   return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-    <label class="fl" style="margin:0">Customer</label>
+    <label class="fl" style="margin:0">${_s.ui_customer}</label>
     <button type="button" class="btn btn-g btn-xs" onclick="_inlineShowNewCust('${prefix}')" style="font-size:11px">+ New Customer</button>
   </div>`;
 }
@@ -19541,7 +19541,7 @@ function _renderImportGateBanner(){const _s=_L();
   if(nameMissing || countryMissing){
     const missing = [];
     if(nameMissing)    missing.push('<strong>Business Name</strong>');
-    if(countryMissing) missing.push('<strong>Country</strong> (sets your currency)');
+    if(countryMissing) missing.push('<strong>${_s.ui_country}</strong> (sets your currency)');
     el.innerHTML = '<div class="alrt alrt-y" style="margin-bottom:16px;display:flex;align-items:flex-start;gap:12px">'
       + '<span style="font-size:18px;flex-shrink:0">⚠</span>'
       + '<div style="flex:1">'
@@ -22348,7 +22348,7 @@ function _renderRentalCalendar(){
           </div>
           ${custObj.phone?`<div style="font-size:10px;color:var(--text2);margin-top:2px">📞 ${custObj.phone}</div>`:''}
           <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap">
-            <button class="btn btn-g btn-xs" onclick="closeModal();setTimeout(()=>mRentalDetail('${r.id}'),60)">View</button>
+            <button class="btn btn-g btn-xs" onclick="closeModal();setTimeout(()=>mRentalDetail('${r.id}'),60)">${_s.ui_view}</button>
             ${(r.st==='Checked Out'||r.st==='Overdue')?`<button class="btn btn-p btn-xs" onclick="closeModal();setTimeout(()=>mReturn('${r.id}'),60)">↩ Return</button>`:''}
             ${BIZ.contractEnabled?`<button class="btn btn-c btn-xs" onclick="closeModal();setTimeout(()=>mRentalContract('${r.id}'),60)">📋</button>`:''}
           </div>
@@ -22499,10 +22499,10 @@ function mViewPurchase(id){const _s=_L();
   </div>
   <!-- Details grid -->
   <div class="fg-2" style="margin-bottom:12px">
-    <div><div class="fl">Vendor</div><div style="font-size:13px;color:var(--ink);font-weight:600">${_esc(p.vendor)}</div></div>
-    <div><div class="fl">Order Date</div><div style="font-size:13px;color:var(--text)">${p.dt}</div></div>
-    ${p.delivery?`<div><div class="fl">Expected Delivery</div><div style="font-size:13px;color:var(--text)">${p.delivery}</div></div>`:''}
-    <div><div class="fl">Payment Method</div><div style="font-size:12px;color:var(--text)">${_esc(p.method||'—')}</div></div>
+    <div><div class="fl">${_s.ui_vendor}</div><div style="font-size:13px;color:var(--ink);font-weight:600">${_esc(p.vendor)}</div></div>
+    <div><div class="fl">${_s.po_col_date}</div><div style="font-size:13px;color:var(--text)">${p.dt}</div></div>
+    ${p.delivery?`<div><div class="fl">${_s.po_delivery}</div><div style="font-size:13px;color:var(--text)">${p.delivery}</div></div>`:''}
+    <div><div class="fl">${_s.ui_pay_method}</div><div style="font-size:12px;color:var(--text)">${_esc(p.method||'—')}</div></div>
     ${p.freight>0?`<div><div class="fl">Freight</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.freight)}</div></div>`:''}
     ${p.duties>0?`<div><div class="fl">Import Duties</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.duties)}</div></div>`:''}
     ${p.taxes>0?`<div><div class="fl">Taxes</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.taxes)}</div></div>`:''}
@@ -23716,7 +23716,7 @@ function _apptCalHTML(){
       <div style="font-size:11px;color:var(--text2)">${a.serviceName} · ${_timeLabel(a.startTime)}</div>
       ${a.staffName?`<div style="font-size:10px;color:var(--text2)">👤 ${a.staffName}</div>`:''}
       <div style="display:flex;gap:4px;margin-top:5px">
-        <button class="btn btn-g btn-xs" onclick="event.stopPropagation();mViewAppt('${a.id}')">View</button>
+        <button class="btn btn-g btn-xs" onclick="event.stopPropagation();mViewAppt('${a.id}')">${_s.ui_view}</button>
         ${a.st==='Completed'?`<button class="btn btn-p btn-xs" onclick="event.stopPropagation();_apptCheckout('${a.id}')">Checkout</button>`:''}
       </div>
     </div>`).join('')}
@@ -24030,14 +24030,14 @@ function pgAppointments(){
 
     // Pending confirmation → filters to Reserved
     +'<div class="kpi p" style="cursor:pointer" onclick="_togApptView(\'list\',\'pending\')" title="View appointments needing confirmation">'
-      +'<div class="kpi-lbl">Pending</div>'
+      +'<div class="kpi-lbl">${_s.ui_st_pending}</div>'
       +'<div class="kpi-val p">'+pending.length+'</div>'
       +'<div class="kpi-sub">Needs confirmation</div>'
     +'</div>'
 
     // Completed → opens revenue breakdown modal
     +'<div class="kpi g" style="cursor:pointer" onclick="mServicesRevenue()" title="View completed appointments & revenue">'
-      +'<div class="kpi-lbl">Completed</div>'
+      +'<div class="kpi-lbl">${_s.ui_st_completed}</div>'
       +'<div class="kpi-val g">'+completed.length+'</div>'
       +'<div class="kpi-sub">'+(totalRev>0?fmt(totalRev)+' earned':'No revenue yet')+'</div>'
     +'</div>'
@@ -25761,7 +25761,7 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     inv_upload_csv:      fr ? 'Téléverser le CSV rempli'     : 'Upload Completed CSV',
     inv_name_col:        fr ? 'Nom'                          : 'Name',
     inv_product_photos:  fr ? 'Photos Produit'               : 'Product Photos',
-    inv_edit_photos_use: fr ? 'Utilisez <strong>Modifier</strong> pour ajouter des photos' : 'use <strong>Edit</strong> to add photos',
+    inv_edit_photos_use: fr ? 'Utilisez <strong>Modifier</strong> pour ajouter des photos' : 'use <strong>${_s.inv_edit_lbl}</strong> ${_s.inv_edit_photos_use2}',
     inv_edit_lbl:        fr ? 'Modifier'                     : 'Edit',
 
     // ── Sales extra ────────────────────────────────────────────
@@ -25778,6 +25778,7 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     inv_cond_short:      fr ? 'État'                        : 'Cond.',
     inv_cat_name_lbl:    fr ? 'Nom de Catégorie *'           : 'Category Name *',
     set_stripe_note_inner: fr ? 'Paiements sécurisés via Stripe.' : 'Secure payments via Stripe.',
+    inv_edit_photos_use2: fr ? 'pour ajouter des photos'    : 'to add photos',
     set_stripe_note:     fr ? '🔒 <strong>Paiements sécurisés via Stripe.</strong> Vos coordonnées bancaires ne sont jamais stockées. Vous serez redirigé vers ShopTrack après le paiement.' : _s.set_stripe_note,
 
   };
@@ -26151,7 +26152,7 @@ function _rptCustStmtPDF(){const _s=_L();
     +'</div>';
   var rows=sales.map(function(s){var tot=s.total||s.amt;var bal=tot-(s.paid||0);return '<tr><td>'+s.dt+'</td><td>Sale</td><td>'+_esc(s.items.substring(0,40))+'</td><td class="num">'+fmt(tot)+'</td><td class="num green">'+fmt(s.paid||0)+'</td><td class="num '+(bal>0?'red':'')+'">'+fmt(bal)+'</td></tr>';}).join('');
   rows+=rentals.map(function(r){var bal=r.fee-(r.paid||0);return '<tr><td>'+r.start+'</td><td>Rental</td><td>'+_esc(r.item)+'</td><td class="num">'+fmt(r.fee)+'</td><td class="num green">'+fmt(r.paid||0)+'</td><td class="num '+(bal>0?'red':'')+'">'+fmt(bal)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>Description</th><th class="num">Invoiced</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>${_s.ui_description}</th><th class="num">Invoiced</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Customer Statement — '+_esc(cust.name), summary, table);
 }
 
@@ -26175,7 +26176,7 @@ function _rptPayHistPDF(){const _s=_L();
 
 function _rptExpFullPDF(){const _s=_L();
   var total=D.exp.reduce(function(a,e){return a+e.amt;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Expenses</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Entries</div><div class="sum-val blue">'+D.exp.length+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.exp_kpi_total}</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Entries</div><div class="sum-val blue">'+D.exp.length+'</div></div></div>';
   var rows=D.exp.map(function(e){return '<tr><td>'+e.id+'</td><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee||'')+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+_esc(e.method||'')+'</td></tr>';}).join('');
   var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">Amount</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Full Expense Report', summary, table);
@@ -26200,7 +26201,7 @@ function _rptRentalUtilPDF(){const _s=_L();
 function _rptRentedOutPDF(){const _s=_L();
   var out=D.inv.filter(function(i){return (i.rented||0)>0;});
   var rows=out.map(function(i){return '<tr><td>'+_esc(i.name)+'</td><td>'+i.qty+'</td><td class="num blue">'+i.rented+'</td><td class="num '+(i.qty-i.rented>0?'green':'red')+'">'+(i.qty-i.rented)+'</td><td class="num">'+fmt(i.rp||0)+'/day</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>Total Qty</th><th class="num">Rented Out</th><th class="num">Available</th><th class="num">Rate</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>Total Qty</th><th class="num">${_s.inv_rented_out}</th><th class="num">${_s.inv_available}</th><th class="num">${_s.inv_col_sp}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Items Currently Rented Out', null, table);
 }
 
@@ -26384,7 +26385,7 @@ function exportInventoryPDF(){const _s=_L();
       <div class="sum-box"><div class="sum-lbl">Total Value</div><div class="sum-val blue">${fmt(totalVal)}</div></div>
     </div>
     <table>
-      <thead><tr><th>SKU</th><th>Name</th><th>${_s.ui_category}</th><th>Brand</th><th>${_s.ui_status}</th><th>Condition</th><th class="num">Cost</th><th class="num">Sale Price</th><th class="num">Qty</th></tr></thead>
+      <thead><tr><th>SKU</th><th>Name</th><th>${_s.ui_category}</th><th>${_s.inv_brand_lbl}</th><th>${_s.ui_status}</th><th>Condition</th><th class="num">Cost</th><th class="num">Sale Price</th><th class="num">Qty</th></tr></thead>
       <tbody>${inv.map(i=>`<tr>
         <td style="font-family:monospace;font-size:11px">${i.sku||'—'}</td>
         <td><strong>${i.name}</strong></td>
@@ -26466,8 +26467,8 @@ function exportExpensesPDF(){const _s=_L();
   const body = `
     <div class="doc-title">Expense Report</div>
     <div class="summary">
-      <div class="sum-box"><div class="sum-lbl">Total Expenses</div><div class="sum-val red">${fmt(total)}</div></div>
-      <div class="sum-box"><div class="sum-lbl">Recurring</div><div class="sum-val" style="color:#d97706">${fmt(recurring)}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.exp_kpi_total}</div><div class="sum-val red">${fmt(total)}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.exp_type_recur}</div><div class="sum-val" style="color:#d97706">${fmt(recurring)}</div></div>
       <div class="sum-box"><div class="sum-lbl">Entries</div><div class="sum-val blue">${exps.length}</div></div>
     </div>
     ${topCat?`<p style="font-size:11px;color:#64748b;margin-bottom:14px">Top categories: ${topCat}</p>`:''}
@@ -26524,7 +26525,7 @@ function exportAppointmentsPDF(){const _s=_L();
     <div class="doc-title">Appointments Report</div>
     <div class="summary">
       <div class="sum-box"><div class="sum-lbl">Total Appointments</div><div class="sum-val blue">${appts.length}</div></div>
-      <div class="sum-box"><div class="sum-lbl">Completed</div><div class="sum-val green">${completed}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.ui_st_completed}</div><div class="sum-val green">${completed}</div></div>
       <div class="sum-box"><div class="sum-lbl">Revenue</div><div class="sum-val green">${fmt(revenue)}</div></div>
     </div>
     <table>
@@ -27746,7 +27747,7 @@ function mNewAppt(date){const _s=_L();
   </div>
   <div class="fg">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-      <label class="fl" style="margin:0">Customer</label>
+      <label class="fl" style="margin:0">${_s.ui_customer}</label>
       <button type="button" class="btn btn-g btn-xs" onclick="_apptAddNewCust()" style="font-size:11px">+ New Customer</button>
     </div>
     <div id="na-c-wrap" style="position:relative"></div>
