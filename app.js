@@ -18344,6 +18344,7 @@ function _toggleNotifPref(key, el){
   }
 }
 function pgSettings(){
+  const _s = _L();
   // Track unsaved changes
   window._settingsDirty = false;
   if(SESSION.isSuperAdmin) return pgSettingsSA();
@@ -18356,13 +18357,13 @@ function pgSettings(){
   var invCatPills = D.invCats.map(function(c,i){
     return '<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 10px 5px 13px">'
       +'<span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c)+'</span>'
-      +'<button type="button" onclick="_delInvCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="Delete category">\u2715</button>'
+      +'<button type="button" onclick="_delInvCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="${_s.set_delete_cat}">\u2715</button>'
       +'</div>';
   }).join('');
   var svcCatPills = (D.svcCats||[]).map(function(c,i){
     return '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:20px;padding:5px 10px 5px 13px">'
       +'<span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c)+'</span>'
-      +'<button type="button" onclick="_delSvcCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="Remove">\u2715</button>'
+      +'<button type="button" onclick="_delSvcCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="${_s.set_remove}">\u2715</button>'
       +'</div>';
   }).join('');
   var expCatPills = D.expCats.map(function(c,i){
@@ -18405,30 +18406,30 @@ function pgSettings(){
     : '<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--r6);margin-bottom:10px;font-size:11px;color:#92400e">'
       + '<span>&#9888;</span><span><strong>Set your WhatsApp number</strong> in Settings &rarr; Business Profile to receive owner alerts.</span></div>';
   var notifDefs = [
-    {section:'🔔 In-App Push Notifications',hint:'Alerts that appear on your screen while the app is open.'},
-    {key:'newSale',        label:'New sale created',         desc:'Alert when any sale is recorded'},
-    {key:'rentalDue',      label:'Rental due today',         desc:'Alert for items due back today'},
-    {key:'rentalOverdue',  label:'Overdue rental alert',     desc:'Alert when a rental becomes overdue'},
-    {key:'newAppointment', label:'New appointment booked',   desc:'Alert when a client books an appointment'},
-    {key:'apptReminder',   label:'Appointment reminder',     desc:'Alert 1 hour before each appointment'},
-    {key:'lowStock',       label:'Low stock warning',        desc:'Alert when stock falls below minimum threshold'},
-    {key:'arOutstanding',  label:'Unpaid invoice alert',     desc:'Alert for invoices unpaid after 7 days'},
-    {key:'apPaymentDue',   label:'Vendor payment due',       desc:'Alert when vendor balance is outstanding'},
+    {section:_s.set_n_sec_push, hint:_s.set_n_sec_push_h},
+    {key:'newSale',        label:_s.set_n_newSale, desc:_s.set_n_newSale_d},
+    {key:'rentalDue',      label:_s.set_n_rentDue, desc:_s.set_n_rentDue_d},
+    {key:'rentalOverdue',  label:_s.set_n_rentOver, desc:_s.set_n_rentOver_d},
+    {key:'newAppointment', label:_s.set_n_newAppt, desc:_s.set_n_newAppt_d},
+    {key:'apptReminder',   label:_s.set_n_apptRem, desc:_s.set_n_apptRem_d},
+    {key:'lowStock',       label:_s.set_n_lowStock, desc:_s.set_n_lowStock_d},
+    {key:'arOutstanding',  label:_s.set_n_arOut, desc:_s.set_n_arOut_d},
+    {key:'apPaymentDue',   label:_s.set_n_apPay, desc:_s.set_n_apPay_d},
     {section:'📱 WhatsApp Alerts to YOU (Owner)',hint: ownerWAHint + 'These open WhatsApp with a pre-written message so you can review and send.'},
-    {key:'waOwnerNewSale',    label:'New sale recorded',         desc:'Get a WhatsApp when any sale is saved — see who sold what and for how much'},
-    {key:'waOwnerLargeOrder', label:'Large order threshold',      desc:'Alert for high-value orders above the amount set below. Works independently of New Sale toggle'},
-    {key:'waOwnerMinBlock',   label:'Below-min price blocked',   desc:'Instant alert when staff attempts a sale below your minimum price'},
-    {key:'waOwnerPayment',    label:'Payment received',          desc:'Alert when a customer pays an invoice or settles a balance'},
-    {key:'waOwnerLowStock',   label:'Low / out of stock',        desc:'Alert when a sale reduces stock to or below the minimum threshold'},
-    {key:'waOwnerWeeklySummary', label:'Weekly performance summary', desc:'WhatsApp digest every Monday: top products, revenue, customer count'},
-    {key:'waOwnerNewBooking', label:'New appointment booking',   desc:'Alert when a client books an appointment \u2014 see name, service, date, time'},
+    {key:'waOwnerNewSale',    label:_s.set_n_waSale, desc:_s.set_n_waSale_d},
+    {key:'waOwnerLargeOrder', label:_s.set_n_waLarge, desc:_s.set_n_waLarge_d},
+    {key:'waOwnerMinBlock',   label:_s.set_n_waMin, desc:_s.set_n_waMin_d},
+    {key:'waOwnerPayment',    label:_s.set_n_waPay, desc:_s.set_n_waPay_d},
+    {key:'waOwnerLowStock',   label:_s.set_n_waLow, desc:_s.set_n_waLow_d},
+    {key:'waOwnerWeeklySummary', label:_s.set_n_waWeekly, desc:_s.set_n_waWeekly_d},
+    {key:'waOwnerNewBooking', label:_s.set_n_waBook, desc:_s.set_n_waBook_d},
 
-    {key:'waOwnerNewBooking', label:'New appointment booking',   desc:'Alert when a client books an appointment — see name, service, date, time'},
-    {section:'💬 WhatsApp Messages to Customers',hint:'Pre-drafted messages that open WhatsApp so you can review before sending.'},
-    {key:'waApptConfirm',  label:'Appointment confirmation', desc:'Prompt to send WA confirmation to client when appointment is booked'},
-    {key:'waApptReminder', label:'Appointment reminder',     desc:'Send WA reminder to client 1 day before their appointment'},
-    {key:'waOverdueAlert', label:'Overdue rental reminder',  desc:'Prompt to send WA to customer when their rental becomes overdue'},
-    {key:'waArReminder',   label:'Payment reminder',         desc:'Prompt to send WA to customer with unpaid invoice'},
+    {key:'waOwnerNewBooking', label:_s.set_n_waBook, desc:_s.set_n_waBook_d},
+    {section:_s.set_n_sec_cust,hint:'Pre-drafted messages that open WhatsApp so you can review before sending.'},
+    {key:'waApptConfirm',  label:_s.set_n_waApptConf, desc:_s.set_n_waApptConf_d},
+    {key:'waApptReminder', label:_s.set_n_waApptRem, desc:_s.set_n_waApptRem_d},
+    {key:'waOverdueAlert', label:_s.set_n_waOver, desc:_s.set_n_waOver_d},
+    {key:'waArReminder',   label:_s.set_n_waAR, desc:_s.set_n_waAR_d},
   ];
   var pushState = (typeof Notification !== 'undefined') ? Notification.permission : 'unsupported';
   var pushBanner = pushState === 'granted'
@@ -18501,26 +18502,26 @@ function pgSettings(){
   var _stampRemoveBtn = BIZ.stampDataUrl ? '<button class="btn btn-d btn-xs" onclick="_clearDocImage(\'stamp\')">&#128465; Remove</button>' : '';
   var tabDocsHtml = '<div id="tab-docs" style="display:none">'
     +'<div class="card">'
-    +'<div class="card-hd"><div class="card-ttl">Document Settings</div></div>'
+    +'<div class="card-hd"><div class="card-ttl">${_s.set_doc_title}</div></div>'
     +'<div class="fg-2"><div>'
-    +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">Invoice &amp; Receipt Defaults</div>'
-    +'<div class="fg"><label class="fl">Default Payment Terms</label>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">${_s.set_doc_invoice}</div>'
+    +'<div class="fg"><label class="fl">${_s.set_doc_terms}</label>'
     +'<select class="fs" id="doc-payment-terms">'+_ptOpts+'</select></div>'
     +'<div class="fg"><label class="fl">Accepted Payment Methods <span style="font-size:10px;color:var(--text2)">(shown on invoice)</span></label>'
     +'<input class="fi" id="doc-pay-methods" value="'+_esc(BIZ.paymentMethods||'Cash, Bank Transfer, Mobile Money (MTN), Orange Money')+'" placeholder="e.g. Cash, Bank Transfer, Mobile Money"/>'
-    +'<div style="font-size:10px;color:var(--text2);margin-top:3px">Separate methods with commas</div></div>'
+    +'<div style="font-size:10px;color:var(--text2);margin-top:3px">${_s.set_doc_methods_hint}</div></div>'
     +'<div class="fg"><label class="fl">Bank / Payment Details <span style="font-size:10px;color:var(--text2)">(shown on invoice)</span></label>'
     +'<textarea class="ft" id="doc-bank-details" rows="4" placeholder="Bank name, account name, account number...">'+_esc(BIZ.bankDetails||'')+'</textarea></div>'
-    +'<div class="fg"><label class="fl">Invoice Footer Note</label>'
+    +'<div class="fg"><label class="fl">${_s.set_doc_footer}</label>'
     +'<textarea class="ft" id="biz-invoice-note" rows="2" placeholder="e.g. Thank you for your business! Payment due within 7 days.">'+_esc(BIZ.invoiceNote||'')+'</textarea></div>'
-    +'<div class="fg"><label class="fl">Default Tax Rate (%)</label>'
+    +'<div class="fg"><label class="fl">${_s.set_doc_tax}</label>'
     +'<input class="fi" id="biz-tax" type="number" value="'+(BIZ.taxRate||0)+'" placeholder="0" oninput="BIZ.taxRate=parseFloat(this.value)||0"/></div>'
-    +'<button class="btn btn-p btn-sm" onclick="saveDocSettings()">&#128190; Save Document Settings</button>'
+    +'<button class="btn btn-p btn-sm" onclick="saveDocSettings()">${_s.set_doc_save}</button>'
     +'</div><div>'
-    +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">Signatures &amp; Stamps</div>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">${_s.set_doc_sigs}</div>'
     +'<div style="display:grid;gap:14px">'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:16px;border:1px solid var(--border2)">'
-    +'<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px">&#9997; Signature</div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px">${_s.set_doc_sig}</div>'
     +'<div id="sign-preview" style="min-height:52px;margin-bottom:10px;display:'+(BIZ.signDataUrl?'block':'none')+'">'+_signPreviewHtml+'</div>'
     +'<div style="display:flex;gap:8px;align-items:center">'
     +'<label style="display:inline-flex;align-items:center;gap:7px;background:var(--a-dim);border:1px solid var(--a);color:var(--a);padding:7px 12px;border-radius:var(--r6);cursor:pointer;font-size:12px;font-weight:600">'
@@ -18529,7 +18530,7 @@ function pgSettings(){
     +'<div style="font-size:10px;color:var(--text2);margin-top:6px">PNG with transparent background recommended</div>'
     +'</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:16px;border:1px solid var(--border2)">'
-    +'<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px">&#128205; Company Stamp</div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px">${_s.set_doc_stamp}</div>'
     +'<div id="stamp-preview" style="min-height:64px;margin-bottom:10px;display:'+(BIZ.stampDataUrl?'block':'none')+'">'+_stampPreviewHtml+'</div>'
     +'<div style="display:flex;gap:8px;align-items:center">'
     +'<label style="display:inline-flex;align-items:center;gap:7px;background:var(--a-dim);border:1px solid var(--a);color:var(--a);padding:7px 12px;border-radius:var(--r6);cursor:pointer;font-size:12px;font-weight:600">'
@@ -18562,54 +18563,54 @@ function pgSettings(){
 
   return `
 <div class="ph">
-  <div class="bc">ShopTrack / <span>Settings</span></div>
-  <div class="ph-row"><h1>Settings</h1></div>
-  <p>Business profile, logo, preferences, roles, and configuration</p>
+  <div class="bc">ShopTrack / <span>${_s.set_title}</span></div>
+  <div class="ph-row"><h1>${_s.set_title}</h1></div>
+  <p>${_s.set_subtitle}</p>
 </div>
 <div class="stabs" id="settingsTabs">
-  <button class="stab on" onclick="switchSettingsTab(this,'tab-profile')">Business Profile</button>
-  <button class="stab" onclick="switchSettingsTab(this,'tab-users')">Users &amp; Roles</button>
-  <button class="stab" onclick="switchSettingsTab(this,'tab-security')">Security</button>
-  <button class="stab" onclick="switchSettingsTab(this,'tab-subscription')">💳 Subscription</button>
-  <button class="stab" onclick="switchSettingsTab(this,'tab-docs')">Documents</button>
-  <button class="stab" onclick="switchSettingsTab(this,'tab-import')">&#128229; Import Data</button>
-  <button class="stab" onclick="switchSettingsTab(this,'tab-financial')">Financial</button>
-  <button class="stab" onclick="switchSettingsTab(this,'tab-notif')">Notifications</button>
-  <button class="stab" onclick="switchSettingsTab(this,'tab-contract')">📋 Rental Contract</button>
-  <button class="stab" onclick="switchSettingsTab(this,'tab-categories')">📦 Categories</button>
+  <button class="stab on" onclick="switchSettingsTab(this,'tab-profile')">${_s.set_tab_profile}</button>
+  <button class="stab" onclick="switchSettingsTab(this,'tab-users')">${_s.set_tab_users}</button>
+  <button class="stab" onclick="switchSettingsTab(this,'tab-security')">${_s.set_tab_security}</button>
+  <button class="stab" onclick="switchSettingsTab(this,'tab-subscription')">${_s.set_tab_sub}</button>
+  <button class="stab" onclick="switchSettingsTab(this,'tab-docs')">${_s.set_tab_docs}</button>
+  <button class="stab" onclick="switchSettingsTab(this,'tab-import')">${_s.set_tab_import}</button>
+  <button class="stab" onclick="switchSettingsTab(this,'tab-financial')">${_s.set_tab_financial}</button>
+  <button class="stab" onclick="switchSettingsTab(this,'tab-notif')">${_s.set_tab_notif}</button>
+  <button class="stab" onclick="switchSettingsTab(this,'tab-contract')">${_s.set_tab_contract}</button>
+  <button class="stab" onclick="switchSettingsTab(this,'tab-categories')">${_s.set_tab_cats}</button>
 
 </div>
 
 <div id="tab-profile">
 <div class="g2">
   <div class="card">
-    <div class="card-hd"><div class="card-ttl">Business Identity</div></div>
+    <div class="card-hd"><div class="card-ttl">${_s.set_biz_identity}</div></div>
     <div style="margin-bottom:18px">
-      <label class="fl">Business Logo</label>
+      <label class="fl">${_s.set_biz_logo}</label>
       <div style="display:flex;align-items:center;gap:16px">
         <div id="logo-preview" style="width:72px;height:72px;border-radius:12px;background:linear-gradient(135deg,var(--a),var(--g));display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#fff;font-family:var(--display);flex-shrink:0;overflow:hidden">${logoHtml}</div>
         <div>
           <label style="display:inline-flex;align-items:center;gap:6px;background:var(--bg4);border:1px solid var(--border2);color:var(--text);padding:7px 14px;border-radius:var(--r6);cursor:pointer;font-size:12px;font-weight:600" onclick="document.getElementById('logoInput').click()">
-            &#128247; Upload Logo
+            ${_s.set_upload_logo}
             <input id="logoInput" type="file" accept="image/*" style="display:none" onchange="handleLogoUpload(this)"/>
           </label>
-          <div style="font-size:10px;color:var(--text2);margin-top:5px">PNG, JPG &middot; Appears on all documents</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:5px">${_s.set_logo_hint}</div>
         </div>
       </div>
     </div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">Business Name</label><input class="fi" id="biz-name" value="${BIZ.name}"/></div>
-      <div class="fg"><label class="fl">Owner / Contact Name</label><input class="fi" id="biz-owner" value="${BIZ.owner||''}" placeholder="Your full name"/></div>
+      <div class="fg"><label class="fl">${_s.set_biz_name}</label><input class="fi" id="biz-name" value="${BIZ.name}"/></div>
+      <div class="fg"><label class="fl">${_s.set_owner_name}</label><input class="fi" id="biz-owner" value="${BIZ.owner||''}" placeholder="${_s.set_owner_ph}"/></div>
     </div>
-    <div class="fg"><label class="fl">Tagline / Description</label><input class="fi" id="biz-tagline" value="${BIZ.tagline}"/></div>
-    <div class="fg"><label class="fl">Business Type</label><input class="fi" id="biz-type" value="${BIZ.type||''}" placeholder="e.g. Boutique, Restaurant, Salon"/></div>
+    <div class="fg"><label class="fl">${_s.set_tagline}</label><input class="fi" id="biz-tagline" value="${BIZ.tagline}"/></div>
+    <div class="fg"><label class="fl">${_s.set_biz_type}</label><input class="fi" id="biz-type" value="${BIZ.type||''}" placeholder="${_s.set_biz_type_ph}"/></div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">Country</label>
+      <div class="fg"><label class="fl">${_s.set_country}</label>
         <select class="fs" id="biz-country" onchange="_bizCountryChanged(this.value)">
           ${['Cameroon','Nigeria','Ghana','United States','United Kingdom','Belgium','Germany'].map(function(c){return '<option value="'+c+'"'+(BIZ.country===c?' selected':'')+'>'+({'Cameroon':'🇨🇲','Nigeria':'🇳🇬','Ghana':'🇬🇭','United States':'🇺🇸','United Kingdom':'🇬🇧','Belgium':'🇧🇪','Germany':'🇩🇪'}[c]||'🌍')+' '+c+'</option>';}).join('')}
         </select>
       </div>
-      <div class="fg"><label class="fl">Language</label>
+      <div class="fg"><label class="fl">${_s.set_language}</label>
         <select class="fs" id="biz-language">
           <option value="en"${(BIZ.language||'en')==='en'?' selected':''}>🇬🇧 English</option>
           <option value="fr"${(BIZ.language||'en')==='fr'?' selected':''}>🇫🇷 Français</option>
@@ -18618,37 +18619,37 @@ function pgSettings(){
     </div>
     <div class="fg"><label class="fl">Business Type</label><select class="fs"><option selected>Bridal Shop (Sale + Rental)</option><option>Fashion Boutique</option><option>Equipment Rental</option><option>General Retail</option></select></div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">Email</label><input class="fi" id="biz-email" type="email" value="${BIZ.email}"/></div>
-      <div class="fg"><label class="fl">Phone</label><input class="fi" id="biz-phone" value="${BIZ.phone}"/></div>
-      <div class="fg"><label class="fl">WhatsApp</label><div style="display:flex;gap:8px;align-items:center"><input class="fi" id="biz-whatsapp" value="${BIZ.whatsapp||''}" style="flex:1"/><button type="button" onclick="_goToNotifTab()" style="flex-shrink:0;background:rgba(37,211,102,.12);border:1.5px solid rgba(37,211,102,.35);color:#25d366;border-radius:var(--r6);padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">WhatsApp Notifications →</button></div></div>
-      <div class="fg"><label class="fl">Website</label><input class="fi" id="biz-website" value="${BIZ.website||''}"/></div>
+      <div class="fg"><label class="fl">${_s.set_email}</label><input class="fi" id="biz-email" type="email" value="${BIZ.email}"/></div>
+      <div class="fg"><label class="fl">${_s.set_phone}</label><input class="fi" id="biz-phone" value="${BIZ.phone}"/></div>
+      <div class="fg"><label class="fl">${_s.set_whatsapp}</label><div style="display:flex;gap:8px;align-items:center"><input class="fi" id="biz-whatsapp" value="${BIZ.whatsapp||''}" style="flex:1"/><button type="button" onclick="_goToNotifTab()" style="flex-shrink:0;background:rgba(37,211,102,.12);border:1.5px solid rgba(37,211,102,.35);color:#25d366;border-radius:var(--r6);padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">${_s.set_wa_notif_btn}</button></div></div>
+      <div class="fg"><label class="fl">${_s.set_website}</label><input class="fi" id="biz-website" value="${BIZ.website||''}"/></div>
     </div>
-    <div class="fg"><label class="fl">Address</label><textarea class="ft" id="biz-address" style="min-height:55px">${BIZ.address}</textarea></div>
+    <div class="fg"><label class="fl">${_s.set_address}</label><textarea class="ft" id="biz-address" style="min-height:55px">${BIZ.address}</textarea></div>
     <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
-      <div class="fl" style="margin-bottom:10px;color:var(--ink);font-size:13px;font-weight:600">Social Media</div>
+      <div class="fl" style="margin-bottom:10px;color:var(--ink);font-size:13px;font-weight:600">${_s.set_social}</div>
       <div class="fg-2">
-        <div class="fg"><label class="fl">Instagram</label><input class="fi" id="biz-instagram" value="${BIZ.instagram||''}" placeholder="@handle"/></div>
-        <div class="fg"><label class="fl">Facebook</label><input class="fi" id="biz-facebook" value="${BIZ.facebook||''}" placeholder="Page name or URL"/></div>
-        <div class="fg"><label class="fl">TikTok</label><input class="fi" id="biz-tiktok" value="${BIZ.tiktok||''}" placeholder="@handle"/></div>
-        <div class="fg"><label class="fl">Twitter / X</label><input class="fi" id="biz-twitter" value="${BIZ.twitter||''}" placeholder="@handle"/></div>
+        <div class="fg"><label class="fl">${_s.set_instagram}</label><input class="fi" id="biz-instagram" value="${BIZ.instagram||''}" placeholder="${_s.set_handle_ph}"/></div>
+        <div class="fg"><label class="fl">${_s.set_facebook}</label><input class="fi" id="biz-facebook" value="${BIZ.facebook||''}" placeholder="${_s.set_fb_ph}"/></div>
+        <div class="fg"><label class="fl">${_s.set_tiktok}</label><input class="fi" id="biz-tiktok" value="${BIZ.tiktok||''}" placeholder="@handle"/></div>
+        <div class="fg"><label class="fl">${_s.set_twitter}</label><input class="fi" id="biz-twitter" value="${BIZ.twitter||''}" placeholder="@handle"/></div>
       </div>
     </div>
     <div class="btn-row" style="margin-top:14px">
-      <button class="btn btn-p" onclick="saveBizProfile()">&#128190; Save Profile</button>
-      <button class="btn btn-s btn-sm" onclick="genBusinessCard()">&#129482; Business Card</button>
+      <button class="btn btn-p" onclick="saveBizProfile()">${_s.set_save_profile}</button>
+      <button class="btn btn-s btn-sm" onclick="genBusinessCard()">${_s.set_biz_card}</button>
     </div>
   </div>
   <div>
     <div class="card" style="margin-bottom:13px">
-      <div class="card-hd"><div class="card-ttl">Brand Colors & Theme</div></div>
+      <div class="card-hd"><div class="card-ttl">${_s.set_brand_colors}</div></div>
       <div class="fg-2">
-        <div class="fg"><label class="fl">Primary Color</label>
+        <div class="fg"><label class="fl">${_s.set_primary_color}</label>
           <div style="display:flex;align-items:center;gap:10px">
             <input type="color" id="biz-primary" value="${BIZ.primaryColor}" style="width:40px;height:36px;border:none;border-radius:6px;cursor:pointer"/>
             <input class="fi" value="${BIZ.primaryColor}" style="flex:1" oninput="document.getElementById('biz-primary').value=this.value"/>
           </div>
         </div>
-        <div class="fg"><label class="fl">Accent Color</label>
+        <div class="fg"><label class="fl">${_s.set_accent_color}</label>
           <div style="display:flex;align-items:center;gap:10px">
             <input type="color" id="biz-accent" value="${BIZ.accentColor}" style="width:40px;height:36px;border:none;border-radius:6px;cursor:pointer"/>
             <input class="fi" value="${BIZ.accentColor}" style="flex:1" oninput="document.getElementById('biz-accent').value=this.value"/>
@@ -18656,10 +18657,10 @@ function pgSettings(){
         </div>
       </div>
       <div class="fg" style="margin-top:14px">
-        <label class="fl">Platform Theme</label>
+        <label class="fl">${_s.set_theme}</label>
         <div style="display:flex;gap:8px;margin-top:6px">
-          <button class="btn btn-sm ${BIZ.theme!=='light'?'btn-p':'btn-s'}" id="theme-dark-btn" onclick="_applyTheme('dark');BIZ.theme='dark';document.getElementById('theme-dark-btn').className='btn btn-sm btn-p';document.getElementById('theme-light-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast('🌙 Dark theme applied','success')">🌙 Dark</button>
-          <button class="btn btn-sm ${BIZ.theme==='light'?'btn-p':'btn-s'}" id="theme-light-btn" onclick="_applyTheme('light');BIZ.theme='light';document.getElementById('theme-light-btn').className='btn btn-sm btn-p';document.getElementById('theme-dark-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast('☀️ Light theme applied','success')">☀️ Light</button>
+          <button class="btn btn-sm ${BIZ.theme!=='light'?'btn-p':'btn-s'}" id="theme-dark-btn" onclick="_applyTheme('dark');BIZ.theme='dark';document.getElementById('theme-dark-btn').className='btn btn-sm btn-p';document.getElementById('theme-light-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast('🌙 Dark theme applied','success')">${_s.set_theme_dark}</button>
+          <button class="btn btn-sm ${BIZ.theme==='light'?'btn-p':'btn-s'}" id="theme-light-btn" onclick="_applyTheme('light');BIZ.theme='light';document.getElementById('theme-light-btn').className='btn btn-sm btn-p';document.getElementById('theme-dark-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast('☀️ Light theme applied','success')">${_s.set_theme_light}</button>
         </div>
       </div>
     </div>
@@ -18677,7 +18678,7 @@ function pgSettings(){
         <div style="display:flex;gap:8px;align-items:center">
           <input class="fi" id="biz-ai-key" type="password"
             value="${BIZ.aiKey||''}"
-            placeholder="sk-ant-api03-… (leave blank to use ShopTrack's key)"
+            placeholder="${_s.set_ai_key_ph}"
             style="flex:1;font-family:var(--mono);font-size:12px;letter-spacing:.5px"
             oninput="document.getElementById('biz-ai-key-toggle').style.display=this.value?'':'none'"
           />
@@ -18685,7 +18686,7 @@ function pgSettings(){
             style="display:${BIZ.aiKey?'':'none'}"
             onclick="var f=document.getElementById('biz-ai-key');f.type=f.type==='password'?'text':'password';this.textContent=f.type==='password'?'👁':'🙈'">👁</button>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:5px">Stored encrypted in your business profile. Clear the field to revert to the ShopTrack platform key.</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">${_s.set_ai_key_hint}</div>
       </div>
       <button class="btn btn-p btn-sm" style="margin-top:10px" onclick="
         BIZ.aiKey=document.getElementById('biz-ai-key').value.trim();
@@ -18701,13 +18702,13 @@ function pgSettings(){
         _aiCall({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'Hi'}]})
           .then(function(){btn.disabled=false;btn.textContent='✅ Key works';toast('Custom API key is working ✓','success');})
           .catch(function(e){btn.disabled=false;btn.textContent='Test Key';toast('❌ '+e.message,'error');});
-      ">Test Key</button>`:''}
+      ">${_s.set_ai_key_test}</button>`:''}
       <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px">
         <label class="fl" style="margin-bottom:6px">OpenAI API Key <span style="font-weight:400;color:var(--text3)">(for AI Product Photo — DALL-E 3, ~$0.04/image)</span></label>
         <div style="display:flex;gap:8px;align-items:center">
           <input class="fi" id="biz-openai-key" type="password"
             value="${BIZ.openAiKey||''}"
-            placeholder="sk-… (from platform.openai.com/api-keys)"
+            placeholder="${_s.set_openai_ph}"
             style="flex:1;font-family:var(--mono);font-size:12px;letter-spacing:.5px"
             oninput="document.getElementById('biz-openai-key-toggle').style.display=this.value?'':'none'"
           />
@@ -18715,7 +18716,7 @@ function pgSettings(){
             style="display:${BIZ.openAiKey?'':'none'}"
             onclick="var f=document.getElementById('biz-openai-key');f.type=f.type==='password'?'text':'password';this.textContent=f.type==='password'?'👁':'🙈'">👁</button>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:5px">Only needed for AI Product Photo. Leave blank to disable image generation. Charged per image at OpenAI rates.</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">${_s.set_openai_hint}</div>
         <button class="btn btn-s btn-sm" style="margin-top:8px" onclick="
           BIZ.openAiKey=document.getElementById('biz-openai-key').value.trim();
           _dbSaveBizProfile(SESSION.bizId);
@@ -18731,9 +18732,9 @@ function pgSettings(){
 
 <div id="tab-users" style="display:none">
 <div class="card">
-  <div class="card-hd"><div class="card-ttl">Users &amp; Roles</div><button class="btn btn-p btn-sm" onclick="mAddBizUser()">+ Add User</button></div>
+  <div class="card-hd"><div class="card-ttl">${_s.set_users_title}</div><button class="btn btn-p btn-sm" onclick="mAddBizUser()">${_s.set_add_user}</button></div>
   <div style="overflow-x:auto"><table class="tbl">
-    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+    <thead><tr><th>${_s.set_col_name}</th><th>${_s.set_col_email}</th><th>${_s.set_col_role}</th><th>${_s.set_col_status}</th><th>${_s.set_col_last}</th><th>${_s.set_col_actions}</th></tr></thead>
     <tbody>${userRows}</tbody>
   </table></div>
 </div>
@@ -18742,15 +18743,15 @@ function pgSettings(){
 <div id="tab-security" style="display:none">
 <div class="card">
   <div class="card-hd">
-    <div class="card-ttl">&#x1F512; Change Password</div>
+    <div class="card-ttl">${_s.set_sec_title}</div>
     <button class="btn btn-p btn-sm" onclick="_savePasswordFromTab()">&#x1F512; Save New Password</button>
   </div>
   <div class="fg-2">
     <div>
-      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">Change Password</div>
-      <div class="fg"><label class="fl">Current Password</label><input class="fi" type="password" id="biz-sec-cur" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"/></div>
-      <div class="fg"><label class="fl">New Password</label><input class="fi" type="password" id="biz-sec-new" autocomplete="new-password" oninput="_updatePwdStrength(this.value)" placeholder="Min 8 characters"/></div>
-      <div class="fg"><label class="fl">Confirm New Password</label><input class="fi" type="password" id="biz-sec-conf" autocomplete="new-password" placeholder="Repeat new password"/></div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">${_s.set_sec_title}</div>
+      <div class="fg"><label class="fl">${_s.set_sec_cur}</label><input class="fi" type="password" id="biz-sec-cur" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"/></div>
+      <div class="fg"><label class="fl">${_s.set_sec_new}</label><input class="fi" type="password" id="biz-sec-new" autocomplete="new-password" oninput="_updatePwdStrength(this.value)" placeholder="${_s.set_sec_min}"/></div>
+      <div class="fg"><label class="fl">${_s.set_sec_conf}</label><input class="fi" type="password" id="biz-sec-conf" autocomplete="new-password" placeholder="${_s.set_sec_repeat}"/></div>
     <div style='margin-top:4px;display:flex;align-items:center;gap:8px'>
       <div style='flex:1;height:4px;background:var(--border);border-radius:2px'>
         <div id='pwd-strength-bar' style='height:100%;border-radius:2px;width:0;transition:width .3s,background .3s'></div>
@@ -18768,10 +18769,10 @@ function pgSettings(){
         if(em)AUTH_STORE[em].password=n;
         toast('Password updated successfully','success');
         ['biz-sec-cur','biz-sec-new','biz-sec-conf'].forEach(function(id){document.getElementById(id).value='';});
-      })()">&#128272; Update Password</button>
+      })()">${_s.set_sec_update}</button>
     </div>
     <div>
-      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">Recent Login Activity</div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">${_s.set_sec_activity}</div>
       <div style="background:var(--bg3);border-radius:var(--r6);padding:10px 12px;margin-bottom:8px;font-size:12px">
         <div style="font-weight:600;color:var(--ink)">Chrome &middot; Windows <span style="color:var(--g);font-size:10px">&middot; Current session</span></div>
         <div style="color:var(--text2);margin-top:3px">Today &middot; Yaound&#233;, CM</div>
@@ -18854,7 +18855,7 @@ ${(function(){
   return `
 <div class="g2">
   <div class="card">
-    <div class="card-hd"><div class="card-ttl">Your Plan</div></div>
+    <div class="card-hd"><div class="card-ttl">${_s.set_sub_plan}</div></div>
     <div style="text-align:center;padding:16px 0 20px">
       <div style="width:72px;height:72px;border-radius:50%;background:${planColor}1A;border:3px solid ${planColor};display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px">
         ${isTrial?'⏳':plan==='Starter'?'🌱':plan==='Enterprise'?'🏢':'🚀'}
@@ -18924,9 +18925,9 @@ ${tabDocsHtml}
 <div id="tab-contract" style="display:none">
 <div class="card">
   <div class="card-hd">
-    <div class="card-ttl">📋 Rental Contract Template</div>
+    <div class="card-ttl">${_s.set_con_title}</div>
     <div style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:12px;color:var(--text)">Enable contracts</span>
+      <span style="font-size:12px;color:var(--text)">${_s.set_con_enable}</span>
       <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer">
         <input type="checkbox" id="contract-enabled-toggle" style="opacity:0;width:0;height:0" onchange="BIZ.contractEnabled=this.checked;document.getElementById('contract-body-wrap').style.opacity=this.checked?'1':'.45';document.getElementById('contract-body-wrap').style.pointerEvents=this.checked?'':'none'">
         <span id="contract-toggle-track" style="position:absolute;inset:0;border-radius:11px;background:var(--bg4);border:1px solid var(--border2);transition:background .2s"></span>
@@ -18940,24 +18941,24 @@ ${tabDocsHtml}
     <div style="background:var(--bg3);border-radius:var(--r8);padding:14px 16px;margin-bottom:16px;font-size:12px;color:var(--text)">
       <strong style="color:var(--ink);display:block;margin-bottom:6px">📌 Available placeholders — these are replaced automatically when generating a contract:</strong>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
-        ${['{BUSINESS_NAME}','{CUSTOMER_NAME}','{CUSTOMER_PHONE}','{CUSTOMER_ID}','{DATE}','{ITEM_NAME}','{START_DATE}','{DUE_DATE}','{RENTAL_FEE}','{DEPOSIT}','{CONDITION_BEFORE}','{RENTAL_ID}'].map(p=>`<code style="background:var(--a-dim);color:var(--a);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer" onclick="navigator.clipboard?.writeText('${p}').then(()=>toast('Copied','success'))" title="Click to copy">${p}</code>`).join('')}
+        ${['{BUSINESS_NAME}','{CUSTOMER_NAME}','{CUSTOMER_PHONE}','{CUSTOMER_ID}','{DATE}','{ITEM_NAME}','{START_DATE}','{DUE_DATE}','{RENTAL_FEE}','{DEPOSIT}','{CONDITION_BEFORE}','{RENTAL_ID}'].map(p=>`<code style="background:var(--a-dim);color:var(--a);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer" onclick="navigator.clipboard?.writeText('${p}').then(()=>toast('Copied','success'))" title="${_s.set_click_copy}">${p}</code>`).join('')}
       </div>
     </div>
 
     <div class="fg" style="margin-bottom:14px">
-      <label class="fl">Contract Title</label>
-      <input class="fi" id="contract-title-input" placeholder="e.g. Rental Agreement" value="RENTAL AGREEMENT"/>
+      <label class="fl">${_s.set_con_title_lbl}</label>
+      <input class="fi" id="contract-title-input" placeholder="${_s.set_con_title_ph}" value="RENTAL AGREEMENT"/>
     </div>
 
     <div class="fg" style="margin-bottom:16px">
-      <label class="fl">Contract Body</label>
+      <label class="fl">${_s.set_con_body}</label>
       <textarea class="ft" id="contract-body-input" style="min-height:320px;font-family:var(--mono);font-size:12px;line-height:1.7"></textarea>
     </div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <button class="btn btn-p btn-sm" onclick="saveContractTemplate()">💾 Save Template</button>
-      <button class="btn btn-s btn-sm" onclick="resetContractTemplate()">↺ Restore Default</button>
-      <button class="btn btn-s btn-sm" onclick="previewContractTemplate()">👁 Preview with Sample Data</button>
+      <button class="btn btn-p btn-sm" onclick="saveContractTemplate()">${_s.set_con_save}</button>
+      <button class="btn btn-s btn-sm" onclick="resetContractTemplate()">${_s.set_con_reset}</button>
+      <button class="btn btn-s btn-sm" onclick="previewContractTemplate()">${_s.set_con_preview}</button>
     </div>
   </div>
 </div>
@@ -18966,41 +18967,41 @@ ${tabDocsHtml}
 <div id="tab-categories" style="display:none">
 <div class="card">
   <div class="card-hd">
-    <div class="card-ttl">📦 Categories</div>
-    <button class="btn btn-p btn-sm" onclick="_dbSaveCategories(SESSION.bizId);toast('All categories saved ✓','success');addAudit('Categories saved','Manual save from Settings')">💾 Save All</button>
+    <div class="card-ttl">${_s.set_cat_title}</div>
+    <button class="btn btn-p btn-sm" onclick="_dbSaveCategories(SESSION.bizId);toast('All categories saved ✓','success');addAudit('Categories saved','Manual save from Settings')">${_s.set_cat_save}</button>
   </div>
-  <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Customise your category lists for inventory, services, rentals and expenses. Changes save automatically when you add or remove, and persist through page refreshes.</div>
-  <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">📦 Inventory Categories</div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:16px">${_s.set_cat_hint}</div>
+  <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">${_s.set_cat_inv}</div>
   <div id="inv-cats-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
     ${invCatPills}
   </div>
   <div style="display:flex;gap:8px;align-items:center;max-width:400px;margin-bottom:20px">
-    <input class="fi" id="settings-new-cat-inp" placeholder="New inventory category…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addInvCatSettings();}"/>
+    <input class="fi" id="settings-new-cat-inp" placeholder="${_s.set_cat_inv_ph}" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addInvCatSettings();}"/>
     <button class="btn btn-p btn-sm" onclick="_addInvCatSettings()">+ Add</button>
   </div>
   <div style="padding-top:16px;border-top:1px solid var(--border)">
-    <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px">✂️ Service Categories</div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Groups services on your booking page.</div>
+    <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px">${_s.set_cat_svc}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">${_s.set_cat_svc_hint}</div>
     <div id="svc-cats-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
       ${svcCatPills}
     </div>
     <div style="display:flex;gap:8px;align-items:center;max-width:400px;margin-bottom:20px">
-      <input class="fi" id="settings-new-svccat-inp" placeholder="New service category…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addSvcCatSettings();}"/>
+      <input class="fi" id="settings-new-svccat-inp" placeholder="${_s.set_cat_svc_ph}" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addSvcCatSettings();}"/>
       <button class="btn btn-p btn-sm" onclick="_addSvcCatSettings()">+ Add</button>
     </div>
   </div>
   <div style="padding-top:16px;border-top:1px solid var(--border)">
-    <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:10px">💰 Expense Categories</div>
+    <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:10px">${_s.set_cat_exp}</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px" id="exp-cats-list">
       ${expCatPills}
     </div>
     <div style="display:flex;gap:8px;align-items:center;max-width:400px">
-      <input class="fi" id="settings-new-expcat-inp" placeholder="New expense category…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addExpCatSettings();}"/>
+      <input class="fi" id="settings-new-expcat-inp" placeholder="${_s.set_cat_exp_ph}" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addExpCatSettings();}"/>
       <button class="btn btn-g btn-sm" onclick="_addExpCatSettings()">+ Add</button>
     </div>
 
   <div style="padding-top:16px;border-top:1px solid var(--border)">
-    <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px">📊 Cost Breakdown Categories</div>
+    <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px">${_s.set_cat_cost}</div>
     <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Used in the inventory cost breakdown panel. Add custom categories for your business type — e.g. Land Survey, Import Bond, Staging Fee, Site Clearance.</div>
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Built-in (15)</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">
@@ -19021,7 +19022,7 @@ ${tabDocsHtml}
     </div>
     <div style="display:flex;gap:8px;align-items:center;max-width:520px">
       <input class="fi" id="settings-new-costcat-icon" placeholder="📋" style="width:52px;font-size:18px;text-align:center"/>
-      <input class="fi" id="settings-new-costcat-inp" placeholder="New cost category name…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addCustomCostCatSettings();}"/>
+      <input class="fi" id="settings-new-costcat-inp" placeholder="${_s.set_cat_custom_ph}" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addCustomCostCatSettings();}"/>
       <button class="btn btn-p btn-sm" onclick="_addCustomCostCatSettings()">+ Add</button>
     </div>
   </div>
@@ -19033,26 +19034,26 @@ ${tabDocsHtml}
 <div id="tab-import" style="display:none">
 <div id="import-profile-gate-banner"></div>
 <div class="card">
-  <div class="card-hd"><div class="card-ttl">&#128229; Import Business Data</div></div>
+  <div class="card-hd"><div class="card-ttl">${_s.set_imp_title}</div></div>
   <div class="alrt alrt-b" style="margin-bottom:16px">Use the ShopTrack Excel template to import inventory, customers, sales, vendors and expenses in bulk. <strong>Only .xlsx files are supported.</strong></div>
   <div class="fg-2" style="margin-bottom:20px">
     <div style="background:var(--bg3);border-radius:var(--r8);padding:20px">
-      <div style="font-weight:700;color:var(--ink);margin-bottom:6px">Step 1 &mdash; Download Template</div>
+      <div style="font-weight:700;color:var(--ink);margin-bottom:6px">${_s.set_imp_step1}</div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Download the pre-formatted Excel template with sample data and dropdown validation on every sheet.</div>
-      <button class="btn btn-s btn-sm" onclick="downloadImportTemplate()">&#8595; Download .xlsx Template</button>
+      <button class="btn btn-s btn-sm" onclick="downloadImportTemplate()">${_s.set_imp_dl}</button>
     </div>
     <div style="background:var(--bg3);border-radius:var(--r8);padding:20px">
-      <div style="font-weight:700;color:var(--ink);margin-bottom:6px">Step 2 &mdash; Upload Filled Template</div>
+      <div style="font-weight:700;color:var(--ink);margin-bottom:6px">${_s.set_imp_step2}</div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Fill in your data (keep column headers unchanged), then upload here.</div>
       <label id="import-file-label" style="display:inline-flex;align-items:center;gap:8px;background:var(--a-dim);border:1px solid var(--a);color:var(--a);padding:8px 16px;border-radius:var(--r6);cursor:pointer;font-size:12px;font-weight:600">
-        &#128194; <span id="import-file-name">Choose .xlsx File</span>
+        &#128194; <span id="import-file-name">${_s.set_imp_choose}</span>
         <input id="import-file-input" type="file" accept=".xlsx,.xls" style="display:none" onchange="handleImportUpload(this)"/>
       </label>
     </div>
   </div>
   <!-- Progress bar -->
   <div id="import-progress" style="display:none;margin-bottom:16px">
-    <div style="font-size:12px;color:var(--text2);margin-bottom:6px">&#128257; Processing file…</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${_s.set_imp_loading}</div>
     <div style="background:var(--bg3);border-radius:20px;height:8px;overflow:hidden">
       <div id="import-bar" style="height:100%;width:5%;background:linear-gradient(90deg,var(--a),var(--g));border-radius:20px;transition:width .3s ease"></div>
     </div>
@@ -19064,20 +19065,20 @@ ${tabDocsHtml}
 
 <div id="tab-financial" style="display:none">
 <div class="card">
-  <div class="card-hd"><div class="card-ttl">Financial Settings</div></div>
+  <div class="card-hd"><div class="card-ttl">${_s.set_fin_title}</div></div>
   <div class="fg-2">
     <div>
-      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">Currency</div>
-      <div class="fg"><label class="fl">Display Currency</label>
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">${_s.set_fin_currency}</div>
+      <div class="fg"><label class="fl">${_s.set_fin_display}</label>
         <select class="fs" id="cur-settings-sel" onchange="_onCurSettingsChange(this.value)">${curOpts}</select>
       </div>
       <div style="background:var(--bg3);border-radius:var(--r8);padding:10px 12px;margin-top:8px">
         <div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:4px" id="cur-locale-preview"></div>
-        <div style="font-size:11px;color:var(--text2)">Amounts stored in USD · converted at live rates · phone & address formats update automatically</div>
+        <div style="font-size:11px;color:var(--text2)">${_s.set_fin_cur_hint}</div>
       </div>
     </div>
     <div>
-      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px">Tax Settings</div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px">${_s.set_fin_tax}</div>
       <div style="font-size:11px;color:var(--text2);margin-bottom:12px">
         Pre-filled from your country. Customise as needed — applied to all invoices and documents.
       </div>
@@ -19087,7 +19088,7 @@ ${tabDocsHtml}
           <input class="fi" id="fin-tax-name" value="${BIZ.taxName||COUNTRY_TAX_DEFAULTS[BIZ.country]?.name||'VAT'}" placeholder="VAT / GST / TVA"/>
         </div>
         <div class="fg">
-          <label class="fl">Tax Rate (%)</label>
+          <label class="fl">${_s.set_fin_tax_rate}</label>
           <input class="fi" id="fin-tax-rate" type="number" step="0.01" min="0" max="100"
             value="${BIZ.taxRate!==undefined?BIZ.taxRate:COUNTRY_TAX_DEFAULTS[BIZ.country]?.rate||0}" placeholder="0"/>
         </div>
@@ -19110,13 +19111,13 @@ ${tabDocsHtml}
 <div id="tab-notif" style="display:none">
 <div class="card">
   <div class="card-hd">
-    <div class="card-ttl">Notification Preferences</div>
-    <div style="font-size:11px;color:var(--text2)">All notifications are optional. Toggle any on or off, then save.</div>
+    <div class="card-ttl">${_s.set_notif_title}</div>
+    <div style="font-size:11px;color:var(--text2)">${_s.set_notif_hint}</div>
   </div>
   <div>${notifRows}</div>
   <div class="btn-row" style="margin-top:14px">
-    <button class="btn btn-s" onclick="_resetNotifPrefs()">Reset to Defaults</button>
-    <button class="btn btn-p" onclick="_saveNotifPrefs()">&#128190; Save Preferences</button>
+    <button class="btn btn-s" onclick="_resetNotifPrefs()">${_s.set_notif_reset}</button>
+    <button class="btn btn-p" onclick="_saveNotifPrefs()">${_s.set_notif_save}</button>
   </div>
 </div>
 </div>
@@ -25026,8 +25027,214 @@ function _L(){
     qa_ai_sub:         fr ? 'Créer du contenu'           : 'Create content',
     qa_appt:           fr ? 'Prendre un RDV'             : 'Book Appointment',
     qa_appt_sub:       fr ? 'Planifier un client'        : 'Schedule client',
+
+    // ── Settings page ─────────────────────────────────────
+    set_title:         fr ? 'Paramètres'                 : 'Settings',
+    set_subtitle:      fr ? 'Profil, logo, préférences, rôles et configuration' : 'Business profile, logo, preferences, roles, and configuration',
+    set_tab_profile:   fr ? 'Profil Entreprise'          : 'Business Profile',
+    set_tab_users:     fr ? 'Utilisateurs & Rôles'       : 'Users & Roles',
+    set_tab_security:  fr ? 'Sécurité'                   : 'Security',
+    set_tab_sub:       fr ? '💳 Abonnement'              : '💳 Subscription',
+    set_tab_docs:      fr ? 'Documents'                  : 'Documents',
+    set_tab_import:    fr ? '📥 Importer des données'    : '📥 Import Data',
+    set_tab_financial: fr ? 'Finances'                   : 'Financial',
+    set_tab_notif:     fr ? 'Notifications'              : 'Notifications',
+    set_tab_contract:  fr ? '📋 Contrat de Location'     : '📋 Rental Contract',
+    set_tab_cats:      fr ? '📦 Catégories'              : '📦 Categories',
+    set_biz_identity:  fr ? "Identité de l'Entreprise"  : 'Business Identity',
+    set_biz_logo:      fr ? "Logo de l'Entreprise"       : 'Business Logo',
+    set_logo_hint:     fr ? 'PNG, JPG · Apparaît sur tous les documents' : 'PNG, JPG · Appears on all documents',
+    set_upload_logo:   fr ? '📷 Téléverser le Logo'       : '📷 Upload Logo',
+    set_biz_name:      fr ? "Nom de l'Entreprise"        : 'Business Name',
+    set_owner_name:    fr ? 'Propriétaire / Contact'      : 'Owner / Contact Name',
+    set_owner_ph:      fr ? 'Votre nom complet'           : 'Your full name',
+    set_tagline:       fr ? 'Slogan / Description'        : 'Tagline / Description',
+    set_biz_type:      fr ? "Type d'Entreprise"           : 'Business Type',
+    set_biz_type_ph:   fr ? 'ex. Boutique, Restaurant, Salon' : 'e.g. Boutique, Restaurant, Salon',
+    set_country:       fr ? 'Pays'                        : 'Country',
+    set_language:      fr ? 'Langue'                      : 'Language',
+    set_email:         fr ? 'E-mail'                      : 'Email',
+    set_phone:         fr ? 'Téléphone'                   : 'Phone',
+    set_whatsapp:      fr ? 'WhatsApp'                    : 'WhatsApp',
+    set_wa_notif_btn:  fr ? 'Notifications WhatsApp →'   : 'WhatsApp Notifications →',
+    set_website:       fr ? 'Site Web'                    : 'Website',
+    set_address:       fr ? 'Adresse'                     : 'Address',
+    set_social:        fr ? 'Réseaux Sociaux'             : 'Social Media',
+    set_instagram:     fr ? 'Instagram'                   : 'Instagram',
+    set_facebook:      fr ? 'Facebook'                    : 'Facebook',
+    set_tiktok:        fr ? 'TikTok'                      : 'TikTok',
+    set_twitter:       fr ? 'Twitter / X'                 : 'Twitter / X',
+    set_fb_ph:         fr ? 'Nom de la page ou URL'       : 'Page name or URL',
+    set_handle_ph:     fr ? '@pseudonyme'                 : '@handle',
+    set_save_profile:  fr ? '💾 Enregistrer le Profil'   : '💾 Save Profile',
+    set_biz_card:      fr ? '🪙 Carte de Visite'         : '🪙 Business Card',
+    set_brand_colors:  fr ? 'Couleurs & Thème'            : 'Brand Colors & Theme',
+    set_primary_color: fr ? 'Couleur Principale'          : 'Primary Color',
+    set_accent_color:  fr ? 'Couleur Accent'              : 'Accent Color',
+    set_theme:         fr ? 'Thème de la Plateforme'      : 'Platform Theme',
+    set_theme_dark:    fr ? '🌙 Sombre'                   : '🌙 Dark',
+    set_theme_light:   fr ? '☀️ Clair'                   : '☀️ Light',
+    set_ai_key_ph:     fr ? 'sk-ant-api03-… (laisser vide pour utiliser la clé ShopTrack)' : "sk-ant-api03-… (leave blank to use ShopTrack's key)",
+    set_ai_key_hint:   fr ? 'Stockée chiffrée dans votre profil. Effacer pour revenir à la clé ShopTrack.' : 'Stored encrypted in your business profile. Clear the field to revert to the ShopTrack platform key.',
+    set_ai_key_save:   fr ? '💾 Enregistrer la Clé'      : '💾 Save Key',
+    set_ai_key_test:   fr ? 'Tester la Clé'              : 'Test Key',
+    set_openai_ph:     fr ? 'sk-… (depuis platform.openai.com/api-keys)' : 'sk-… (from platform.openai.com/api-keys)',
+    set_openai_hint:   fr ? 'Uniquement pour Photo Produit IA. Laisser vide pour désactiver.' : 'Only needed for AI Product Photo. Leave blank to disable image generation.',
+    set_openai_save:   fr ? '💾 Enregistrer Clé OpenAI'  : '💾 Save OpenAI Key',
+    set_users_title:   fr ? 'Utilisateurs & Rôles'        : 'Users & Roles',
+    set_add_user:      fr ? '+ Ajouter Utilisateur'       : '+ Add User',
+    set_col_name:      fr ? 'Nom'                         : 'Name',
+    set_col_email:     fr ? 'E-mail'                      : 'Email',
+    set_col_role:      fr ? 'Rôle'                        : 'Role',
+    set_col_status:    fr ? 'Statut'                      : 'Status',
+    set_col_last:      fr ? 'Dernière Connexion'          : 'Last Login',
+    set_col_actions:   fr ? 'Actions'                     : 'Actions',
+    set_btn_edit:      fr ? '✏ Modifier'                  : '✏ Edit',
+    set_btn_remove:    fr ? '⚫ Retirer'                  : '⚫ Remove',
+    set_sec_title:     fr ? '🔒 Changer le Mot de Passe'  : '🔒 Change Password',
+    set_sec_save:      fr ? '🔒 Enregistrer'              : '🔒 Save New Password',
+    set_sec_cur:       fr ? 'Mot de Passe Actuel'         : 'Current Password',
+    set_sec_new:       fr ? 'Nouveau Mot de Passe'        : 'New Password',
+    set_sec_conf:      fr ? 'Confirmer le Nouveau'        : 'Confirm New Password',
+    set_sec_min:       fr ? 'Min 8 caractères'            : 'Min 8 characters',
+    set_sec_repeat:    fr ? 'Répéter le nouveau'          : 'Repeat new password',
+    set_sec_update:    fr ? '🔑 Mettre à jour'            : '🔑 Update Password',
+    set_sec_activity:  fr ? 'Activité de Connexion'       : 'Recent Login Activity',
+    set_sec_current:   fr ? 'Session en cours'            : 'Current session',
+    set_sub_plan:      fr ? 'Votre Formule'               : 'Your Plan',
+    set_sub_monthly:   fr ? 'Mensuel'                     : 'Monthly',
+    set_sub_annual:    fr ? 'Annuel'                      : 'Annual',
+    set_sub_status:    fr ? 'Statut'                      : 'Status',
+    set_sub_expiry:    fr ? "Date d'expiration"           : 'Expiry date',
+    set_sub_renewal:   fr ? 'Montant de renouvellement'  : 'Renewal amount',
+    set_sub_pending:   fr ? 'Changement de formule en attente' : 'Pending plan change',
+    set_sub_change:    fr ? '🔄 Changer de Formule'       : ''+_s.set_sub_change+'',
+    set_sub_view:      fr ? '📋 Voir Toutes les Formules' : ''+_s.set_sub_view+'',
+    set_sub_upgrade:   fr ? '🚀 Passer à Premium'         : '🚀 Upgrade to Premium',
+    set_sub_ref_title: fr ? '🎁 Parrainer une Entreprise — Gagnez 1 Mois Gratuit' : '🎁 Refer a Business — Get a Free Month',
+    set_sub_copy:      fr ? 'Copier'                      : 'Copy',
+    set_sub_share_wa:  fr ? '💬 Partager sur WhatsApp'    : '💬 Share on WhatsApp',
+    set_sub_ref_count: fr ? "entreprise(s) parrainée(s)" : 'business(es) referred',
+    set_pay_now:       fr ? '💳 Payer Maintenant'         : '💳 Pay Now',
+    set_doc_title:     fr ? 'Paramètres Documents'        : 'Document Settings',
+    set_doc_invoice:   fr ? 'Paramètres Facture & Reçu'   : 'Invoice & Receipt Defaults',
+    set_doc_terms:     fr ? 'Conditions de Paiement par Défaut' : 'Default Payment Terms',
+    set_doc_methods_ph:fr ? 'ex. Espèces, Virement, Mobile Money' : 'e.g. Cash, Bank Transfer, Mobile Money',
+    set_doc_methods_hint:fr? 'Séparer les modes par des virgules' : 'Separate methods with commas',
+    set_doc_bank_ph:   fr ? 'Banque, titulaire, numéro de compte...' : 'Bank name, account name, account number...',
+    set_doc_footer:    fr ? 'Note de Pied de Facture'     : 'Invoice Footer Note',
+    set_doc_tax:       fr ? 'Taux de TVA par Défaut (%)'  : 'Default Tax Rate (%)',
+    set_doc_save:      fr ? '💾 Enregistrer Documents'    : '💾 Save Document Settings',
+    set_doc_sig:       fr ? '✒ Signature'                 : '✒ Signature',
+    set_doc_stamp:     fr ? "📍 Cachet de l'Entreprise"   : '📍 Company Stamp',
+    set_doc_sigs:      fr ? 'Signatures & Cachets'        : 'Signatures & Stamps',
+    set_doc_png_hint:  fr ? 'PNG avec fond transparent recommandé' : 'PNG with transparent background recommended',
+    set_doc_upload:    fr ? '📷 Téléverser'               : '📷 Upload',
+    set_doc_remove:    fr ? '🗑 Supprimer'                : '🗑 Remove',
+    set_imp_title:     fr ? '📥 Importer des Données'     : '📥 Import Business Data',
+    set_imp_hint:      fr ? 'Utilisez le modèle Excel ShopTrack pour importer en masse. <strong>Seuls les fichiers .xlsx sont acceptés.</strong>' : 'Use the ShopTrack Excel template to import inventory, customers, sales, vendors and expenses in bulk. <strong>Only .xlsx files are supported.</strong>',
+    set_imp_step1:     fr ? 'Étape 1 — Télécharger le Modèle' : 'Step 1 — Download Template',
+    set_imp_step1d:    fr ? 'Téléchargez le modèle Excel pré-formaté avec données exemples.' : 'Download the pre-formatted Excel template with sample data and dropdown validation on every sheet.',
+    set_imp_dl:        fr ? '⬇ Télécharger le modèle .xlsx' : '⬇ Download .xlsx Template',
+    set_imp_step2:     fr ? 'Étape 2 — Téléverser le Fichier' : 'Step 2 — Upload Filled Template',
+    set_imp_step2d:    fr ? 'Remplissez vos données (ne pas modifier les en-têtes), puis téléversez ici.' : 'Fill in your data (keep column headers unchanged), then upload here.',
+    set_imp_choose:    fr ? 'Choisir fichier .xlsx'       : 'Choose .xlsx File',
+    set_imp_loading:   fr ? '🔄 Traitement en cours…'    : '🔄 Processing file…',
+    set_fin_title:     fr ? 'Paramètres Financiers'       : 'Financial Settings',
+    set_fin_currency:  fr ? 'Devise'                      : 'Currency',
+    set_fin_display:   fr ? "Devise d'Affichage"          : 'Display Currency',
+    set_fin_cur_hint:  fr ? 'Montants stockés en USD · convertis au taux en temps réel · formats mis à jour automatiquement' : 'Amounts stored in USD · converted at live rates · phone & address formats update automatically',
+    set_fin_tax:       fr ? 'Paramètres Fiscaux'          : 'Tax Settings',
+    set_fin_tax_hint:  fr ? 'Pré-rempli selon votre pays. Personnalisez si nécessaire — appliqué sur toutes les factures.' : 'Pre-filled from your country. Customise as needed — applied to all invoices and documents.',
+    set_fin_tax_rate:  fr ? 'Taux de Taxe (%)'           : 'Tax Rate (%)',
+    set_fin_preview:   fr ? 'Aperçu :'                   : 'Preview:',
+    set_fin_save:      fr ? '💾 Enregistrer Paramètres'  : '💾 Save Settings',
+    set_notif_title:   fr ? 'Préférences de Notifications' : 'Notification Preferences',
+    set_notif_hint:    fr ? 'Toutes les notifications sont optionnelles. Activez/désactivez puis enregistrez.' : 'All notifications are optional. Toggle any on or off, then save.',
+    set_notif_reset:   fr ? 'Réinitialiser'              : 'Reset to Defaults',
+    set_notif_save:    fr ? '💾 Enregistrer Préférences' : '💾 Save Preferences',
+    set_notif_enable_now:  fr ? 'Activer'                : 'Enable Now',
+    set_notif_push_enable: fr ? '🔔 Activer les Notifications Push' : '🔔 Enable Push Notifications',
+    set_notif_push_blocked: fr ? '<strong>Notifications bloquées par le navigateur</strong> — activez dans Paramètres du site' : '<strong>Push blocked by browser</strong> — enable in browser Site Settings → Notifications',
+    set_notif_test:    fr ? 'Tester'                     : 'Test',
+    set_notif_send_test: fr ? '📱 Envoyer test'          : '📱 Send Test',
+    set_n_sec_push:    fr ? '🔔 Notifications Push (In-App)' : '🔔 In-App Push Notifications',
+    set_n_sec_push_h:  fr ? "Alertes qui apparaissent à l'écran quand l'app est ouverte." : 'Alerts that appear on your screen while the app is open.',
+    set_n_sec_owner:   fr ? '📱 Alertes WhatsApp POUR VOUS (Propriétaire)' : '📱 WhatsApp Alerts to YOU (Owner)',
+    set_n_sec_cust:    fr ? '💬 Messages WhatsApp aux Clients' : '💬 WhatsApp Messages to Customers',
+    set_n_newSale:     fr ? 'Nouvelle vente créée'        : 'New sale created',
+    set_n_newSale_d:   fr ? 'Alerte à chaque vente enregistrée' : 'Alert when any sale is recorded',
+    set_n_rentDue:     fr ? "Location due aujourd'hui"   : 'Rental due today',
+    set_n_rentDue_d:   fr ? 'Alerte pour les retours du jour' : 'Alert for items due back today',
+    set_n_rentOver:    fr ? 'Location en retard'          : 'Overdue rental alert',
+    set_n_rentOver_d:  fr ? 'Alerte quand une location dépasse la date de retour' : 'Alert when a rental becomes overdue',
+    set_n_newAppt:     fr ? 'Nouveau RDV réservé'         : 'New appointment booked',
+    set_n_newAppt_d:   fr ? "Alerte quand un client réserve un RDV" : 'Alert when a client books an appointment',
+    set_n_apptRem:     fr ? 'Rappel de RDV'               : 'Appointment reminder',
+    set_n_apptRem_d:   fr ? 'Alerte 1 heure avant chaque RDV' : 'Alert 1 hour before each appointment',
+    set_n_lowStock:    fr ? 'Alerte stock faible'         : 'Low stock warning',
+    set_n_lowStock_d:  fr ? 'Alerte quand le stock passe sous le seuil minimum' : 'Alert when stock falls below minimum threshold',
+    set_n_arOut:       fr ? 'Facture impayée'             : 'Unpaid invoice alert',
+    set_n_arOut_d:     fr ? 'Alerte pour factures impayées après 7 jours' : 'Alert for invoices unpaid after 7 days',
+    set_n_apPay:       fr ? 'Paiement fournisseur dû'     : 'Vendor payment due',
+    set_n_apPay_d:     fr ? "Alerte quand le solde fournisseur est en attente" : 'Alert when vendor balance is outstanding',
+    set_n_waSale:      fr ? 'Vente enregistrée'           : 'New sale recorded',
+    set_n_waSale_d:    fr ? 'Recevoir un WhatsApp à chaque vente enregistrée' : 'Get a WhatsApp when any sale is saved',
+    set_n_waLarge:     fr ? 'Seuil de grande commande'    : 'Large order threshold',
+    set_n_waLarge_d:   fr ? 'Alerte pour les commandes élevées au-dessus du montant défini' : 'Alert for high-value orders above the amount set below',
+    set_n_waMin:       fr ? 'Prix minimum bloqué'         : 'Below-min price blocked',
+    set_n_waMin_d:     fr ? "Alerte instantanée quand un vendeur tente de vendre sous le prix minimum" : 'Instant alert when staff attempts a sale below your minimum price',
+    set_n_waPay:       fr ? 'Paiement reçu'               : 'Payment received',
+    set_n_waPay_d:     fr ? "Alerte quand un client règle une facture" : 'Alert when a customer pays an invoice or settles a balance',
+    set_n_waLow:       fr ? 'Stock faible / épuisé'       : 'Low / out of stock',
+    set_n_waLow_d:     fr ? 'Alerte quand une vente réduit le stock sous le seuil minimum' : 'Alert when a sale reduces stock to or below the minimum threshold',
+    set_n_waWeekly:    fr ? 'Résumé hebdomadaire'         : 'Weekly performance summary',
+    set_n_waWeekly_d:  fr ? 'Récapitulatif WhatsApp chaque lundi : produits, CA, clients' : 'WhatsApp digest every Monday: top products, revenue, customer count',
+    set_n_waBook:      fr ? 'Nouveau RDV réservé'         : 'New appointment booking',
+    set_n_waBook_d:    fr ? 'Alerte quand un client réserve — nom, service, date, heure' : 'Alert when a client books an appointment — see name, service, date, time',
+    set_n_waApptConf:  fr ? 'Confirmation de RDV'         : 'Appointment confirmation',
+    set_n_waApptConf_d:fr ? 'Envoyer confirmation WA au client lors de la réservation' : 'Prompt to send WA confirmation to client when appointment is booked',
+    set_n_waApptRem:   fr ? 'Rappel de RDV client'        : 'Appointment reminder',
+    set_n_waApptRem_d: fr ? 'Envoyer rappel WA 1 jour avant le RDV' : 'Send WA reminder to client 1 day before their appointment',
+    set_n_waOver:      fr ? 'Rappel de retard de location' : 'Overdue rental reminder',
+    set_n_waOver_d:    fr ? 'Envoyer WA au client quand sa location est en retard' : 'Prompt to send WA to customer when their rental becomes overdue',
+    set_n_waAR:        fr ? 'Rappel de paiement'          : 'Payment reminder',
+    set_n_waAR_d:      fr ? "Envoyer WA au client avec facture impayée" : 'Prompt to send WA to customer with unpaid invoice',
+    set_con_title:     fr ? '📋 Modèle de Contrat de Location' : '📋 Rental Contract Template',
+    set_con_enable:    fr ? 'Activer les contrats'        : 'Enable contracts',
+    set_con_hint:      fr ? "Quand activé, un bouton <strong>Générer le Contrat</strong> apparaît sur chaque location. Les contrats sont pré-remplis et peuvent être signés sur n'importe quel appareil." : 'When enabled, a <strong>Generate Contract</strong> button appears on every rental. Contracts are pre-filled with rental details and can be signed on any device.',
+    set_con_ph_title:  fr ? '📌 Paramètres disponibles — remplacés automatiquement à la génération :' : '📌 Available placeholders — these are replaced automatically when generating a contract:',
+    set_con_title_lbl: fr ? 'Titre du Contrat'           : 'Contract Title',
+    set_con_title_ph:  fr ? 'ex. Contrat de Location'    : 'e.g. Rental Agreement',
+    set_con_body:      fr ? 'Corps du Contrat'            : 'Contract Body',
+    set_con_save:      fr ? '💾 Enregistrer le Modèle'   : '💾 Save Template',
+    set_con_reset:     fr ? '↺ Restaurer par Défaut'      : '↺ Restore Default',
+    set_con_preview:   fr ? '👁 Aperçu avec Données'      : '👁 Preview with Sample Data',
+    set_cat_title:     fr ? '📦 Catégories'               : '📦 Categories',
+    set_cat_save:      fr ? '💾 Tout Enregistrer'         : '💾 Save All',
+    set_cat_hint:      fr ? "Personnalisez vos listes de catégories. Les modifications se sauvegardent automatiquement." : 'Customise your category lists for inventory, services, rentals and expenses. Changes save automatically when you add or remove.',
+    set_cat_inv:       fr ? '📦 Catégories Inventaire'    : '📦 Inventory Categories',
+    set_cat_inv_ph:    fr ? 'Nouvelle catégorie inventaire…' : 'New inventory category…',
+    set_cat_svc:       fr ? '✂️ Catégories Services'      : '✂️ Service Categories',
+    set_cat_svc_hint:  fr ? 'Regroupe les services sur votre page de réservation.' : 'Groups services on your booking page.',
+    set_cat_svc_ph:    fr ? 'Nouvelle catégorie service…' : 'New service category…',
+    set_cat_exp:       fr ? '💰 Catégories Dépenses'      : '💰 Expense Categories',
+    set_cat_exp_ph:    fr ? 'Nouvelle catégorie dépense…' : 'New expense category…',
+    set_cat_cost:      fr ? '📊 Catégories Coûts Détaillés' : '📊 Cost Breakdown Categories',
+    set_cat_cost_hint: fr ? "Utilisées dans le panneau de détail des coûts inventaire. Ajoutez vos catégories personnalisées." : 'Used in the inventory cost breakdown panel. Add custom categories for your business type.',
+    set_cat_builtin:   fr ? 'Intégrées (15)'              : 'Built-in (15)',
+    set_cat_custom:    fr ? 'Vos Catégories Personnalisées' : 'Your Custom Categories',
+    set_cat_custom_ph: fr ? 'Nom de la catégorie…'        : 'New cost category name…',
+    set_cat_none:      fr ? 'Aucune — ajoutez-en une ci-dessous' : 'None yet — add one below or from the Cost Breakdown panel when adding inventory',
+    set_add:           fr ? '+ Ajouter'                   : '+ Add',
+    set_delete_cat:    fr ? 'Supprimer la catégorie'      : 'Delete category',
+    set_remove:        fr ? 'Supprimer'                   : 'Remove',
+    set_copy:          fr ? 'Copier'                      : 'Copy',
+    set_click_copy:    fr ? 'Cliquer pour copier'         : 'Click to copy',
+    set_optional:      fr ? 'optionnel'                   : 'Optional',
   };
 }
+
 
 // Legacy alias — kept for backward compat
 function _docLbl(enLabel, frLabel){
