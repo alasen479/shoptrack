@@ -869,7 +869,7 @@ function _applyLocaleToForms(code){
 }
 
 // ── Helper: get locale object respecting country (e.g. Belgium vs Germany for EUR) ─
-function _getLocale(){
+function _getLocale(){const _s=_L();
   const country = BIZ.country || '';
   if(CUR.code === 'EUR'){
     if(country === 'Belgium') return CUR_LOCALE.EUR_BE;
@@ -885,7 +885,7 @@ function _ph(type){
 }
 
 // ── Restore currency from localStorage on boot ───────────────────────────────
-function _restoreCurrency(){
+function _restoreCurrency(){const _s=_L();
   try{
     const saved = localStorage.getItem('shoptrack_currency');
     if(saved){
@@ -900,7 +900,7 @@ function _restoreCurrency(){
   _applyLocaleToForms(CUR.code);
 }
 
-function _applyTheme(theme){
+function _applyTheme(theme){const _s=_L();
   if(theme==='light'){
     document.body.classList.add('light');
   } else {
@@ -909,7 +909,7 @@ function _applyTheme(theme){
   // Persist preference
   try{ localStorage.setItem('st_theme', theme); }catch(e){}
 }
-function toggleTheme(){
+function toggleTheme(){const _s=_L();
   const isLight = document.body.classList.contains('light');
   const next = isLight ? 'dark' : 'light';
   _applyTheme(next);
@@ -917,7 +917,7 @@ function toggleTheme(){
   if(SESSION.bizId && !SESSION.isSuperAdmin) _dbSaveBizProfile(SESSION.bizId);
   toast((next==='light'?'☀️ Light':'🌙 Dark')+' theme applied','success');
 }
-function toggleCurrencyPanel(){
+function toggleCurrencyPanel(){const _s=_L();
   document.getElementById('cur-panel').classList.toggle('open');
   document.getElementById('np').classList.remove('open');
 }
@@ -935,12 +935,12 @@ const $ = id => document.getElementById(id);
 // btnLabel defaults to 'Confirm'; pass a third argument to customise it
 // (e.g. 'Convert', 'Delete', 'Charge', 'Suspend').
 var _confirmDoCallback = null;
-function confirmDo(msg, onYes, btnLabel, btnCls){
+function confirmDo(msg, onYes, btnLabel, btnCls){const _s=_L();
   _confirmDoCallback = onYes;
   const label = btnLabel || 'Confirm';
   const cls   = btnCls  || 'btn-p';
   const body  = `<p style="font-size:15px;color:var(--ink);margin:8px 0 4px">${msg}</p>`;
-  const foot  = `<button class="btn btn-s btn-sm" onclick="closeModal()">Cancel</button>
+  const foot  = `<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_cancel}</button>
   <button class="btn ${cls} btn-sm" onclick="closeModal();if(_confirmDoCallback){var _cb=_confirmDoCallback;_confirmDoCallback=null;_cb();}">${label}</button>`;
   modal('Confirm', body, foot);
 }
@@ -1167,7 +1167,7 @@ function _csAddLine(){
     +(svcOpts?'<optgroup label="✂️ Services">'+svcOpts+'</optgroup>':'')
     +'<option value="__custom__">── Custom item ──</option></select>'
     +'<input class="fi cs-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" oninput="_csRecalcTotal()" placeholder="Qty"/>'
-    +'<input class="fi cs-line-price" type="number" placeholder="Price" style="width:90px" oninput="_csRecalcTotal();_csCheckMinSpWarn()"/>'
+    +'<input class="fi cs-line-price" type="number" placeholder="${_s.sal_price_lbl}" style="width:90px" oninput="_csRecalcTotal();_csCheckMinSpWarn()"/>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_csRemoveLine(this)" style="padding:6px 8px">✕</button>';
   var container = document.getElementById('cs-line-rows');
   if(container) container.appendChild(row);
@@ -1896,7 +1896,7 @@ function _checkUpcomingBirthdays(){
   else if(pg && pg.firstChild) pg.insertBefore(widget, pg.firstChild);
 }
 
-function _sendBirthdayWA(custId){
+function _sendBirthdayWA(custId){const _s=_L();
   var cu = D.cust.find(function(x){return x.id===custId;});
   if(!cu) return;
   var ph = (cu.whatsapp||cu.phone||'').replace(/\D/g,'');
@@ -1907,7 +1907,7 @@ function _sendBirthdayWA(custId){
 
 
 // ── Bulk AR collection ─────────────────────────────────────────────────
-function _arBulkCollect(){
+function _arBulkCollect(){const _s=_L();
   var debtors = D.cust.filter(function(cu){return cu.bal>0;}).sort(function(a,b){return b.bal-a.bal;});
   if(!debtors.length){ toast('No outstanding balances ✓','success'); return; }
   var today = localDateStr();
@@ -1927,7 +1927,7 @@ function _arBulkCollect(){
     +'<div style="margin-top:12px;padding:10px;background:var(--bg3);border-radius:var(--r8)">'
     +'<div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--text2)">Selected total</span>'
     +'<strong id="bc-total-display" style="font-family:var(--mono);color:var(--g)">'+fmt(debtors.reduce(function(a,cu){return a+cu.bal;},0))+'</strong></div></div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-p" onclick="_arBulkCollectSave(\'' + today + '\')" >✅ Record Payments</button>'
   );
   // Update total on check/amount change
@@ -2094,7 +2094,7 @@ function mCustomizeDash(){
       </div>
     </div>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-s btn-sm" onclick="_dashConfigReset()">↺ Reset Defaults</button>
    <button class="btn btn-p" onclick="_dashConfigSave()">💾 Save & Refresh</button>`);
 }
@@ -2280,7 +2280,7 @@ function _buildTopProducts(range){
   }).join('');
 }
 
-function _showProductSales(invId){
+function _showProductSales(invId){const _s=_L();
   var inv = D.inv.find(function(x){return x.id===invId;});
   if(!inv){ toast('Product not found','error'); return; }
   var range = PERIOD_RANGES[_dashPeriod];
@@ -2312,9 +2312,9 @@ function _showProductSales(invId){
         +'<div style="font-size:11px;color:var(--text2)">'+sales.length+' sale'+(sales.length!==1?'s':'')+' &middot; '+PERIOD_RANGES[_dashPeriod].label+'</div>'
       +'</div>'
     +'</div>'
-    +'<div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>Customer</th><th>Date</th><th>Revenue</th><th>Status</th></tr></thead>'
+    +'<div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>${_s.ui_customer}</th><th>${_s.ui_date}</th><th>Revenue</th><th>${_s.ui_status}</th></tr></thead>'
     +'<tbody>'+rows+'</tbody></table></div>',
-    '<button class="btn btn-s" onclick="closeModal()">Close</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>'
     +'<button class="btn btn-p btn-sm" id="go-inv-btn-sp">View Item</button>');
   setTimeout(function(){ var b=document.getElementById('go-inv-btn-sp'); if(b) b.onclick=function(){closeModal();nav('inventory');}; },30);
 }
@@ -2531,7 +2531,7 @@ async function _pgConfirmPlan(){
 function _isUSD(){ return CUR.code==='USD' || (BIZ.country||'').toLowerCase().includes('united states') || BIZ.country==='US'; }
 
 // Stripe payment flow for USD businesses
-async function mSubPayNowStripe(){
+async function mSubPayNowStripe(){const _s=_L();
   var plan='Premium'; // Stripe checkout is always upgrading to Premium
   var planKey='Premium';
   var cycle=BIZ.billingCycle==='yearly'?'yearly':'monthly';
@@ -2554,7 +2554,7 @@ async function mSubPayNowStripe(){
     +'<span style="color:var(--text2)">Amount</span>'
     +'<strong style="font-size:20px;font-family:var(--mono);color:var(--g)">$'+amtUSD+' USD</strong></div></div>'
     +'<div class="alrt alrt-b">\uD83D\uDD12 Secure card payment via Stripe. You will be redirected to a Stripe checkout page. After payment, your account activates automatically.</div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-p" id="stripe-pay-btn" onclick="_doStripeCheckout(\''+(planKey)+'\',\''+(cycle)+'\',\''+(newExpiry)+'\')">\uD83D\uDD12 Pay $'+amtUSD+' USD \u2192 Stripe</button>'
   );
 }
@@ -2584,7 +2584,7 @@ async function _doStripeCheckout(plan,cycle,newExpiry){
   }
 }
 
-function mSubPayNow(){
+function mSubPayNow(){const _s=_L();
   // USD businesses use Stripe card payment
   if(_isUSD()){ mSubPayNowStripe(); return; }
   const d      = _subDaysLeft();
@@ -2628,7 +2628,7 @@ function mSubPayNow(){
     📱 You will receive a Mobile Money payment prompt on your phone. Enter your PIN to approve.
     Your subscription will be extended to <strong>${newExpiry}</strong> immediately after confirmation.
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" id="spn-pay-btn" onclick="_doSubPayNow('${_esc(expiry)}','${newExpiry}',${amt})">
      📱 Request Payment — ${amt.toLocaleString()} XAF
    </button>`);
@@ -2694,7 +2694,7 @@ function mChangePlan(){
   <div class="alrt" style="margin-top:10px;font-size:11px;color:var(--text2)">
     Select a plan above then tap Confirm. The new plan takes effect immediately.
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" id="cp-confirm-btn" disabled onclick="(function(){
      var sel = document.getElementById('cp-selected').value;
      if(!sel){ toast('Please select a plan','error'); return; }
@@ -2817,7 +2817,7 @@ async function _doSubPayNow(currentExpiry, newExpiry, amtXAF){
   }
 }
 
-function _subPaymentConfirmed(newExpiry, amtXAF){
+function _subPaymentConfirmed(newExpiry, amtXAF){const _s=_L();
   _track('Trial Converted',{plan:BIZ.plan||'Premium',amount_xaf:amtXAF});
   // Update BIZ in memory so banner disappears immediately
   BIZ.subExpires = newExpiry;
@@ -3010,7 +3010,7 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
 }
 
 
-function initDash(){
+function initDash(){const _s=_L();
   // Starter revenue upsell: check if monthly revenue > 5M XAF
   if(!SESSION.isSuperAdmin && _isFreePlan()){
     var _upsellKey='st_rev_upsell_'+(new Date().getMonth())+SESSION.bizId;
@@ -3044,7 +3044,7 @@ function initDash(){
 // ── Inventory filter state (persists across nav) ─────────────
 let _invFilterQ='', _invFilterCat='', _invFilterSt='', _invFilterCond='', _invSortVal='';
 
-function pgInv(){const _ui=_L();
+function pgInv(){const _s=_L();const _ui=_s;
   var _invOverBanner = _overLimitBanner('inv');
   return `
 ${_invOverBanner}<div class="ph">
@@ -3061,23 +3061,23 @@ ${_invOverBanner}<div class="ph">
   <p>${_ui.ph_inventory}</p>
 </div>
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr))">
-  <div class="kpi b"><div class="kpi-lbl">Total Items</div><div class="kpi-val b">${D.inv.length}</div><div class="kpi-sub">SKUs</div></div>
-  <div class="kpi g"><div class="kpi-lbl">Available</div><div class="kpi-val g">${D.inv.filter(i=>(i.qty||0)-(i.rented||0)>0).length}</div><div class="kpi-sub">In stock</div></div>
-  <div class="kpi c"><div class="kpi-lbl">Rented Out</div><div class="kpi-val c">${D.inv.reduce((a,i)=>a+(i.rented||0),0)}</div><div class="kpi-sub">Active rentals</div></div>
-  <div class="kpi p" style="cursor:pointer" title="Click to see table with stock values"><div class="kpi-lbl">Stock Value (cost)</div><div class="kpi-val p">${fmtKpi(D.inv.reduce((a,i)=>a+(i.cost||0)*(i.qty||0),0))}</div><div class="kpi-sub">At cost price</div></div>
-  <div class="kpi g" style="cursor:pointer" title="Total retail value of all stock"><div class="kpi-lbl">Retail Value</div><div class="kpi-val g">${fmtKpi(D.inv.reduce((a,i)=>a+(i.sp||0)*(i.qty||0),0))}</div><div class="kpi-sub">At selling price</div></div>
-  <div class="kpi y" style="cursor:pointer" onclick="_filterInvLowStock()"><div class="kpi-lbl">Low Stock</div><div class="kpi-val y">${D.inv.filter(i=>{const avail=(i.qty||0)-(i.rented||0);const min=i.minStock||i.minQty||0;return min>0&&avail<=min&&avail>0;}).length}</div><div class="kpi-sub">Click to filter</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.inv_total_items}</div><div class="kpi-val b">${D.inv.length}</div><div class="kpi-sub">${_s.inv_skus}</div></div>
+  <div class="kpi g"><div class="kpi-lbl">${_s.inv_available}</div><div class="kpi-val g">${D.inv.filter(i=>(i.qty||0)-(i.rented||0)>0).length}</div><div class="kpi-sub">In stock</div></div>
+  <div class="kpi c"><div class="kpi-lbl">${_s.inv_rented_out}</div><div class="kpi-val c">${D.inv.reduce((a,i)=>a+(i.rented||0),0)}</div><div class="kpi-sub">${_s.inv_active_rent}</div></div>
+  <div class="kpi p" style="cursor:pointer" title="${_s.inv_click_stock_tbl}"><div class="kpi-lbl">${_s.inv_stock_val_cost}</div><div class="kpi-val p">${fmtKpi(D.inv.reduce((a,i)=>a+(i.cost||0)*(i.qty||0),0))}</div><div class="kpi-sub">${_s.inv_at_cost}</div></div>
+  <div class="kpi g" style="cursor:pointer" title="Total retail value of all stock"><div class="kpi-lbl">${_s.inv_retail_val}</div><div class="kpi-val g">${fmtKpi(D.inv.reduce((a,i)=>a+(i.sp||0)*(i.qty||0),0))}</div><div class="kpi-sub">${_s.inv_at_sell}</div></div>
+  <div class="kpi y" style="cursor:pointer" onclick="_filterInvLowStock()"><div class="kpi-lbl">Low Stock</div><div class="kpi-val y">${D.inv.filter(i=>{const avail=(i.qty||0)-(i.rented||0);const min=i.minStock||i.minQty||0;return min>0&&avail<=min&&avail>0;}).length}</div><div class="kpi-sub">${_s.cust_click_filter}</div></div>
 </div>
 <div class="stabs">
-  <button class="stab on" onclick="switchInvView(this,'grid')">Grid</button>
-  <button class="stab" onclick="switchInvView(this,'table')">Table</button>
-  <button class="stab" onclick="switchInvView(this,'movements')">Movements</button>
+  <button class="stab on" onclick="switchInvView(this,'grid')">${_s.inv_grid}</button>
+  <button class="stab" onclick="switchInvView(this,'table')">${_s.inv_table}</button>
+  <button class="stab" onclick="switchInvView(this,'movements')">${_s.inv_tab_movements}</button>
 </div>
 <div class="fbar">
   <input class="fi-s" id="inv-search" placeholder="${_ui.flt_search_inv}" style="width:200px" value="${_esc(_invFilterQ)}" oninput="_filterInv()"/>
   <select class="sel" id="inv-cat-filter" onchange="_filterInv()"><option value="">${_ui.flt_all_cat}</option>${(D.invCats.length?D.invCats:[...new Set(D.inv.map(i=>i.cat).filter(Boolean))].sort()).map(c=>`<option value="${c}"${_invFilterCat===c?' selected':''}>${c}</option>`).join('')}</select>
   <select class="sel" id="inv-st-filter" onchange="_filterInv()"><option value="">${_ui.flt_all_status}</option>${['For Sale','For Rent','Both'].map(s=>`<option${_invFilterSt===s?' selected':''}>${s}</option>`).join('')}</select>
-  <select class="sel" id="inv-cond-filter" onchange="_filterInv()"><option value="">All Conditions</option>${['New','Excellent','Good','Fair','Worn','Damaged'].map(s=>`<option${_invFilterCond===s?' selected':''}>${s}</option>`).join('')}</select>
+  <select class="sel" id="inv-cond-filter" onchange="_filterInv()"><option value=">">${_s.inv_all_conds}</option>${['New','Excellent','Good','Fair','Worn','Damaged'].map(s=>`<option${_invFilterCond===s?' selected':''}>${s}</option>`).join('')}</select>
     <select class="fs" id="inv-sort" onchange="_filterInv()" style="flex:0 0 auto;min-width:130px">
       <option value="">Sort: Default</option>
       <option value="name-asc">Name A–Z</option>
@@ -3119,7 +3119,7 @@ function _getFilteredInv(){
   return filtered;
 }
 
-function _invClearFilters(){
+function _invClearFilters(){const _s=_L();
   _invFilterQ=''; _invFilterCat=''; _invFilterSt=''; _invFilterCond=''; _invSortVal='';
   // Also reset DOM selects
   ['inv-cat-filter','inv-st-filter','inv-cond-filter','inv-sort'].forEach(function(id){
@@ -3130,7 +3130,7 @@ function _invClearFilters(){
 }
 
 
-function _invGridClick(e){
+function _invGridClick(e){const _s=_L();
   var editEl = e.target.closest('[data-edit-id]');
   if(editEl){ e.stopPropagation(); mEditItem(editEl.dataset.editId); return; }
   var dupEl = e.target.closest('[data-dup-id]');
@@ -3143,7 +3143,7 @@ function _invGridClick(e){
 
 
 
-function _filterInv(){
+function _filterInv(){const _s=_L();
   _invFilterQ   = (document.getElementById('inv-search')?.value||'').trim();
   _invFilterCat = document.getElementById('inv-cat-filter')?.value||'';
   _invFilterSt  = document.getElementById('inv-st-filter')?.value||'';
@@ -3165,10 +3165,10 @@ function _filterInv(){
     v.innerHTML = _buildInvGridFiltered(filtered);
   }
 }
-function _buildInvGridFiltered(items){
+function _buildInvGridFiltered(items){const _s=_L();
   if(!items||!items.length) return '<div style="color:var(--text2);font-size:13px;padding:40px 20px;text-align:center">'
     +'<div style="font-size:32px;margin-bottom:10px">📦</div>'
-    +'<div style="font-weight:600;color:var(--ink);margin-bottom:6px">No items match the filter</div>'
+    +'<div style="font-weight:600;color:var(--ink);margin-bottom:6px">${_s.inv_no_match}</div>'
     +'<button class="btn btn-s btn-sm" onclick="_invClearFilters()" style="margin-top:4px">✕ Clear Filters</button>'
     +'</div>';
   return items.map(function(it){
@@ -3209,7 +3209,7 @@ function _buildInvGridFiltered(items){
 }
 
 // Filter inventory to show only low-stock items
-function _filterInvLowStock(){
+function _filterInvLowStock(){const _s=_L();
   _invFilterQ=''; _invFilterCat=''; _invFilterSt=''; _invFilterCond='';
   const v = document.getElementById('inv-view');
   if(!v) return;
@@ -3220,12 +3220,12 @@ function _filterInvLowStock(){
   });
   v.innerHTML = _buildInvGridFiltered(lowStock);
 }
-function switchInvView(el,mode){
+function switchInvView(el,mode){const _s=_L();
   document.querySelectorAll('.stab').forEach(t=>t.classList.remove('on'));el.classList.add('on');
   const v=$('inv-view');
   if(mode==='table'){
     v.style.display='block';
-    v.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Name</th><th>Category</th><th>Status</th><th>Qty</th><th>Rented</th><th>Avail</th><th>Cost</th><th>Sell</th><th>Rent/Day</th><th class="num">Stock Value</th><th>Cond.</th><th>Actions</th></tr></thead><tbody>
+    v.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>${_s.inv_col_sku}</th><th>Name</th><th>${_s.ui_category}</th><th>${_s.ui_status}</th><th>Qty</th><th>Rented</th><th>Avail</th><th>${_s.inv_col_cost}</th><th>Sell</th><th>Rent/Day</th><th class="num">Stock Value</th><th>Cond.</th><th>${_s.ui_actions}</th></tr></thead><tbody>
     ${D.inv.map(i=>{const sv=(i.cost||0)*(i.qty||0); return `<tr>
       <td>${mono(i.sku)}</td><td><strong style="color:var(--ink);cursor:pointer" onclick="mItem('${i.id}')">${i.name}</strong></td><td>${i.cat}</td><td>${badge(i.st)}</td>
       <td>${i.qty}</td><td style="color:var(--c)">${i.rented}</td><td style="color:var(--g)">${i.qty-i.rented}</td>
@@ -3260,7 +3260,7 @@ function switchInvView(el,mode){
       });
       moves.sort((a,b)=>b.dt.localeCompare(a.dt));
       if(!moves.length) return '<div style="color:var(--text2);font-size:13px;padding:16px 0;text-align:center">No stock movements for '+rng.label+'</div>';
-      return '<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Item</th><th>Type</th><th>Qty Δ</th><th>Reason</th></tr></thead><tbody>'
+      return '<div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.rent_item_lbl}</th><th>${_s.ui_type}</th><th>Qty Δ</th><th>Reason</th></tr></thead><tbody>'
         +moves.slice(0,20).map(m=>`<tr><td>${m.dt}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.item}</td><td>${bx(m.type,m.cls)}</td><td style="color:${m.col};font-family:var(--mono)">${m.delta}</td><td>${m.reason}</td></tr>`).join('')
         +'</tbody></table></div>';
     })()
@@ -3325,15 +3325,15 @@ function mItem(id){
     : itemPhoto(it.img||'gown-aline',it.imgC?.[0],it.imgC?.[1],it.imgC?.[2]);
   const photosHtml = (it.photoDataUrls&&it.photoDataUrls.length)
     ? it.photoDataUrls.map(function(url,pi){
-        return '<div class="pthumb" style="overflow:hidden;cursor:pointer" onclick="window.open(this.querySelector(\'img\').src,\'_blank\')" title="Click to view full size"><img loading="lazy" src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r6)"/></div>';
+        return '<div class="pthumb" style="overflow:hidden;cursor:pointer" onclick="window.open(this.querySelector(\'img\').src,\'_blank\')" title="${_s.inv_click_fullsize}"><img loading="lazy" src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r6)"/></div>';
       }).join('')
     : '<div style="grid-column:1/-1;font-size:12px;color:var(--text2);padding:14px 0;text-align:center">\uD83D\uDCF7 No photos yet \u2014 use <strong>Edit</strong> to add photos</div>';
   modal(it.name,`
   <div class="stabs" style="margin-bottom:14px">
-    <button class="stab on" onclick="mItemTab(this,'mi-details')">Details</button>
-    <button class="stab" onclick="mItemTab(this,'mi-pricing')">Pricing</button>
-    <button class="stab" onclick="mItemTab(this,'mi-photos')">Photos</button>
-    <button class="stab" onclick="mItemTab(this,'mi-history')">History</button>
+    <button class="stab on" onclick="mItemTab(this,'mi-details')">${_s.inv_tab_details}</button>
+    <button class="stab" onclick="mItemTab(this,'mi-pricing')">${_s.inv_tab_pricing}</button>
+    <button class="stab" onclick="mItemTab(this,'mi-photos')">${_s.inv_tab_photos}</button>
+    <button class="stab" onclick="mItemTab(this,'mi-history')">${_s.inv_tab_history}</button>
   </div>
 
   <div id="mi-details">
@@ -3359,19 +3359,19 @@ function mItem(id){
           <span style="font-size:11px;color:var(--text2);margin-left:2px">(click to adjust)</span>
         </div></div>
     <div><div class="fl">Available</div><div style="font-weight:600;color:var(--g)">${it.qty-it.rented}</div></div>
-    ${it.rented>0?`<div><div class="fl">Rented Out</div><div style="font-weight:600;color:var(--c)">${it.rented}</div></div>`:''}
-    <div><div class="fl">Stock Value</div><div style="font-weight:700;color:var(--a);font-family:var(--mono)">${fmt((it.cost||0)*(it.qty||0))}</div></div>
+    ${it.rented>0?`<div><div class="fl">${_s.inv_rented_out}</div><div style="font-weight:600;color:var(--c)">${it.rented}</div></div>`:''}
+    <div><div class="fl">${_s.inv_stock_val}</div><div style="font-weight:700;color:var(--a);font-family:var(--mono)">${fmt((it.cost||0)*(it.qty||0))}</div></div>
   </div>
   </div>
 
   <div id="mi-pricing" style="display:none">
   <div class="fg-2" style="margin-bottom:14px">
-    <div class="kpi g" style="padding:13px"><div class="kpi-lbl">Sell Price</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--g)">${it.sp?fmt(it.sp):'N/A'}</div></div>
-    <div class="kpi c" style="padding:13px"><div class="kpi-lbl">Rental/Day</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--c)">${it.rp?fmt(it.rp):'N/A'}</div></div>
-    <div class="kpi" style="padding:13px"><div class="kpi-lbl">Cost Price</div><div style="font-size:18px;font-weight:700;font-family:var(--mono)">${fmt(it.cost)}</div></div>
-    <div class="kpi p" style="padding:13px"><div class="kpi-lbl">Gross Margin</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--p)">${it.sp?Math.round((it.sp-it.cost)/it.sp*100)+'%':'—'}</div></div>
-    <div class="kpi b" style="padding:13px"><div class="kpi-lbl">Stock Value</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--a)">${fmt((it.cost||0)*(it.qty||0))}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${it.qty} units × ${fmt(it.cost)} cost</div></div>
-    ${it.sp&&it.qty?`<div class="kpi g" style="padding:13px"><div class="kpi-lbl">Retail Value</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(it.sp*it.qty)}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${it.qty} units × ${fmt(it.sp)} sell price</div></div>`:''}
+    <div class="kpi g" style="padding:13px"><div class="kpi-lbl">${_s.inv_sp_lbl}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--g)">${it.sp?fmt(it.sp):'N/A'}</div></div>
+    <div class="kpi c" style="padding:13px"><div class="kpi-lbl">${_s.inv_rental_day}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--c)">${it.rp?fmt(it.rp):'N/A'}</div></div>
+    <div class="kpi" style="padding:13px"><div class="kpi-lbl">${_s.inv_cost_lbl}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono)">${fmt(it.cost)}</div></div>
+    <div class="kpi p" style="padding:13px"><div class="kpi-lbl">${_s.inv_gross_margin}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--p)">${it.sp?Math.round((it.sp-it.cost)/it.sp*100)+'%':'—'}</div></div>
+    <div class="kpi b" style="padding:13px"><div class="kpi-lbl">${_s.inv_stock_val}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--a)">${fmt((it.cost||0)*(it.qty||0))}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${it.qty} units × ${fmt(it.cost)} cost</div></div>
+    ${it.sp&&it.qty?`<div class="kpi g" style="padding:13px"><div class="kpi-lbl">${_s.inv_retail_val}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(it.sp*it.qty)}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${it.qty} units × ${fmt(it.sp)} sell price</div></div>`:''}
   </div>
   <div class="fg"><label class="fl">Sell Price <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label>
     <input class="fi" id="mi-sp-${it.id}" value="${Math.round((it.sp||0)*CUR.rate)}" type="number"/>
@@ -3389,7 +3389,7 @@ function mItem(id){
   <div style="margin-bottom:10px;font-size:12px;color:var(--text2)">Product photos — click Edit to add or remove</div>
   <div class="pgrid">
     ${photosHtml}
-    <div class="pthumb padd" onclick="closeModal();setTimeout(function(){mEditItem('${it.id}');},80)" style="cursor:pointer" title="Add photos via Edit">
+    <div class="pthumb padd" onclick="closeModal();setTimeout(function(){mEditItem('${it.id}');},80)" style="cursor:pointer" title="${_s.inv_photos_via_edit}">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add
     </div>
   </div>
@@ -3412,10 +3412,10 @@ function mItem(id){
   `<button class="btn btn-d btn-sm" onclick="_mItemDelete('${it.id}')">🗑 Delete</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mDuplicateItem('${it.id}')">&#x29C9; Dup</button>
    <button class="btn btn-s btn-sm" onclick="closeModal();mEditItem('${it.id}')">&#x270F; Edit</button>
-   <button class="btn btn-p" onclick="closeModal();mEditItem('${it.id}')">Save Changes</button>`);
+   <button class="btn btn-p" onclick="closeModal();mEditItem('${it.id}')">${_s.ui_save}</button>`);
 }
 
-function _mItemDelete(id){
+function _mItemDelete(id){const _s=_L();
   var it=D.inv.find(function(i){return i.id===id;}); if(!it) return;
   var activeRentals=D.rentals.filter(function(r){return r.itemId===id&&!['Returned','Closed'].includes(r.st);});
   var allSales=D.sales.filter(function(s){return s.invId===id;});
@@ -3429,7 +3429,7 @@ function _mItemDelete(id){
       '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Return all active rentals before deleting this item.</p>'+
       '<div>'+rentalRows+'</div>',
       '<button class="btn btn-s" onclick="closeModal()">OK</button>'+
-      '<button class="btn btn-p btn-sm" id="go-rentals-btn">Go to Rentals</button>');
+      '<button class="btn btn-p btn-sm" id="go-rentals-btn">${_s.inv_go_rentals}</button>');
     setTimeout(function(){ var b=document.getElementById('go-rentals-btn'); if(b) b.onclick=function(){closeModal();nav('rentals');}; },30);
     return;
   }
@@ -3440,8 +3440,8 @@ function _mItemDelete(id){
   if(warnLines.length) msg+='<div class="alrt alrt-y">History will be unlinked: '+warnLines.join(', ')+'. Records are preserved.</div>';
   var mid=id, mname=it.name;
   modal('Delete Item — '+_esc(it.name), msg,
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn btn-d" id="confirm-del-item-btn">Delete</button>');
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-d" id="confirm-del-item-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-item-btn');
     if(btn) btn.onclick=function(){
@@ -3561,7 +3561,7 @@ function _costBreakdownHTML(prefix, existingLines){
 
       // Total row
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:10px 14px;background:var(--bg3);border-radius:var(--r8);border:1px solid var(--border2)">'
-        +'<div style="font-size:12px;font-weight:600;color:var(--text2)">Total Cost (calculated)</div>'
+        +'<div style="font-size:12px;font-weight:600;color:var(--text2)">${_s.inv_total_cost_calc}</div>'
         +'<div>'
           +'<span id="'+prefix+'-cb-grand" style="font-family:var(--mono);font-size:15px;font-weight:900;color:var(--ink)">'+fmt(totalFromLines/CUR.rate)+'</span>'
           +'<span style="font-size:10px;color:var(--text3);margin-left:6px">auto-fills Cost Price above ↑</span>'
@@ -3571,7 +3571,7 @@ function _costBreakdownHTML(prefix, existingLines){
     +'</div>';
 }
 
-function _costLineRowHTML(prefix, idx, line, catOpts){
+function _costLineRowHTML(prefix, idx, line, catOpts){const _s=_L();
   var cat = line ? (line.cat||'purchase') : 'purchase';
   var desc = line ? _esc(line.desc||'') : '';
   var unit = line ? _esc(line.unit||'') : '';
@@ -3590,18 +3590,18 @@ function _costLineRowHTML(prefix, idx, line, catOpts){
     +'</div>';
 }
 
-function _cbAddCustomCat(prefix){
+function _cbAddCustomCat(prefix){const _s=_L();
   window._pendingCbPfx=prefix;
   modal('+ New Cost Category',
-    '<div class="fg"><label class="fl">Category Name *</label>'
+    '<div class="fg"><label class="fl">${_s.inv_cat_name_lbl}</label>'
     +'<input class="fi" id="cbc-name" placeholder="e.g. Land Survey, Import Bond, Staging Fee"/></div>'
     +'<div class="fg" style="display:flex;gap:8px">'
-    +'<div style="flex:0 0 70px"><label class="fl">Icon</label>'
+    +'<div style="flex:0 0 70px"><label class="fl">${_s.inv_icon}</label>'
     +'<input class="fi" id="cbc-icon" placeholder="📋" maxlength="4" style="font-size:18px;text-align:center"/></div>'
-    +'<div style="flex:1"><label class="fl">Hint (optional)</label>'
+    +'<div style="flex:1"><label class="fl">${_s.inv_hint_optional}</label>'
     +'<input class="fi" id="cbc-hint" placeholder="e.g. Enter fee amount"/></div></div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
-    +'<button class="btn btn-p" onclick="window._cbSaveCustomCat()">Add Category</button>');
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    +'<button class="btn btn-p" onclick="window._cbSaveCustomCat()">${_s.inv_add_cat_btn}</button>');
   setTimeout(function(){var e=document.getElementById('cbc-name');if(e)e.focus();},80);
 }
 window._cbSaveCustomCat=function(){
@@ -3766,7 +3766,7 @@ function _cbRecalc(prefix){
 }
 
 // Read cost lines back out of the DOM for saving
-function _cbReadLines(prefix){
+function _cbReadLines(prefix){const _s=_L();
   var container = document.getElementById(prefix+'-cb-rows');
   if(!container) return [];
   var lines = [];
@@ -3785,7 +3785,7 @@ function _cbReadLines(prefix){
 
 // ── Sync categories from Supabase into D.xCats — merges DB + local defaults ──
 // Always call before opening any form that uses categories
-async function _syncCatsFromDB(){
+async function _syncCatsFromDB(){const _s=_L();
   if(!_sb || !SESSION.bizId || SESSION.isSuperAdmin) return;
   try {
     var res = await _sb.from('categories').select('name,type').eq('biz_id', SESSION.bizId);
@@ -3802,13 +3802,13 @@ async function _syncCatsFromDB(){
   } catch(e) { console.warn('[_syncCatsFromDB]', e.message); }
 }
 
-async function mAddItem(_returnSelectId){
+async function mAddItem(_returnSelectId){const _s=_L();
   await _syncCatsFromDB(); // always get latest user-created categories
   modal('Add Inventory Item',`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Product Name *</label><input class="fi" id="ai-name" placeholder="e.g. Lace Mermaid Bridal Gown"/></div>
-    <div class="fg"><label class="fl">SKU / Code</label><input class="fi" id="ai-sku" placeholder="e.g. GW-009"/></div>
-    <div class="fg"><label class="fl">Category *</label>
+    <div class="fg"><label class="fl">${_s.inv_name_lbl}</label><input class="fi" id="ai-name" placeholder="e.g. Lace Mermaid Bridal Gown"/></div>
+    <div class="fg"><label class="fl">${_s.inv_sku_lbl}</label><input class="fi" id="ai-sku" placeholder="e.g. GW-009"/></div>
+    <div class="fg"><label class="fl">${_s.inv_cat_lbl}</label>
       <div style="display:flex;gap:6px;align-items:center">
         <div id="ai-cat-wrap" style="position:relative;flex:1"></div><input type="hidden" id="ai-cat" value="${_esc(D.invCats[0]||'General')}"/>
         <button type="button" class="btn btn-g btn-xs" style="white-space:nowrap;padding:0 10px;height:34px" onclick="
@@ -3823,24 +3823,24 @@ async function mAddItem(_returnSelectId){
         <button type="button" class="btn btn-s btn-xs" style="height:34px;padding:0 10px" onclick="document.getElementById('ai-newcat-row').style.display='none'">✕</button>
       </div>
     </div>
-    <div class="fg"><label class="fl">Brand</label><input class="fi" id="ai-brand" placeholder="Brand name"/></div>
-    <div class="fg"><label class="fl">Status *</label><select class="fs" id="ai-st"><option>For Sale</option><option>For Rent</option><option>Both</option></select></div>
-    <div class="fg"><label class="fl">Condition</label><select class="fs" id="ai-cond"><option>New</option><option>Excellent</option><option>Good</option><option>Fair</option></select></div>
+    <div class="fg"><label class="fl">${_s.inv_brand_lbl}</label><input class="fi" id="ai-brand" placeholder="${_s.inv_brand_ph}"/></div>
+    <div class="fg"><label class="fl">${_s.inv_status_lbl}</label><select class="fs" id="ai-st"><option>${_s.inv_st_sale}</option><option>${_s.inv_st_rent}</option><option>${_s.inv_st_both}</option></select></div>
+    <div class="fg"><label class="fl">${_s.inv_cond_lbl}</label><select class="fs" id="ai-cond"><option>New</option><option>${_s.rent_cond_exc}</option><option>${_s.rent_cond_good}</option><option>${_s.rent_cond_fair}</option></select></div>
   </div>
   <div class="fg-3">
     <div class="fg"><label class="fl">Cost Price * <span style="font-size:10px;color:var(--text2)">(${CUR.symbol}) <span style="color:var(--text3);font-weight:400">auto-filled by breakdown ↓</span></span></label><input class="fi" type="number" id="ai-cost" placeholder="0" oninput="_ciCostManual()"/></div>
     <div class="fg"><label class="fl">Selling Price <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="ai-sp" placeholder="0"/></div>
     <div class="fg"><label class="fl">Rental Price/Day <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="ai-rp" placeholder="0"/></div>
-    <div class="fg"><label class="fl">Min. Sell Price 🔒</label><input class="fi" type="number" id="ai-minsp" placeholder="0"/><div class="fh">Hidden from store staff</div></div>
-    <div class="fg"><label class="fl">Deposit Amount</label><input class="fi" type="number" id="ai-dep" placeholder="0"/></div>
-    <div class="fg"><label class="fl">Qty on Hand</label><input class="fi" type="number" id="ai-qty" value="1"/></div>
+    <div class="fg"><label class="fl">Min. Sell Price 🔒</label><input class="fi" type="number" id="ai-minsp" placeholder="0"/><div class="fh">${_s.inv_hidden_staff}</div></div>
+    <div class="fg"><label class="fl">${_s.inv_deposit_lbl}</label><input class="fi" type="number" id="ai-dep" placeholder="0"/></div>
+    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" type="number" id="ai-qty" value="1"/></div>
     <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">Optional — triggers low stock warning</span></label><input class="fi" type="number" id="ai-minstock" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert fires when available qty falls to or below this number. Leave blank or set 0 to disable.</div></div>
   </div>
   <div class="fg-2">
-    <div class="fg"><label class="fl">Color</label><input class="fi" id="ai-color" placeholder="e.g. Ivory"/></div>
-    <div class="fg"><label class="fl">Size</label><input class="fi" id="ai-sz" placeholder="e.g. 8"/></div>
+    <div class="fg"><label class="fl">${_s.inv_color_lbl}</label><input class="fi" id="ai-color" placeholder="e.g. Ivory"/></div>
+    <div class="fg"><label class="fl">${_s.inv_size_lbl}</label><input class="fi" id="ai-sz" placeholder="e.g. 8"/></div>
   </div>
-  <div class="fg"><label class="fl">Description</label><textarea class="ft" id="ai-desc" placeholder="Product description…"></textarea></div>
+  <div class="fg"><label class="fl">${_s.ui_description}</label><textarea class="ft" id="ai-desc" placeholder="Product description…"></textarea></div>
   <div class="fg">${_costBreakdownHTML('ci',[])}</div>
   <div class="fg">
     <label class="fl" style="margin-bottom:8px">Product Photos <span style="font-size:10px;color:var(--text2);font-weight:400">(optional)</span></label>
@@ -3848,15 +3848,15 @@ async function mAddItem(_returnSelectId){
     <label for="ai-photos-input" style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r10);padding:14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'">
       <span style="font-size:22px">📷</span>
       <div>
-        <div style="font-size:12px;font-weight:600;color:var(--ink)">Add Photos</div>
+        <div style="font-size:12px;font-weight:600;color:var(--ink)">${_s.inv_add_photos_lbl}</div>
         <div style="font-size:10px;color:var(--text2);margin-top:1px">JPG, PNG · Multiple allowed</div>
       </div>
       <input id="ai-photos-input" type="file" accept="image/*" multiple style="display:none" onchange="_previewNewItemPhotos(this)"/>
     </label>
     <div id="ai-photo-status" style="margin-top:6px;font-size:11px;color:var(--g);display:none"></div>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
-   <button class="btn btn-p" onclick="_saveNewItem()">Add Item</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
+   <button class="btn btn-p" onclick="_saveNewItem()">${_s.inv_add_item}</button>`);
   window._retSelAI=_returnSelectId||null;
   // Explicitly init category dropdown (belt-and-suspenders — _initModalSearchSelects may race)
   setTimeout(function(){
@@ -3980,7 +3980,7 @@ function _ciCostManual(){
 }
 
 
-async function mEditItem(id){
+async function mEditItem(id){const _s=_L();
   await _syncCatsFromDB(); // always get latest user-created categories
   if(!can('edit_inventory')) { toast('⛔ Edit Inventory — permission denied','error'); return; }
   const it=D.inv.find(i=>i.id===id);if(!it)return;
@@ -3990,24 +3990,24 @@ async function mEditItem(id){
   const editMin  = canEdit('inventory_min');
   modal(`✏️ Edit — ${it.name}`,`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Product Name *</label><input class="fi" id="ei-name" value="${it.name}"/></div>
-    <div class="fg"><label class="fl">SKU / Code</label><input class="fi" id="ei-sku" value="${it.sku}"/></div>
-    <div class="fg"><label class="fl">Category *</label><div id="ei-cat-wrap" style="position:relative"></div><input type="hidden" id="ei-cat" value="${_esc(it.cat||D.invCats[0]||'General')}"/></div>
-    <div class="fg"><label class="fl">Brand</label><input class="fi" id="ei-brand" value="${it.brand||''}"/></div>
-    <div class="fg"><label class="fl">Status *</label><select class="fs" id="ei-st"><option${it.st==='For Sale'?' selected':''}>For Sale</option><option${it.st==='For Rent'?' selected':''}>For Rent</option><option${it.st==='Both'?' selected':''}>Both</option></select></div>
-    <div class="fg"><label class="fl">Condition</label><select class="fs" id="ei-cond"><option${it.cond==='New'?' selected':''}>New</option><option${it.cond==='Excellent'?' selected':''}>Excellent</option><option${it.cond==='Good'?' selected':''}>Good</option><option${it.cond==='Fair'?' selected':''}>Fair</option><option${it.cond==='Worn'?' selected':''}>Worn</option></select></div>
+    <div class="fg"><label class="fl">${_s.inv_name_lbl}</label><input class="fi" id="ei-name" value="${it.name}"/></div>
+    <div class="fg"><label class="fl">${_s.inv_sku_lbl}</label><input class="fi" id="ei-sku" value="${it.sku}"/></div>
+    <div class="fg"><label class="fl">${_s.inv_cat_lbl}</label><div id="ei-cat-wrap" style="position:relative"></div><input type="hidden" id="ei-cat" value="${_esc(it.cat||D.invCats[0]||'General')}"/></div>
+    <div class="fg"><label class="fl">${_s.inv_brand_lbl}</label><input class="fi" id="ei-brand" value="${it.brand||''}"/></div>
+    <div class="fg"><label class="fl">${_s.inv_status_lbl}</label><select class="fs" id="ei-st"><option${it.st==='For Sale'?' selected':''}>${_s.inv_st_sale}</option><option${it.st==='For Rent'?' selected':''}>${_s.inv_st_rent}</option><option${it.st==='Both'?' selected':''}>${_s.inv_st_both}</option></select></div>
+    <div class="fg"><label class="fl">${_s.inv_cond_lbl}</label><select class="fs" id="ei-cond"><option${it.cond==='New'?' selected':''}>New</option><option${it.cond==='Excellent'?' selected':''}>${_s.rent_cond_exc}</option><option${it.cond==='Good'?' selected':''}>${_s.rent_cond_good}</option><option${it.cond==='Fair'?' selected':''}>${_s.rent_cond_fair}</option><option${it.cond==='Worn'?' selected':''}>${_s.rent_cond_worn}</option></select></div>
   </div>
   <div class="fg-3">
-    ${showCost?`<div class="fg"><label class="fl">Cost Price ${!editCost?'🔒':''} <span style="font-size:10px;color:var(--text3);font-weight:400">auto-filled by breakdown ↓</span></label><input class="fi" id="ei-cost" type="number" value="${Math.round((it.cost||0)*CUR.rate)}" ${!editCost?'readonly style="opacity:.5"':''}/>${!editCost?'<div class="fh">Read-only for your role</div>':''}</div>`:'<div class="fg"><label class="fl" style="color:var(--text2)">Cost Price</label><div style="font-size:12px;color:var(--text2);padding:8px 0">🔒 Hidden</div></div>'}
-    <div class="fg"><label class="fl">Selling Price</label><input class="fi" id="ei-sp" type="number" value="${Math.round((it.sp||0)*CUR.rate)}"/></div>
-    <div class="fg"><label class="fl">Rental/Day</label><input class="fi" id="ei-rp" type="number" value="${Math.round((it.rp||0)*CUR.rate)}"/></div>
+    ${showCost?`<div class="fg"><label class="fl">Cost Price ${!editCost?'🔒':''} <span style="font-size:10px;color:var(--text3);font-weight:400">auto-filled by breakdown ↓</span></label><input class="fi" id="ei-cost" type="number" value="${Math.round((it.cost||0)*CUR.rate)}" ${!editCost?'readonly style="opacity:.5"':''}/>${!editCost?'<div class="fh">${_s.inv_read_only}</div>':''}</div>`:'<div class="fg"><label class="fl" style="color:var(--text2)">Cost Price</label><div style="font-size:12px;color:var(--text2);padding:8px 0">🔒 Hidden</div></div>'}
+    <div class="fg"><label class="fl">${_s.inv_selling_lbl}</label><input class="fi" id="ei-sp" type="number" value="${Math.round((it.sp||0)*CUR.rate)}"/></div>
+    <div class="fg"><label class="fl">${_s.inv_rental_day}</label><input class="fi" id="ei-rp" type="number" value="${Math.round((it.rp||0)*CUR.rate)}"/></div>
     ${showMin?`<div class="fg"><label class="fl" style="display:flex;align-items:center;gap:5px">Min Sell Price 🔒 ${!editMin?'<span style="font-size:10px;color:var(--y)">(read-only)</span>':''}</label><input class="fi" id="ei-minsp" type="number" value="${Math.round((it.minSp||0)*CUR.rate)}" ${!editMin?'readonly style="opacity:.5"':''}/><div class="fh">${editMin?'Staff cannot sell below this price':'You can view but not edit this field'}</div></div>`:''}
-    <div class="fg"><label class="fl">Qty on Hand</label><input class="fi" id="ei-qty" type="number" value="${it.qty}"/></div>
+    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" id="ei-qty" type="number" value="${it.qty}"/></div>
     <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">Optional</span></label><input class="fi" id="ei-minstock" type="number" value="${it.minStock||''}" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert when available qty ≤ this number. Leave blank or 0 to disable.</div></div>
-    <div class="fg"><label class="fl">Color</label><input class="fi" id="ei-color" value="${it.color||''}"/></div>
-    <div class="fg"><label class="fl">Size</label><input class="fi" id="ei-sz" value="${it.sz||''}"/></div>
+    <div class="fg"><label class="fl">${_s.inv_color_lbl}</label><input class="fi" id="ei-color" value="${it.color||''}"/></div>
+    <div class="fg"><label class="fl">${_s.inv_size_lbl}</label><input class="fi" id="ei-sz" value="${it.sz||''}"/></div>
   </div>
-  <div class="fg"><label class="fl">Description</label><textarea class="ft" id="ei-desc">${it.desc||''}</textarea></div>
+  <div class="fg"><label class="fl">${_s.ui_description}</label><textarea class="ft" id="ei-desc">${it.desc||''}</textarea></div>
   ${editCost ? `<div class="fg">${_costBreakdownHTML('cei', it.costLines||[])}</div>` : ''}
   <div class="fg">
     <label class="fl" style="margin-bottom:8px">Product Photos</label>
@@ -4021,7 +4021,7 @@ async function mEditItem(id){
     <label for="ei-photos-${id}" style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r10);padding:14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'">
       <span style="font-size:22px">📷</span>
       <div>
-        <div style="font-size:12px;font-weight:600;color:var(--ink)">Add / Replace Photos</div>
+        <div style="font-size:12px;font-weight:600;color:var(--ink)">${_s.inv_edit_photos_lbl}</div>
         <div style="font-size:10px;color:var(--text2);margin-top:1px">JPG, PNG · Multiple allowed · Replaces existing photos</div>
       </div>
       <input id="ei-photos-${id}" type="file" accept="image/*" multiple style="display:none" onchange="previewItemPhotos(this,'${id}')"/>
@@ -4029,7 +4029,7 @@ async function mEditItem(id){
     <div id="ei-photo-newpreviews-${id}" style="display:none;margin-top:8px;font-size:11px;color:var(--g)"></div>
   </div>`,
   `<button class="btn btn-d btn-sm" onclick="closeModal();_mItemDelete('${id}')">🗑 Delete</button>
-   <button class="btn btn-s" onclick="closeModal()">Cancel</button>
+   <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveEditItem('${id}')">💾 Save Changes</button>`);  // end mEditItem modal
   // Initialise category searchable select after modal renders
   var _eiCatVal = it.cat || D.invCats[0] || 'General';
@@ -4228,7 +4228,7 @@ const IMPORT_CONFIGS = {
   },
 };
 
-function mBulkImport(type){
+function mBulkImport(type){const _s=_L();
   if(!_hasPlan()){ _showPlanSelectionModal(); return; }
   if(!can('bulk_import')) { toast('⛔ Bulk Import — permission denied for your role','error'); return; }
   const cfg=IMPORT_CONFIGS[type];
@@ -4250,7 +4250,7 @@ function mBulkImport(type){
     <label id="imp-drop-${type}" style="display:flex;align-items:center;gap:12px;border:2px dashed var(--border2);border-radius:var(--r10);padding:18px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('bulkImportFile_${type}').click()">
       <span style="font-size:28px">📂</span>
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--ink)" id="imp-filelabel-${type}">Click to select CSV file</div>
+        <div style="font-size:13px;font-weight:600;color:var(--ink)" id="imp-filelabel-${type}">${_s.inv_click_csv}</div>
         <div style="font-size:11px;color:var(--text2);margin-top:2px">.csv only · Max 5MB · Excel users: <strong>File → Save As → CSV</strong> first</div>
       </div>
       <input id="bulkImportFile_${type}" type="file" accept=".csv,text/csv" style="display:none" onchange="previewImportCSV(this,'${type}')"/>
@@ -4262,7 +4262,7 @@ function mBulkImport(type){
     <div id="import-summary-${type}" style="margin-top:8px;font-size:12px;color:var(--g);font-weight:600"></div>
     <div id="import-errors-${type}" style="margin-top:4px;font-size:11px;color:var(--y)"></div>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="confirmBulkImport('${type}')">⬆ Import Now</button>`,'lg');
 }
 
@@ -4411,7 +4411,7 @@ async function confirmBulkImport(type){
 // ============================================================
 // SALES
 // ============================================================
-function pgSales(){const _ui=_L();
+function pgSales(){const _s=_L();const _ui=_s;
   // Compute month KPIs so tiles match the default "Month" period tab
   const monthRange = PERIOD_RANGES['month'];
   const visSales = D.sales.filter(s => inRange(s.dt, monthRange));
@@ -4428,22 +4428,22 @@ function pgSales(){const _ui=_L();
   <p>${_ui.ph_sales}</p>
 </div>
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr))">
-  <div class="kpi b"><div class="kpi-lbl">Sales Revenue</div><div id="sales-kpi-rev" class="kpi-val b">${fmtKpi(kRev)}</div><div class="kpi-sub">This month</div></div>
-  <div class="kpi g"><div class="kpi-lbl">Cash Collected</div><div id="sales-kpi-cash" class="kpi-val g">${fmtKpi(kCash)}</div><div class="kpi-sub">This month</div></div>
-  <div class="kpi r"><div class="kpi-lbl">AR Outstanding</div><div id="sales-kpi-ar" class="kpi-val r">${fmtKpi(kAR)}</div><div class="kpi-sub">This month</div></div>
-  <div class="kpi p"><div class="kpi-lbl">Gross Profit</div><div id="sales-kpi-gp" class="kpi-val p">${fmtKpi(kGP)}</div><div class="kpi-sub">This month</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.sal_kpi_rev}</div><div id="sales-kpi-rev" class="kpi-val b">${fmtKpi(kRev)}</div><div class="kpi-sub">${_s.sal_kpi_month}</div></div>
+  <div class="kpi g"><div class="kpi-lbl">${_s.sal_kpi_cash}</div><div id="sales-kpi-cash" class="kpi-val g">${fmtKpi(kCash)}</div><div class="kpi-sub">${_s.sal_kpi_month}</div></div>
+  <div class="kpi r"><div class="kpi-lbl">${_s.sal_kpi_ar}</div><div id="sales-kpi-ar" class="kpi-val r">${fmtKpi(kAR)}</div><div class="kpi-sub">${_s.sal_kpi_month}</div></div>
+  <div class="kpi p"><div class="kpi-lbl">${_s.sal_kpi_gp}</div><div id="sales-kpi-gp" class="kpi-val p">${fmtKpi(kGP)}</div><div class="kpi-sub">${_s.sal_kpi_month}</div></div>
 </div>
-${D.sales.length===0?'<div style="background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r8);padding:28px 24px;text-align:center;margin-bottom:12px"><div style="font-size:28px;margin-bottom:10px">\uD83D\uDCB3</div><div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px">No sales recorded yet</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">Record your first sale in under 30 seconds \u2014 a receipt is generated automatically.</div><button class="btn btn-p" onclick="mCreateSale()">+ Record your first sale</button></div>':''}
+${D.sales.length===0?'<div style="background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r8);padding:28px 24px;text-align:center;margin-bottom:12px"><div style="font-size:28px;margin-bottom:10px">\uD83D\uDCB3</div><div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px">${_s.sal_empty_title}</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">${_s.sal_empty_sub}</div><button class="btn btn-p" onclick="mCreateSale()">${_s.sal_empty_btn}</button></div>':''}
 <div class="fbar">
   <input class="fi-s" id="sales-search" placeholder="${_ui.flt_search_sales}" style="width:200px" oninput="filterSalesTable()"/>
-  <select class="sel" id="sales-status-filter" onchange="filterSalesTable()"><option value="">${_ui.flt_all_status}</option><option>Paid</option><option>Unpaid</option><option>Partial</option></select>
-  <select class="sel" id="sales-customer-filter" onchange="filterSalesTable()"><option value="">All Customers</option>${[...new Set(D.sales.map(s=>s.cust))].sort().map(c=>`<option>${c}</option>`).join('')}</select>
-  <select class="sel" id="sales-product-filter" onchange="filterSalesTable()"><option value="">All Products</option>${[...new Set(D.inv.map(i=>i.name))].sort().map(n=>`<option>${_esc(n)}</option>`).join('')}</select>
+  <select class="sel" id="sales-status-filter" onchange="filterSalesTable()"><option value="">${_ui.flt_all_status}</option><option>${_s.sal_st_paid}</option><option>${_s.sal_st_unpaid}</option><option>${_s.sal_st_partial}</option></select>
+  <select class="sel" id="sales-customer-filter" onchange="filterSalesTable()"><option value="">${_s.sal_flt_custs}</option>${[...new Set(D.sales.map(s=>s.cust))].sort().map(c=>`<option>${c}</option>`).join('')}</select>
+  <select class="sel" id="sales-product-filter" onchange="filterSalesTable()"><option value="">${_s.sal_flt_prods}</option>${[...new Set(D.inv.map(i=>i.name))].sort().map(n=>`<option>${_esc(n)}</option>`).join('')}</select>
   <div class="dtabs"><button class="dtab" onclick="setSalesPeriod(this,'today')">${_ui.per_today}</button><button class="dtab" onclick="setSalesPeriod(this,'week')">${_ui.per_week}</button><button class="dtab" onclick="setSalesPeriod(this,'lastweek')">${_ui.per_lastweek}</button><button class="dtab on" id="sales-period-month" onclick="setSalesPeriod(this,'month')">${_ui.per_month}</button><button class="dtab" onclick="setSalesPeriod(this,'lastmonth')">${_ui.per_lastmonth}</button><button class="dtab" onclick="setSalesPeriod(this,'quarter')">${_ui.per_quarter}</button><button class="dtab" onclick="setSalesPeriod(this,'ytd')">${_ui.per_ytd}</button></div>
 </div>
 <div class="card">
   <div class="tbl-wrap"><table id="sales-table">
-    <thead><tr><th>Sale #</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Paid</th><th>Balance</th><th>Gross Profit</th><th>Status</th><th>Actions</th></tr></thead>
+    <thead><tr><th>${_s.sal_col_id}</th><th>${_s.sal_col_date}</th><th>${_s.sal_col_cust}</th><th>${_s.sal_col_items}</th><th>${_s.sal_col_total}</th><th>${_s.sal_col_paid}</th><th>${_s.sal_col_bal}</th><th>${_s.sal_col_gp}</th><th>${_s.sal_col_status}</th><th>${_s.sal_col_actions}</th></tr></thead>
     <tbody id="sales-tbody">${D.sales.map(s=>`<tr data-cust="${s.cust}" data-status="${s.st}" data-date="${s.dt}" data-items="${(s.items||'').toLowerCase()}">
       <td>${mono(s.id,'a')}</td><td style="color:var(--text2)">${s.dt}</td><td><strong style="color:var(--ink)">${s.cust}</strong></td>
       <td class="w" style="font-size:12px">${s.items}</td>
@@ -4452,11 +4452,11 @@ ${D.sales.length===0?'<div style="background:var(--bg2);border:1px dashed var(--
       <td>${mono(fmt(s.profit!==undefined?s.profit:(s.total||s.amt)-(s.cost||0)),'g')}</td>
       <td>${badge(s.st)}</td>
       <td><div class="btn-row">
-        <button class="btn btn-g btn-xs" onclick="genInvoiceDoc('${s.id}')" title="Invoice">📄</button>
-        <button class="btn btn-g btn-xs" onclick="genReceiptDoc('${s.id}')" title="Receipt">🧾</button>
-        <button class="btn btn-g btn-xs" onclick="mRecordPayment('${s.id}')" title="Record Payment">💰</button>
-        <button class="btn btn-g btn-xs" onclick="mEditSale('${s.id}')" title="Edit">✏</button>
-        <button class="btn btn-g btn-xs" onclick="mDuplicateSale('${s.id}')" title="Duplicate">⧉</button>
+        <button class="btn btn-g btn-xs" onclick="genInvoiceDoc('${s.id}')" title="${_s.sal_ttl_invoice}">📄</button>
+        <button class="btn btn-g btn-xs" onclick="genReceiptDoc('${s.id}')" title="${_s.sal_ttl_receipt}">🧾</button>
+        <button class="btn btn-g btn-xs" onclick="mRecordPayment('${s.id}')" title="${_s.sal_ttl_payment}">💰</button>
+        <button class="btn btn-g btn-xs" onclick="mEditSale('${s.id}')" title="${_s.sal_ttl_edit}">✏</button>
+        <button class="btn btn-g btn-xs" onclick="mDuplicateSale('${s.id}')" title="${_s.sal_ttl_dup}">⧉</button>
         <button class="btn btn-d btn-xs" onclick="deleteSale('${s.id}')" title="${_s.set_delete_cat}">🗑</button>
       </div></td>
     </tr>`).join('')}
@@ -4479,7 +4479,7 @@ async function _refreshCustomers(){
     }
   }catch(e){ console.warn('[_refreshCustomers]', e.message); }
 }
-async function _refreshVendors(){
+async function _refreshVendors(){const _s=_L();
   if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
   try{
     var res = await _sb.from('vendors').select('*').eq('biz_id',SESSION.bizId);
@@ -4491,7 +4491,7 @@ async function _refreshVendors(){
   }catch(e){ console.warn('[_refreshVendors]', e.message); }
 }
 
-async function mCreateSale(){
+async function mCreateSale(){const _s=_L();
   // Ensure customer data is loaded before rendering modal
   // Load from localStorage cache first (instant, no network)
   if(!D.cust.length) _loadCustCache();
@@ -4520,7 +4520,7 @@ async function mCreateSale(){
     <input type="hidden" id="cs-cust" value=""/>
     ${_inlineCustFormHTML('cs')}
     </div>
-    <div class="fg"><label class="fl">Sale Date</label><input class="fi" type="date" id="cs-dt" value="${today}"/></div>
+    <div class="fg"><label class="fl">${_s.sal_date_lbl}</label><input class="fi" type="date" id="cs-dt" value="${today}"/></div>
   </div>
   <div class="fg">
     <label class="fl" style="margin-bottom:6px">Items
@@ -4531,13 +4531,13 @@ async function mCreateSale(){
       <div class="cs-line-row" style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px;margin-bottom:6px;align-items:center">
         <select class="fs cs-inv-sel" id="cs-inv-0" onchange="_csLineChange(this);_csCheckMinSpWarn()">${firstLineOpts}</select>
         <input class="fi cs-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" oninput="_csRecalcTotal()" placeholder="Qty"/>
-        <input class="fi cs-line-price" type="number" placeholder="Price" style="width:90px" oninput="_csRecalcTotal()"/>
+        <input class="fi cs-line-price" type="number" placeholder="${_s.sal_price_lbl}" style="width:90px" oninput="_csRecalcTotal()"/>
         <button type="button" class="btn btn-d btn-xs" onclick="_csRemoveLine(this)" style="padding:6px 8px">✕</button>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
       <button type="button" class="btn btn-s btn-sm" onclick="_csAddLine()">+ Add Item</button>
-      <input class="fi" id="cs-items" placeholder="Description / notes on items" style="flex:1;font-size:12px"/>
+      <input class="fi" id="cs-items" placeholder="${_s.sal_items_ph}" style="flex:1;font-size:12px"/>
     </div>
     <div id="cs-qty-warn" style="font-size:11px;margin-top:3px;color:var(--text3)"></div>
   </div>
@@ -4566,23 +4566,23 @@ async function mCreateSale(){
       <input class="fi" type="number" id="cs-cost" placeholder="0" step="any" oninput="_csCheckCostWarn()"/>
       <div id="cs-cost-warn" style="display:none;font-size:11px;color:var(--y);margin-top:4px;padding:4px 8px;background:rgba(245,158,11,.08);border-radius:var(--r6);border-left:3px solid var(--y)">⚠️ No cost entered — profit will show as 100%. Add cost price for accurate margin reporting.</div>
     </div>
-    <div class="fg"><label class="fl">Payment Method</label>
-      <select class="fs" id="cs-method"><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Mobile Money (MTN)</option><option>Orange Money</option><option>On Account</option></select>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
+      <select class="fs" id="cs-method"><option>${_s.ui_cash}</option><option>${_s.ui_card}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option><option>${_s.ui_on_account}</option></select>
     </div>
   </div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="cs-notes" placeholder="Notes…" style="min-height:48px"></textarea></div>
-  <div class="fg"><label class="fl">Payment Terms</label>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="cs-notes" placeholder="Notes…" style="min-height:48px"></textarea></div>
+  <div class="fg"><label class="fl">${_s.ui_pay_terms}</label>
     <select class="fs" id="cs-terms">
-      <option${(BIZ.paymentTerms||'Net 7')==='Due on Receipt'?' selected':''}>Due on Receipt</option>
-      <option${(BIZ.paymentTerms||'Net 7')==='Net 7'?' selected':''}>Net 7</option>
-      <option${(BIZ.paymentTerms||'Net 7')==='Net 14'?' selected':''}>Net 14</option>
-      <option${(BIZ.paymentTerms||'Net 7')==='Net 30'?' selected':''}>Net 30</option>
-      <option${(BIZ.paymentTerms||'Net 7')==='Net 60'?' selected':''}>Net 60</option>
-      <option value="Custom">Custom…</option>
+      <option${(BIZ.paymentTerms||'Net 7')==='Due on Receipt'?' selected':''}>${_s.sal_terms_receipt}</option>
+      <option${(BIZ.paymentTerms||'Net 7')==='Net 7'?' selected':''}>${_s.sal_terms_net7}</option>
+      <option${(BIZ.paymentTerms||'Net 7')==='Net 14'?' selected':''}>${_s.sal_terms_net14}</option>
+      <option${(BIZ.paymentTerms||'Net 7')==='Net 30'?' selected':''}>${_s.sal_terms_net30}</option>
+      <option${(BIZ.paymentTerms||'Net 7')==='Net 60'?' selected':''}>${_s.sal_terms_net60}</option>
+      <option value="Custom">${_s.sal_terms_custom}</option>
     </select>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
-   <button class="btn btn-p" onclick="_saveSale()">Create Sale</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
+   <button class="btn btn-p" onclick="_saveSale()">${_s.sal_create_btn}</button>`);
   // Build customer dropdown — register global callback so _dbLoadBizData can call it
   function _buildCsSel(){
     var wrap = document.getElementById('cs-cust-wrap');
@@ -4612,7 +4612,7 @@ async function mCreateSale(){
 
 // Returns {block, msg} if price < minSp, null if OK
 // block=true means hard stop (non-owners), block=false means owner warning/confirm
-function _checkMinSp(invId, priceDisplay){
+function _checkMinSp(invId, priceDisplay){const _s=_L();
   if(!invId || invId === '__custom__') return null;
   // Service items have no minimum price
   if(invId.startsWith('svc:')) return null;
@@ -4635,7 +4635,7 @@ function _checkMinSp(invId, priceDisplay){
 }
 
 // Updates the warning hint below cs-amt in the Create Sale modal
-function _csCheckMinSpWarn(){
+function _csCheckMinSpWarn(){const _s=_L();
   var warn = document.getElementById('cs-minsp-warn');
   if(!warn) return;
   // Check all line item rows for minimum price violations
@@ -4662,7 +4662,7 @@ function _csCheckMinSpWarn(){
     warn.style.borderLeftColor = hasBlock?'var(--r)':'var(--y)';
     warn.style.color = hasBlock?'var(--r)':'var(--y)';
     warn.style.background = hasBlock?'rgba(220,38,38,.06)':'rgba(234,179,8,.06)';
-    if(hasBlock) warn.innerHTML += '<div style="font-size:10px;margin-top:4px;font-weight:600">Only the owner can approve below-minimum pricing.</div>';
+    if(hasBlock) warn.innerHTML += '<div style="font-size:10px;margin-top:4px;font-weight:600">${_s.sal_min_price_warn}</div>';
   } else {
     warn.style.display='none';
   }
@@ -4798,7 +4798,7 @@ function _saveSale(){
 }
 
 
-function mInvoice(id){
+function mInvoice(id){const _s=_L();
   // Open the proper branded PDF invoice
   if(!id){ toast('Invoice ID missing','error'); return; }
   var s = D.sales.find(function(x){return x.id===id;});
@@ -4807,7 +4807,7 @@ function mInvoice(id){
 }
 
 
-function mRecordPayment(id){
+function mRecordPayment(id){const _s=_L();
   // id can be a sale id, rental id, appt id, or null (from dashboard)
   // Detect type from prefix
   const isSale  = id && (id.startsWith('S-') || D.sales.find(x=>x.id===id));
@@ -4838,7 +4838,7 @@ function mRecordPayment(id){
   </div>
 
   <div class="fg">
-    <label class="fl">Payment For *</label>
+    <label class="fl">${_s.sal_pay_for}</label>
     <select class="fs" id="rp-ref-sel" onchange="_rpFillAmount()">
       <option value="">-- Select transaction --</option>
       ${saleOpts ? `<optgroup label="📦 Unpaid Sales">${saleOpts}</optgroup>` : ''}
@@ -4854,27 +4854,27 @@ function mRecordPayment(id){
       <input class="fi" type="number" id="rp-amt" placeholder="0" step="any"/>
     </div>
     <div class="fg">
-      <label class="fl">Payment Date</label>
+      <label class="fl">${_s.sal_pay_date}</label>
       <input class="fi" type="date" id="rp-dt" value="${today}"/>
     </div>
     <div class="fg">
-      <label class="fl">Payment Method *</label>
+      <label class="fl">${_s.sal_pay_method_req}</label>
       <select class="fs" id="rp-method">
-        <option>Cash</option><option>Card (Visa/Mastercard)</option>
-        <option>Bank Transfer</option><option>Mobile Money (MTN)</option>
-        <option>Orange Money</option><option>Cheque</option>
+        <option>${_s.ui_cash}</option><option>${_s.ui_card_visa}</option>
+        <option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option>
+        <option>${_s.ui_orange}</option><option>${_s.ui_cheque}</option>
       </select>
     </div>
     <div class="fg">
-      <label class="fl">Reference / Receipt #</label>
-      <input class="fi" id="rp-refno" placeholder="e.g. TXN-12345"/>
+      <label class="fl">${_s.sal_ref_receipt}</label>
+      <input class="fi" id="rp-refno" placeholder="${_s.sal_ref_ph}"/>
     </div>
   </div>
-  <div class="fg"><label class="fl">Notes</label>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label>
     <textarea class="ft" id="rp-notes" placeholder="Any additional notes…" style="min-height:44px"></textarea>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
-   <button class="btn btn-p" onclick="_saveRecordPayment()">✅ Confirm Payment</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
+   <button class="btn btn-p" onclick="_saveRecordPayment()">${_s.sal_confirm_pay}</button>`);
 
   // Pre-select the passed id after modal renders
   if(preselVal){
@@ -5140,13 +5140,13 @@ function mInvoiceNew(){
     <span id="inv-total-display" style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--g);min-width:80px;text-align:right">0.00</span>
   </div>
   <div class="fg-2">
-    <div class="fg"><label class="fl">Payment Method</label>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
       <select class="fs" id="inv-method">
-        <option>Cash</option><option>Card</option><option>Bank Transfer</option>
-        <option>Mobile Money (MTN)</option><option>Orange Money</option><option>On Account</option>
+        <option>${_s.ui_cash}</option><option>${_s.ui_card}</option><option>${_s.ui_bank_transfer}</option>
+        <option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option><option>${_s.ui_on_account}</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">Payment Status</label>
+    <div class="fg"><label class="fl">${_s.po_pay_status}</label>
       <select class="fs" id="inv-paid-status">
         <option value="Unpaid">Unpaid — send invoice</option>
         <option value="Paid">Paid — mark as paid</option>
@@ -5157,7 +5157,7 @@ function mInvoiceNew(){
   <div class="fg"><label class="fl">Notes / Terms</label>
     <textarea class="ft" id="inv-notes" placeholder="Payment terms, thank-you note…" style="min-height:52px"></textarea>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_saveInvoice()">✅ Create Invoice</button>`);
 
   // Start with one empty row
@@ -5394,7 +5394,7 @@ function mPhotoUpload(preselectedId, preselectedType){
     </label>
   </div>
   <div id="photoPreviewGrid" class="pgrid" style="margin-top:8px"></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_savePhotoUpload()">💾 Save Photos</button>`);
 
   // Load existing photos if preselected
@@ -5484,7 +5484,7 @@ function _savePhotoUpload(){
 }
 
 
-function handlePhotoSelect(input){
+function handlePhotoSelect(input){const _s=_L();
   const grid = document.getElementById('photoPreviewGrid');
   if(!grid) return;
   grid.innerHTML = '';
@@ -5510,7 +5510,7 @@ function handlePhotoSelect(input){
 // Allows view/download buttons to retrieve dataUrl without embedding it in onclick attr
 const _DOC_STORE = {};
 
-function docChip(d){
+function docChip(d){const _s=_L();
   const isPdf=/\.pdf$/i.test(d.name);
   const isImg=/\.(jpe?g|png|gif|webp)$/i.test(d.name);
   const icon=isPdf?'📄':isImg?'🖼':'📎';
@@ -5519,7 +5519,7 @@ function docChip(d){
   if(d.dataUrl) _DOC_STORE[key] = { dataUrl: d.dataUrl, name: d.name, type: d.type||'' };
   const hasData = !!d.dataUrl;
   const viewBtn  = hasData
-    ? `<button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px" onclick="_docView('${key}')" title="View">👁</button>`
+    ? `<button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px" onclick="_docView('${key}')" title="${_s.ui_view}">👁</button>`
     : `<button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px;opacity:.4;cursor:default" title="No preview — file not uploaded in this session">👁</button>`;
   const dlBtn = hasData
     ? `<button class="btn btn-g btn-xs" style="padding:2px 5px;font-size:11px" onclick="_docDownload('${key}')" title="Download">⬇</button>`
@@ -5608,13 +5608,13 @@ function handleDocAttach(input, listId){
   toast(files.length+' document'+(files.length>1?'s':'')+' attached ✓','success');
 }
 
-function shareDoc(name){
+function shareDoc(name){const _s=_L();
   const url=window.location.href.split('?')[0]+'?doc='+encodeURIComponent(name);
   if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>toast('Share link copied ✓','success')).catch(()=>toast('Link: '+url));}
   else{toast('Share link: '+url);}
 }
 
-function pgRentals(){const _ui=_L();
+function pgRentals(){const _s=_L();const _ui=_s;
   // Auto-mark overdue rentals based on today's date
   const _today=localDateStr();
   D.rentals.forEach(r=>{
@@ -5640,51 +5640,51 @@ function pgRentals(){const _ui=_L();
 </div>
 ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overdue rental${overdue.length>1?"s":""}</strong> — Total late fees: <strong>${fmt(totalLF)}</strong></div>`:""}
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr))">
-  <div class="kpi c" style="cursor:pointer" title="Click to view active rentals" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(3)'),'Checked Out')">
-    <div class="kpi-lbl">Active Rentals</div>
+  <div class="kpi c" style="cursor:pointer" title="${_s.rent_click_active}" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(3)'),'Checked Out')">
+    <div class="kpi-lbl">${_s.rent_kpi_active}</div>
     <div class="kpi-val c">${D.rentals.filter(r=>['Checked Out','Reserved'].includes(r.st)).length}</div>
     <div class="kpi-sub" style="font-size:10.5px;color:var(--c);margin-top:4px">View list →</div>
   </div>
-  <div class="kpi r" style="cursor:pointer" title="Click to view all overdue rentals" onclick="filterRentalsOverdue()">
-    <div class="kpi-lbl">Overdue</div>
+  <div class="kpi r" style="cursor:pointer" title="${_s.rent_click_overdue_all}" onclick="filterRentalsOverdue()">
+    <div class="kpi-lbl">${_s.rent_kpi_overdue}</div>
     <div class="kpi-val r">${overdue.length}</div>
     <div class="kpi-sub" style="font-size:10.5px;color:var(--r);margin-top:4px">${overdue.length>0?'View list →':'All clear ✓'}</div>
   </div>
-  <div class="kpi g" style="cursor:pointer" title="Click to view returned rentals" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(4)'),'Returned')">
+  <div class="kpi g" style="cursor:pointer" title="${_s.rent_click_returned}" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(4)'),'Returned')">
     <div class="kpi-lbl">Returned Today</div>
     <div class="kpi-val g">${D.rentals.filter(r=>r.st==='Returned'&&r.returnDate===localDateStr()).length}</div>
     <div class="kpi-sub" style="font-size:10.5px;color:var(--g);margin-top:4px">View returned →</div>
   </div>
   <div class="kpi y">
-    <div class="kpi-lbl">Deposits Held</div>
+    <div class="kpi-lbl">${_s.rent_kpi_deps}</div>
     <div class="kpi-val y">${fmtKpi(D.rentals.filter(r=>!['Returned','Closed'].includes(r.st)).reduce((a,r)=>a+r.dep,0))}</div>
     <div class="kpi-sub" style="font-size:10.5px;color:var(--text2);margin-top:4px">${D.rentals.filter(r=>!['Returned','Closed'].includes(r.st)).length} active</div>
   </div>
-  <div class="kpi p" style="cursor:pointer" title="Click to view overdue rentals with late fees" onclick="filterRentalsOverdue()">
-    <div class="kpi-lbl">Late Fees</div>
+  <div class="kpi p" style="cursor:pointer" title="${_s.rent_click_overdue}" onclick="filterRentalsOverdue()">
+    <div class="kpi-lbl">${_s.rent_kpi_fees}</div>
     <div class="kpi-val p">${fmtKpi(totalLF)}</div>
     <div class="kpi-sub" style="font-size:10.5px;color:var(--p);margin-top:4px">${overdue.length>0?'View overdue →':'None outstanding'}</div>
   </div>
-  <div class="kpi b" style="cursor:pointer" title="Click to view all rentals" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(1)'), '')">
-    <div class="kpi-lbl">Rental Revenue</div>
+  <div class="kpi b" style="cursor:pointer" title="${_s.rent_click_all}" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(1)'), '')">
+    <div class="kpi-lbl">${_s.rent_kpi_rev}</div>
     <div class="kpi-val b">${fmtKpi(D.rentals.filter(r=>r.st==='Returned'||r.st==='Closed').reduce((a,r)=>a+(r.fee||0),0))}</div>
     <div class="kpi-sub" style="font-size:10.5px;color:var(--a);margin-top:4px">View all →</div>
   </div>
 </div>
 <div class="stabs" id="rental-tabs">
-  <button class="stab on" onclick="filterRentals(this,'')">All Rentals</button>
-  <button class="stab" onclick="filterRentals(this,'Overdue')">Overdue</button>
-  <button class="stab" onclick="filterRentals(this,'Checked Out')">Active</button>
-  <button class="stab" onclick="filterRentals(this,'Returned')">Returned</button>
+  <button class="stab on" onclick="filterRentals(this,'')">${_s.rent_tab_all}</button>
+  <button class="stab" onclick="filterRentals(this,'Overdue')">${_s.rent_kpi_overdue}</button>
+  <button class="stab" onclick="filterRentals(this,'Checked Out')">${_s.rent_active_lbl}</button>
+  <button class="stab" onclick="filterRentals(this,'Returned')">${_s.rent_st_returned}</button>
 </div>
 <div class="fbar">
   <input class="fi-s" id="rent-search" placeholder="${_ui.flt_search_rent}" style="width:200px" oninput="filterRentalsSearch()"/>
-  <select class="sel" id="rent-status-sel" onchange="filterRentals(null,this.value)"><option value="">${_ui.flt_all_status}</option><option>Overdue</option><option>Cancelled</option><option>Checked Out</option><option>Reserved</option><option>Returned</option></select>
+  <select class="sel" id="rent-status-sel" onchange="filterRentals(null,this.value)"><option value="">${_ui.flt_all_status}</option><option>${_s.rent_kpi_overdue}</option><option>${_s.ui_st_cancelled}</option><option>${_s.rent_st_out}</option><option>${_s.rent_st_reserved}</option><option>${_s.rent_st_returned}</option></select>
   <div class="dtabs"><button class="dtab" onclick="setRentalsPeriod(this,'today')">${_ui.per_today}</button><button class="dtab" onclick="setRentalsPeriod(this,'week')">${_ui.per_week}</button><button class="dtab" onclick="setRentalsPeriod(this,'lastweek')">${_ui.per_lastweek}</button><button class="dtab on" onclick="setRentalsPeriod(this,'month')">${_ui.per_month}</button><button class="dtab" onclick="setRentalsPeriod(this,'lastmonth')">${_ui.per_lastmonth}</button><button class="dtab" onclick="setRentalsPeriod(this,'quarter')">${_ui.per_quarter}</button><button class="dtab" onclick="setRentalsPeriod(this,'ytd')">${_ui.per_ytd}</button></div>
 </div>
 <div class="card">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Rental #</th><th>Customer</th><th>Item</th><th>Start</th><th>Due</th><th>Status</th><th>Fee</th><th>Deposit</th><th>Late Fee</th><th>Condition</th><th>Docs</th><th>Actions</th></tr></thead>
+    <thead><tr><th>${_s.rent_col_id}</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Start</th><th>Due</th><th>${_s.ui_status}</th><th>Fee</th><th>${_s.rent_col_dep}</th><th>${_s.rent_col_late}</th><th>Condition</th><th>Docs</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody id="rentals-tbody">${D.rentals.map(r=>`<tr data-status="${r.st}" data-start="${r.start}" data-date="${r.start}" data-cust="${(r.cust||'')}" data-item="${(r.item||'')}" data-id="${r.id}">
       <td>${mono(r.id,'a')}</td>
       <td><strong style="color:var(--ink)">${r.cust}</strong></td>
@@ -5699,12 +5699,12 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
         <button class="btn btn-p btn-xs" onclick="mRecordPayment('${r.id}')" title="Record Payment">&#x1F4B0;</button>
       <td>${r.docs&&r.docs.length?`<span style="display:inline-flex;align-items:center;gap:3px;background:var(--a-dim);color:var(--a);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer" onclick="mRentalDetail('${r.id}')">📎 ${r.docs.length}</span>`:`<button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')" style="opacity:.6">+ Doc</button>`}</td>
       <td><div class="btn-row">
-        ${r.st==='Overdue'?`<button class="btn btn-g btn-xs" onclick="_rentalWARemind('${r.id}')" title="Send WhatsApp reminder">💬</button>`:''}        ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-xs" onclick="mReturn('${r.id}')">↩ Return</button>`:''}
+        ${r.st==='Overdue'?`<button class="btn btn-g btn-xs" onclick="_rentalWARemind('${r.id}')" title="${_s.rent_send_wa}">💬</button>`:''}        ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-xs" onclick="mReturn('${r.id}')">↩ Return</button>`:''}
         ${BIZ.contractEnabled?`<button class="btn btn-c btn-xs" onclick="mRentalContract('${r.id}')" title="Generate Contract">${r.contractSigned?'📋✓':'📋'}</button>`:''}
         <button class="btn btn-g btn-xs" onclick="genRentalReceiptDoc('${r.id}')" title="Rental Receipt">🧾</button>
         <button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')">View</button>
         <button class="btn btn-g btn-xs" onclick="mEditRental('${r.id}')">✏</button>
-        <button class="btn btn-d btn-xs" onclick="deleteRental('${r.id}')" title="Delete">🗑</button>
+        <button class="btn btn-d btn-xs" onclick="deleteRental('${r.id}')" title="${_s.ui_delete}">🗑</button>
       </div></td>
     </tr>`).join('')}
     </tbody>
@@ -5753,7 +5753,7 @@ function _crAddLine(){
     +'<button type="button" class="btn btn-d btn-xs" onclick="_crRemoveLine(this)" style="padding:6px 8px">✕</button>';
   var c=document.getElementById('cr-line-rows');if(c)c.appendChild(row);
 }
-function _crRemoveLine(btn){
+function _crRemoveLine(btn){const _s=_L();
   var row=btn.closest('.cr-line-row');
   var c=document.getElementById('cr-line-rows');
   if(c&&c.querySelectorAll('.cr-line-row').length>1){row.remove();_crUpdateFee();}
@@ -5762,7 +5762,7 @@ function _crRemoveLine(btn){
 function _crLineChange(sel){
   _crUpdateFee();
 }
-function _crUpdateFee(){
+function _crUpdateFee(){const _s=_L();
   // Sum fees and max deposit across all selected rental items
   var totalFee=0, maxDep=0;
   document.querySelectorAll('#cr-line-rows .cr-item-sel').forEach(function(s){
@@ -5774,7 +5774,7 @@ function _crUpdateFee(){
   var feeEl=document.getElementById('cr-fee'); if(feeEl&&totalFee) feeEl.value=totalFee;
   var depEl=document.getElementById('cr-dep'); if(depEl&&maxDep) depEl.value=maxDep;
 }
-async function mCreateRental(startDate){
+async function mCreateRental(startDate){const _s=_L();
   if(!D.cust.length) _loadCustCache();
   if(!D.cust.length && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
     try{
@@ -5810,8 +5810,8 @@ async function mCreateRental(startDate){
       </div>
       <button type="button" class="btn btn-s btn-sm" style="margin-top:4px" onclick="_crAddLine()">+ Add Item</button>
     </div>
-    <div class="fg"><label class="fl">Rental Start *</label><input class="fi" type="date" id="cr-start" value="${today}"/></div>
-    <div class="fg"><label class="fl">Return Due *</label><input class="fi" type="date" id="cr-due" value="${due4}"/></div>
+    <div class="fg"><label class="fl">${_s.rent_start}</label><input class="fi" type="date" id="cr-start" value="${today}"/></div>
+    <div class="fg"><label class="fl">${_s.rent_due}</label><input class="fi" type="date" id="cr-due" value="${due4}"/></div>
     <div class="fg"><label class="fl">Rental Fee <span style="font-size:10px;color:var(--text2)">(${sym}, total)</span></label>
       <input class="fi" type="number" id="cr-fee" placeholder="0" step="any"/>
     </div>
@@ -5820,15 +5820,15 @@ async function mCreateRental(startDate){
     </div>
   </div>
   <div class="fg"><label class="fl">Condition Before Release</label>
-    <select class="fs" id="cr-cond"><option>New</option><option selected>Excellent</option><option>Good</option><option>Fair</option></select>
+    <select class="fs" id="cr-cond"><option>New</option><option selected>${_s.rent_cond_exc}</option><option>${_s.rent_cond_good}</option><option>${_s.rent_cond_fair}</option></select>
   </div>
   <div class="fg"><label class="fl">Pre-existing Damage Notes</label>
     <textarea class="ft" id="cr-notes" placeholder="Note any existing marks or repairs…" style="min-height:48px"></textarea>
   </div>
   <div class="fg"><label class="fl">Deposit Payment Method</label>
-    <select class="fs" id="cr-method"><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Mobile Money (MTN)</option><option>Orange Money</option></select>
+    <select class="fs" id="cr-method"><option>${_s.ui_cash}</option><option>${_s.ui_card}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option></select>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="
     var custId=(document.getElementById('cr-cust-sel')||{}).value||document.getElementById('cr-cust')?.value||(document.getElementById('cr-cust-sel')||{}).value||document.getElementById('cr-cust')?.value||_ssGetVal('cr-cust-wrap')||(document.getElementById('cr-cust-sel')||document.getElementById('cr-cust')||{}).value||'';
     var start=document.getElementById('cr-start').value;
@@ -5867,7 +5867,7 @@ async function mCreateRental(startDate){
     closeModal();
     toast(crItems.length+' item(s) checked out to '+cust,'success');
     nav('rentals');
-   ">Create Rental</button>`);
+   ">${_s.rent_btn_create}</button>`);
   // Init searchable customer select — retry to handle modal render delay
   function _initCrCustSelect(){
     var wrap = document.getElementById('cr-cust-wrap');
@@ -5900,7 +5900,7 @@ async function mCreateRental(startDate){
   setTimeout(function(){ if(!(document.getElementById('cr-cust-wrap')||{})._ssOpts) _initCrCustSelect(); }, 300);
 }
 
-function mReturn(id){
+function mReturn(id){const _s=_L();
   const r=D.rentals.find(x=>x.id===id);
   if(!r) return;
   const unpaidFee=Math.max(0,(r.fee||0)-(r.paid||0));
@@ -5911,31 +5911,31 @@ function mReturn(id){
     <div><div class="fl">Customer</div><div>${_esc(r.cust)}</div></div>
     <div><div class="fl">Item</div><div style="font-size:12px">${_esc(r.item)}</div></div>
     <div><div class="fl">Rental Fee</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.fee)}</div></div>
-    <div><div class="fl">Amount Paid</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.paid||0)}</div></div>
-    <div><div class="fl">Condition Before</div><div>${r.cb}</div></div>
-    <div><div class="fl">Deposit Held</div><div style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</div></div>
+    <div><div class="fl">${_s.rent_amt_paid}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.paid||0)}</div></div>
+    <div><div class="fl">${_s.rent_cond_before2}</div><div>${r.cb}</div></div>
+    <div><div class="fl">${_s.rent_dep_held}</div><div style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</div></div>
   </div>
   <div class="fg"><label class="fl">Condition After Return *</label>
-    <select class="fs" id="ret-cond-${r.id}"><option selected>Excellent</option><option>Good</option><option>Fair</option><option>Worn</option><option>Damaged</option></select>
+    <select class="fs" id="ret-cond-${r.id}"><option selected>${_s.rent_cond_exc}</option><option>${_s.rent_cond_good}</option><option>${_s.rent_cond_fair}</option><option>${_s.rent_cond_worn}</option><option>${_s.rent_cond_damaged}</option></select>
   </div>
   <div class="fg"><label class="fl">Damage Deduction <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label>
     <input class="fi" type="number" id="ret-dmg-${r.id}" value="0" oninput="_updateReturnSettlement('${r.id}')"/>
   </div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="ret-notes-${r.id}" placeholder="Describe any damage…" style="min-height:48px"></textarea></div>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ret-notes-${r.id}" placeholder="Describe any damage…" style="min-height:48px"></textarea></div>
   <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r10);padding:13px;margin-top:4px" id="ret-settlement-${r.id}">
-    <div class="fl" style="margin-bottom:9px">Deposit Settlement</div>
+    <div class="fl" style="margin-bottom:9px">${_s.rent_dep_settle}</div>
     <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">Deposit Held</span><span style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</span></div>
     ${r.lf>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">Late Fee</span><span style="font-family:var(--mono);color:var(--r)">− ${fmt(r.lf)}</span></div>`:''}
     ${unpaidFee>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">Unpaid Rental Fee</span><span style="font-family:var(--mono);color:var(--r)">− ${fmt(unpaidFee)}</span></div>`:''}
     <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">Damage Deduction</span><span style="font-family:var(--mono);color:var(--r)" id="ret-dmg-display-${r.id}">− ${fmt(0)}</span></div>
     <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border)"><span style="font-weight:600">Refund to Customer</span><span style="font-family:var(--mono);font-weight:700" id="ret-refund-display-${r.id}" style="color:var(--g)">${fmt(Math.max(0,(r.dep||0)-(r.lf||0)-unpaidFee))}</span></div>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="processReturn('${r.id}')">✅ Process Return</button>`);
   // Init display
   setTimeout(()=>_updateReturnSettlement(r.id),50);
 }
-function deleteSale(id){
+function deleteSale(id){const _s=_L();
   var s=D.sales.find(function(x){return x.id===id;}); if(!s) return;
   var bal=(s.total||s.amt)-s.paid;
   var warnHtml='';
@@ -5960,8 +5960,8 @@ function deleteSale(id){
   if(!warnHtml) warnHtml='<p style="font-size:13px;color:var(--text2)">Delete sale <strong>'+id+'</strong> — '+_esc(s.cust)+'?</p>';
   var mid=id;
   modal('Delete Sale — '+id, warnHtml,
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn btn-d" id="confirm-del-sale-btn">Delete</button>');
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-d" id="confirm-del-sale-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-sale-btn');
     if(btn) btn.onclick=function(){
@@ -5999,7 +5999,7 @@ function deleteSale(id){
   },30);
 }
 
-function deleteRental(id){
+function deleteRental(id){const _s=_L();
   var r=D.rentals.find(function(x){return x.id===id;}); if(!r) return;
   var isActive=r.st==='Checked Out'||r.st==='Reserved'||r.st==='Overdue';
   var unpaidFee=Math.max(0,(r.fee||0)-(r.paid||0));
@@ -6010,8 +6010,8 @@ function deleteRental(id){
   if(!warnHtml) warnHtml='<p style="font-size:13px;color:var(--text2)">Delete rental <strong>'+id+'</strong> — '+_esc(r.cust)+' / '+_esc(r.item)+'?</p>';
   var mid=id;
   modal('Delete Rental — '+id, warnHtml,
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn btn-d" id="confirm-del-rental-btn">Delete</button>');
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-d" id="confirm-del-rental-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-rental-btn');
     if(btn) btn.onclick=function(){
@@ -6044,15 +6044,15 @@ function deleteRental(id){
 }
 
 // ── Delete Purchase Order — reverses vendor AP balance ────────
-function deletePurchase(id){
+function deletePurchase(id){const _s=_L();
   var p=D.purchases.find(function(x){return x.id===id;}); if(!p) return;
   var apImpact=p.st!=='Paid'&&p.st!=='Received'&&p.total>0;
   var warnHtml='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete purchase order <strong>'+p.id+'</strong> from <strong>'+_esc(p.vendor)+'</strong>?</p>';
   if(apImpact) warnHtml+='<div class="alrt alrt-y" style="margin-bottom:8px">AP balance of <strong>'+fmt(p.total)+'</strong> owed to '+_esc(p.vendor)+' will be cancelled.</div>';
   var mid=id;
   modal('Delete PO — '+id, warnHtml,
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn btn-d" id="confirm-del-po-btn">Delete</button>');
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-d" id="confirm-del-po-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-po-btn');
     if(btn) btn.onclick=function(){
@@ -6217,7 +6217,7 @@ function mRentalDetail(id){
       <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
     </label>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-sm" onclick="closeModal();mReturn('${id}')">↩ Process Return</button>`:''}
    ${BIZ.contractEnabled?`<button class="btn btn-c btn-sm" onclick="mRentalContract('${id}')">📋 Contract</button>`:''}
    <button class="btn btn-g btn-sm" onclick="genRentalReceiptDoc('${id}')">🧾 Receipt</button>
@@ -6348,7 +6348,7 @@ function _buildContractHTML(r, sigDataUrl){
   <div class="ref-box">
     <div><strong>${r.id}</strong></div>
     <div>Date: ${today}</div>
-    <div style="margin-top:4px">${sigDataUrl?'<span style="color:green;font-weight:700">✓ SIGNED</span>':'<span style="color:#4b5563">Pending Signature</span>'}</div>
+    <div style="margin-top:4px">${sigDataUrl?'<span style="color:green;font-weight:700">✓ SIGNED</span>':'<span style="color:#4b5563">${_s.rent_pending_sig}</span>'}</div>
   </div>
 </div>
 
@@ -6358,17 +6358,17 @@ function _buildContractHTML(r, sigDataUrl){
 <div class="summary-grid">
   <div class="sg-cell">Customer</div><div class="sg-cell">${cust.name||r.cust}${cust.phone?` · ${cust.phone}`:''}</div>
   <div class="sg-cell">Item</div><div class="sg-cell">${r.item}</div>
-  <div class="sg-cell">Rental Period</div><div class="sg-cell">${r.start} → ${r.due}</div>
+  <div class="sg-cell">${_s.rent_period}</div><div class="sg-cell">${r.start} → ${r.due}</div>
   <div class="sg-cell">Rental Fee</div><div class="sg-cell"><strong style="color:${accent}">${fmt(r.fee)}</strong></div>
-  <div class="sg-cell">Security Deposit</div><div class="sg-cell">${fmt(r.dep)}</div>
-  <div class="sg-cell">Condition (at release)</div><div class="sg-cell">${r.cb}</div>
+  <div class="sg-cell">${_s.rent_sec_dep}</div><div class="sg-cell">${fmt(r.dep)}</div>
+  <div class="sg-cell">${_s.rent_cond_release}</div><div class="sg-cell">${r.cb}</div>
 </div>
 
 <div class="body-section">${bodyHtml}</div>
 
 <div class="sig-section">
   <div class="sig-block">
-    <div class="sig-label">Customer Signature</div>
+    <div class="sig-label">${_s.rent_cust_sig}</div>
     ${sigBlock}
     <div class="sig-name">${cust.name||r.cust}</div>
     <div class="sig-date">${sigDataUrl?today:'Date: ________________'}</div>
@@ -6387,7 +6387,7 @@ function _buildContractHTML(r, sigDataUrl){
 }
 
 // ── Main contract modal ───────────────────────────────────────
-function mRentalContract(id){
+function mRentalContract(id){const _s=_L();
   const r = D.rentals.find(x=>x.id===id); if(!r) return;
   const cust = D.cust.find(c=>c.id===r.cust||c.name===r.cust)||{};
   const sigKey = 'contract-sig-'+id;
@@ -6398,7 +6398,7 @@ function mRentalContract(id){
       <div style="font-weight:700;color:var(--ink);font-size:14px">${r.item}</div>
       <div style="font-size:12px;color:var(--text)">${cust.name||r.cust} · ${r.start} → ${r.due} · ${fmt(r.fee)}</div>
     </div>
-    ${r.contractSigned?`<span style="background:var(--g-dim);color:var(--g);border:1px solid rgba(45,212,160,.3);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700">✓ Signed ${r.contractSignedDate||''}</span>`:`<span style="background:var(--bg3);color:var(--text2);border-radius:20px;padding:4px 12px;font-size:12px">Unsigned</span>`}
+    ${r.contractSigned?`<span style="background:var(--g-dim);color:var(--g);border:1px solid rgba(45,212,160,.3);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700">✓ Signed ${r.contractSignedDate||''}</span>`:`<span style="background:var(--bg3);color:var(--text2);border-radius:20px;padding:4px 12px;font-size:12px">${_s.rent_unsigned}</span>`}
   </div>
 
   <div class="stabs" id="rc-tabs-${id}" style="margin-bottom:14px">
@@ -6447,7 +6447,7 @@ function mRentalContract(id){
     </div>
   </div>`,
 
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-s btn-sm" onclick="_contractPrint('${id}')">🖨 Print</button>
    <button class="btn btn-p btn-sm" onclick="_contractShare('${id}')">🔗 Share Link</button>`,'lg');
 
@@ -6596,13 +6596,13 @@ function _initContractTab(){
     };
   }
 }
-function _updateContractToggle(on, track, thumb, wrap){
+function _updateContractToggle(on, track, thumb, wrap){const _s=_L();
   if(track){ track.style.background = on?'var(--p)':'var(--bg4)'; }
   if(thumb){ thumb.style.transform = on?'translateX(16px)':'translateX(0)'; thumb.style.background=on?'#fff':'var(--text2)'; }
   if(wrap){  wrap.style.opacity=on?'1':'.45'; wrap.style.pointerEvents=on?'':'none'; }
 }
 
-function rdTab(el, showId){
+function rdTab(el, showId){const _s=_L();
   const box = el.closest('.mo-body')||el.closest('.mo-box');
   if(box){
     box.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));
@@ -6621,7 +6621,7 @@ function rdTab(el, showId){
 // ============================================================
 // PURCHASES
 // ============================================================
-function pgPurchases(){const _ui=_L();
+function pgPurchases(){const _s=_L();const _ui=_s;
   // Default to month — keep KPIs in sync with visible rows on load
   const monthRange = PERIOD_RANGES['month'];
   const vis   = D.purchases.filter(p => inRange(p.dt, monthRange));
@@ -6650,7 +6650,7 @@ function pgPurchases(){const _ui=_L();
           +'</div>'
         +'</div>';
       }).join('')
-    : '<div style="font-size:12px;color:var(--text2);padding:8px 0">No purchases this month.</div>';
+    : '<div style="font-size:12px;color:var(--text2);padding:8px 0">${_s.po_empty}</div>';
 
   // Build table rows
   const rows = D.purchases.map(p => {
@@ -6673,7 +6673,7 @@ function pgPurchases(){const _ui=_L();
       +'<td style="font-size:11px;color:var(--text2)">'+_esc(p.method||'—')+'</td>'
       +'<td onclick="event.stopPropagation()">'
         +'<div class="btn-row">'
-          +'<button class="btn btn-g btn-xs" onclick="mEditPurchase(\''+p.id+'\')" title="Edit">✏</button>'
+          +'<button class="btn btn-g btn-xs" onclick="mEditPurchase(\''+p.id+'\')" title="${_s.ui_edit}">✏</button>'
           +'<button class="btn btn-g btn-xs" onclick="genPODoc(\''+p.id+'\')" title="Print PO">🖨</button>'
           +'<button class="btn btn-d btn-xs" onclick="deletePurchase(\''+p.id+'\')" title="Delete">🗑</button>'
         +'</div>'
@@ -6695,11 +6695,11 @@ function pgPurchases(){const _ui=_L();
 </div>
 
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr));margin-bottom:14px">
-  <div class="kpi b"><div class="kpi-lbl">Total Spent</div><div id="po-kpi-total" class="kpi-val b">${fmtKpi(totalSpent)}</div><div class="kpi-sub">This month</div></div>
-  <div class="kpi r"><div class="kpi-lbl">AP Outstanding</div><div id="po-kpi-ap" class="kpi-val r">${fmtKpi(apOut)}</div><div class="kpi-sub">Owed to suppliers</div></div>
-  <div class="kpi y"><div class="kpi-lbl">Pending</div><div id="po-kpi-pending" class="kpi-val y">${pending}</div><div class="kpi-sub">Awaiting delivery</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.vend_spent}</div><div id="po-kpi-total" class="kpi-val b">${fmtKpi(totalSpent)}</div><div class="kpi-sub">${_s.ui_this_month}</div></div>
+  <div class="kpi r"><div class="kpi-lbl">${_s.vend_ap}</div><div id="po-kpi-ap" class="kpi-val r">${fmtKpi(apOut)}</div><div class="kpi-sub">${_s.vend_owed}</div></div>
+  <div class="kpi y"><div class="kpi-lbl">Pending</div><div id="po-kpi-pending" class="kpi-val y">${pending}</div><div class="kpi-sub">${_s.po_delivery_note}</div></div>
   <div class="kpi g"><div class="kpi-lbl">Paid/Received</div><div id="po-kpi-paid" class="kpi-val g">${paid}</div><div class="kpi-sub">Completed</div></div>
-  ${topVendor?`<div class="kpi b"><div class="kpi-lbl">Top Supplier</div><div class="kpi-val" style="font-size:13px;color:var(--b)">${_esc(topVendor[0])}</div><div class="kpi-sub">${fmt(topVendor[1])}</div></div>`:''}
+  ${topVendor?`<div class="kpi b"><div class="kpi-lbl">${_s.vend_top}</div><div class="kpi-val" style="font-size:13px;color:var(--b)">${_esc(topVendor[0])}</div><div class="kpi-sub">${fmt(topVendor[1])}</div></div>`:''}
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 240px;gap:14px;align-items:start">
@@ -6712,11 +6712,11 @@ function pgPurchases(){const _ui=_L();
       </select>
       <select class="sel" id="po-st-filter" onchange="_poFilter()">
         <option value="">${_ui.flt_all_status}</option>
-        <option value="Pending">Pending</option>
-        <option value="Partial">Partial</option>
-        <option value="Paid">Paid</option>
-        <option value="Received">Received</option>
-        <option value="Unpaid">Unpaid</option>
+        <option value="Pending">${_s.ui_st_pending}</option>
+        <option value="Partial">${_s.ui_st_partial}</option>
+        <option value="Paid">${_s.ui_st_paid}</option>
+        <option value="Received">${_s.ui_st_received}</option>
+        <option value="Unpaid">${_s.ui_st_unpaid}</option>
       </select>
       <div class="dtabs">
         <button class="dtab" onclick="setPurchasesPeriod(this,'today')">${_ui.per_today}</button>
@@ -6731,15 +6731,15 @@ function pgPurchases(){const _ui=_L();
     <div class="card" style="padding:0">
       <div class="tbl-wrap"><table id="po-table">
         <thead><tr>
-          <th>PO #</th><th>Date</th><th>Vendor</th><th>Items</th>
-          <th>Subtotal</th><th>Total Landed</th><th>Status</th><th>Method</th><th></th>
+          <th>${_s.po_col_id}</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>Items</th>
+          <th>${_s.ui_subtotal}</th><th>Total Landed</th><th>${_s.ui_status}</th><th>${_s.ui_method}</th><th></th>
         </tr></thead>
         <tbody id="po-tbody">${rows}</tbody>
       </table></div>
       <div id="po-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--text2)">
         <div style="font-size:32px;margin-bottom:10px">📦</div>
-        <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:6px">No purchase orders found</div>
-        <div style="font-size:12px;margin-bottom:14px">Try adjusting the filters or date range</div>
+        <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:6px">${_s.po_empty2}</div>
+        <div style="font-size:12px;margin-bottom:14px">${_s.exp_no_data}</div>
         <button class="btn btn-p btn-sm" onclick="mRecordPurchase()">+ New Purchase Order</button>
       </div>
       <div id="po-footer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)">
@@ -6752,14 +6752,14 @@ function pgPurchases(){const _ui=_L();
   <div>
     <div class="card">
       <div class="card-hd" style="padding-bottom:8px">
-        <div class="card-ttl" style="font-size:12px">By Vendor</div>
+        <div class="card-ttl" style="font-size:12px">${_s.po_by_vendor}</div>
         <span id="po-breakdown-period" style="font-size:10px;color:var(--text2)">This month</span>
       </div>
       <div id="po-vendor-breakdown" style="padding:4px 0">${vBreakdown}</div>
     </div>
     <div class="card" style="margin-top:14px">
       <div class="card-hd" style="padding-bottom:8px">
-        <div class="card-ttl" style="font-size:12px">Quick Actions</div>
+        <div class="card-ttl" style="font-size:12px">${_s.exp_quick}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:7px">
         <button class="btn btn-p btn-sm" onclick="mRecordPurchase()" style="width:100%">+ New Purchase Order</button>
@@ -6773,7 +6773,7 @@ function pgPurchases(){const _ui=_L();
 }
 
 
-function mRecordPurchase(){
+function mRecordPurchase(){const _s=_L();
   const today=localDateStr();
   const delivery=localDateStr(10);
   const sym=CUR.symbol;
@@ -6785,8 +6785,8 @@ function mRecordPurchase(){
     ${_inlineVendorFormHTML('po')}
     </div>
     <div class="fg"><label class="fl">Order Date</label><input class="fi" type="date" id="po-dt" value="${today}"/></div>
-    <div class="fg"><label class="fl">Expected Delivery</label><input class="fi" type="date" id="po-delivery" value="${delivery}"/></div>
-    <div class="fg"><label class="fl">PO Reference</label><input class="fi" id="po-ref" placeholder="Auto-generated if blank"/></div>
+    <div class="fg"><label class="fl">${_s.po_delivery}</label><input class="fi" type="date" id="po-delivery" value="${delivery}"/></div>
+    <div class="fg"><label class="fl">${_s.po_ref}</label><input class="fi" id="po-ref" placeholder="${_s.po_auto_id}"/></div>
   </div>
   <div class="fg">
     <label class="fl" style="margin-bottom:6px">Items Ordered *
@@ -6807,7 +6807,7 @@ function mRecordPurchase(){
     <button type="button" class="btn btn-s btn-sm" style="margin-top:4px" onclick="_poAddLine()">+ Add Item</button>
   </div>
   <div class="fg-2">
-    <div class="fg"><label class="fl">Description / Notes</label><input class="fi" id="po-items" placeholder="e.g. Bridal Wigs ×6 — auto-filled"/></div>
+    <div class="fg"><label class="fl">${_s.po_desc_lbl}</label><input class="fi" id="po-items" placeholder="e.g. Bridal Wigs ×6 — auto-filled"/></div>
     <div class="fg"><label class="fl">Freight <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="po-freight" placeholder="0" step="any" oninput="_poRecalcTotal()"/>
     </div>
@@ -6824,16 +6824,16 @@ function mRecordPurchase(){
       <label class="fl" style="color:var(--g);font-weight:700">Total Cost <span style="font-size:10px;color:var(--text2);font-weight:400">(${sym}) — becomes inventory value</span></label>
       <input class="fi" type="number" id="po-total" placeholder="0" readonly style="background:var(--a-dim);color:var(--g);font-weight:700;cursor:default"/>
     </div>
-    <div class="fg"><label class="fl">Payment Status</label>
-      <select class="fs" id="po-st"><option>Pending</option><option>Partial</option><option>Paid</option></select>
+    <div class="fg"><label class="fl">${_s.po_pay_status}</label>
+      <select class="fs" id="po-st"><option>${_s.ui_st_pending}</option><option>${_s.ui_st_partial}</option><option>${_s.ui_st_paid}</option></select>
     </div>
-    <div class="fg"><label class="fl">Payment Method</label>
-      <select class="fs" id="po-method"><option>Bank Transfer</option><option>Cash</option><option>Mobile Money (MTN)</option><option>Orange Money</option><option>Credit Card</option></select>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
+      <select class="fs" id="po-method"><option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option><option>${_s.ui_credit_card}</option></select>
     </div>
   </div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="po-notes" placeholder="Notes to vendor…" style="min-height:48px"></textarea></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
-   <button class="btn btn-p" onclick="savePO()">Create PO</button>`);
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="po-notes" placeholder="Notes to vendor…" style="min-height:48px"></textarea></div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
+   <button class="btn btn-p" onclick="savePO()">${_s.po_create}</button>`);
 }
 
 function savePO(){
@@ -6894,7 +6894,7 @@ function savePO(){
   nav('purchases');
 }
 
-function mViewPurchaseDocs(id){
+function mViewPurchaseDocs(id){const _s=_L();
   const p=D.purchases.find(x=>x.id===id); if(!p) return;
   const uid='po-vdoc-'+id;
   modal(`📎 Documents — ${p.id}`,`
@@ -6905,22 +6905,22 @@ function mViewPurchaseDocs(id){
     </div>
     <div style="font-family:var(--mono);font-weight:700;color:var(--b)">${fmt(p.total)}</div>
   </div>
-  <div class="fl" style="margin-bottom:8px">Attached Documents</div>
+  <div class="fl" style="margin-bottom:8px">${_s.po_docs_attach}</div>
   <div id="${uid}-list" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
-    ${p.docs&&p.docs.length?p.docs.map(d=>docChip(d)).join(''):`<div style="font-size:12px;color:var(--text2);padding:6px 0">No documents attached yet.</div>`}
+    ${p.docs&&p.docs.length?p.docs.map(d=>docChip(d)).join(''):`<div style="font-size:12px;color:var(--text2);padding:6px 0">${_s.po_no_docs}</div>`}
   </div>
   <label style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${uid}-input').click()">
     <span style="font-size:18px">➕</span>
     <div style="font-size:12px;font-weight:600;color:var(--ink)">Attach vendor invoice, delivery note, or customs docs</div>
     <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
   </label>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>
-   <button class="btn btn-g btn-sm" onclick="mViewPurchase('${id}')">View PO</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
+   <button class="btn btn-g btn-sm" onclick="mViewPurchase('${id}')">${_s.po_view}</button>
    <button class="btn btn-p btn-sm" onclick="genPODoc('${id}')">🖨 Print PO</button>`);
 }
 
 
-function pgCust(){const _ui=_L();
+function pgCust(){const _s=_L();const _ui=_s;
   var _custOverBanner = _overLimitBanner('cust');
   const totalAR     = D.cust.filter(c=>c.bal>0).reduce((a,c)=>a+c.bal,0);
   const totalSpend  = D.cust.reduce((a,c)=>a+(c.spend||c.spent||0),0);
@@ -6955,7 +6955,7 @@ function pgCust(){const _ui=_L();
       +'<td onclick="event.stopPropagation()">'
         +'<div class="btn-row">'
           +'<button class="btn btn-g btn-xs" onclick="mEditCustomer(\''+c.id+'\')">✏</button>'
-          +(c.bal>0?'<button class="btn btn-p btn-xs" onclick="mCollectBalance(\''+c.id+'\')" title="Collect outstanding balance">💰</button>':'')
+          +(c.bal>0?'<button class="btn btn-p btn-xs" onclick="mCollectBalance(\''+c.id+'\')" title="${_s.cust_collect_tip}">💰</button>':'')
           +'<button class="btn btn-g btn-xs" onclick="mCustomerStatement(\''+c.id+'\')" title="Statement">📄</button>'
           +(phone?'<button class="btn btn-g btn-xs" onclick="_arSendWA(\''+c.id+'\')" title="WhatsApp">💬</button>':'')
           +'<button class="btn btn-d btn-xs" onclick="mDeleteCustomer(\''+c.id+'\')">🗑</button>'
@@ -6978,16 +6978,16 @@ ${_custOverBanner}<div class="ph">
 </div>
 
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:14px">
-  <div class="kpi b"><div class="kpi-lbl">Total Customers</div><div class="kpi-val b">${D.cust.length}</div><div class="kpi-sub">${_ui.kpi_all_time}</div></div>
-  <div class="kpi g"><div class="kpi-lbl">Lifetime Spend</div><div class="kpi-val g">${fmtKpi(totalSpend)}</div><div class="kpi-sub">${_ui.kpi_all_customers}</div></div>
-  <div class="kpi r" style="cursor:pointer" onclick="document.getElementById('cust-bal-filter').value='outstanding';filterCustTable()"><div class="kpi-lbl">AR Outstanding</div><div class="kpi-val r">${fmtKpi(totalAR)}</div><div class="kpi-sub">${withBalance} customer${withBalance!==1?'s':''}</div></div>
-  <div class="kpi p" style="cursor:pointer" onclick="document.getElementById('cust-type-filter').value='VIP';filterCustTable()"><div class="kpi-lbl">VIP Customers</div><div class="kpi-val p">${vipCount}</div><div class="kpi-sub">Click to filter</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.cust_total}</div><div class="kpi-val b">${D.cust.length}</div><div class="kpi-sub">${_ui.kpi_all_time}</div></div>
+  <div class="kpi g"><div class="kpi-lbl">${_s.cust_col_spend}</div><div class="kpi-val g">${fmtKpi(totalSpend)}</div><div class="kpi-sub">${_ui.kpi_all_customers}</div></div>
+  <div class="kpi r" style="cursor:pointer" onclick="document.getElementById('cust-bal-filter').value='outstanding';filterCustTable()"><div class="kpi-lbl">${_s.cust_ar}</div><div class="kpi-val r">${fmtKpi(totalAR)}</div><div class="kpi-sub">${withBalance} customer${withBalance!==1?'s':''}</div></div>
+  <div class="kpi p" style="cursor:pointer" onclick="document.getElementById('cust-type-filter').value='VIP';filterCustTable()"><div class="kpi-lbl">${_s.cust_vip}</div><div class="kpi-val p">${vipCount}</div><div class="kpi-sub">${_s.cust_click_filter}</div></div>
 </div>
 
 <div class="fbar" style="margin-bottom:10px">
   <input class="fi-s" id="cust-search" placeholder="${_ui.flt_search_cust}" style="flex:1;min-width:160px" oninput="filterCustTable()"/>
   <select class="sel" id="cust-type-filter" onchange="filterCustTable()">
-    <option value="">${_ui.flt_all_type}</option><option>VIP</option><option>Regular</option><option>New</option>
+    <option value="">${_ui.flt_all_type}</option><option>VIP</option><option>${_s.cust_type_reg}</option><option>New</option>
   </select>
   <select class="sel" id="cust-bal-filter" onchange="filterCustTable()">
     <option value="">${_ui.flt_all_bal}</option>
@@ -6998,7 +6998,7 @@ ${_custOverBanner}<div class="ph">
 
 <div class="card" style="padding:0">
   <div class="tbl-wrap"><table id="cust-table">
-    <thead><tr><th>Customer</th><th>Contact</th><th>Type</th><th>Outstanding</th><th>Total Spend</th><th>Last Activity</th><th>Actions</th></tr></thead>
+    <thead><tr><th>${_s.cust_col_name}</th><th>${_s.cust_col_contact}</th><th>${_s.ui_type}</th><th>${_s.cust_col_outstanding}</th><th>${_s.cust_spend}</th><th>${_s.cust_col_last}</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody id="cust-tbody">${rows}</tbody>
   </table></div>
   <div id="cust-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--text2)">
@@ -7014,7 +7014,7 @@ ${_custOverBanner}<div class="ph">
 </div>`;
 }
 
-function filterCustTable(){
+function filterCustTable(){const _s=_L();
   var q    = (document.getElementById('cust-search')?.value||'').toLowerCase();
   var type = document.getElementById('cust-type-filter')?.value||'';
   var bal  = document.getElementById('cust-bal-filter')?.value||'';
@@ -7049,20 +7049,20 @@ function filterCustTable(){
   if(_custKpiCnt) _custKpiCnt.textContent = visible;
 }
 
-function mAddCustomer(_returnSelectId){
+function mAddCustomer(_returnSelectId){const _s=_L();
   const _retSel=_returnSelectId||null;
   modal('Add Customer',`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Full Name *</label><input class="fi" id="ac-name" placeholder="e.g. Jessica Williams"/></div>
-    <div class="fg"><label class="fl">Type</label><select class="fs" id="ac-type"><option>Regular</option><option>VIP</option><option>New</option></select></div>
-    <div class="fg"><label class="fl">Email</label><input class="fi" type="email" id="ac-email" placeholder="email"+'@'+"example.com"/></div>
-    <div class="fg"><label class="fl">Phone</label><input class="fi" id="ac-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
-    <div class="fg"><label class="fl">WhatsApp</label><input class="fi" id="ac-whatsapp" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
-    <div class="fg"><label class="fl">City</label><input class="fi" id="ac-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
+    <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="ac-name" placeholder="e.g. Jessica Williams"/></div>
+    <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="ac-type"><option>${_s.cust_type_reg}</option><option>VIP</option><option>New</option></select></div>
+    <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" type="email" id="ac-email" placeholder="email"+'@'+"example.com"/></div>
+    <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="ac-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
+    <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="ac-whatsapp" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
+    <div class="fg"><label class="fl">${_s.ui_city}</label><input class="fi" id="ac-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
   </div>
   <div class="fg"><label class="fl">Birthday <span style="font-size:10px;color:var(--text2);font-weight:400">Optional — enables reminders</span></label><input class="fi" type="date" id="ac-dob" placeholder=""/></div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="ac-notes" placeholder="Any notes about this customer…" style="min-height:55px"></textarea></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ac-notes" placeholder="Any notes about this customer…" style="min-height:55px"></textarea></div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="
     if(_planWriteBlocked('Adding a customer','cust')) return;
     if(!SESSION.isSuperAdmin && _isFreePlan() && D.cust.length>=200){ _showUpsell('customers'); closeModal(); return; }
@@ -7107,29 +7107,29 @@ function mAddCustomer(_returnSelectId){
         }
       }, 50);
     } else { closeModal(); nav('customers'); }
-   ">Add Customer</button>`);
+   ">${_s.cust_add}</button>`);
   window._retSelAC=_retSel;
 }
-function mEditCustomer(id){
+function mEditCustomer(id){const _s=_L();
   if(!requireRight('edit_customers','Edit Customer')) return;
   var c = D.cust.find(function(x){ return x.id===id; });
   if(!c) return;
   modal('Edit Customer — '+c.name,`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Full Name *</label><input class="fi" id="ec-name" value="${c.name||''}"/></div>
-    <div class="fg"><label class="fl">Type</label><select class="fs" id="ec-type">
-      <option${(c.type||'')==='Regular'?' selected':''}>Regular</option>
+    <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="ec-name" value="${c.name||''}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="ec-type">
+      <option${(c.type||'')==='Regular'?' selected':''}>${_s.cust_type_reg}</option>
       <option${(c.type||'')==='VIP'?' selected':''}>VIP</option>
       <option${(c.type||'')==='New'?' selected':''}>New</option>
     </select></div>
-    <div class="fg"><label class="fl">Email</label><input class="fi" type="email" id="ec-email" value="${c.email||''}"/></div>
-    <div class="fg"><label class="fl">Phone</label><input class="fi" id="ec-phone" value="${c.ph||c.phone||''}"/></div>
-    <div class="fg"><label class="fl">WhatsApp</label><input class="fi" id="ec-whatsapp" value="${c.whatsapp||''}"/></div>
-    <div class="fg"><label class="fl">City</label><input class="fi" id="ec-city" value="${c.addr||c.city||''}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" type="email" id="ec-email" value="${c.email||''}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="ec-phone" value="${c.ph||c.phone||''}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="ec-whatsapp" value="${c.whatsapp||''}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_city}</label><input class="fi" id="ec-city" value="${c.addr||c.city||''}"/></div>
   </div>
   <div class="fg"><label class="fl">Birthday <span style="font-size:10px;color:var(--text2);font-weight:400">Optional — enables reminders</span></label><input class="fi" type="date" id="ec-dob" value="${c.dob||c.birthday||''}" /></div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="ec-notes" style="min-height:55px">${c.notes||''}</textarea></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ec-notes" style="min-height:55px">${c.notes||''}</textarea></div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_saveEditCustomer('${id}')">💾 Save Changes</button>`);
 }
 
@@ -7162,7 +7162,7 @@ function _saveEditCustomer(id){
 }
 
 
-function mViewCustomer(id){
+function mViewCustomer(id){const _s=_L();
   const c=D.cust.find(x=>x.id===id);if(!c)return;
   const phone   = c.ph||c.phone||'';
   const type    = c.type||c.tier||'Regular';
@@ -7191,7 +7191,7 @@ function mViewCustomer(id){
   ${c.dob?`<div style="font-size:12px;color:var(--text2);margin-bottom:10px">🎂 Birthday: <strong style="color:var(--ink)">${c.dob.slice(8,10)}/${c.dob.slice(5,7)}</strong></div>`:''}
   ${c.notes?`<div class="alrt alrt-b" style="margin-bottom:12px;font-size:12px">📝 ${_esc(c.notes)}</div>`:''}
   ${c.bal>0?`<div class="alrt alrt-r" style="margin-bottom:12px;font-size:12px">💰 Outstanding balance: <strong>${fmt(c.bal)}</strong>
-    <button class="btn btn-p btn-xs" style="margin-left:8px" onclick="closeModal();mCollectBalance('${c.id}')">Collect Now</button>
+    <button class="btn btn-p btn-xs" style="margin-left:8px" onclick="closeModal();mCollectBalance('${c.id}')">${_s.cust_collect}</button>
     ${phone?`<button class="btn btn-g btn-xs" style="margin-left:4px" onclick="_arSendWA('${c.id}')">💬 Remind</button>`:''}
   </div>`:''}
   ${custSales.length?`<div class="fl" style="margin-bottom:6px">Sales History (${custSales.length})</div>
@@ -7212,9 +7212,9 @@ function mViewCustomer(id){
     <span style="font-family:var(--mono);color:var(--c);flex-shrink:0">${fmt(r.fee)}</span>
     ${badge(r.st)}
   </div>`).join('')}</div>`:''}
-  ${!custSales.length&&!custRentals.length?`<div style="text-align:center;padding:20px;color:var(--text2);font-size:13px">No transaction history yet.</div>`:''}`,
+  ${!custSales.length&&!custRentals.length?`<div style="text-align:center;padding:20px;color:var(--text2);font-size:13px">${_s.cust_no_history}</div>`:''}`,
   `<button class="btn btn-d btn-sm" onclick="closeModal();mDeleteCustomer('${c.id}')">🗑</button>
-   <button class="btn btn-s" onclick="closeModal()">Close</button>
+   <button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mEditCustomer('${c.id}')">✏ Edit</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mCustomerStatement('${c.id}')">📄 Statement</button>
    ${phone?`<button class="btn btn-g btn-sm" onclick="_arSendWA('${c.id}')">&#x1F4AC; WhatsApp</button>`:''}
@@ -7222,7 +7222,7 @@ function mViewCustomer(id){
    `,'lg');
 }
 
-function mDeleteCustomer(id){
+function mDeleteCustomer(id){const _s=_L();
   var c=D.cust.find(function(x){return x.id===id;}); if(!c) return;
   var openSales=D.sales.filter(function(s){return s.custId===id&&s.st!=='Paid';});
   var activeRentals=D.rentals.filter(function(r){return r.custId===id&&!['Returned','Closed'].includes(r.st);});
@@ -7245,8 +7245,8 @@ function mDeleteCustomer(id){
   if(warnLines.length) msg+='<div class="alrt alrt-y">Has '+warnLines.join(', ')+'. Records preserved.</div>';
   var mid=id, mname=c.name;
   modal('Delete Customer — '+_esc(c.name), msg,
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn btn-d" id="confirm-del-cust-btn">Delete</button>');
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-d" id="confirm-del-cust-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-cust-btn');
     if(btn) btn.onclick=function(){
@@ -7259,7 +7259,7 @@ function mDeleteCustomer(id){
   },30);
 }
 
-function mCustomerStatement(id){
+function mCustomerStatement(id){const _s=_L();
   const c=D.cust.find(x=>x.id===id);if(!c)return;
   // Match by both custId and name to catch all records
   const custSales = D.sales.filter(s=>s.custId===c.id||s.cust===c.name)
@@ -7276,7 +7276,7 @@ function mCustomerStatement(id){
   <div style="background:var(--bg3);border-radius:var(--r10);padding:16px;margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
       <div>
-        <div style="font-family:var(--display);font-size:14px;font-weight:700;color:var(--ink)">Account Statement</div>
+        <div style="font-family:var(--display);font-size:14px;font-weight:700;color:var(--ink)">${_s.cust_stmt}</div>
         <div style="font-size:11px;color:var(--text2);margin-top:2px">${_esc(BIZ.name||'ShopTrack')} · Generated ${new Date().toLocaleDateString('en-GB')}</div>
       </div>
       <div style="text-align:right">
@@ -7292,13 +7292,13 @@ function mCustomerStatement(id){
       <span style="font-family:var(--mono);flex-shrink:0">${fmt(s.total||s.amt)}</span>
       ${badge(s.st)}
     </div>`).join('')
-    :'<div style="font-size:12px;color:var(--text2);padding:8px 0">No sales records found.</div>'}
+    :'<div style="font-size:12px;color:var(--text2);padding:8px 0">${_s.cust_no_sales}</div>'}
     <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:4px;border-top:1px solid var(--border)">
-      <span style="font-size:12px;color:var(--text2)">Total Charged</span>
+      <span style="font-size:12px;color:var(--text2)">${_s.cust_total_charged}</span>
       <span style="font-family:var(--mono);color:var(--b)">${fmt(totalCharged)}</span>
     </div>
     <div style="display:flex;justify-content:space-between;padding-top:4px">
-      <span style="font-size:12px;color:var(--text2)">Total Paid</span>
+      <span style="font-size:12px;color:var(--text2)">${_s.cust_total_paid}</span>
       <span style="font-family:var(--mono);color:var(--g)">${fmt(totalPaid)}</span>
     </div>
     <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:2px solid var(--border);margin-top:6px">
@@ -7306,7 +7306,7 @@ function mCustomerStatement(id){
       <span style="font-family:var(--mono);font-size:15px;font-weight:800;color:${c.bal>0?'var(--r)':'var(--g)'}">${c.bal>0?fmt(c.bal):'All Clear ✓'}</span>
     </div>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    ${phone ? `<button class="btn btn-g btn-sm" onclick="_custStmtWA('${c.id}')">💬 WhatsApp</button>` : ''}
    <button class="btn btn-p" onclick="genCustomerStatementPDF('${c.id}')">⬇ Download PDF</button>`);
 }
@@ -7472,7 +7472,7 @@ function genVendorStatementPDF(vendorId){
 }
 
 // ── mCollectBalance — record a partial or full payment from a customer ──
-function mCollectBalance(custId){
+function mCollectBalance(custId){const _s=_L();
   const c = D.cust.find(x=>x.id===custId); if(!c||!c.bal) return;
   const methodOpts = ['Cash','Mobile Money (MTN)','Orange Money','Bank Transfer','Card']
     .map(m=>`<option>${m}</option>`).join('');
@@ -7484,20 +7484,20 @@ function mCollectBalance(custId){
     <div class="fg"><label class="fl">Amount Collected <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label>
       <input class="fi" type="number" id="col-amt" value="${(c.bal*CUR.rate).toFixed(2)}" step="any" min="0.01"/>
     </div>
-    <div class="fg"><label class="fl">Date</label>
+    <div class="fg"><label class="fl">${_s.ui_date}</label>
       <input class="fi" type="date" id="col-dt" value="${localDateStr()}"/>
     </div>
-    <div class="fg"><label class="fl">Payment Method</label>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
       <select class="fs" id="col-method">${methodOpts}</select>
     </div>
-    <div class="fg"><label class="fl">Reference</label>
+    <div class="fg"><label class="fl">${_s.ui_reference}</label>
       <input class="fi" id="col-ref" placeholder="Receipt no., transaction ref…"/>
     </div>
   </div>
-  <div class="fg"><label class="fl">Notes</label>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label>
     <textarea class="ft" id="col-notes" placeholder="Optional note…" style="min-height:42px"></textarea>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="(function(){
      var amt=parseFloat(document.getElementById('col-amt').value)||0;
      if(!amt||amt<=0){toast('Enter a valid amount','error');return;}
@@ -7532,7 +7532,7 @@ function mCollectBalance(custId){
 // ============================================================
 // VENDORS
 // ============================================================
-function mDeleteVendor(id){
+function mDeleteVendor(id){const _s=_L();
   var v=D.vendors.find(function(x){return x.id===id;}); if(!v) return;
   var openPOs=D.purchases.filter(function(p){return p.vendorId===id&&p.st==='Pending';});
   if(v.bal>0||openPOs.length){
@@ -7549,8 +7549,8 @@ function mDeleteVendor(id){
   if(allPOs.length) msg+='<div class="alrt alrt-y">'+allPOs.length+' PO record'+(allPOs.length!==1?'s':'')+' will be preserved.</div>';
   var mid=id, mname=v.name;
   modal('Delete Vendor — '+_esc(v.name), msg,
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn btn-d" id="confirm-del-vendor-btn">Delete</button>');
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-d" id="confirm-del-vendor-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-vendor-btn');
     if(btn) btn.onclick=function(){
@@ -7562,7 +7562,7 @@ function mDeleteVendor(id){
   },30);
 }
 
-function mRecordVendorPayment(vendorId){
+function mRecordVendorPayment(vendorId){const _s=_L();
   const v = D.vendors.find(x=>x.id===vendorId); if(!v) return;
   if(v.bal<=0){ toast(v.name+' has no outstanding balance','info'); return; }
   const methodOpts = ['Bank Transfer','Cash','Mobile Money (MTN)','Orange Money','Credit Card']
@@ -7573,15 +7573,15 @@ function mRecordVendorPayment(vendorId){
     Outstanding: <strong>${fmt(v.bal)}</strong>
   </div>
   <div class="fg-2">
-    <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="vp-dt" value="${localDateStr()}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" type="date" id="vp-dt" value="${localDateStr()}"/></div>
     <div class="fg"><label class="fl">Amount <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label>
       <input class="fi" type="number" id="vp-amt" value="${Math.round((v.bal||0)*CUR.rate*100)/100}" step="any" min="0.01"/>
     </div>
-    <div class="fg"><label class="fl">Payment Method</label><select class="fs" id="vp-method">${methodOpts}</select></div>
-    <div class="fg"><label class="fl">Reference</label><input class="fi" id="vp-ref" placeholder="Bank ref, receipt no…"/></div>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="vp-method">${methodOpts}</select></div>
+    <div class="fg"><label class="fl">${_s.ui_reference}</label><input class="fi" id="vp-ref" placeholder="Bank ref, receipt no…"/></div>
   </div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="vp-notes" placeholder="e.g. Final settlement for PO P-0023" style="min-height:48px"></textarea></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="vp-notes" placeholder="e.g. Final settlement for PO P-0023" style="min-height:48px"></textarea></div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="(function(){
      var amt=parseFloat(document.getElementById('vp-amt').value)||0;
      if(!amt||amt<=0){toast('Please enter a valid amount','error');return;}
@@ -7608,7 +7608,7 @@ function mRecordVendorPayment(vendorId){
 }
 
 
-function pgVendors(){const _ui=_L();
+function pgVendors(){const _s=_L();const _ui=_s;
   var _vendOverBanner = _overLimitBanner('vendor');
   const cats      = [...new Set(D.vendors.map(v=>v.cat).filter(Boolean))].sort();
   const countries = [...new Set(D.vendors.map(v=>v.country).filter(Boolean))].sort();
@@ -7671,13 +7671,13 @@ ${_vendOverBanner}<div class="ph">
 </div>
 
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:14px">
-  <div class="kpi b"><div class="kpi-lbl">Active Vendors</div><div class="kpi-val b">${D.vendors.length}</div><div class="kpi-sub">${_ui.kpi_suppliers}</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.vend_total}</div><div class="kpi-val b">${D.vendors.length}</div><div class="kpi-sub">${_ui.kpi_suppliers}</div></div>
   <div class="kpi r" style="cursor:pointer" onclick="document.getElementById('vend-bal-filter').value='outstanding';filterVendTable()">
-    <div class="kpi-lbl">AP Outstanding</div><div class="kpi-val r">${fmtKpi(totalAP)}</div>
+    <div class="kpi-lbl">${_s.vend_ap}</div><div class="kpi-val r">${fmtKpi(totalAP)}</div>
     <div class="kpi-sub">${withBal} vendor${withBal!==1?'s':''} — click to filter</div>
   </div>
-  <div class="kpi g"><div class="kpi-lbl">Purchases YTD</div><div class="kpi-val g">${fmtKpi(ytdSpend)}</div><div class="kpi-sub">${_ui.kpi_this_year}</div></div>
-  ${topVendor?`<div class="kpi b"><div class="kpi-lbl">Top Supplier</div><div class="kpi-val" style="font-size:13px;color:var(--b)">${_esc(topVendor.name)}</div><div class="kpi-sub">${fmt(topVendor.total||0)}</div></div>`:''}
+  <div class="kpi g"><div class="kpi-lbl">${_s.po_kpi_month}</div><div class="kpi-val g">${fmtKpi(ytdSpend)}</div><div class="kpi-sub">${_ui.kpi_this_year}</div></div>
+  ${topVendor?`<div class="kpi b"><div class="kpi-lbl">${_s.vend_top}</div><div class="kpi-val" style="font-size:13px;color:var(--b)">${_esc(topVendor.name)}</div><div class="kpi-sub">${fmt(topVendor.total||0)}</div></div>`:''}
 </div>
 
 <div class="fbar" style="margin-bottom:10px">
@@ -7697,13 +7697,13 @@ ${_vendOverBanner}<div class="ph">
 
 <div class="card" style="padding:0">
   <div class="tbl-wrap"><table id="vend-table">
-    <thead><tr><th>Vendor</th><th>Country</th><th>Category</th><th>AP Outstanding</th><th>Total Purchases</th><th>Contact</th><th>Actions</th></tr></thead>
+    <thead><tr><th>${_s.ui_vendor}</th><th>Country</th><th>${_s.ui_category}</th><th>${_s.vend_col_ap}</th><th>${_s.vend_col_spent}</th><th>${_s.ui_contact}</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody id="vend-tbody">${rows}</tbody>
   </table></div>
   <div id="vend-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--text2)">
     <div style="font-size:32px;margin-bottom:10px">🏭</div>
     <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:6px">${_ui.empty_vend}</div>
-    <div style="font-size:12px;margin-bottom:14px">Try adjusting your filters</div>
+    <div style="font-size:12px;margin-bottom:14px">${_s.ui_no_data_filter}</div>
     <button class="btn btn-p btn-sm" onclick="mAddVendor()">${_ui.empty_first_vend}</button>
   </div>
   <div id="vend-footer" style="display:flex;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)">
@@ -7714,7 +7714,7 @@ ${_vendOverBanner}<div class="ph">
 }
 
 
-function filterVendTable(){
+function filterVendTable(){const _s=_L();
   var q       = (document.getElementById('vend-search')?.value||'').toLowerCase();
   var cat     = document.getElementById('vend-cat-filter')?.value||'';
   var country = document.getElementById('vend-country-filter')?.value||'';
@@ -7744,7 +7744,7 @@ function filterVendTable(){
   if(apEl)    apEl.textContent    = fmt(visibleAP);
 }
 
-async function mAddVendor(_returnSelectId){
+async function mAddVendor(_returnSelectId){const _s=_L();
   await _syncCatsFromDB();
   if(D.vendorCats.length <= 4 && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
     try{
@@ -7754,8 +7754,8 @@ async function mAddVendor(_returnSelectId){
   }
   modal('Add Vendor',`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Vendor Name *</label><input class="fi" id="av-name" placeholder="${BIZ.name||'Vendor name'}"/></div>
-    <div class="fg"><label class="fl">Category</label>
+    <div class="fg"><label class="fl">${_s.vend_name_ph}</label><input class="fi" id="av-name" placeholder="${BIZ.name||'Vendor name'}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_category}</label>
       <div style="display:flex;gap:6px;align-items:center">
         <div id="av-cat-wrap" style="position:relative;flex:1"></div><input type="hidden" id="av-cat" value="${D.vendorCats[0]||'General'}"/>
         <button type="button" class="btn btn-g btn-xs" style="white-space:nowrap;padding:0 10px;height:34px" onclick="
@@ -7770,15 +7770,15 @@ async function mAddVendor(_returnSelectId){
         <button type="button" class="btn btn-s btn-xs" style="height:34px;padding:0 10px" onclick="document.getElementById('av-newcat-row').style.display='none'">✕</button>
       </div>
     </div>
-    <div class="fg"><label class="fl">Country</label><input class="fi" id="av-country" placeholder="${_ph('countryPh')}" data-locale="country"/></div>
-    <div class="fg"><label class="fl">Contact Person</label><input class="fi" id="av-contact" placeholder="Full name"/></div>
-    <div class="fg"><label class="fl">Contact Email</label><input class="fi" type="email" id="av-email" placeholder="orders"+'@'+"vendor.com"/></div>
+    <div class="fg"><label class="fl">${_s.ui_country}</label><input class="fi" id="av-country" placeholder="${_ph('countryPh')}" data-locale="country"/></div>
+    <div class="fg"><label class="fl">${_s.vend_contact_ph}</label><input class="fi" id="av-contact" placeholder="${_s.vend_full_name}"/></div>
+    <div class="fg"><label class="fl">${_s.vend_email_ph}</label><input class="fi" type="email" id="av-email" placeholder="orders"+'@'+"vendor.com"/></div>
     <div class="fg"><label class="fl">Phone / WhatsApp</label><input class="fi" id="av-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
-    <div class="fg"><label class="fl">Payment Terms</label><select class="fs" id="av-terms"><option>Immediate</option><option>Net 15</option><option>Net 30</option><option>On Delivery</option></select></div>
-    <div class="fg"><label class="fl">Payment Method</label><select class="fs" id="av-method"><option>Bank Transfer</option><option>Cash</option><option>Mobile Money (MTN)</option><option>Orange Money</option><option>Other</option></select></div>
+    <div class="fg"><label class="fl">${_s.ui_pay_terms}</label><select class="fs" id="av-terms"><option>${_s.vend_immediate}</option><option>Net 15</option><option>${_s.sal_terms_net30}</option><option>${_s.po_on_delivery}</option></select></div>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="av-method"><option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option><option>${_s.po_other}</option></select></div>
   </div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="av-notes" placeholder="Credit terms, minimum orders, lead time…" style="min-height:55px"></textarea></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="av-notes" placeholder="Credit terms, minimum orders, lead time…" style="min-height:55px"></textarea></div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="
     if(_planWriteBlocked('Adding a vendor','vendor')) return;
     var name=document.getElementById('av-name').value.trim();
@@ -7802,7 +7802,7 @@ async function mAddVendor(_returnSelectId){
     toast(name+' added','success');
     if(window._retSelAV){ _mPopAndSelect(window._retSelAV,nid,name); window._retSelAV=null; }
     else { closeModal(); setTimeout(function(){ mEditVendor(nid); },80); }
-   ">Add Vendor</button>`);
+   ">${_s.vend_add}</button>`);
   window._retSelAV=_returnSelectId||null;
   setTimeout(function(){
     var vc=D.vendorCats.length?D.vendorCats:['Supplier','Distributor','Manufacturer','Wholesaler','Service Provider','Other'];
@@ -7810,41 +7810,41 @@ async function mAddVendor(_returnSelectId){
     if(document.getElementById('av-cat-wrap')) _mkSearchSelect('av-cat-wrap',vc.map(function(c){return{val:c,label:c};}),cur||vc[0],function(v){var h=document.getElementById('av-cat');if(h)h.value=v;},'Vendor category…');
   },60);
 }
-async function mEditVendor(id){
+async function mEditVendor(id){const _s=_L();
   await _syncCatsFromDB();
   if(!requireRight('edit_vendors','Edit Vendor')) return;
   var v = D.vendors.find(function(x){ return x.id===id; });
   if(!v) return;
   modal('Edit Vendor — '+v.name,`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Vendor Name *</label><input class="fi" id="ev-name" value="${v.name||''}"/></div>
-    <div class="fg"><label class="fl">Category</label>
+    <div class="fg"><label class="fl">${_s.vend_name_ph}</label><input class="fi" id="ev-name" value="${v.name||''}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_category}</label>
       <div id="ev-cat-wrap" style="position:relative"></div><input type="hidden" id="ev-cat" value="${_esc(v.cat||D.vendorCats[0]||'General')}"/>
     </div>
-    <div class="fg"><label class="fl">Country</label><input class="fi" id="ev-country" value="${v.country||''}"/></div>
-    <div class="fg"><label class="fl">Contact Person</label><input class="fi" id="ev-contact" value="${v.contact||''}"/></div>
-    <div class="fg"><label class="fl">Email</label><input class="fi" type="email" id="ev-email" value="${v.email||''}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_country}</label><input class="fi" id="ev-country" value="${v.country||''}"/></div>
+    <div class="fg"><label class="fl">${_s.vend_contact_ph}</label><input class="fi" id="ev-contact" value="${v.contact||''}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" type="email" id="ev-email" value="${v.email||''}"/></div>
     <div class="fg"><label class="fl">Phone / WhatsApp</label><input class="fi" id="ev-phone" value="${v.ph||v.phone||''}"/></div>
-    <div class="fg"><label class="fl">Payment Terms</label>
+    <div class="fg"><label class="fl">${_s.ui_pay_terms}</label>
       <select class="fs" id="ev-terms">
-        <option${(v.terms||'')==='Immediate'?' selected':''}>Immediate</option>
+        <option${(v.terms||'')==='Immediate'?' selected':''}>${_s.vend_immediate}</option>
         <option${(v.terms||'')==='Net 15'?' selected':''}>Net 15</option>
-        <option${(v.terms||'')==='Net 30'?' selected':''}>Net 30</option>
-        <option${(v.terms||'')==='On Delivery'?' selected':''}>On Delivery</option>
+        <option${(v.terms||'')==='Net 30'?' selected':''}>${_s.sal_terms_net30}</option>
+        <option${(v.terms||'')==='On Delivery'?' selected':''}>${_s.po_on_delivery}</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">Payment Method</label>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
       <select class="fs" id="ev-method">
-        <option${(v.payment||v.method||'')==='Bank Transfer'?' selected':''}>Bank Transfer</option>
-        <option${(v.payment||v.method||'')==='Cash'?' selected':''}>Cash</option>
-        <option${(v.payment||v.method||'')==='Mobile Money (MTN)'?' selected':''}>Mobile Money (MTN)</option>
-        <option${(v.payment||v.method||'')==='Orange Money'?' selected':''}>Orange Money</option>
-        <option${(v.payment||v.method||'')==='Other'?' selected':''}>Other</option>
+        <option${(v.payment||v.method||'')==='Bank Transfer'?' selected':''}>${_s.ui_bank_transfer}</option>
+        <option${(v.payment||v.method||'')==='Cash'?' selected':''}>${_s.ui_cash}</option>
+        <option${(v.payment||v.method||'')==='Mobile Money (MTN)'?' selected':''}>${_s.ui_mobile_mtn}</option>
+        <option${(v.payment||v.method||'')==='Orange Money'?' selected':''}>${_s.ui_orange}</option>
+        <option${(v.payment||v.method||'')==='Other'?' selected':''}>${_s.po_other}</option>
       </select>
     </div>
   </div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="ev-notes" style="min-height:55px">${v.notes||''}</textarea></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ev-notes" style="min-height:55px">${v.notes||''}</textarea></div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_saveEditVendor('${id}')">💾 Save Changes</button>`);
   setTimeout(function(){
     var vc=D.vendorCats.length?D.vendorCats:['Supplier','Distributor','Manufacturer','Wholesaler','Service Provider','Other'];
@@ -7853,7 +7853,7 @@ async function mEditVendor(id){
   },60);
 }
 
-function _saveEditVendor(id){
+function _saveEditVendor(id){const _s=_L();
   if(_trialWriteBlocked('Editing a vendor')) return;
   var v = D.vendors.find(function(x){ return x.id===id; });
   if(!v) return;
@@ -7879,22 +7879,22 @@ function _saveEditVendor(id){
 }
 
 
-function mViewVendor(id){
+function mViewVendor(id){const _s=_L();
   const v=D.vendors.find(x=>x.id===id); if(!v) return;
   const pos=D.purchases.filter(p=>p.vendorId===v.id||p.vendor===v.name);
   const totalOrders=pos.reduce((a,p)=>a+p.total,0);
   modal(`🏭 ${v.name}`,`
   <div class="stabs" style="margin-bottom:14px">
     <button class="stab on" onclick="vndTab(this,'vnd-overview-${id}')">Overview</button>
-    <button class="stab" onclick="vndTab(this,'vnd-stmt-${id}')">Statement</button>
+    <button class="stab" onclick="vndTab(this,'vnd-stmt-${id}')">${_s.cust_stmt2}</button>
     <button class="stab" onclick="vndTab(this,'vnd-orders-${id}')">Purchase Orders</button>
   </div>
 
   <div id="vnd-overview-${id}">
     <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
-      <div class="kpi g" style="padding:11px"><div class="kpi-lbl">Total Purchases</div><div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(v.total)}</div></div>
-      <div class="kpi ${v.bal>0?'r':'g'}" style="padding:11px"><div class="kpi-lbl">Outstanding AP</div><div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--${v.bal>0?'r':'g'})">${v.bal>0?fmt(v.bal):'Clear ✓'}</div></div>
-      <div class="kpi b" style="padding:11px"><div class="kpi-lbl">Orders Placed</div><div style="font-size:15px;font-weight:700;color:var(--a)">${pos.length}</div></div>
+      <div class="kpi g" style="padding:11px"><div class="kpi-lbl">${_s.po_kpi_total}</div><div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(v.total)}</div></div>
+      <div class="kpi ${v.bal>0?'r':'g'}" style="padding:11px"><div class="kpi-lbl">${_s.vend_outstanding_ap}</div><div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--${v.bal>0?'r':'g'})">${v.bal>0?fmt(v.bal):'Clear ✓'}</div></div>
+      <div class="kpi b" style="padding:11px"><div class="kpi-lbl">${_s.vend_col_orders}</div><div style="font-size:15px;font-weight:700;color:var(--a)">${pos.length}</div></div>
     </div>
     <div class="fg-2">
       <div><div class="fl">Country</div><div style="font-size:13px;color:var(--text)">${v.country}</div></div>
@@ -7908,7 +7908,7 @@ function mViewVendor(id){
     <div style="background:linear-gradient(135deg,var(--bg3),var(--bg4));border:1px solid var(--border2);border-radius:var(--r10);padding:16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
         <div>
-          <div style="font-family:var(--display);font-size:14px;font-weight:800;color:var(--ink)">Vendor Statement</div>
+          <div style="font-family:var(--display);font-size:14px;font-weight:800;color:var(--ink)">${_s.vend_stmt}</div>
           <div style="font-size:11px;color:var(--text2);margin-top:2px">${BIZ.name||'ShopTrack'} · Generated ${new Date().toLocaleDateString('en-GB')}</div>
         </div>
         <div style="text-align:right">
@@ -7928,7 +7928,7 @@ function mViewVendor(id){
             <span style="font-family:var(--mono);color:var(--ink)">${fmt(p.total)}</span>
             ${badge(p.st)}
           </div>
-        </div>`).join(''):`<div style="font-size:12px;color:var(--text2);padding:8px 0">No purchase orders found for this vendor.</div>`}
+        </div>`).join(''):`<div style="font-size:12px;color:var(--text2);padding:8px 0">${_s.vend_no_pos}</div>`}
       </div>
       <div style="display:flex;justify-content:space-between;padding-top:12px;margin-top:4px;border-top:2px solid var(--border2)">
         <span style="font-weight:700;color:var(--ink)">Total Purchases</span>
@@ -7959,21 +7959,21 @@ function mViewVendor(id){
       <div style="text-align:right;flex-shrink:0">
         <div style="font-family:var(--mono);font-weight:700;color:var(--b)">${fmt(p.total)}</div>
         <div class="btn-row" style="margin-top:4px;justify-content:flex-end">
-          <button class="btn btn-g btn-xs" onclick="closeModal();mViewPurchase('${p.id}')">View PO</button>
+          <button class="btn btn-g btn-xs" onclick="closeModal();mViewPurchase('${p.id}')">${_s.po_view}</button>
           <button class="btn btn-g btn-xs" onclick="mViewPurchaseDocs('${p.id}')">📎 Docs</button>
         </div>
       </div>
     </div>`).join('')}
-    </div>`:`<div style="font-size:13px;color:var(--text2);padding:14px 0;text-align:center">No purchase orders recorded for this vendor yet.</div>`}
+    </div>`:`<div style="font-size:13px;color:var(--text2);padding:14px 0;text-align:center">${_s.vend_no_pos2}</div>`}
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-d btn-sm" onclick="closeModal();mDeleteVendor('${v.id}')">🗑 Delete</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mEditVendor('${v.id}')">✏ Edit</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mRecordPurchase()">+ New PO</button>
    ${v.bal>0?`<button class="btn btn-p" onclick="closeModal();setTimeout(()=>mPayVendor('${v.id}'),100)">💰 Pay ${fmt(v.bal)}</button>`:''}`);
 }
 
-function vndTab(el, showId){
+function vndTab(el, showId){const _s=_L();
   const body = el.closest('.mo-body'); if(!body) return;
   body.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
@@ -7982,14 +7982,14 @@ function vndTab(el, showId){
   if(panel) panel.style.display='';
 }
 
-function shareVendorStatement(vid){
+function shareVendorStatement(vid){const _s=_L();
   const url=window.location.href.split('?')[0]+'?stmt=vendor&id='+vid;
   if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>toast('Shareable link copied to clipboard ✓','success')).catch(()=>toast('Link: '+url));}
   else{toast('Statement link: '+url);}
 }
 
 
-function pgExp(){const _ui=_L();
+function pgExp(){const _s=_L();const _ui=_s;
   // Default to "month" — compute period KPIs immediately so tiles are in sync
   const monthRange = PERIOD_RANGES['month'];
   const vis   = D.exp.filter(e => inRange(e.dt, monthRange));
@@ -8015,7 +8015,7 @@ function pgExp(){const _ui=_L();
         +'<div style="background:var(--r);border-radius:3px;height:5px;width:'+barW+'%;transition:width .4s"></div>'
       +'</div>'
     +'</div>';
-  }).join('') : '<div style="font-size:12px;color:var(--text2);padding:8px 0">No expenses this month.</div>';
+  }).join('') : '<div style="font-size:12px;color:var(--text2);padding:8px 0">${_s.exp_empty}</div>';
 
   const rows = D.exp.map(e=>'<tr data-date="'+e.dt+'" data-cat="'+_esc(e.cat)+'" data-type="'+(e.type||'')+'"'
     +' style="cursor:pointer" onclick="mViewExp(\''+e.id+'\')">'
@@ -8031,7 +8031,7 @@ function pgExp(){const _ui=_L();
     +'<td onclick="event.stopPropagation()">'
       +'<div class="btn-row">'
         +'<button class="btn btn-g btn-xs" onclick="mEditExp(\''+e.id+'\')">✏</button>'
-        +'<button class="btn btn-g btn-xs" onclick="mDuplicateExp(\''+e.id+'\')" title="Duplicate">⧉</button>'
+        +'<button class="btn btn-g btn-xs" onclick="mDuplicateExp(\''+e.id+'\')" title="${_s.ui_duplicate}">⧉</button>'
         +'<button class="btn btn-d btn-xs" onclick="mDeleteExp(\''+e.id+'\')">&#x1F5D1;</button>'
       +'</div>'
     +'</td>'
@@ -8050,26 +8050,26 @@ function pgExp(){const _ui=_L();
   <p>${_ui.ph_expenses}</p>
 </div>
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr));margin-bottom:14px">
-  <div class="kpi r"><div class="kpi-lbl">Total Expenses</div><div id="exp-kpi-total" class="kpi-val r">${fmtKpi(total)}</div><div class="kpi-sub">This month</div></div>
+  <div class="kpi r"><div class="kpi-lbl">${_s.exp_kpi_total}</div><div id="exp-kpi-total" class="kpi-val r">${fmtKpi(total)}</div><div class="kpi-sub">${_s.ui_this_month}</div></div>
   <div class="kpi y"><div class="kpi-lbl">Recurring</div><div id="exp-kpi-rec" class="kpi-val y">${fmtKpi(rec)}</div><div class="kpi-sub">Fixed costs</div></div>
   <div class="kpi b"><div class="kpi-lbl">One-Time</div><div id="exp-kpi-one" class="kpi-val b">${fmtKpi(one)}</div><div class="kpi-sub">Variable costs</div></div>
-  ${topCat ? `<div class="kpi r"><div class="kpi-lbl">Top Category</div><div class="kpi-val" style="font-size:14px;color:var(--r)">${_esc(topCat[0])}</div><div class="kpi-sub">${fmt(topCat[1])}</div></div>` : ''}
-  <div class="kpi"><div class="kpi-lbl">Entries</div><div id="exp-kpi-count" class="kpi-val">${vis.length}</div><div class="kpi-sub">This month</div></div>
+  ${topCat ? `<div class="kpi r"><div class="kpi-lbl">${_s.exp_kpi_top_cat}</div><div class="kpi-val" style="font-size:14px;color:var(--r)">${_esc(topCat[0])}</div><div class="kpi-sub">${fmt(topCat[1])}</div></div>` : ''}
+  <div class="kpi"><div class="kpi-lbl">${_s.exp_kpi_entries}</div><div id="exp-kpi-count" class="kpi-val">${vis.length}</div><div class="kpi-sub">${_s.ui_this_month}</div></div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 240px;gap:14px;align-items:start">
   <div>
     <div class="fbar" style="margin-bottom:10px">
       <input class="fi-s" id="exp-search" placeholder="${_ui.flt_search_exp}" style="flex:1;min-width:120px" oninput="_expFilter()"/>
       <select class="sel" id="exp-cat-filter" onchange="_expFilter()">
-        <option value="">All Categories</option>
+        <option value="">${_s.ui_all_cats}</option>
         ${[...new Set(D.exp.map(e=>e.cat))].sort().map(c=>`<option value="${_esc(c)}">${_esc(c)}</option>`).join('')}
       </select>
       <select class="sel" id="exp-type-filter" onchange="_expFilter()">
-        <option value="">All Types</option>
-        <option value="Recurring">Recurring</option>
-        <option value="Operating">Operating</option>
-        <option value="One-time">One-time</option>
-        <option value="Asset Purchase">Asset Purchase</option>
+        <option value="">${_s.ui_all_types}</option>
+        <option value="Recurring">${_s.exp_type_recur}</option>
+        <option value="Operating">${_s.exp_type_op}</option>
+        <option value="One-time">${_s.exp_type_once}</option>
+        <option value="Asset Purchase">${_s.exp_type_asset}</option>
       </select>
       <div class="dtabs">
         <button class="dtab" onclick="setExpPeriod(this,'today')">${_ui.per_today}</button>
@@ -8084,15 +8084,15 @@ function pgExp(){const _ui=_L();
     <div class="card" style="padding:0">
       <div class="tbl-wrap"><table id="exp-table">
         <thead><tr>
-          <th>Exp #</th><th>Date</th><th>Category</th><th>Payee</th>
-          <th>Amount</th><th>Type</th><th>Method</th><th>Notes</th><th></th>
+          <th>${_s.exp_col_id}</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th>
+          <th>${_s.ui_amount}</th><th>${_s.ui_type}</th><th>${_s.ui_method}</th><th>${_s.ui_notes}</th><th></th>
         </tr></thead>
         <tbody id="exp-tbody">${rows}</tbody>
       </table></div>
       <div id="exp-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--text2)">
         <div style="font-size:32px;margin-bottom:10px">💸</div>
-        <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:6px">No expenses found</div>
-        <div style="font-size:12px;margin-bottom:14px">Try adjusting the filters or date range</div>
+        <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:6px">${_s.exp_empty2}</div>
+        <div style="font-size:12px;margin-bottom:14px">${_s.ui_no_data_filter}</div>
         <button class="btn btn-p btn-sm" onclick="mAddExp()">+ Record First Expense</button>
       </div>
       <div id="exp-footer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)">
@@ -8111,7 +8111,7 @@ function pgExp(){const _ui=_L();
     </div>
     <div class="card" style="margin-top:14px">
       <div class="card-hd" style="padding-bottom:8px">
-        <div class="card-ttl" style="font-size:12px">Quick Actions</div>
+        <div class="card-ttl" style="font-size:12px">${_s.ui_quick_actions}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:7px">
         <button class="btn btn-p btn-sm" onclick="mAddExp()" style="width:100%">+ Record Expense</button>
@@ -8124,15 +8124,15 @@ function pgExp(){const _ui=_L();
 }
 
 
-async function mAddExp(){
+async function mAddExp(){const _s=_L();
   await _syncCatsFromDB(); // always get latest user-created categories
   const uid='exp-docs-'+Date.now();
   const today=localDateStr();
   const catOpts = D.expCats.map(c=>`<option>${_esc(c)}</option>`).join('');
   modal('💸 Record Expense',`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="ae-dt" value="${today}"/></div>
-    <div class="fg"><label class="fl">Category</label>
+    <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" type="date" id="ae-dt" value="${today}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_category}</label>
       <div style="display:flex;gap:6px;align-items:center">
         <div id="ae-cat-wrap" style="position:relative;flex:1"></div><input type="hidden" id="ae-cat" value="${_esc(D.expCats[0]||'Rent & Lease')}"/>
         <button type="button" class="btn btn-g btn-xs" style="white-space:nowrap;padding:0 10px;height:34px" onclick="
@@ -8149,15 +8149,15 @@ async function mAddExp(){
     </div>
     <div class="fg"><label class="fl">Payee / Vendor *</label><input class="fi" id="ae-payee" placeholder="Who was paid?"/></div>
     <div class="fg"><label class="fl">Amount * <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="ae-amt" placeholder="0" step="any" min="0"/></div>
-    <div class="fg"><label class="fl">Type</label>
+    <div class="fg"><label class="fl">${_s.ui_type}</label>
       <select class="fs" id="ae-type">
-        <option>Recurring</option><option>Operating</option><option>One-time</option><option>Asset Purchase</option>
+        <option>${_s.exp_type_recur}</option><option>${_s.exp_type_op}</option><option>${_s.exp_type_once}</option><option>${_s.exp_type_asset}</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">Payment Method</label>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
       <select class="fs" id="ae-method">
-        <option>Cash</option><option>Bank Transfer</option><option>Mobile Money (MTN)</option>
-        <option>Orange Money</option><option>Credit Card</option><option>Direct Debit</option>
+        <option>${_s.ui_cash}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option>
+        <option>${_s.ui_orange}</option><option>${_s.ui_credit_card}</option><option>${_s.ui_direct_debit}</option>
       </select>
     </div>
   </div>
@@ -8174,7 +8174,7 @@ async function mAddExp(){
       <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
     </label>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="(function(){
     if(_trialWriteBlocked('Recording an expense')) return;
     var payee=document.getElementById('ae-payee').value.trim();
@@ -8209,17 +8209,17 @@ async function mAddExp(){
     var cur=document.getElementById('ae-cat')?document.getElementById('ae-cat').value:expC[0];
     if(document.getElementById('ae-cat-wrap')) _mkSearchSelect('ae-cat-wrap',expC.map(function(c){return{val:c,label:c};}),cur||expC[0],function(v){var h=document.getElementById('ae-cat');if(h)h.value=v;},'Expense category…');
   },60);
-function mDeleteExp(id){
+function mDeleteExp(id){const _s=_L();
   var e=D.exp.find(function(x){return x.id===id;}); if(!e) return;
   modal('&#x1F5D1; Delete Expense',
     '<div class="alrt alrt-r" style="margin-bottom:12px">Delete <strong>'
     +_esc(e.id)+'</strong> &#x2014; '+_esc(e.payee)+' &#x2014; <strong>'+fmt(e.amt)+'</strong>?'
     +'<br><span style="font-size:12px">This cannot be undone.</span></div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-d" onclick="closeModal();_doDeleteExp(\''+id+'\')">&#x1F5D1; Delete</button>'
   );
 }
-function _doDeleteExp(id){
+function _doDeleteExp(id){const _s=_L();
   D.exp=D.exp.filter(function(x){return x.id!==id;});
   _dbDelExp(id); // offline-aware: queues if offline, deletes direct if online
   refreshLiveKpis();
@@ -8227,7 +8227,7 @@ function _doDeleteExp(id){
   toast('Expense deleted','success');
   nav('expenses');
 }
-function mViewExp(id){
+function mViewExp(id){const _s=_L();
   const e=D.exp.find(x=>x.id===id); if(!e) return;
   const uid='view-exp-'+id;
   modal(`💸 Expense — ${e.id}`,`
@@ -8240,16 +8240,16 @@ function mViewExp(id){
     <div><div class="fl">Method</div><div style="font-size:12px;color:var(--text)">${e.method}</div></div>
   </div>
   ${e.notes?`<div class="fg" style="margin-bottom:14px"><div class="fl">Notes</div><div style="font-size:13px;color:var(--text2);line-height:1.5">${e.notes}</div></div>`:''}
-  <div class="fl" style="margin-bottom:8px">Attached Documents</div>
+  <div class="fl" style="margin-bottom:8px">${_s.po_docs_attach}</div>
   <div id="${uid}-list" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
-    ${e.docs&&e.docs.length?e.docs.map(d=>docChip(d)).join(''):`<div style="font-size:12px;color:var(--text2);padding:8px 0">No documents attached yet.</div>`}
+    ${e.docs&&e.docs.length?e.docs.map(d=>docChip(d)).join(''):`<div style="font-size:12px;color:var(--text2);padding:8px 0">${_s.po_no_docs}</div>`}
   </div>
   <label style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${uid}-input').click()">
     <span style="font-size:18px">➕</span>
-    <div style="font-size:12px;font-weight:600;color:var(--ink)">Add more documents</div>
+    <div style="font-size:12px;font-weight:600;color:var(--ink)">${_s.exp_add_docs}</div>
     <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
   </label>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-g btn-sm" onclick="mEditExp('${id}')">✏ Edit</button>
    <button class="btn btn-p btn-sm" onclick="mDuplicateExp('${id}')">⧉ Duplicate</button>`);
 }
@@ -8258,7 +8258,7 @@ function mViewExp(id){
 // ============================================================
 // ACCOUNTING
 // ============================================================
-function pgAccounting(){const _ui=_L();
+function pgAccounting(){const _s=_L();const _ui=_s;
   // Always compute with current _acctPeriod so tiles are correct on load
   const range = PERIOD_RANGES[_acctPeriod] || PERIOD_RANGES.month;
   const k = computeKPIs(range);
@@ -8278,7 +8278,7 @@ function pgAccounting(){const _ui=_L();
     if(!lines.length) return '<div style="color:var(--text2);font-size:13px;padding:24px;text-align:center">No transactions in '+rng.label+'</div>';
     const totDr=lines.reduce((a,l)=>a+(l.dr||0),0);
     const totCr=lines.reduce((a,l)=>a+(l.cr||0),0);
-    return '<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Description</th><th>Debit (Out)</th><th>Credit (In)</th></tr></thead>'
+    return '<div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>${_s.ui_reference}</th><th>${_s.acc_col_desc}</th><th>Debit (Out)</th><th>Credit (In)</th></tr></thead>'
       +'<tbody id="ledger-body">'
       +lines.map(function(l){
         var _apBadge = l.ap!=null ? ' <span style="font-size:10px;background:var(--y-dim);color:var(--y);padding:1px 5px;border-radius:4px">AP " + fmt(l.ap) + "</span>' : '';
@@ -8345,10 +8345,10 @@ function pgAccounting(){const _ui=_L();
 
   <!-- Cash Flow -->
   <div class="card">
-    <div class="card-hd"><div class="card-ttl">Cash Flow</div></div>
+    <div class="card-hd"><div class="card-ttl">${_s.acc_cashflow}</div></div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:12px;color:var(--text2)">Cash In (collected)</span>
+        <span style="font-size:12px;color:var(--text2)">${_s.acc_cash_in}</span>
         <span id="acct-cash-in" style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--g)">${fmt(k.cashIn)}</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
@@ -8356,7 +8356,7 @@ function pgAccounting(){const _ui=_L();
         <span id="acct-cash-out" style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--r)">${fmt(k.cashOut)}</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:2px solid var(--border)">
-        <span style="font-size:13px;font-weight:700;color:var(--ink)">Net Cash Flow</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink)">${_s.acc_net_cash}</span>
         <span id="acct-net-cash" style="font-family:var(--mono);font-size:14px;font-weight:800;color:${cashFlowColor}">${fmt(cashNetFlow)}</span>
       </div>
       <div style="font-size:10px;color:var(--text2);padding-top:4px">
@@ -8369,7 +8369,7 @@ function pgAccounting(){const _ui=_L();
   <!-- AR -->
   <div class="card">
     <div class="card-hd">
-      <div class="card-ttl" style="color:var(--y)">Accounts Receivable</div>
+      <div class="card-ttl" style="color:var(--y)">${_s.acc_ar}</div>
       <button class="btn btn-g btn-sm" onclick="mARDetail()">Detail</button>
     </div>
     ${D.cust.filter(c=>c.bal>0).slice(0,5).map(c=>`
@@ -8383,9 +8383,9 @@ function pgAccounting(){const _ui=_L();
         ${(c.whatsapp||c.phone)?`<button class="btn btn-g btn-xs" style="margin-top:3px" onclick="_arSendWA('${c.id}')">💬</button>`:''}
       </div>
     </div>`).join('')}
-    ${D.cust.filter(c=>c.bal>0).length>5?`<div style="font-size:11px;color:var(--text2);padding-top:6px;text-align:center">${D.cust.filter(c=>c.bal>0).length-5} more — <button class="btn btn-g btn-xs" onclick="mARDetail()">View All</button></div>`:''}
+    ${D.cust.filter(c=>c.bal>0).length>5?`<div style="font-size:11px;color:var(--text2);padding-top:6px;text-align:center">${D.cust.filter(c=>c.bal>0).length-5} more — <button class="btn btn-g btn-xs" onclick="mARDetail()">${_s.ui_view_all}</button></div>`:''}
     <div style="display:flex;justify-content:space-between;padding-top:8px;font-weight:600;font-size:13px">
-      <span>Total AR</span>
+      <span>${_s.acc_total_ar}</span>
       <span id="acct-ar-val" style="font-family:var(--mono);color:var(--y)">${fmtKpi(k.ar)}</span>
     </div>
   </div>
@@ -8393,7 +8393,7 @@ function pgAccounting(){const _ui=_L();
   <!-- AP -->
   <div class="card">
     <div class="card-hd">
-      <div class="card-ttl" style="color:var(--r)">Accounts Payable</div>
+      <div class="card-ttl" style="color:var(--r)">${_s.acc_ap}</div>
       <button class="btn btn-g btn-sm" onclick="nav('vendors')">Vendors</button>
     </div>
     ${D.vendors.filter(v=>v.bal>0).slice(0,5).map(v=>`
@@ -8407,9 +8407,9 @@ function pgAccounting(){const _ui=_L();
         <button class="btn btn-g btn-xs" style="margin-top:3px" onclick="mPayVendor('${v.id}')">Pay</button>
       </div>
     </div>`).join('')}
-    ${D.vendors.filter(v=>v.bal>0).length>5?`<div style="font-size:11px;color:var(--text2);padding-top:6px;text-align:center">${D.vendors.filter(v=>v.bal>0).length-5} more — <button class="btn btn-g btn-xs" onclick="nav('vendors')">View All</button></div>`:''}
+    ${D.vendors.filter(v=>v.bal>0).length>5?`<div style="font-size:11px;color:var(--text2);padding-top:6px;text-align:center">${D.vendors.filter(v=>v.bal>0).length-5} more — <button class="btn btn-g btn-xs" onclick="nav('vendors')">${_s.ui_view_all}</button></div>`:''}
     <div style="display:flex;justify-content:space-between;padding-top:8px;font-weight:600;font-size:13px">
-      <span>Total AP</span>
+      <span>${_s.acc_total_ap}</span>
       <span style="font-family:var(--mono);color:var(--r)">${fmt(k.ap)}</span>
     </div>
   </div>
@@ -8418,7 +8418,7 @@ function pgAccounting(){const _ui=_L();
 <!-- ── Transaction Ledger ────────────────────────────────────── -->
 <div class="card">
   <div class="card-hd">
-    <div class="card-ttl">Transaction Ledger</div>
+    <div class="card-ttl">${_s.acc_ledger}</div>
     <div class="btn-row">
       <button class="btn btn-g btn-sm" onclick="exportLedgerCSV()">⬇ Export CSV</button>
     </div>
@@ -8554,7 +8554,7 @@ function pgReports(){const _ui=_L();
   <div class="kpi b"><div class="kpi-lbl">Total Revenue</div><div id="rpt-kpi-rev" class="kpi-val b">${fmtKpi(totalRev)}</div></div>
   <div class="kpi g"><div class="kpi-lbl">Gross Profit</div><div id="rpt-kpi-gp" class="kpi-val g">${fmtKpi(lk.gp)}</div></div>
   <div class="kpi p"><div class="kpi-lbl">Net Profit</div><div id="rpt-kpi-np" class="kpi-val p">${fmtKpi(lk.np)}</div></div>
-  <div class="kpi y"><div class="kpi-lbl">Accounts Receivable</div><div id="rpt-kpi-ar" class="kpi-val y">${fmtKpi(lk.ar)}</div></div>
+  <div class="kpi y"><div class="kpi-lbl">${_s.acc_ar}</div><div id="rpt-kpi-ar" class="kpi-val y">${fmtKpi(lk.ar)}</div></div>
 </div>
 <div class="g2" style="margin-bottom:14px">
   <div class="card"><div class="card-hd"><div class="card-ttl">Monthly Performance</div><button class="btn btn-g btn-sm" onclick="rptMonthly()">View Full</button></div><div class="ch-wrap" style="height:170px"><canvas id="mChart"></canvas></div></div>
@@ -8587,7 +8587,7 @@ function pgReports(){const _ui=_L();
 }
 
 // ── REPORT FUNCTIONS ─────────────────────────────────────────
-function rptSales(){
+function rptSales(){const _s=_L();
   const range = PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const periodSales = D.sales.filter(s=>inRange(s.dt,range));
   const rows=periodSales.map(s=>{const tot=s.total||s.amt; return `<tr>
@@ -8607,11 +8607,11 @@ function rptSales(){
     <div class="kpi r"><div class="kpi-lbl">AR Outstanding (all time)</div><div class="kpi-val r">${fmtKpi(arTotal)}</div></div>
     <div class="kpi p"><div class="kpi-lbl">Transactions</div><div class="kpi-val p">${periodSales.length}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Date</th><th>Customer</th><th>Items</th><th>Amount</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptSalesPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportSalesCSV()">⬇ CSV</button>`);
+  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>Items</th><th>${_s.ui_amount}</th><th>Paid</th><th>${_s.ui_balance}</th><th>${_s.ui_status}</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptSalesPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportSalesCSV()">⬇ CSV</button>`);
 }
 
-function rptRevProduct(){
+function rptRevProduct(){const _s=_L();
   const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const byProd={};
   D.sales.filter(s=>inRange(s.dt,_rng)).forEach(s=>{const k=s.items.split(' ×')[0].split('+')[0].trim().split(',')[0];byProd[k]=(byProd[k]||0)+(s.total||s.amt);});
@@ -8622,10 +8622,10 @@ function rptRevProduct(){
   <div class="tbl-wrap"><table><thead><tr><th>Product</th><th>Revenue</th><th>Share</th></tr></thead><tbody>
   ${sorted.map(([p,v])=>`<tr><td>${p}</td><td>${mono(fmt(v),'g')}</td><td><div class="pbar" style="width:120px;display:inline-block"><div class="pfill b" style="width:${Math.round(v/max*100)}%"></div></div></td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptRevProductPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Revenue by Product')">⬇ Export CSV</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRevProductPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Revenue by Product')">⬇ Export CSV</button>`);
 }
 
-function rptRevCat(){
+function rptRevCat(){const _s=_L();
   const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const cats={};
   D.sales.filter(s=>inRange(s.dt,_rng)).forEach(s=>{
@@ -8649,26 +8649,26 @@ function rptRevCat(){
   const total=sorted.reduce((a,[,v])=>a+v,0);
   const _rcPeriodLbl=(PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label;
   modal('📊 Revenue by Category — '+_rcPeriodLbl,`
-  <div class="tbl-wrap"><table><thead><tr><th>Category</th><th>Revenue</th><th>%</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_category}</th><th>Revenue</th><th>%</th></tr></thead><tbody>
   ${sorted.map(([c,v])=>`<tr><td>${c}</td><td>${mono(fmt(v),'g')}</td><td style="color:var(--text2)">${Math.round(v/total*100)}%</td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptRevCatPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRevCatPDF()">⬇ PDF</button>`);
 }
 
-function rptRevCust(){
+function rptRevCust(){const _s=_L();
   const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const byCust={};
   D.sales.filter(s=>inRange(s.dt,_rng)).forEach(s=>{byCust[s.cust]=(byCust[s.cust]||0)+(s.total||s.amt);});
   const sorted=Object.entries(byCust).sort((a,b)=>b[1]-a[1]);
   const _rcustLbl=(PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month).label;
   modal('📊 Revenue by Customer — '+_rcustLbl,`
-  <div class="tbl-wrap"><table><thead><tr><th>Customer</th><th>Total Purchases</th><th>Outstanding</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_customer}</th><th>${_s.vend_col_spent}</th><th>${_s.cust_col_outstanding}</th></tr></thead><tbody>
   ${sorted.map(([c,v])=>{const cust=D.cust.find(x=>x.name===c);return`<tr><td><strong style="color:var(--ink)">${c}</strong></td><td>${mono(fmt(v),'g')}</td><td>${mono(fmt(cust?.bal||0),'y')}</td></tr>`;}).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptRevCustPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRevCustPDF()">⬇ PDF</button>`);
 }
 
-function rptProfit(){
+function rptProfit(){const _s=_L();
   const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const periodSales=D.sales.filter(s=>inRange(s.dt,_rng));
   const totRevP=periodSales.reduce((a,s)=>a+(s.total||s.amt||0),0);
@@ -8694,11 +8694,11 @@ function rptProfit(){
     <div class="kpi ${totProfP>=0?'g':'r'}"><div class="kpi-lbl">Gross Profit</div><div class="kpi-val ${totProfP>=0?'g':'r'}">${fmtKpi(totProfP)}</div></div>
     <div class="kpi p"><div class="kpi-lbl">Margin</div><div class="kpi-val p">${totRevP>0?Math.round(totProfP/totRevP*100):0}%</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>Date</th><th>Customer</th><th>Items</th><th>Revenue</th><th>COGS</th><th>Gross Profit</th><th>Margin</th></tr></thead><tbody>${rows}</tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptProfitPDF()">⬇ PDF</button>`);
+  <div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>Items</th><th>Revenue</th><th>COGS</th><th>Gross Profit</th><th>Margin</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptProfitPDF()">⬇ PDF</button>`);
 }
 
-function rptRentals(){
+function rptRentals(){const _s=_L();
   const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const _rents=D.rentals.filter(r=>inRange(r.start,_rng));
   const rows=_rents.map(r=>`<tr>
@@ -8717,52 +8717,52 @@ function rptRentals(){
     <div class="kpi r"><div class="kpi-lbl">Overdue</div><div class="kpi-val r">${D.rentals.filter(r=>r.st==='Overdue').length}</div></div>
     <div class="kpi c"><div class="kpi-lbl">Active</div><div class="kpi-val c">${D.rentals.filter(r=>r.st==='Checked Out').length}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Customer</th><th>Item</th><th>Start</th><th>Due</th><th>Fee</th><th>Deposit</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptRentalsPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Rentals Report')">⬇ Export CSV</button>`);
+  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Start</th><th>Due</th><th>Fee</th><th>Deposit</th><th>${_s.ui_status}</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRentalsPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Rentals Report')">⬇ Export CSV</button>`);
 }
 
-function rptRentalUtil(){
+function rptRentalUtil(){const _s=_L();
   const util=D.inv.filter(i=>i.rp).map(i=>({name:i.name,qty:i.qty,rented:i.rented,rate:Math.round(i.rented/Math.max(i.qty,1)*100)})).sort((a,b)=>b.rate-a.rate);
   modal('📊 Rental Utilization',`
-  <div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Total Qty</th><th>Rented Out</th><th>Utilization</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.rent_item_lbl}</th><th>Total Qty</th><th>Rented Out</th><th>Utilization</th></tr></thead><tbody>
   ${util.map(u=>`<tr><td>${u.name}</td><td>${u.qty}</td><td style="color:var(--c)">${u.rented}</td><td><div style="display:flex;align-items:center;gap:8px"><div class="pbar" style="width:80px"><div class="pfill ${u.rate>60?'g':u.rate>30?'y':'r'}" style="width:${u.rate}%"></div></div><span style="font-size:11px;color:var(--text)">${u.rate}%</span></div></td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptRentalUtilPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRentalUtilPDF()">⬇ PDF</button>`);
 }
 
-function rptDeposits(){
+function rptDeposits(){const _s=_L();
   const open=D.rentals.filter(r=>r.st==='Checked Out'||r.st==='Reserved'||r.st==='Overdue');
   modal('📊 Deposit Liability Report',`
-  <div class="tbl-wrap"><table><thead><tr><th>Rental ID</th><th>Customer</th><th>Item</th><th>Deposit Held</th><th>Status</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>Rental ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Deposit Held</th><th>${_s.ui_status}</th></tr></thead><tbody>
   ${open.map(r=>`<tr><td>${mono(r.id)}</td><td>${r.cust}</td><td style="font-size:12px">${r.item}</td><td>${mono(fmt(r.dep),'y')}</td><td>${badge(r.st)}</td></tr>`).join('')}
   <tr style="border-top:2px solid var(--border2)"><td colspan="3"><strong>Total Liability</strong></td><td>${mono(fmt(open.reduce((a,r)=>a+r.dep,0)),'r')}</td><td></td></tr>
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptDepositsPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptDepositsPDF()">⬇ PDF</button>`);
 }
 
-function rptLateFees(){
+function rptLateFees(){const _s=_L();
   const lf=D.rentals.filter(r=>r.lf>0);
   modal('📊 Late Fees Report',`
-  <div class="tbl-wrap"><table><thead><tr><th>Rental ID</th><th>Customer</th><th>Item</th><th>Due Date</th><th>Late Fee</th><th>Status</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>Rental ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due Date</th><th>Late Fee</th><th>${_s.ui_status}</th></tr></thead><tbody>
   ${lf.map(r=>`<tr><td>${mono(r.id)}</td><td>${r.cust}</td><td style="font-size:12px">${r.item}</td><td style="color:var(--r)">${r.due}</td><td>${mono(fmt(r.lf),'r')}</td><td>${badge(r.st)}</td></tr>`).join('')}
   <tr style="border-top:2px solid var(--border2)"><td colspan="4"><strong>Total Late Fees</strong></td><td>${mono(fmt(lf.reduce((a,r)=>a+r.lf,0)),'r')}</td><td></td></tr>
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptLateFeesPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptLateFeesPDF()">⬇ PDF</button>`);
 }
 
-function rptOverdue(){
+function rptOverdue(){const _s=_L();
   const od=D.rentals.filter(r=>r.st==='Overdue');
   modal('⚠️ Overdue Rentals',`
   <div style="background:var(--r-dim);border:1px solid rgba(255,95,122,.3);border-radius:var(--r10);padding:12px;margin-bottom:14px;font-size:13px;color:var(--r)">
     ⚠ ${od.length} rental(s) are currently overdue. Total late fees: ${fmt(od.reduce((a,r)=>a+r.lf,0))}
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Customer</th><th>Item</th><th>Due</th><th>Fee</th><th>Late Fee</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due</th><th>Fee</th><th>Late Fee</th></tr></thead><tbody>
   ${od.map(r=>`<tr><td>${mono(r.id)}</td><td><strong style="color:var(--r)">${r.cust}</strong></td><td style="font-size:12px">${r.item}</td><td style="color:var(--r);font-weight:600">${r.due}</td><td>${mono(fmt(r.fee))}</td><td>${mono(fmt(r.lf),'r')}</td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptOverduePDF()">⬇ PDF</button><button class="btn btn-r btn-sm" onclick="toast('Reminder SMS sent to all overdue customers','success');closeModal()">📲 Send All Reminders</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptOverduePDF()">⬇ PDF</button><button class="btn btn-r btn-sm" onclick="toast('Reminder SMS sent to all overdue customers','success');closeModal()">📲 Send All Reminders</button>`);
 }
 
-function rptInvVal(){
+function rptInvVal(){const _s=_L();
   const rows=D.inv.map(i=>{
     const available = (i.qty||0)-(i.rented||0);
     return {...i, available, totalCostOnHand: i.cost*available, totalCostAll: i.cost*(i.qty||0), totalSP:i.sp*(i.qty||0)};
@@ -8776,11 +8776,11 @@ function rptInvVal(){
     <div class="kpi"><div class="kpi-lbl">Total SKUs</div><div class="kpi-val">${D.inv.length}</div></div>
     <div class="kpi r"><div class="kpi-lbl">Cost Value (on hand)</div><div class="kpi-val r">${fmtKpi(totalCostOnHand)}</div></div>
     <div class="kpi y"><div class="kpi-lbl">Cost Value (incl. rented)</div><div class="kpi-val y">${fmtKpi(totalCostAll)}</div></div>
-    <div class="kpi g"><div class="kpi-lbl">Retail Value</div><div class="kpi-val g">${fmtKpi(totalSP)}</div></div>
+    <div class="kpi g"><div class="kpi-lbl">${_s.inv_retail_val}</div><div class="kpi-val g">${fmtKpi(totalSP)}</div></div>
     <div class="kpi c"><div class="kpi-lbl">Units Rented Out</div><div class="kpi-val c">${rentedOut}</div></div>
     <div class="kpi p"><div class="kpi-lbl">Potential Margin</div><div class="kpi-val p">${totalSP>0?Math.round((totalSP-totalCostAll)/totalSP*100):0}%</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Name</th><th>On Hand</th><th>Rented</th><th>Available</th><th>Unit Cost</th><th>Sell Price</th><th>Cost Value</th><th>Retail Value</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Name</th><th>On Hand</th><th>Rented</th><th>Available</th><th>Unit Cost</th><th>${_s.inv_col_sp}</th><th>Cost Value</th><th>Retail Value</th></tr></thead><tbody>
   ${rows.map(i=>`<tr>
     <td>${mono(i.sku)}</td>
     <td style="font-size:12px">${_esc(i.name)}</td>
@@ -8793,10 +8793,10 @@ function rptInvVal(){
     <td>${i.sp?mono(fmt(i.totalSP),'g'):'—'}</td>
   </tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptInvValPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Inventory Valuation')">⬇ Export CSV</button>`,'xl');
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptInvValPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Inventory Valuation')">⬇ Export CSV</button>`,'xl');
 }
 
-function rptLowStock(){
+function rptLowStock(){const _s=_L();
   const low=D.inv.filter(i=>{
     const avail=(i.qty||0)-(i.rented||0);
     const min=i.minStock||i.minQty||0;
@@ -8812,7 +8812,7 @@ function rptLowStock(){
   </div>
   ${!all.length?'<div style="color:var(--text2);font-size:13px;padding:16px 0;text-align:center">✅ All items with thresholds are well stocked</div>':''}
   ${all.length?`<div class="tbl-wrap"><table>
-    <thead><tr><th>SKU</th><th>Name</th><th>On Hand</th><th>Rented</th><th>Available</th><th>Threshold</th><th>Status</th></tr></thead>
+    <thead><tr><th>SKU</th><th>Name</th><th>On Hand</th><th>Rented</th><th>Available</th><th>Threshold</th><th>${_s.ui_status}</th></tr></thead>
     <tbody>
     ${all.map(i=>{
       const avail=(i.qty||0)-(i.rented||0);
@@ -8830,31 +8830,31 @@ function rptLowStock(){
     }).join('')}
     </tbody>
   </table></div>`:''}`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptLowStockPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptLowStockPDF()">⬇ PDF</button>`);
 }
 
-function rptRentedOut(){
+function rptRentedOut(){const _s=_L();
   const out=D.inv.filter(i=>i.rented>0);
   modal('📊 Items Currently Rented Out',`
   <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Name</th><th>Total Qty</th><th>Rented</th><th>Available</th><th>Rent/Day</th></tr></thead><tbody>
   ${out.map(i=>`<tr><td>${mono(i.sku)}</td><td>${i.name}</td><td>${i.qty}</td><td style="color:var(--c);font-weight:600">${i.rented}</td><td style="color:var(--g)">${i.qty-i.rented}</td><td>${mono(fmt(i.rp||0),'c')}</td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptRentedOutPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRentedOutPDF()">⬇ PDF</button>`);
 }
 
-function rptStockCat(){
+function rptStockCat(){const _s=_L();
   const cats={};
   D.inv.forEach(i=>{if(!cats[i.cat])cats[i.cat]={items:0,qty:0,val:0};cats[i.cat].items++;cats[i.cat].qty+=i.qty;cats[i.cat].val+=i.cost*i.qty;});
   modal('📊 Stock by Category',`
-  <div class="tbl-wrap"><table><thead><tr><th>Category</th><th>SKUs</th><th>Total Units</th><th>Cost Value</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_category}</th><th>SKUs</th><th>Total Units</th><th>Cost Value</th></tr></thead><tbody>
   ${Object.entries(cats).map(([c,v])=>`<tr><td>${c}</td><td>${v.items}</td><td>${v.qty}</td><td>${mono(fmt(v.val))}</td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptStockCatPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptStockCatPDF()">⬇ PDF</button>`);
 }
 
 function rptInvMove(){nav('inventory');setTimeout(()=>{document.querySelectorAll('.stab')[2]?.click();},200);}
 
-function rptGP(){
+function rptGP(){const _s=_L();
   const k=computeKPIs(PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month);
   modal('📊 Gross Profit Report',`
   <div class="kpi-grid" style="margin-bottom:14px">
@@ -8868,10 +8868,10 @@ function rptGP(){
     <div><div class="fl">Rental Revenue</div><div style="font-family:var(--mono);color:var(--c)">${fmt(k.rentRev)}</div></div>
     <div><div class="fl">Services Revenue</div><div style="font-family:var(--mono);color:var(--p)">${fmt(k.apptRev)}</div></div>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptGPPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportPnLPDF()">⬇ Full P&L PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptGPPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportPnLPDF()">⬇ Full P&L PDF</button>`);
 }
 
-function rptNP(){
+function rptNP(){const _s=_L();
   const k=computeKPIs(PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month);
   const r=CUR.rate;
   modal('📊 Net Profit Report',`
@@ -8883,14 +8883,14 @@ function rptNP(){
     <div class="kpi b"><div class="kpi-lbl">Net Margin</div><div class="kpi-val b">${k.rev>0?Math.round(k.np/k.rev*100):0}%</div></div>
     <div class="kpi r"><div class="kpi-lbl">COGS</div><div class="kpi-val r">${fmtKpi(k.cogs)}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Expense</th><th>Payee</th><th>Amount</th><th>Type</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>Expense</th><th>${_s.exp_col_payee}</th><th>${_s.ui_amount}</th><th>${_s.ui_type}</th></tr></thead><tbody>
   ${k.expenses.filter(e=>e.cat!=='Vendor Payment').map(e=>`<tr><td>${_esc(e.cat)}</td><td style="font-size:12px;color:var(--text)">${_esc(e.payee||'')}</td><td>${mono(fmt(e.amt),'r')}</td><td>${bx(e.type||'','bx-n')}</td></tr>`).join('')}
   <tr style="border-top:2px solid var(--border2)"><td colspan="2"><strong>Total Overhead</strong></td><td>${mono(fmt(k.oh),'r')}</td><td></td></tr>
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptNPPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptNPPDF()">⬇ PDF</button>`);
 }
 
-function rptCash(){
+function rptCash(){const _s=_L();
   const k=computeKPIs(PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month);
   const range=PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month;
   // Period-filtered paid purchases (cash out to vendors)
@@ -8905,7 +8905,7 @@ function rptCash(){
   <div class="kpi-grid" style="margin-bottom:14px">
     <div class="kpi g"><div class="kpi-lbl">Cash Inflows</div><div class="kpi-val g">${fmtKpi(k.cashIn)}</div></div>
     <div class="kpi r"><div class="kpi-lbl">Cash Outflows</div><div class="kpi-val r">${fmtKpi(k.cashOut)}</div></div>
-    <div class="kpi b"><div class="kpi-lbl">Net Cash Flow</div><div class="kpi-val b">${fmtKpi(k.cashIn-k.cashOut)}</div></div>
+    <div class="kpi b"><div class="kpi-lbl">${_s.acc_net_cash}</div><div class="kpi-val b">${fmtKpi(k.cashIn-k.cashOut)}</div></div>
     <div class="kpi y"><div class="kpi-lbl">Deposits Held (Liability)</div><div class="kpi-val y">${fmtKpi(depHeld)}</div></div>
   </div>
   <div style="padding:10px 0;font-size:13px">
@@ -8919,10 +8919,10 @@ function rptCash(){
     <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Vendor Payments (purchases)</span><span style="color:var(--r);font-family:var(--mono)">-${fmt(paidPurch)}</span></div>
     <div style="font-size:11px;color:var(--text3);margin-top:10px">⚠ Deposits held (${fmt(depHeld)}) are customer liabilities and are NOT counted as revenue or cash flow until the rental is returned.</div>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptCashPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptCashPDF()">⬇ PDF</button>`);
 }
 
-function rptMonthly(){
+function rptMonthly(){const _s=_L();
   // Build last 12 months dynamically from real data
   const now = new Date();
   const pad = n=>String(n).padStart(2,'0');
@@ -8962,10 +8962,10 @@ function rptMonthly(){
     <td style="color:var(--p)">${m.rev>0?Math.round(m.np/m.rev*100):0}%</td>
   </tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptMonthlyPDF()">⬇ PDF</button>`,'lg');
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptMonthlyPDF()">⬇ PDF</button>`,'lg');
 }
 
-function rptExpBreak(){
+function rptExpBreak(){const _s=_L();
   const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const _expPeriod=D.exp.filter(e=>inRange(e.dt,_rng));
   const cats={};
@@ -8977,13 +8977,13 @@ function rptExpBreak(){
     <div class="kpi r"><div class="kpi-lbl">Total Expenses</div><div class="kpi-val r">${fmtKpi(total)}</div></div>
     <div class="kpi"><div class="kpi-lbl">Categories</div><div class="kpi-val">${Object.keys(cats).length}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Category</th><th>Amount</th><th>% of Total</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_category}</th><th>${_s.ui_amount}</th><th>% of Total</th></tr></thead><tbody>
   ${sorted.map(([c,v])=>`<tr><td>${c}</td><td>${mono(fmt(v),'r')}</td><td style="color:var(--text2)">${Math.round(v/total*100)}%</td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>`);
 }
 
-function rptAR(){
+function rptAR(){const _s=_L();
   const today = localDateStr();
   // Compute AR live from sales (never trust stale c.bal)
   const _arLive={};
@@ -9023,7 +9023,7 @@ function rptAR(){
     <div class="kpi o"><div class="kpi-lbl">31–60 Days</div><div class="kpi-val o">${fmtKpi(buckets['31–60 days'])}</div></div>
     <div class="kpi r"><div class="kpi-lbl">60+ Days</div><div class="kpi-val r">${fmtKpi(buckets['60+ days'])}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Customer</th><th>Aging</th><th>Oldest Unpaid</th><th>Balance Due</th><th>Last Activity</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_customer}</th><th>Aging</th><th>Oldest Unpaid</th><th>Balance Due</th><th>${_s.cust_col_last}</th></tr></thead><tbody>
   ${ar.map(c=>{const days=ageDays(c);const bkt=ageBucket(days);const unpaid=D.sales.filter(s=>(s.custId===c.id||s.cust===c.name)&&s.st!=='Paid');const oldest=unpaid.length?unpaid.sort((a,b)=>a.dt.localeCompare(b.dt))[0].dt:'—';return`<tr>
     <td><strong style="color:var(--ink)">${_esc(c.name)}</strong>${c.vip?` ${bx('VIP','bx-p')}`:''}
       <div style="font-size:10px;color:var(--text2)">${unpaid.length} unpaid invoice${unpaid.length!==1?'s':''}</div>
@@ -9035,10 +9035,10 @@ function rptAR(){
   </tr>`;}).join('')}
   <tr style="border-top:2px solid var(--border2)"><td colspan="3"><strong>Total AR</strong></td><td>${mono(fmt(total),'r')}</td><td></td></tr>
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptARPDF()">⬇ PDF</button><button class="btn btn-p btn-sm" onclick="closeModal();mARDetail()">Manage AR →</button>`,'lg');
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptARPDF()">⬇ PDF</button><button class="btn btn-p btn-sm" onclick="closeModal();mARDetail()">Manage AR →</button>`,'lg');
 }
 
-function rptAP(){
+function rptAP(){const _s=_L();
   const today = localDateStr();
   // Compute AP live from unpaid purchases (never trust stale v.bal)
   const _apLive={};
@@ -9075,7 +9075,7 @@ function rptAP(){
     <div class="kpi o"><div class="kpi-lbl">61–90 Days</div><div class="kpi-val o">${fmtKpi(buckets['61–90 days'])}</div></div>
     <div class="kpi r"><div class="kpi-lbl">90+ Days</div><div class="kpi-val r">${fmtKpi(buckets['90+ days'])}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Vendor</th><th>Aging</th><th>Country</th><th>Open POs</th><th>Balance Owed</th><th>Category</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_vendor}</th><th>Aging</th><th>Country</th><th>Open POs</th><th>Balance Owed</th><th>${_s.ui_category}</th></tr></thead><tbody>
   ${ap.map(v=>{const days=apAgeDays(v);const bkt=ageBucket(days);const openPOs=D.purchases.filter(p=>(p.vendor===v.name||p.vendorId===v.id)&&p.st!=='Paid'&&p.st!=='Received');return`<tr>
     <td><strong style="color:var(--ink)">${_esc(v.name)}</strong></td>
     <td>${bx(bkt.label,bkt.cls)}</td>
@@ -9086,10 +9086,10 @@ function rptAP(){
   </tr>`;}).join('')}
   <tr style="border-top:2px solid var(--border2)"><td colspan="4"><strong>Total AP</strong></td><td>${mono(fmt(total),'r')}</td><td></td></tr>
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptAPPDF()">⬇ PDF</button><button class="btn btn-p btn-sm" onclick="closeModal();mAPDetail()">Manage AP →</button>`,'lg');
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptAPPDF()">⬇ PDF</button><button class="btn btn-p btn-sm" onclick="closeModal();mAPDetail()">Manage AP →</button>`,'lg');
 }
 
-function rptCustStmt(){
+function rptCustStmt(){const _s=_L();
   // Show a customer picker first, then the statement
   const custOpts = D.cust.map(c=>`<option value="${c.id}">${_esc(c.name)}${c.bal>0?' — '+fmt(c.bal)+' outstanding':''}</option>`).join('');
   modal('📊 Customer Statements',`
@@ -9098,7 +9098,7 @@ function rptCustStmt(){
     <input type="hidden" id="stmt-cust-sel" value=""/>
   </div>
   <div id="stmt-body" style="margin-top:14px"></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-g btn-sm" id="stmt-pdf-btn" style="display:none" onclick="_rptCustStmtPDF()">⬇ PDF</button>`,'lg');
   setTimeout(function(){
     // Native select — reliable, always visible
@@ -9123,7 +9123,7 @@ function rptCustStmt(){
     }
   },60);
 }
-function _renderCustStmt(custId){
+function _renderCustStmt(custId){const _s=_L();
   var cust=D.cust.find(c=>c.id===custId); if(!cust) return;
   var sales=D.sales.filter(s=>s.custId===cust.id||s.cust===cust.name).sort(function(a,b){return b.dt.localeCompare(a.dt);});
   var rentals=D.rentals.filter(r=>r.custId===cust.id||r.cust===cust.name).sort(function(a,b){return b.start.localeCompare(a.start);});
@@ -9140,11 +9140,11 @@ function _renderCustStmt(custId){
   body.innerHTML=`
   <div class="kpi-grid" style="margin-bottom:14px">
     <div class="kpi g"><div class="kpi-lbl">Total Invoiced</div><div class="kpi-val g">${fmtKpi(totalInvoiced)}</div></div>
-    <div class="kpi b"><div class="kpi-lbl">Total Paid</div><div class="kpi-val b">${fmtKpi(totalPaid)}</div></div>
-    <div class="kpi ${cust.bal>0?'r':'g'}"><div class="kpi-lbl">Outstanding Balance</div><div class="kpi-val ${cust.bal>0?'r':'g'}">${fmtKpi(cust.bal||0)}</div></div>
+    <div class="kpi b"><div class="kpi-lbl">${_s.cust_total_paid}</div><div class="kpi-val b">${fmtKpi(totalPaid)}</div></div>
+    <div class="kpi ${cust.bal>0?'r':'g'}"><div class="kpi-lbl">${_s.cust_outstanding}</div><div class="kpi-val ${cust.bal>0?'r':'g'}">${fmtKpi(cust.bal||0)}</div></div>
     <div class="kpi p"><div class="kpi-lbl">Transactions</div><div class="kpi-val p">${sales.length+rentals.length+appts.length}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Invoiced</th><th>Paid</th><th>Balance</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>Description</th><th>Invoiced</th><th>Paid</th><th>${_s.ui_balance}</th></tr></thead><tbody>
   ${sales.map(s=>{const tot=s.total||s.amt;const bal=tot-(s.paid||0);return`<tr><td>${s.dt}</td><td>${bx('Sale','bx-g')}</td><td style="font-size:12px">${_esc(s.items)}</td><td>${mono(fmt(tot))}</td><td>${mono(fmt(s.paid||0),'g')}</td><td>${mono(fmt(bal),bal>0?'r':'g')}</td></tr>`;}).join('')}
   ${rentals.map(r=>{const paid=r.paid||0;const bal=r.fee-paid;return`<tr><td>${r.start}</td><td>${bx('Rental','bx-c')}</td><td style="font-size:12px">${_esc(r.item)}</td><td>${mono(fmt(r.fee))}</td><td>${mono(fmt(paid),'g')}</td><td>${mono(fmt(bal),bal>0?'r':'g')}</td></tr>`;}).join('')}
   ${appts.map(a=>{return`<tr><td>${a.date}</td><td>${bx('Service','bx-p')}</td><td style="font-size:12px">${_esc(a.serviceName||'')}</td><td>${mono(fmt(a.totalAmt||0))}</td><td>${mono(fmt(a.totalAmt||0),'g')}</td><td>${mono('—')}</td></tr>`;}).join('')}
@@ -9152,7 +9152,7 @@ function _renderCustStmt(custId){
   </tbody></table></div>`;
 }
 
-function rptVendorPurch(){
+function rptVendorPurch(){const _s=_L();
   const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const _pos=D.purchases.filter(p=>inRange(p.dt,_rng)).sort((a,b)=>b.dt.localeCompare(a.dt));
   const _total=_pos.reduce((a,p)=>a+(p.total||0),0);
@@ -9170,13 +9170,13 @@ function rptVendorPurch(){
     <div class="kpi"><div class="kpi-lbl">PO Count</div><div class="kpi-val">${_pos.length}</div></div>
   </div>
   ${_vsorted.length>1?`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Spend by Vendor</div>${_vsorted.map(([v,amt])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px"><span>${_esc(v)}</span><span style="font-family:var(--mono);color:var(--b)">${fmt(amt)}</span></div>`).join('')}</div>`:''}
-  <div class="tbl-wrap"><table><thead><tr><th>PO</th><th>Date</th><th>Vendor</th><th>Items</th><th>Subtotal</th><th>Freight</th><th>Total</th><th>Status</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>PO</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>Items</th><th>${_s.ui_subtotal}</th><th>Freight</th><th>${_s.ui_total}</th><th>${_s.ui_status}</th></tr></thead><tbody>
   ${_pos.map(p=>`<tr><td>${mono(p.id)}</td><td>${p.dt}</td><td style="font-size:12px;color:var(--ink)">${p.vendor}</td><td style="font-size:11px">${p.items}</td><td>${mono(fmt(p.sub||0))}</td><td>${mono(fmt(p.freight||0))}</td><td>${mono(fmt(p.total),'b')}</td><td>${badge(p.st)}</td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptVendorPurchPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Vendor Purchases')">⬇ CSV</button>`,'lg');
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptVendorPurchPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Vendor Purchases')">⬇ CSV</button>`,'lg');
 }
 
-function rptPayHist(){
+function rptPayHist(){const _s=_L();
   const range = PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month;
   const paid  = D.sales.filter(s=>(s.paid||0)>0).sort((a,b)=>b.dt.localeCompare(a.dt));
   const totalCollected = paid.reduce((a,s)=>a+(s.paid||0),0);
@@ -9186,7 +9186,7 @@ function rptPayHist(){
     <div class="kpi b"><div class="kpi-lbl">Transactions</div><div class="kpi-val b">${paid.length}</div></div>
     <div class="kpi r"><div class="kpi-lbl">Still Outstanding</div><div class="kpi-val r">${fmtKpi(D.cust.filter(c=>c.bal>0).reduce((a,c)=>a+c.bal,0))}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>Date</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>Sale ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>${_s.ui_total}</th><th>Paid</th><th>${_s.ui_balance}</th><th>${_s.ui_status}</th></tr></thead><tbody>
   ${paid.map(s=>{const tot=s.total||s.amt;const bal=tot-(s.paid||0);return`<tr>
     <td>${mono(s.id)}</td><td>${s.dt}</td><td>${_esc(s.cust)}</td>
     <td>${mono(fmt(tot))}</td>
@@ -9195,10 +9195,10 @@ function rptPayHist(){
     <td>${badge(s.st)}</td>
   </tr>`;}).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptPayHistPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptPayHistPDF()">⬇ PDF</button>`);
 }
 
-function rptExpFull(){
+function rptExpFull(){const _s=_L();
   const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const _expP=D.exp.filter(e=>inRange(e.dt,_rng)).sort((a,b)=>b.dt.localeCompare(a.dt));
   const _expTotal=_expP.reduce((a,e)=>a+e.amt,0);
@@ -9207,22 +9207,22 @@ function rptExpFull(){
     <div class="kpi r"><div class="kpi-lbl">Total Expenses</div><div class="kpi-val r">${fmtKpi(_expTotal)}</div></div>
     <div class="kpi"><div class="kpi-lbl">Transactions</div><div class="kpi-val">${_expP.length}</div></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Date</th><th>Category</th><th>Payee</th><th>Amount</th><th>Type</th><th>Method</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th>${_s.ui_amount}</th><th>${_s.ui_type}</th><th>${_s.ui_method}</th></tr></thead><tbody>
   ${_expP.map(e=>`<tr><td>${mono(e.id)}</td><td>${e.dt}</td><td>${e.cat}</td><td style="font-size:12px">${e.payee}</td><td>${mono(fmt(e.amt),'r')}</td><td>${bx(e.type,'bx-n')}</td><td style="font-size:11px;color:var(--text2)">${e.method}</td></tr>`).join('')}
   <tr style="border-top:2px solid var(--border2)"><td colspan="4"><strong>Total</strong></td><td>${mono(fmt(_expTotal),'r')}</td><td colspan="2"></td></tr>
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptExpFullPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Full Expense Report')">⬇ Export CSV</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptExpFullPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Full Expense Report')">⬇ Export CSV</button>`);
 }
 
 function rptExpCat(){rptExpBreak();}
-function rptRepairs(){
+function rptRepairs(){const _s=_L();
   const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.month;
   const rep=D.exp.filter(e=>inRange(e.dt,_rng)&&(e.cat==='Repairs'||e.cat==='Repairs & Maintenance'||e.cat==='Cleaning'||e.cat==='Maintenance'));
   modal('📊 Repairs & Maintenance',`
-  <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Payee</th><th>Amount</th><th>Method</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.exp_col_payee}</th><th>${_s.ui_amount}</th><th>${_s.ui_method}</th></tr></thead><tbody>
   ${rep.map(e=>`<tr><td>${e.dt}</td><td>${e.payee}</td><td>${mono(fmt(e.amt),'r')}</td><td>${e.method}</td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button><button class="btn btn-g btn-sm" onclick="_rptRepairsPDF()">⬇ PDF</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRepairsPDF()">⬇ PDF</button>`);
 }
 
 function initReports(){
@@ -10887,7 +10887,7 @@ function pgAudit(){
       <th>User</th>
       <th>Role</th>
       <th>Action / Category</th>
-      <th>Detail</th>
+      <th>${_s.acc_col_detail}</th>
     </tr></thead>
     <tbody id="audit-tbody">${rows}</tbody>
   </table></div>
@@ -11086,7 +11086,7 @@ function pgAdminBiz(){
         <div style="display:flex;gap:3px;flex-wrap:nowrap;align-items:center">
           <button class="btn btn-p btn-xs" onclick="mManageBiz('${b.id}')" title="Open full management panel">⚙ Manage</button>
           ${!isFree?`<button class="btn btn-xs" style="background:rgba(99,102,241,.15);color:var(--a);border:1px solid rgba(99,102,241,.3)" onclick="event.stopPropagation();mBillingCharge('${b.id}')" title="Send CamPay charge request">📱</button>`:''}
-          <button class="btn btn-xs" style="background:rgba(45,212,160,.12);color:var(--g);border:1px solid rgba(45,212,160,.3)" onclick="event.stopPropagation();mBillingRemind('${b.id}')" title="Send WhatsApp reminder">💬</button>
+          <button class="btn btn-xs" style="background:rgba(45,212,160,.12);color:var(--g);border:1px solid rgba(45,212,160,.3)" onclick="event.stopPropagation();mBillingRemind('${b.id}')" title="${_s.rent_send_wa}">💬</button>
           <button class="btn btn-d btn-xs" onclick="event.stopPropagation();adminBizAction('${b.id}','cancel')" title="Delete permanently" style="opacity:.5">✕</button>
         </div>
       </td>
@@ -11139,7 +11139,7 @@ ${unvSection}
     <input class="fi-s" id="sa-search" placeholder="Search name, owner, email…" style="flex:1;min-width:160px" oninput="_saFilter()"/>
     <select class="sel" id="sa-st-filter" onchange="_saFilter()" style="min-width:120px">
       <option value="">All Statuses</option>
-      <option>Active</option><option>Suspended</option><option>Pending</option><option>Inactive</option>
+      <option>${_s.ui_st_active}</option><option>Suspended</option><option>${_s.ui_st_pending}</option><option>Inactive</option>
     </select>
     <select class="sel" id="sa-plan-filter" onchange="_saFilter()" style="min-width:130px">
       <option value="">All Plans</option>
@@ -11160,12 +11160,12 @@ ${unvSection}
     <table id="sa-biz-table">
       <thead><tr>
         <th>Business / Owner</th>
-        <th>Status</th>
+        <th>${_s.ui_status}</th>
         <th>Plan</th>
         <th>Amount/mo</th>
         <th>Expiry</th>
         <th>Phone</th>
-        <th>Actions</th>
+        <th>${_s.ui_actions}</th>
       </tr></thead>
       <tbody id="sa-biz-tbody">${rows}</tbody>
     </table>
@@ -11274,7 +11274,7 @@ async function _doPermDelete(bizId, bizName, reason){
 // ║  One modal for everything: profile, status, plan,           ║
 // ║  subscription expiry, billing, credentials, deletion        ║
 // ╚══════════════════════════════════════════════════════════════╝
-function mManageBiz(bizId){
+function mManageBiz(bizId){const _s=_L();
   const b = D.adminBiz.find(x=>x.id===bizId); if(!b) return;
 
   const planOptions = ['free','trial','premium']
@@ -11310,7 +11310,7 @@ function mManageBiz(bizId){
       <div class="fg"><label class="fl">WhatsApp / Phone</label>
         <input class="fi" id="mb-phone" value="${_esc(b.phone||b.whatsapp||'')}" type="tel" placeholder="237XXXXXXXXX"/>
       </div>
-      <div class="fg"><label class="fl">Country</label>
+      <div class="fg"><label class="fl">${_s.ui_country}</label>
         <input class="fi" id="mb-country" value="${_esc(b.country||'')}"/>
       </div>
       <div class="fg"><label class="fl">Business Type</label>
@@ -11392,7 +11392,7 @@ function mManageBiz(bizId){
     ${b.st==='Pending' ? `<div class="alrt alrt-b" style="margin-top:10px;font-size:12px">This business is pending activation. Change status to <strong>Active</strong> above and save to grant access.</div>` : ''}
   </div>`,
 
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_mbSave('${bizId}')">💾 Save All Changes</button>`,
   'lg');
 
@@ -11518,7 +11518,7 @@ function _mbResetLogin(bizId){
 }
 
 // Keep adminBizAction for the delete (cancel) action only
-function adminBizAction(bizId, action){
+function adminBizAction(bizId, action){const _s=_L();
   const b=D.adminBiz.find(x=>x.id===bizId);if(!b)return;
   if(action==='cancel'){
     const _cancelBizId = bizId;
@@ -11532,7 +11532,7 @@ function adminBizAction(bizId, action){
       </label>
     </div>
     <div class="fg"><label class="fl">Reason *</label><textarea class="ft" id="cancel-reason" rows="2" placeholder="Document the reason for deletion"></textarea></div>`,
-    `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+    `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
      <button class="btn btn-d" id="do-perm-del-btn" data-biz-id="${_cancelBizId}" onclick="
        var _chk=document.getElementById('cancel-confirm-chk');
        var _rsn=document.getElementById('cancel-reason');
@@ -11601,7 +11601,7 @@ async function _confirmTrialExtend(bizId){
   toast(b.name+' trial extended to '+newDate+' ✓','success');
   nav('admin-biz');
 }
-async function _convertBizPlan(bizId, plan){
+async function _convertBizPlan(bizId, plan){const _s=_L();
   var b = D.adminBiz.find(function(x){return x.id===bizId;});
   if(!b) return;
   confirmDo(
@@ -11618,7 +11618,7 @@ async function _convertBizPlan(bizId, plan){
   );
 }
 
-function mProvision(){
+function mProvision(){const _s=_L();
   if(!SESSION.isSuperAdmin){ toast('Super Admin access required','error'); return; }
   const tempPass = _genTempPassword();
   modal('🛡️ Onboard New Business',`
@@ -11643,7 +11643,7 @@ function mProvision(){
         <option>Equipment Rental</option><option>Decor Rental</option><option>Party Supplies</option><option>General Retail</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">Country</label>
+    <div class="fg"><label class="fl">${_s.ui_country}</label>
       <input class="fi" id="prov-country" placeholder="e.g. Cameroon, Nigeria, UK…"/>
     </div>
     <div class="fg"><label class="fl">Owner WhatsApp Number *</label>
@@ -11677,7 +11677,7 @@ function mProvision(){
 
   <div id="prov-email-error" style="display:none;margin-top:10px;padding:8px 12px;background:rgba(255,95,122,.1);border:1px solid rgba(255,95,122,.3);border-radius:var(--r6);font-size:12px;color:var(--r)"></div>`,
 
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="doProvision()">🛡️ Create Business & Account</button>`,'lg');
 }
 
@@ -11911,14 +11911,14 @@ ${pendingBanner}
     </select>
     <select class="sel" id="usr-status-filter" onchange="filterAdminUsers()">
       <option value="">All Status</option>
-      <option value="Active">Active</option>
+      <option value="Active">${_s.ui_st_active}</option>
       <option value="Suspended">Suspended</option>
     </select>
     <span id="usr-count" style="font-size:12px;color:var(--text2);margin-left:4px;align-self:center"></span>
     <button class="btn btn-s btn-sm" style="margin-left:auto" onclick="document.getElementById('usr-search').value='';document.getElementById('usr-biz-filter').value='';document.getElementById('usr-level-filter').value='';document.getElementById('usr-status-filter').value='';filterAdminUsers()">✕ Clear</button>
   </div>
   <div class="tbl-wrap"><table id="usr-table">
-    <thead><tr><th>User</th><th>Business</th><th>Level</th><th>Status</th><th>Last Login</th><th>Profile Access</th><th>Actions</th></tr></thead>
+    <thead><tr><th>User</th><th>Business</th><th>Level</th><th>${_s.ui_status}</th><th>Last Login</th><th>Profile Access</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody id="usr-tbody">
       <tr data-biz="" data-level="superadmin" data-status="Active" data-search="super admin admin&#64;shoptrack.work">
         <td><strong style="color:var(--p)">Super Admin</strong><div style="font-size:10px;color:var(--text2)">admin&#64;shoptrack.work</div></td>
@@ -11969,7 +11969,7 @@ ${pendingBanner}
 // ─── PROFILE ACCESS REQUEST SYSTEM ────────────────────────────────────────────
 
 // Super Admin clicks "👤 View Profile" — sends a request to the business owner
-function mRequestProfileAccess(userId){
+function mRequestProfileAccess(userId){const _s=_L();
   if(!SESSION.isSuperAdmin){ toast('Super Admin only','error'); return; }
   const u = BIZ_USERS.find(x=>x.id===userId); if(!u) return;
   const biz = D.adminBiz.find(b=>b.id===u.bizId);
@@ -11987,7 +11987,7 @@ function mRequestProfileAccess(userId){
       <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Owner notified</span><span style="font-family:var(--mono);font-size:11px;color:var(--c)">${ownerEmail}</span></div>
       <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Expires</span><span>${existing.expiresAt}</span></div>
     </div>`,
-    `<button class="btn btn-s" onclick="closeModal()">Close</button>
+    `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
      <button class="btn btn-d btn-sm" onclick="
        ACCESS_REQUESTS.splice(ACCESS_REQUESTS.findIndex(r=>r.id==='${existing.id}'),1);
        closeModal(); toast('Request cancelled','success'); nav('admin-users');
@@ -12029,7 +12029,7 @@ function mRequestProfileAccess(userId){
       <option>Security audit</option>
       <option>Account verification</option>
       <option>Billing dispute investigation</option>
-      <option>Other</option>
+      <option>${_s.po_other}</option>
     </select>
     <input class="fi" id="par-reason-other" placeholder="Describe the reason…" style="display:none;margin-top:8px"/>
   </div>
@@ -12037,7 +12037,7 @@ function mRequestProfileAccess(userId){
     📧 An email confirmation will be sent to <strong style="color:var(--c)">${ownerName}</strong> at <strong style="color:var(--c)">${ownerEmail}</strong>.<br>
     The request expires in <strong>7 days</strong>. Access is read-only and logged in the audit trail.
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="doSubmitProfileRequest('${userId}','${ownerEmail}','${ownerName}','${u.bizId}')">📧 Send Request to Owner</button>`);
 }
 
@@ -12095,7 +12095,7 @@ function doSubmitProfileRequest(userId, ownerEmail, ownerName, bizId){
 }
 
 // Owner (or SA) reviews all pending requests
-function mViewAccessRequests(){
+function mViewAccessRequests(){const _s=_L();
   const relevant = SESSION.isSuperAdmin
     ? ACCESS_REQUESTS
     : ACCESS_REQUESTS.filter(r=>r.bizId===SESSION.bizId);
@@ -12118,7 +12118,7 @@ function mViewAccessRequests(){
              <button class="btn btn-d btn-sm" onclick="resolveAccessRequest('${r.id}','denied')">✕ Deny</button>`
           : isPending && SESSION.isSuperAdmin
           ? `<span style="font-size:11px;color:var(--y)">⏳ Awaiting owner approval</span>
-             <button class="btn btn-d btn-xs" onclick="resolveAccessRequest('${r.id}','cancelled')">Cancel</button>`
+             <button class="btn btn-d btn-xs" onclick="resolveAccessRequest('${r.id}','cancelled')">${_s.ui_cancel}</button>`
           : `<span style="font-size:11px;font-weight:700;color:${r.status==='approved'?'var(--g)':r.status==='denied'?'var(--r)':'var(--text3)'}">${r.status==='approved'?'✅ Approved':r.status==='denied'?'✕ Denied':'Cancelled'}</span>
              <span style="font-size:10px;color:var(--text2)">${r.resolvedAt||''}</span>
              ${r.status==='approved'&&SESSION.isSuperAdmin?`<button class="btn btn-b btn-xs" onclick="closeModal();mViewApprovedProfile('${r.userId}','${r.id}')">👤 View Profile</button>`:''}`
@@ -12136,7 +12136,7 @@ function mViewAccessRequests(){
     <div style="font-size:12px;font-weight:700;color:var(--text2);margin-top:14px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">History (${resolved.length})</div>
     ${resolved.slice(0,5).map(r=>reqRow(r,false)).join('')}
   ` : ''}`,
-  `<button class="btn btn-p" onclick="closeModal()">Close</button>`,'lg');
+  `<button class="btn btn-p" onclick="closeModal()">${_s.ui_close}</button>`,'lg');
 }
 
 // Resolve a request (approve / deny / cancel)
@@ -12211,7 +12211,7 @@ function mViewApprovedProfile(userId, reqId){
     🔒 <strong style="color:var(--y)">Read-only view</strong> · Approved by ${req.ownerName} · ${req.resolvedAt} · Access expires ${req.expiresAt}<br>
     Passwords and sensitive credentials are never shown to platform admins.
   </div>`,
-  `<button class="btn btn-p" onclick="closeModal()">Close</button>`,'lg');
+  `<button class="btn btn-p" onclick="closeModal()">${_s.ui_close}</button>`,'lg');
 }
 
 function filterAdminUsers(){
@@ -12239,7 +12239,7 @@ function _getPlanTier(){
   var plan = _activePlan();
   return plan; // 'premium' | 'free' | 'trial'
 }
-function _showUpsell(reason){
+function _showUpsell(reason){const _s=_L();
   window._pwSelectedPlan='Premium';
   modal('\uD83D\uDE80 Upgrade to Premium',
     '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px">\uD83D\uDE80 Premium \u2014 8,900 XAF/month</div>'
@@ -12251,7 +12251,7 @@ function _showUpsell(reason){
     +'<button class="btn btn-p" onclick="closeModal();_pwProceed()">\u25b6 Upgrade \u2014 8,900 XAF/mo</button>'
   );
 }
-function mAddBizUser(){
+function mAddBizUser(){const _s=_L();
   if(!can('manage_users')){ toast('⛔ Manage Users — permission denied','error'); return; }
   // Free plan: max 1 user (owner only) -- Premium allows up to 5
   if(!SESSION.isSuperAdmin && _isFreePlan()){
@@ -12281,7 +12281,7 @@ function mAddBizUser(){
   var tempPwd = 'TempPass'+new Date().getFullYear()+'!';
   modal('+ Add Team Member',
   '<div class="fg-2">'
-  +'<div class="fg"><label class="fl">Full Name *</label><input class="fi" id="abu-name" placeholder="Full name"/></div>'
+  +'<div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="abu-name" placeholder="${_s.vend_full_name}"/></div>'
   +'<div class="fg"><label class="fl">Email *</label><input class="fi" id="abu-email" type="email" placeholder="user@business.com"/></div>'
   +bizFieldHTML
   +'<div class="fg"><label class="fl">User Level *</label><select class="fs" id="abu-level">'
@@ -12295,7 +12295,7 @@ function mAddBizUser(){
   +'<div class="fh">Share securely — user should change on first login</div>'
   +'</div>'
   +'</div>',
-  '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+  '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
   +' <button class="btn btn-p" onclick="_doAddBizUser()">Add User</button>');
 }
 function _doAddBizUser(){
@@ -12322,7 +12322,7 @@ function _doAddBizUser(){
   nav('settings');
 }
 
-function mEditBizUser(uid){
+function mEditBizUser(uid){const _s=_L();
   if(!can('manage_users')){ toast('⛔ Manage Users — permission denied','error'); return; }
   const u=BIZ_USERS.find(x=>x.id===uid); if(!u) return;
   // SA sees a full business dropdown; owners see their own business locked as read-only
@@ -12348,7 +12348,7 @@ function mEditBizUser(uid){
   modal('✏️ Edit User — '+_esc(u.name),
     '<div class="fg-2">'
     +'<div class="fg"><label class="fl">Full Name</label><input class="fi" id="eu-name" value="'+_esc(u.name)+'"/></div>'
-    +'<div class="fg"><label class="fl">Email</label><input class="fi" id="eu-email" type="email" value="'+_esc(u.email)+'"/></div>'
+    +'<div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" id="eu-email" type="email" value="'+_esc(u.email)+'"/></div>'
     +bizFieldHTML
     +'<div class="fg"><label class="fl">User Level</label><select class="fs" id="eu-level">'+lvlOpts+'</select></div>'
     +'</div>'
@@ -12360,7 +12360,7 @@ function mEditBizUser(uid){
       +'closeModal();toast(\'User removed\',\'success\');nav(\'settings\');'
     +'})">🗑 Remove</button>'
     +' <button class="btn btn-s btn-sm" onclick="closeModal();mUserRights(\''+uid+'\')">🔐 Rights</button>'
-    +' <button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    +' <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +' <button class="btn btn-p" onclick="_doEditBizUser(\''+uid+'\')">💾 Save</button>');
 }
 function _doEditBizUser(uid){
@@ -12408,7 +12408,7 @@ function tierBadge(t){
   return `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:${m.bg};color:${m.color};border:1px solid ${m.color}20">${m.icon} ${m.label}</span>`;
 }
 
-function mUserRights(uid){
+function mUserRights(uid){const _s=_L();
   if(!can('manage_users')){ toast('⛔ Manage Users — permission denied','error'); return; }
   const u=BIZ_USERS.find(x=>x.id===uid);if(!u)return;
   const defR = DEFAULT_RIGHTS[u.level]||{};
@@ -12449,11 +12449,11 @@ function mUserRights(uid){
     const u2=BIZ_USERS.find(x=>x.id==='${uid}');
     u2.rights=null;closeModal();toast('Rights reset to level defaults','success')
   ">↺ Reset to Level Defaults</button>
-   <button class="btn btn-s" onclick="closeModal()">Cancel</button>
+   <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveUserRights('${uid}')">💾 Save Rights</button>`,'lg');
 }
 
-function saveUserRights(uid){
+function saveUserRights(uid){const _s=_L();
   const u2=BIZ_USERS.find(x=>x.id===uid);if(!u2)return;
   const r={};
   Object.keys(RIGHT_MODULES).forEach(key=>{
@@ -12466,7 +12466,7 @@ function saveUserRights(uid){
   toast('Rights saved for '+u2.name,'success');
 }
 
-function mManageRights(){
+function mManageRights(){const _s=_L();
   if(!can('manage_users')){ toast('⛔ Manage Users — permission denied','error'); return; }
   const modEntries = Object.entries(RIGHT_MODULES);
   const levels = USER_LEVELS;
@@ -12478,10 +12478,10 @@ function mManageRights(){
   modal('⚙ Rights Matrix — Defaults by Level',`
   <div class="alrt alrt-b" style="margin-bottom:13px;font-size:11px">These are the <strong>default</strong> rights for each level. Individual users can have custom overrides via the 🔐 Rights button. Changes here require a code update — use the Rights button to customise per-user.</div>
   <div class="tbl-wrap" style="max-height:420px;overflow-y:auto"><table><thead>${headerRow}</thead><tbody>${rows}</tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>`,'xl');
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>`,'xl');
 }
 
-function pgAdminAnalytics(){
+function pgAdminAnalytics(){const _s=_L();
   if(!SESSION.isSuperAdmin){
     console.error('[SECURITY] Non-SA attempted pgAdminAnalytics access — blocking');
     setTimeout(()=>nav('dashboard'),0); return '';
@@ -12530,7 +12530,7 @@ function pgAdminAnalytics(){
 <div class="card" style="margin-top:13px">
   <div class="card-hd"><div class="card-ttl">Business Registry</div><span style="font-size:11px;color:var(--text2)">Platform metadata only — no business data</span></div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Business ID</th><th>Business Name</th><th>Owner</th><th>Plan</th><th>Status</th><th>Users</th><th>Onboarded</th></tr></thead>
+    <thead><tr><th>Business ID</th><th>Business Name</th><th>Owner</th><th>Plan</th><th>${_s.ui_status}</th><th>Users</th><th>Onboarded</th></tr></thead>
     <tbody>${D.adminBiz.map(b=>`<tr>
       <td>${mono(b.id,'p')}</td>
       <td><strong style="color:var(--ink)">${b.name}</strong></td>
@@ -12655,7 +12655,7 @@ function _openWA(phone, message){
   window.open(url, '_blank');
 }
 
-async function _callBillingFn(action, bizId, extra){
+async function _callBillingFn(action, bizId, extra){const _s=_L();
   // Pure GET request — Netlify WAF blocks POST bodies with payment keywords.
   // All params go in the query string which WAF does not inspect.
   const params = new URLSearchParams({ a: action });
@@ -12675,7 +12675,7 @@ async function _callBillingFn(action, bizId, extra){
   return data;
 }
 
-async function mBillingCharge(bizId){
+async function mBillingCharge(bizId){const _s=_L();
   const b = D.adminBiz.find(x=>x.id===bizId); if(!b) return;
   const amt = _billingAmtXAF(b);
   if(!amt){ toast(b.name+' is on a free trial — no charge needed','info'); return; }
@@ -12695,7 +12695,7 @@ async function mBillingCharge(bizId){
     <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Amount</span><strong style="color:var(--g);font-family:var(--mono)">${amt.toLocaleString()} XAF</strong></div>
     <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Phone</span><span style="font-family:var(--mono);color:var(--c)">${_esc(phone)}</span></div>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" id="mbc-send-btn" onclick="(async function(){
      var btn=document.getElementById('mbc-send-btn');
      btn.disabled=true; btn.textContent='⏳ Sending…';
@@ -12726,7 +12726,7 @@ async function mBillingCharge(bizId){
    })()">📱 Send Payment Request</button>`);
 }
 
-function mBillingRemind(bizId, daysOverride){
+function mBillingRemind(bizId, daysOverride){const _s=_L();
   const b = D.adminBiz.find(x=>x.id===bizId); if(!b) return;
   const phone = b.phone||b.whatsapp;
   const dLeft = daysOverride !== undefined ? daysOverride : (_billingDaysLeft(b)||0);
@@ -12741,7 +12741,7 @@ function mBillingRemind(bizId, daysOverride){
   <div class="alrt alrt-b" style="margin-top:8px;font-size:11px">
     Clicking Send opens WhatsApp with this message pre-filled. You send it manually.
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="(async function(){
      var ph=document.getElementById('br-phone').value;
      var ms=document.getElementById('br-msg').value;
@@ -12751,7 +12751,7 @@ function mBillingRemind(bizId, daysOverride){
    })()">💬 Send WhatsApp</button>`);
 }
 
-function mBillingExtend(bizId){
+function mBillingExtend(bizId){const _s=_L();
   const b = D.adminBiz.find(x=>x.id===bizId); if(!b) return;
   const curExp = b.subExpires || b.trialEnd || localDateStr();
   modal('⏱ Extend Subscription — '+_esc(b.name),`
@@ -12773,7 +12773,7 @@ function mBillingExtend(bizId){
   <div class="fg"><label class="fl">Reason (optional)</label>
     <input class="fi" id="be-reason" placeholder="e.g. Manual renewal, Goodwill extension, Issue resolution…"/>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="(async function(){
      var days = parseInt(document.getElementById('be-days').value)||30;
      var reason = document.getElementById('be-reason').value||'Manual extension';
@@ -12793,7 +12793,7 @@ function mBillingExtend(bizId){
 }
 
 // ── mBillingRunReminders — send WhatsApp reminders to all expiring businesses ──
-function mBillingRunReminders(){
+function mBillingRunReminders(){const _s=_L();
   const expiring = D.adminBiz.filter(function(b){
     const d = _billingDaysLeft(b);
     return d !== null && d <= 3 && d >= 0 && b.st === 'Active' && _billingAmtXAF(b) > 0;
@@ -12822,7 +12822,7 @@ function mBillingRunReminders(){
     '<div class="alrt alrt-b" style="margin-bottom:12px;font-size:12px">This opens WhatsApp for each business below — pre-filled with a payment reminder. You send it manually.</div>'
     +'<div style="max-height:240px;overflow-y:auto;margin-bottom:12px">'+listHtml+'</div>'
     +'<div style="font-size:12px;color:var(--text2)">Tap "Send All" to open WhatsApp for each business one by one.</div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-p" onclick="_sendReminderQueue()">💬 Send All ('+all.length+')</button>');
 }
 
@@ -12943,7 +12943,7 @@ function _affReceiptRemove(idx){
   _affReceiptRenderGrid();
 }
 
-function _affReceiptRenderGrid(){
+function _affReceiptRenderGrid(){const _s=_L();
   var wrap = document.getElementById('aff-receipt-wrap');
   if(!wrap) return;
   var grid = document.getElementById('aff-receipt-grid');
@@ -12969,7 +12969,7 @@ function _affReceiptRenderGrid(){
   }).join('');
 }
 
-function _affPreviewReceiptLocal(idx){
+function _affPreviewReceiptLocal(idx){const _s=_L();
   var r = _affReceiptList[idx];
   if(r) _affViewReceipt(r.dataUrl, r.name);
 }
@@ -12979,7 +12979,7 @@ function _affReceiptClear(){
   _affReceiptRenderGrid();
 }
 
-function _affViewReceipt(dataUrl, fileName){
+function _affViewReceipt(dataUrl, fileName){const _s=_L();
   if(!dataUrl) return;
   if(dataUrl.startsWith('data:application/pdf')){
     var w = window.open('','_blank');
@@ -12989,7 +12989,7 @@ function _affViewReceipt(dataUrl, fileName){
     modal('🧾 Receipt'+(fileName?' — '+_esc(fileName):''),
       '<div style="text-align:center"><img src="'+dataUrl+'" style="max-width:100%;max-height:70vh;border-radius:var(--r8)"/></div>'+
       '<div style="text-align:center;margin-top:10px"><a href="'+dataUrl+'" download="'+(fileName||'receipt')+'" class="btn btn-s btn-sm">⬇ Download</a></div>',
-      '<button class="btn btn-p" onclick="closeModal()">Close</button>','md'
+      '<button class="btn btn-p" onclick="closeModal()">${_s.ui_close}</button>','md'
     );
   }
 }
@@ -13005,7 +13005,7 @@ window._affVR = function(pi, ri){
   _affViewReceipt(r.dataUrl, r.name||'Receipt');
 };
 
-function _affViewReceiptByIdx(affId, payIdx, recIdx){
+function _affViewReceiptByIdx(affId, payIdx, recIdx){const _s=_L();
   var a = _affiliates.find(function(x){ return x.id===affId; });
   if(!a || !a.payment_history || !a.payment_history[payIdx]) return;
   var p = a.payment_history[payIdx];
@@ -13016,7 +13016,7 @@ function _affViewReceiptByIdx(affId, payIdx, recIdx){
 }
 
 // ── Affiliate partial payment modal ──────────────────────────────────────────
-function _affPayPartial(id){
+function _affPayPartial(id){const _s=_L();
   var a = _affiliates.find(function(x){ return x.id===id; });
   if(!a) return;
   var unpaid = a.unpaid_xaf || 0;
@@ -13036,10 +13036,10 @@ function _affPayPartial(id){
       '<input class="fi" id="aff-pay-amt" type="number" min="1" max="'+unpaid+'" placeholder="Enter amount..." style="font-size:18px;font-weight:600"/>'+
     '</div>'+
     '<div class="fg" style="margin-top:10px">'+
-      '<label class="fl">Payment Method</label>'+
+      '<label class="fl">${_s.ui_pay_method}</label>'+
       '<select class="fs" id="aff-pay-method">'+
-        '<option>Mobile Money</option><option>Bank Transfer</option><option>Cash</option>'+
-        '<option>Orange Money</option><option>MTN Mobile Money</option><option>PayPal</option><option>Other</option>'+
+        '<option>Mobile Money</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option>'+
+        '<option>${_s.ui_orange}</option><option>MTN Mobile Money</option><option>PayPal</option><option>${_s.po_other}</option>'+
       '</select>'+
     '</div>'+
     '<div class="fg" style="margin-top:10px">'+
@@ -13073,7 +13073,7 @@ function _affPayPartial(id){
       '</div>'+
     '</div>'+
     '</div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
     '<button class="btn btn-p" id="aff-pay-submit">💳 Process Payment</button>'
   );
   setTimeout(function(){
@@ -13141,7 +13141,7 @@ async function _affDoPayPartial(id, totalUnpaid){
 }
 
 // Payment history modal with receipt thumbnails
-function _affViewHistory(id){
+function _affViewHistory(id){const _s=_L();
   var a = _affiliates.find(function(x){ return x.id===id; });
   if(!a) return;
   var hist = a.payment_history || [];
@@ -13177,17 +13177,17 @@ function _affViewHistory(id){
     '</div>'+
     (hist.length
       ? '<div class="tbl-wrap"><table>'+
-          '<thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th><th>Notes</th><th>Receipts</th></tr></thead>'+
+          '<thead><tr><th>${_s.ui_date}</th><th>${_s.ui_amount}</th><th>${_s.ui_method}</th><th>${_s.ui_reference}</th><th>${_s.ui_notes}</th><th>Receipts</th></tr></thead>'+
           '<tbody>'+rows+'</tbody></table></div>'
       : '<div style="text-align:center;padding:30px;color:var(--text2)"><div style="font-size:32px;margin-bottom:8px">📭</div>No payment history yet.</div>'
     ),
-    '<button class="btn btn-p" onclick="closeModal()">Close</button>',
+    '<button class="btn btn-p" onclick="closeModal()">${_s.ui_close}</button>',
     'md'
   );
 }
 
 
-function pgAdminAffiliates(){
+function pgAdminAffiliates(){const _s=_L();
   if(!SESSION.isSuperAdmin){
     console.error('[SECURITY] Non-SA attempted pgAdminAffiliates');
     nav('dashboard'); return '';
@@ -13223,9 +13223,9 @@ function pgAdminAffiliates(){
 <div class="card" style="margin-top:10px">
   <div class="tbl-wrap"><table>
     <thead><tr>
-      <th>Affiliate</th><th>Code</th><th>Status</th>
+      <th>Affiliate</th><th>Code</th><th>${_s.ui_status}</th>
       <th>Clicks</th><th>Conv.</th><th>Rate</th>
-      <th>Earned</th><th>Unpaid</th><th>Joined</th><th>Actions</th>
+      <th>Earned</th><th>Unpaid</th><th>Joined</th><th>${_s.ui_actions}</th>
     </tr></thead>
     <tbody id="aff-tbody"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text2)">Loading...</td></tr></tbody>
   </table></div>
@@ -13340,7 +13340,7 @@ async function _affManage(action, id, record){
   }catch(e){return {ok:false,error:e.message};}
 }
 
-async function _affApprove(id){
+async function _affApprove(id){const _s=_L();
   // Re-fetch from DB first to get freshest affiliate_code (avoids stale in-memory state after set-code)
   if(_sb){
     try{
@@ -13372,7 +13372,7 @@ async function _affApprove(id){
   } else toast('Error: '+r.error,'error');
 }
 
-async function _affSendApprovalEmail(a){
+async function _affSendApprovalEmail(a){const _s=_L();
   try{
     var res = await fetch('/.netlify/functions/aff-approve-email',{
       method:'POST',
@@ -13399,7 +13399,7 @@ async function _affSendApprovalEmail(a){
 }
 
 // Allow SA to manually resend the approval email from the table
-async function _affResendApprovalEmail(id){
+async function _affResendApprovalEmail(id){const _s=_L();
   var a=_affiliates.find(function(x){return x.id===id;});
   if(!a||!a.email){ toast('No email on file for this affiliate','error'); return; }
   if(a.status!=='approved'){ toast('Affiliate must be approved first','error'); return; }
@@ -13407,16 +13407,16 @@ async function _affResendApprovalEmail(id){
   await _affSendApprovalEmail(a);
 }
 
-async function _affSuspend(id){
+async function _affSuspend(id){const _s=_L();
   var a=_affiliates.find(function(x){return x.id===id;});
   modal('\u26a0\uFE0F Suspend Affiliate',
     '<p style="font-size:13px;color:var(--text2)">Suspend <strong>'+(a?_esc(a.name):'this affiliate')+'</strong>?<br>'
     +'Their link will stop converting. You can reactivate at any time.</p>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-d" onclick="closeModal();_doAffSuspend(\''+id+'\')">\u26d4 Suspend</button>'
   );
 }
-async function _doAffSuspend(id){
+async function _doAffSuspend(id){const _s=_L();
   var r=await _affManage('suspend',id);
   if(r.ok){
     var a=_affiliates.find(function(x){return x.id===id;});
@@ -13426,7 +13426,7 @@ async function _doAffSuspend(id){
   } else toast('Error: '+r.error,'error');
 }
 
-async function _affMarkPaid(id){
+async function _affMarkPaid(id){const _s=_L();
   var a=_affiliates.find(function(x){return x.id===id;});
   if(!a) return;
   var unpaid=a.unpaid_xaf||0;
@@ -13435,11 +13435,11 @@ async function _affMarkPaid(id){
     '<div class="alrt alrt-b" style="margin-bottom:12px">Clear full unpaid balance for <strong>'+_esc(a.name)+'</strong>?</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:13px;display:flex;justify-content:space-between">'
     +'<span style="color:var(--text2)">Unpaid balance to clear</span><strong style="color:var(--r)">'+fmt(unpaid)+'</strong></div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-p" onclick="closeModal();_doAffMarkPaid(\''+id+'\')">\u2714 Mark Paid</button>'
   );
 }
-async function _doAffMarkPaid(id){
+async function _doAffMarkPaid(id){const _s=_L();
   var r=await _affManage('mark-paid',id);
   if(r.ok){
     var a=_affiliates.find(function(x){return x.id===id;});
@@ -13449,7 +13449,7 @@ async function _doAffMarkPaid(id){
   } else toast('Error: '+r.error,'error');
 }
 
-function _affSetCode(id){
+function _affSetCode(id){const _s=_L();
   var a=_affiliates.find(function(x){return x.id===id;});
   var cur=a?(a.affiliate_code&&!a.affiliate_code.startsWith('PENDING')?a.affiliate_code:''):''
   modal('Edit Affiliate Code',
@@ -13458,12 +13458,12 @@ function _affSetCode(id){
     +' placeholder="e.g. AMAKA2026" style="text-transform:uppercase;font-family:var(--mono)"'
     +' oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\')"/>'
     +'<div class="fh">Min 3 chars, letters and numbers only. Used in shoptrack.org/?aff=CODE</div></div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-p" onclick="_doAffSetCode(\''+id+'\')">\u270F Save Code</button>'
   );
   setTimeout(function(){ var el=document.getElementById('aff-code-inp'); if(el){el.focus();el.select();} },80);
 }
-async function _doAffSetCode(id){
+async function _doAffSetCode(id){const _s=_L();
   var code=((document.getElementById('aff-code-inp')||{}).value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
   if(code.length<3){ toast('Code must be at least 3 characters','error'); return; }
   var r=await _affManage('set-code',id,{affiliate_code:code});
@@ -13474,17 +13474,17 @@ async function _doAffSetCode(id){
   } else toast('Error: '+r.error,'error');
 }
 
-async function _affDelete(id){
+async function _affDelete(id){const _s=_L();
   var a=_affiliates.find(function(x){return x.id===id;});
   var label=a?(a.name+' ('+a.email+')'):id;
   modal('\uD83D\uDDD1 Delete Affiliate',
     '<div class="alrt alrt-r" style="margin-bottom:12px">Permanently delete <strong>'+_esc(label)+'</strong>?<br>'
     +'All their earnings data and commission history will be removed. This cannot be undone.</div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-d" onclick="closeModal();_doAffDelete(\''+id+'\')">\uD83D\uDDD1 Delete Permanently</button>'
   );
 }
-async function _doAffDelete(id){
+async function _doAffDelete(id){const _s=_L();
   var r=await _affManage('delete',id);
   if(r.ok){
     _affiliates=_affiliates.filter(function(x){return x.id!==id;});
@@ -13502,14 +13502,14 @@ function _affCopyLink(link){
   navigator.clipboard.writeText(link).then(function(){ toast('Link copied!','success'); }).catch(function(){ toast(link,'info'); });
 }
 
-function _affAddManual(){
+function _affAddManual(){const _s=_L();
   modal('+ Add Affiliate Manually',
-    '<div class="fg"><label class="fl">Full Name *</label><input class="fi" id="aff-mn-name" placeholder="e.g. Amaka Johnson"/></div>'+
+    '<div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="aff-mn-name" placeholder="e.g. Amaka Johnson"/></div>'+
     '<div class="fg"><label class="fl">Email *</label><input class="fi" id="aff-mn-email" type="email" placeholder="amaka@email.com"/></div>'+
     '<div class="fg"><label class="fl">Affiliate Code *</label><input class="fi" id="aff-mn-code" placeholder="e.g. AMAKA2026" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\')"/><div class="fh">Used in shoptrack.org/?aff=CODE</div></div>'+
     '<div class="fg"><label class="fl">TikTok / Social Handle</label><input class="fi" id="aff-mn-handle" placeholder="@handle"/></div>'+
     '<div class="fg"><label class="fl">Commission %</label><input class="fi" id="aff-mn-pct" type="number" value="20" min="1" max="50"/><div class="fh">% of first subscription payment</div></div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
     '<button class="btn btn-p" onclick="_affDoAddManual()">Add Affiliate</button>'
   );
 }
@@ -14155,7 +14155,7 @@ function _queueUpdateBadge(count){
 }
 
 // ── Show queue status modal ───────────────────────────────────
-async function _queueShowStatus(){
+async function _queueShowStatus(){const _s=_L();
   if(!SESSION.bizId) return;
   var items  = await _queueGetAll(SESSION.bizId);
   var count  = items.length;
@@ -14190,7 +14190,7 @@ async function _queueShowStatus(){
           }).join('')
         + '</div>' : '')
     + '<div style="margin-top:10px;font-size:12px;color:var(--text2)">Your data is saved locally and will not be lost.</div>',
-    '<button class="btn btn-s" onclick="closeModal()">Close</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>'
     + (online ? '<button class="btn btn-p btn-sm" onclick="closeModal();_queueDrain()">Sync Now</button>' : '')
   );
 }
@@ -15961,7 +15961,7 @@ function doLogin(){
     setTimeout(()=>{updateSidebarForRole();refreshNotifPanel();},100);
   });
 }
-function showLoginError(msg){
+function showLoginError(msg){const _s=_L();
   const el = document.getElementById('ln-error');
   if(!el) return;
   el.textContent = msg;
@@ -15970,7 +15970,7 @@ function showLoginError(msg){
   setTimeout(()=>el.style.animation='',10);
 }
 
-function showForgotPwd(){
+function showForgotPwd(){const _s=_L();
   const email = document.getElementById('ln-email')?.value?.trim();
   if(email){
     // Show a password reset modal overlay within the login screen
@@ -15983,7 +15983,7 @@ function showForgotPwd(){
       <input id="fp-conf" type="password" placeholder="Confirm new password" style="width:100%;background:#1e2130;border:1px solid rgba(255,255,255,.1);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:16px" onfocus="this.style.borderColor='#e8667a'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"/>
       <div id="fp-err" style="display:none;color:#ff5f7a;font-size:12px;margin-bottom:10px"></div>
       <div style="display:flex;gap:8px">
-        <button onclick="this.closest('div[style]').remove()" style="flex:1;padding:10px;background:#1e2130;border:1px solid rgba(255,255,255,.1);color:var(--text2);border-radius:8px;cursor:pointer;font-family:inherit">Cancel</button>
+        <button onclick="this.closest('div[style]').remove()" style="flex:1;padding:10px;background:#1e2130;border:1px solid rgba(255,255,255,.1);color:var(--text2);border-radius:8px;cursor:pointer;font-family:inherit">${_s.ui_cancel}</button>
         <button onclick="doResetPwd('${email}',this)" style="flex:1;padding:10px;background:linear-gradient(135deg,#e8667a,#f5a623);border:none;color:#fff;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit">Reset</button>
       </div>
     </div>`;
@@ -16064,7 +16064,7 @@ function _updatePwdStrength(pwd){
   lbl.textContent=score?labels[score-1]:'';
   lbl.style.color=colors[score-1]||'var(--text2)';
 }
-function _savePasswordFromTab(){
+function _savePasswordFromTab(){const _s=_L();
   var cur  = (document.getElementById('biz-sec-cur')?.value||'').trim();
   var nw   = (document.getElementById('biz-sec-new')?.value||'').trim();
   var conf = (document.getElementById('biz-sec-conf')?.value||'').trim();
@@ -16074,7 +16074,7 @@ function _savePasswordFromTab(){
   if(nw!==conf){ toast('Passwords do not match','error'); return; }
   _doChangePasswordDirect(cur, nw);
 }
-async function _doChangePasswordDirect(cur, nw){
+async function _doChangePasswordDirect(cur, nw){const _s=_L();
   var btn=document.querySelector('#tab-security button.btn-p');
   if(btn){btn.disabled=true;btn.textContent='Changing\u2026';}
   try{
@@ -16099,7 +16099,7 @@ async function _doChangePasswordDirect(cur, nw){
   }catch(e){toast('Error: '+e.message,'error');}
   finally{if(btn){btn.disabled=false;btn.textContent='\uD83D\uDD12 Change Password';}}
 }
-function mChangePassword(){
+function mChangePassword(){const _s=_L();
   modal('🔑 Change Password',`
   <div class="alrt alrt-b" style="margin-bottom:14px">Changing password for <strong>${SESSION.name}</strong> (${SESSION.isSuperAdmin?'Super Admin':USER_LEVEL_LABELS[SESSION.level]})</div>
   <div class="fg"><label class="fl">Current Password</label><input class="fi" id="cp-cur" type="password" placeholder="Current password"/></div>
@@ -16108,7 +16108,7 @@ function mChangePassword(){
   <div style="margin-top:8px;font-size:11px;color:var(--text2)">
       Requirements: min 8 chars · at least 1 number · at least 1 special character (!@#$%)
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_doChangePassword()">Update Password</button>`);
 }
 
@@ -16184,22 +16184,22 @@ async function _doChangePassword(){
 
 // Returns the HTML for an inline "Add New Customer" expandable panel
 // prefix: unique prefix to namespace element IDs (cs, cr, na, etc.)
-function _inlineCustFormHTML(prefix){
+function _inlineCustFormHTML(prefix){const _s=_L();
   const ph = _ph('phonePh');
   return `
   <div id="${prefix}-nc-panel" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);padding:12px;margin-bottom:8px">
     <div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">New Customer Details</div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">Full Name *</label><input class="fi" id="${prefix}-nc-name" placeholder="Customer name"/></div>
+      <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="${prefix}-nc-name" placeholder="Customer name"/></div>
       <div class="fg"><label class="fl">Phone *</label><input class="fi" id="${prefix}-nc-phone" type="tel" placeholder="${ph}" data-locale="phone"/></div>
     </div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">Email</label><input class="fi" id="${prefix}-nc-email" type="email" placeholder="email@example.com"/></div>
-      <div class="fg"><label class="fl">City</label><input class="fi" id="${prefix}-nc-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
+      <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" id="${prefix}-nc-email" type="email" placeholder="email@example.com"/></div>
+      <div class="fg"><label class="fl">${_s.ui_city}</label><input class="fi" id="${prefix}-nc-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px">
       <button type="button" class="btn btn-p btn-sm" style="flex:1" onclick="_inlineSaveNewCust('${prefix}')">✓ Save & Select</button>
-      <button type="button" class="btn btn-s btn-sm" onclick="_inlineCancelNewCust('${prefix}')">Cancel</button>
+      <button type="button" class="btn btn-s btn-sm" onclick="_inlineCancelNewCust('${prefix}')">${_s.ui_cancel}</button>
     </div>
   </div>`;
 }
@@ -16288,7 +16288,7 @@ function _inlineSaveNewCust(prefix){
 }
 
 // Returns the label row HTML with "+ New Customer" button
-function _newCustBtnHTML(prefix){
+function _newCustBtnHTML(prefix){const _s=_L();
   return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
     <label class="fl" style="margin:0">Customer</label>
     <button type="button" class="btn btn-g btn-xs" onclick="_inlineShowNewCust('${prefix}')" style="font-size:11px">+ New Customer</button>
@@ -16296,22 +16296,22 @@ function _newCustBtnHTML(prefix){
 }
 
 // ── INLINE NEW VENDOR helper ─────────────────────────────────
-function _inlineVendorFormHTML(prefix){
+function _inlineVendorFormHTML(prefix){const _s=_L();
   const ph = _ph('phonePh');
   return `
   <div id="${prefix}-nv-panel" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);padding:12px;margin-bottom:8px">
     <div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">New Vendor Details</div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">Vendor Name *</label><input class="fi" id="${prefix}-nv-name" placeholder="Vendor / Supplier name"/></div>
-      <div class="fg"><label class="fl">Phone</label><input class="fi" id="${prefix}-nv-phone" type="tel" placeholder="${ph}" data-locale="phone"/></div>
+      <div class="fg"><label class="fl">${_s.vend_name_ph}</label><input class="fi" id="${prefix}-nv-name" placeholder="Vendor / Supplier name"/></div>
+      <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="${prefix}-nv-phone" type="tel" placeholder="${ph}" data-locale="phone"/></div>
     </div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">Email</label><input class="fi" id="${prefix}-nv-email" type="email" placeholder="email@example.com"/></div>
-      <div class="fg"><label class="fl">Country</label><input class="fi" id="${prefix}-nv-country" placeholder="${_ph('countryPh')}" data-locale="country"/></div>
+      <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" id="${prefix}-nv-email" type="email" placeholder="email@example.com"/></div>
+      <div class="fg"><label class="fl">${_s.ui_country}</label><input class="fi" id="${prefix}-nv-country" placeholder="${_ph('countryPh')}" data-locale="country"/></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px">
       <button type="button" class="btn btn-p btn-sm" style="flex:1" onclick="_inlineSaveNewVendor('${prefix}')">✓ Save & Select</button>
-      <button type="button" class="btn btn-s btn-sm" onclick="_inlineCancelNewVendor('${prefix}')">Cancel</button>
+      <button type="button" class="btn btn-s btn-sm" onclick="_inlineCancelNewVendor('${prefix}')">${_s.ui_cancel}</button>
     </div>
   </div>`;
 }
@@ -16756,7 +16756,7 @@ function showSignup(){
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Your Name *</label>'
-          +'<input id="su-name" placeholder="Full name" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
+          +'<input id="su-name" placeholder="${_s.vend_full_name}" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
         +'</div>'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Phone / WhatsApp *</label>'
@@ -18313,7 +18313,7 @@ function genCatalogDoc(){
 // ============================================================
 
 // ── Notification Preferences State ────────────────────────────────────────────
-function _toggleNotifPref(key, el){
+function _toggleNotifPref(key, el){const _s=_L();
   NOTIF_PREFS[key] = el.checked;
   const label = el.parentElement;
   const track = label.querySelector('.notif-track');
@@ -18467,13 +18467,13 @@ function pgSettings(){
     if(p.key === 'waOwnerNewSale'){
       extraBtn = '<button class="btn btn-p btn-xs" style="margin-left:6px" title="'+_s.set_notif_send_test+' onclick="_waOwnerNewSale({id:\'TEST\',cust:\'Test Customer\',items:\'Sample Item\',total:99,paid:99,method:\'Cash\'},\'Staff\');_markWATestDone()">\uD83D\uDCF1 Send Test</button>';
     } else if(p.key === 'waOwnerMinBlock'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerMinBlock(\'Sample Item\',18*CUR.rate,25,\'Staff\')">Test</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerMinBlock(\'Sample Item\',18*CUR.rate,25,\'Staff\')">${_s.set_notif_test}</button>';
     } else if(p.key === 'waOwnerPayment'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerPayment(250,\'Test Customer\',\'TEST-001\',\'Cash\')">Test</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerPayment(250,\'Test Customer\',\'TEST-001\',\'Cash\')">${_s.set_notif_test}</button>';
     } else if(p.key === 'waOwnerLowStock'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerLowStock(\'Test Item\',2,5)">Test</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerLowStock(\'Test Item\',2,5)">${_s.set_notif_test}</button>';
     } else if(p.key === 'waOwnerNewBooking'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerNewBooking({custName:\'Test Client\',custPhone:\'0000\',serviceName:\'Test Service\',date:\''+localDateStr()+'\',startTime:\'10:00\',totalAmt:50})">Test</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerNewBooking({custName:\'Test Client\',custPhone:\'0000\',serviceName:\'Test Service\',date:\''+localDateStr()+'\',startTime:\'10:00\',totalAmt:50})">${_s.set_notif_test}</button>';
     }
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg3);border-radius:var(--r6);margin-bottom:6px;border-left:3px solid '+borderColor+'">'
       + '<div style="flex:1;min-width:0">'
@@ -18838,7 +18838,7 @@ ${(function(){
     + '</div>'
     + '<div style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:var(--r6);font-size:11px;color:var(--text2)">'
     + (_isUsdBiz
-        ? '&#128274; <strong>Secure payments via Stripe.</strong> We never store your card details. You will be returned to ShopTrack automatically after payment.'
+        ? '&#128274; <strong>${_s.set_stripe_note_inner}</strong> We never store your card details. You will be returned to ShopTrack automatically after payment.'
         : '&#128161; <strong>Pay early, keep your date.</strong> If your plan expires on the 31st and you pay on the 20th, your new expiry will be the following 31st &mdash; not 30 days from the 20th.'
       )
     + '</div>';
@@ -18904,7 +18904,7 @@ ${(function(){
       <button class="btn btn-p btn-sm" onclick="
         var link='https://shoptrack.org/?ref='+(SESSION.bizId||'');
         navigator.clipboard.writeText(link).then(function(){toast('\u2705 Referral link copied!','success');}).catch(function(){toast(link,'info');});
-      ">Copy</button>
+      ">${_s.set_copy}</button>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn btn-g btn-sm" onclick="
@@ -19035,7 +19035,7 @@ ${tabDocsHtml}
 <div id="import-profile-gate-banner"></div>
 <div class="card">
   <div class="card-hd"><div class="card-ttl">${_s.set_imp_title}</div></div>
-  <div class="alrt alrt-b" style="margin-bottom:16px">Use the ShopTrack Excel template to import inventory, customers, sales, vendors and expenses in bulk. <strong>Only .xlsx files are supported.</strong></div>
+  <div class="alrt alrt-b" style="margin-bottom:16px">Use the ShopTrack Excel template to import inventory, customers, sales, vendors and expenses in bulk. <strong>${_s.set_imp_xlsx_only}</strong></div>
   <div class="fg-2" style="margin-bottom:20px">
     <div style="background:var(--bg3);border-radius:var(--r8);padding:20px">
       <div style="font-weight:700;color:var(--ink);margin-bottom:6px">${_s.set_imp_step1}</div>
@@ -19083,7 +19083,7 @@ ${tabDocsHtml}
       <div class="fg-2">
         <div class="fg">
           <label class="fl">${_s.set_fin_tax_name}</label>
-          <input class="fi" id="fin-tax-name" value="${BIZ.taxName||COUNTRY_TAX_DEFAULTS[BIZ.country]?.name||'VAT'}" placeholder="VAT / GST / TVA"/>
+          <input class="fi" id="fin-tax-name" value="${BIZ.taxName||COUNTRY_TAX_DEFAULTS[BIZ.country]?.name||'VAT'}" placeholder="${_s.set_fin_tax_ph}"/>
         </div>
         <div class="fg">
           <label class="fl">${_s.set_fin_tax_rate}</label>
@@ -19175,7 +19175,7 @@ function pgSettingsSA(){
       <div class="fg-2">
         <div class="fg"><label class="fl">Email Address</label><input class="fi" id="sa-email" type="email" value="${p.email}" placeholder="admin"+'@'+"shoptrack.work"/></div>
         <div class="fg"><label class="fl">Phone Number</label><input class="fi" id="sa-phone" type="tel" value="${p.phone}" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
-        <div class="fg"><label class="fl">WhatsApp</label><input class="fi" id="sa-whatsapp" type="tel" value="${p.whatsapp}" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
+        <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="sa-whatsapp" type="tel" value="${p.whatsapp}" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
         <div class="fg"><label class="fl">Website</label><input class="fi" id="sa-website" value="${p.website}" placeholder="www.shoptrack.org"/></div>
         <div class="fg"><label class="fl">Company / Platform Name</label><input class="fi" id="sa-company" value="${p.company}" placeholder="ShopTrack"/></div>
         <div class="fg"><label class="fl">Location / City</label><input class="fi" id="sa-location" value="${p.location}" placeholder="e.g. Yaoundé, Cameroon"/></div>
@@ -19443,7 +19443,7 @@ function renderPlansTab(){
 }
 
 
-function togglePlanBilling(isYearly){
+function togglePlanBilling(isYearly){const _s=_L();
   var knob = document.getElementById('tog-knob');
   var lblM = document.getElementById('lbl-monthly');
   var lblY = document.getElementById('lbl-yearly');
@@ -19458,7 +19458,7 @@ function togglePlanBilling(isYearly){
   });
 }
 
-function toggleSubscriptionEnforcement(enforce){
+function toggleSubscriptionEnforcement(enforce){const _s=_L();
   SUBSCRIPTIONS_ENFORCED = enforce;
   var msg = enforce
     ? '🔒 Subscription enforcement enabled. Businesses will be restricted to their plan limits.'
@@ -19468,7 +19468,7 @@ function toggleSubscriptionEnforcement(enforce){
 }
 
 
-function mSetDefaultPlan(planId){
+function mSetDefaultPlan(planId){const _s=_L();
   var plan = SUBSCRIPTION_PLANS.find(function(p){ return p.id===planId; });
   if(!plan) return;
   modal('Set Default Plan — '+plan.name,
@@ -19481,14 +19481,14 @@ function mSetDefaultPlan(planId){
         +'<div style="font-size:14px;font-weight:700;color:'+plan.color+';margin-top:6px">'+plan.monthlyXAF.toLocaleString()+' Frs / month</div>'
       +'</div>'
     +'</div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-p" onclick="addAudit(\'Default plan changed\',\'Set to \'+plan.name);closeModal();toast(\'Plan set to \'+ plan.name,\'success\')">Confirm</button>'
   );
 }
 
 
-function mViewPlans(){
-  modal('💳 Subscription Plans','<div style="overflow-y:auto;max-height:70vh">'+renderPlansTab()+'</div>','<button class="btn btn-p" onclick="closeModal()">Close</button>','xl');
+function mViewPlans(){const _s=_L();
+  modal('💳 Subscription Plans','<div style="overflow-y:auto;max-height:70vh">'+renderPlansTab()+'</div>','<button class="btn btn-p" onclick="closeModal()">${_s.ui_close}</button>','xl');
 }
 
 
@@ -19522,7 +19522,7 @@ function _goToProfileTab(){
   const firstTab = document.querySelector('#settingsTabs .stab');
   if(firstTab) switchSettingsTab(firstTab,'tab-profile');
 }
-function _goToNotifTab(){
+function _goToNotifTab(){const _s=_L();
   nav('settings');
   setTimeout(function(){
     var notifBtn=document.querySelector('#settingsTabs .stab[onclick*="tab-notif"]');
@@ -19533,7 +19533,7 @@ function _goToNotifTab(){
     },150);
   },300);
 }
-function _renderImportGateBanner(){
+function _renderImportGateBanner(){const _s=_L();
   const el = document.getElementById('import-profile-gate-banner');
   if(!el) return;
   const nameMissing    = !(BIZ.name||'').trim();
@@ -19566,7 +19566,7 @@ function _renderImportGateBanner(){
   }
 }
 
-function mResetUserPwd(uid){
+function mResetUserPwd(uid){const _s=_L();
   const u = BIZ_USERS.find(x=>x.id===uid); if(!u) return;
   modal(`🔑 Reset Password — ${_esc(u.name)}`,`
   <div class="alrt alrt-b" style="margin-bottom:14px">
@@ -19578,7 +19578,7 @@ function mResetUserPwd(uid){
   <div class="fg"><label class="fl">Confirm Password</label>
     <input class="fi" id="rp-conf" type="password" placeholder="Repeat password"/>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_doResetUserPwd('${uid}')">🔑 Reset Password</button>`);
 }
 function _doResetUserPwd(uid){
@@ -19609,7 +19609,7 @@ function _doResetUserPwd(uid){
 // ============================================================
 
 // Load SheetJS on demand
-function _loadSheetJS(cb){
+function _loadSheetJS(cb){const _s=_L();
   if(window.XLSX){ cb(); return; }
   const s = document.createElement('script');
   s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
@@ -19621,7 +19621,7 @@ function _loadSheetJS(cb){
 // ── Import profile gate ─────────────────────────────────────────────────────
 // Returns true if the business profile is complete enough to produce a
 // currency-correct template. Required: Business Name, Country, saved Currency.
-function _importProfileReady(){
+function _importProfileReady(){const _s=_L();
   const missing = [];
   if(!(BIZ.name||'').trim())    missing.push('Business Name');
   if(!(BIZ.country||'').trim()) missing.push('Country');
@@ -19643,7 +19643,7 @@ function _importProfileReady(){
       + 'Settings → Business Profile → fill in the required fields → Save Profile.'
       + '</div>'
       + goBtn,
-      '<button class="btn btn-s" onclick="closeModal()">Close</button>');
+      '<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>');
     return false;
   }
   return true;
@@ -20342,7 +20342,7 @@ function genBusinessCard(){
   openDoc('Business Card — '+BIZ.name, html);
 }
 
-function saveDocSettings(){
+function saveDocSettings(){const _s=_L();
   BIZ.invoiceNote    = document.getElementById('biz-invoice-note')?.value    || BIZ.invoiceNote;
   BIZ.taxRate        = parseFloat(document.getElementById('biz-tax')?.value) !== undefined && !isNaN(parseFloat(document.getElementById('biz-tax')?.value)) ? parseFloat(document.getElementById('biz-tax')?.value) : BIZ.taxRate;
   BIZ.paymentTerms   = document.getElementById('doc-payment-terms')?.value   || BIZ.paymentTerms;
@@ -20353,17 +20353,17 @@ function saveDocSettings(){
   toast('Document settings saved ✓','success');
 }
 
-function mRemoveUser(uid){
+function mRemoveUser(uid){const _s=_L();
   var u=BIZ_USERS.find(function(x){return x.id===uid;});
   if(!u) return;
   if(u.id===SESSION.userId){ toast('You cannot remove your own account','error'); return; }
   modal('\u26ab Remove User',
     '<div class="alrt alrt-r" style="margin-bottom:12px">Remove <strong>'+_esc(u.name)+'</strong> ('+_esc(u.email)+') from your account?<br>They will no longer be able to log in to ShopTrack.</div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-d" onclick="closeModal();_doRemoveUser(\''+uid+'\')">\u26ab Remove User</button>'
   );
 }
-async function _doRemoveUser(uid){
+async function _doRemoveUser(uid){const _s=_L();
   var u=BIZ_USERS.find(function(x){return x.id===uid;});
   if(!u) return;
   if(_sb){
@@ -20378,7 +20378,7 @@ async function _doRemoveUser(uid){
   toast(u.name+' removed from account','success');
   setTimeout(function(){ nav('settings'); },300);
 }
-function switchSession(uid){
+function switchSession(uid){const _s=_L();
   const u=BIZ_USERS.find(x=>x.id===uid);if(!u)return;
   SESSION.userId=u.id;SESSION.level=u.level;SESSION.name=u.name;SESSION.isSuperAdmin=false;
   _updateMobileNav();
@@ -20386,7 +20386,7 @@ function switchSession(uid){
   nav('settings');
 }
 
-function previewBrandColors(){
+function previewBrandColors(){const _s=_L();
   BIZ.primaryColor = document.getElementById('biz-primary')?.value || BIZ.primaryColor;
   BIZ.accentColor = document.getElementById('biz-accent')?.value || BIZ.accentColor;
   genInvoiceDoc('S-0087');
@@ -20395,14 +20395,14 @@ function previewBrandColors(){
 // ============================================================
 // EDIT / DUPLICATE — SALES
 // ============================================================
-function mEditSale(id){
+function mEditSale(id){const _s=_L();
   if(!requireRight('edit_sales','Edit Sales')) return;
   const s=D.sales.find(x=>x.id===id);if(!s)return;
   const r=CUR.rate;
   modal(`\u270f\ufe0f Edit Sale \u2014 ${s.id}`,`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="es-dt" value="${s.dt}"/></div>
-    <div class="fg"><label class="fl">Customer</label>
+    <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" type="date" id="es-dt" value="${s.dt}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_customer}</label>
       <select class="fs" id="es-cust">${D.cust.map(c=>`<option value="${c.id}"${(c.id===s.custId||c.name===s.cust)?' selected':''}>${_esc(c.name)}</option>`).join('')}</select>
     </div>
     <div class="fg"><label class="fl">Total Amount (${CUR.symbol})</label>
@@ -20414,14 +20414,14 @@ function mEditSale(id){
     <div class="fg"><label class="fl">COGS / Cost (${CUR.symbol})</label>
       <input class="fi" type="number" id="es-cost" value="${Math.round((s.cost||0)*r)}" placeholder="Cost of goods sold"/>
     </div>
-    <div class="fg"><label class="fl">Status</label>
+    <div class="fg"><label class="fl">${_s.ui_status}</label>
       <select class="fs" id="es-st">
-        <option${s.st==='Paid'?' selected':''}>Paid</option>
-        <option${s.st==='Unpaid'?' selected':''}>Unpaid</option>
-        <option${s.st==='Partial'?' selected':''}>Partial</option>
+        <option${s.st==='Paid'?' selected':''}>${_s.ui_st_paid}</option>
+        <option${s.st==='Unpaid'?' selected':''}>${_s.ui_st_unpaid}</option>
+        <option${s.st==='Partial'?' selected':''}>${_s.ui_st_partial}</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">Payment Method</label>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
       <select class="fs" id="es-method">
         ${['Cash','Card','Bank Transfer','Mobile Money (MTN)','Orange Money','On Account','Cheque','Other'].map(m=>'<option'+(s.method===m?' selected':'')+'>'+m+'</option>').join('')}
       </select>
@@ -20436,11 +20436,11 @@ function mEditSale(id){
   <div class="fg"><label class="fl">Items / Description</label>
     <textarea class="ft" id="es-items" style="min-height:55px">${_esc(s.items)}</textarea>
   </div>
-  <div class="fg"><label class="fl">Notes</label>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label>
     <textarea class="ft" id="es-notes" style="min-height:40px">${_esc(s.notes||'')}</textarea>
   </div>`,
   `<button class="btn btn-d btn-sm" onclick="closeModal();deleteSale('${id}')">\uD83D\uDDD1 Delete</button>
-   <button class="btn btn-s" onclick="closeModal()">Cancel</button>
+   <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveEditSale('${id}')">\uD83D\uDCBE Save Changes</button>`);
 }
 function saveEditSale(id){
@@ -20501,7 +20501,7 @@ function mDuplicateSale(id){
 }
 
 // ── Duplicate Category / All ──────────────────────────────────
-function mDuplicateCategory(type){
+function mDuplicateCategory(type){const _s=_L();
   // type = 'inv' | 'svc'
   var isInv = type === 'inv';
   var items = isInv ? D.inv : (D.services||[]).filter(function(s){return s.active!==false;});
@@ -20540,10 +20540,10 @@ function mDuplicateCategory(type){
   });
 
   modal('⧉ Duplicate '+(isInv?'Inventory':'Service')+' Category', html,
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>');
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>');
 }
 
-async function _execDuplicate(type, cat){
+async function _execDuplicate(type, cat){const _s=_L();
   var isInv = type === 'inv';
   var source = isInv
     ? (cat==='__all__' ? D.inv.slice() : D.inv.filter(function(i){return (i.cat||'Uncategorised')===cat;}))
@@ -20595,7 +20595,7 @@ async function _execDuplicate(type, cat){
 // ============================================================
 // EDIT / DUPLICATE — PURCHASES
 // ============================================================
-function mEditPurchase(id){
+function mEditPurchase(id){const _s=_L();
   if(!requireRight('edit_purchases','Edit Purchases')) return;
   const p=D.purchases.find(x=>x.id===id);if(!p)return;
   const r=CUR.rate, sym=CUR.symbol;
@@ -20608,11 +20608,11 @@ function mEditPurchase(id){
 
   modal(`✏️ Edit PO — ${p.id}`,`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="ep-dt" value="${p.dt}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" type="date" id="ep-dt" value="${p.dt}"/></div>
     <div class="fg"><label class="fl">Expected Delivery</label><input class="fi" type="date" id="ep-delivery" value="${p.delivery||''}"/></div>
-    <div class="fg"><label class="fl">Vendor</label><select class="fs" id="ep-vendor">${vOpts}</select></div>
-    <div class="fg"><label class="fl">Payment Status</label><select class="fs" id="ep-st">${stOpts}</select></div>
-    <div class="fg"><label class="fl">Payment Method</label><select class="fs" id="ep-method">${methodOpts}</select></div>
+    <div class="fg"><label class="fl">${_s.ui_vendor}</label><select class="fs" id="ep-vendor">${vOpts}</select></div>
+    <div class="fg"><label class="fl">${_s.po_pay_status}</label><select class="fs" id="ep-st">${stOpts}</select></div>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="ep-method">${methodOpts}</select></div>
     <div class="fg"><label class="fl">Unit Cost×Qty <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="ep-sub" value="${v('sub')}" step="any" oninput="_epRecalcTotal()"/></div>
     <div class="fg"><label class="fl">Freight <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
@@ -20627,9 +20627,9 @@ function mEditPurchase(id){
       <input class="fi" type="number" id="ep-total-display" value="${v('total')}" readonly style="background:var(--a-dim);color:var(--g);font-weight:700;cursor:default"/></div>
   </div>
   <div class="fg"><label class="fl">Items Description</label><textarea class="ft" id="ep-items" style="min-height:55px">${_esc(p.items||'')}</textarea></div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="ep-notes" style="min-height:42px">${_esc(p.notes||'')}</textarea></div>`,
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ep-notes" style="min-height:42px">${_esc(p.notes||'')}</textarea></div>`,
   `<button class="btn btn-d btn-sm" onclick="closeModal();deletePurchase('${id}')">🗑 Delete</button>
-   <button class="btn btn-s" onclick="closeModal()">Cancel</button>
+   <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveEditPurchase('${id}')">💾 Save</button>`);
 }
 
@@ -20695,7 +20695,7 @@ function saveEditPurchase(id){
   toast('Purchase order updated ✓','success');
   nav('purchases');
 }
-function mDuplicatePurchase(id){
+function mDuplicatePurchase(id){const _s=_L();
   if(!requireRight('edit_purchases','Duplicate Purchase')) return;
   const src=D.purchases.find(x=>x.id===id);if(!src)return;
   const newId='P-'+String((D.purchases.reduce(function(m,p){var n=parseInt((p.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0))+1).padStart(4,'0');
@@ -20709,7 +20709,7 @@ function mDuplicatePurchase(id){
 // ============================================================
 // DUPLICATE — EXPENSES
 // ============================================================
-function mDuplicateExp(id){
+function mDuplicateExp(id){const _s=_L();
   if(!requireRight('edit_expenses','Duplicate Expense')) return;
   const src=D.exp.find(x=>x.id===id);if(!src)return;
   const maxNum = D.exp.reduce(function(m,e){ var n=parseInt((e.id||'').replace(/\D/g,''),10)||0; return n>m?n:m; },0);
@@ -20725,25 +20725,25 @@ function mDuplicateExp(id){
 // ============================================================
 // EDIT / DUPLICATE — RENTALS
 // ============================================================
-function mEditRental(id){
+function mEditRental(id){const _s=_L();
   if(!requireRight('edit_rentals','Edit Rentals')) return;
   const r=D.rentals.find(x=>x.id===id);if(!r)return;
   const custOpts = D.cust.map(c=>`<option value="${c.id}"${(c.id===r.custId||c.name===r.cust)?' selected':''}>${_esc(c.name)}</option>`).join('');
   modal(`✏️ Edit Rental — ${r.id}`,`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Customer</label><select class="fs" id="er-cust">${custOpts}</select></div>
-    <div class="fg"><label class="fl">Item</label><input class="fi" id="er-item" value="${_esc(r.item)}" readonly style="background:var(--bg3);opacity:.7" title="Item cannot be changed — delete and re-create to change item"/></div>
+    <div class="fg"><label class="fl">${_s.ui_customer}</label><select class="fs" id="er-cust">${custOpts}</select></div>
+    <div class="fg"><label class="fl">${_s.rent_item_lbl}</label><input class="fi" id="er-item" value="${_esc(r.item)}" readonly style="background:var(--bg3);opacity:.7" title="Item cannot be changed — delete and re-create to change item"/></div>
     <div class="fg"><label class="fl">Start Date</label><input class="fi" type="date" id="er-start" value="${r.start}"/></div>
     <div class="fg"><label class="fl">Due Date</label><input class="fi" type="date" id="er-due" value="${r.due}"/></div>
     <div class="fg"><label class="fl">Rental Fee <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="er-fee" value="${Math.round((r.fee||0)*CUR.rate)}"/></div>
     <div class="fg"><label class="fl">Deposit <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="er-dep" value="${Math.round((r.dep||0)*CUR.rate)}"/></div>
     <div class="fg"><label class="fl">Amount Paid <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="er-paid" value="${Math.round((r.paid||0)*CUR.rate)}"/></div>
     <div class="fg"><label class="fl">Late Fee <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="er-lf" value="${Math.round((r.lf||0)*CUR.rate)}"/></div>
-    <div class="fg"><label class="fl">Status</label><select class="fs" id="er-st"><option${r.st==='Reserved'?' selected':''}>Reserved</option><option${r.st==='Checked Out'?' selected':''}>Checked Out</option><option${r.st==='Overdue'?' selected':''}>Overdue</option><option${r.st==='Returned'?' selected':''}>Returned</option></select></div>
+    <div class="fg"><label class="fl">${_s.ui_status}</label><select class="fs" id="er-st"><option${r.st==='Reserved'?' selected':''}>${_s.rent_st_reserved}</option><option${r.st==='Checked Out'?' selected':''}>${_s.rent_st_out}</option><option${r.st==='Overdue'?' selected':''}>${_s.rent_kpi_overdue}</option><option${r.st==='Returned'?' selected':''}>${_s.rent_st_returned}</option></select></div>
   </div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="er-notes" style="min-height:48px">${_esc(r.notes||'')}</textarea></div>`,
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="er-notes" style="min-height:48px">${_esc(r.notes||'')}</textarea></div>`,
   `<button class="btn btn-d btn-sm" onclick="closeModal();deleteRental('${id}')">🗑 Delete</button>
-   <button class="btn btn-s" onclick="closeModal()">Cancel</button>
+   <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveEditRental('${id}')">💾 Save</button>`);
 }
 function saveEditRental(id){
@@ -20972,7 +20972,7 @@ function computeKPIs(range){
 // ── DASHBOARD PERIOD ──────────────────────────────────────────
 
 // ── AR Outstanding detail modal ───────────────────────────────
-function mARDetail(){
+function mARDetail(){const _s=_L();
   const debtors = D.cust.filter(c=>c.bal>0).sort((a,b)=>b.bal-a.bal);
   const total   = debtors.reduce((a,c)=>a+c.bal,0);
   if(!debtors.length){
@@ -21006,7 +21006,7 @@ function mARDetail(){
       <td><span style="font-family:var(--mono);font-weight:700;color:var(--r)">${fmt(c.bal)}</span></td>
       <td>
         <div class="btn-row">
-          ${c.phone||c.whatsapp?`<button class="btn btn-g btn-xs" onclick="_arSendWA('${c.id}')" title="Send WhatsApp reminder">💬 WA</button>`:''}
+          ${c.phone||c.whatsapp?`<button class="btn btn-g btn-xs" onclick="_arSendWA('${c.id}')" title="${_s.rent_send_wa}">💬 WA</button>`:''}
           <button class="btn btn-y btn-xs" onclick="_arWriteOff('${c.id}')" title="Write off balance">✕ Write Off</button>
         </div>
       </td>
@@ -21033,11 +21033,11 @@ function mARDetail(){
     </div>`).join('')}
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Customer</th><th>Phone</th><th>Invoices</th><th>Last Sale</th><th>Age</th><th>Balance</th><th>Actions</th></tr></thead>
+    <thead><tr><th>${_s.ui_customer}</th><th>Phone</th><th>Invoices</th><th>Last Sale</th><th>Age</th><th>${_s.ui_balance}</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>
   <div style="font-size:11px;color:var(--text3);margin-top:10px">💡 Write Off removes the balance from AR without deleting the sale record. Use for bad debts or corrections.</div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-g btn-sm" onclick="_arExportPDF()">⬇ Download PDF</button>
    <button class="btn btn-p btn-sm" onclick="closeModal();nav('customers')">View All Customers →</button>`,'lg');
 }
@@ -21112,7 +21112,7 @@ function _arExportPDF(){
   <div class="sum-box"><div class="sum-lbl">Avg. Balance</div><div class="sum-val">${fmt(total/debtors.length)}</div></div>
 </div>
 <table>
-  <thead><tr><th>Customer</th><th>Contact</th><th>Open Invoices</th><th>Last Activity</th><th style="text-align:right">Balance Due</th></tr></thead>
+  <thead><tr><th>${_s.ui_customer}</th><th>${_s.ui_contact}</th><th>Open Invoices</th><th>${_s.cust_col_last}</th><th style="text-align:right">Balance Due</th></tr></thead>
   <tbody>${rows}</tbody>
   <tfoot><tr style="background:#fff7f7;border-top:2px solid ${primary}">
     <td colspan="4" style="padding:10px;font-weight:800;color:#0f172a;font-size:13px">TOTAL AR OUTSTANDING</td>
@@ -21200,12 +21200,12 @@ function _arSendWA(custId){
     +'<div class="fg"><label class="fl">Message Preview</label>'
     +'<textarea class="ft" id="ar-wa-msg" rows="8" style="font-size:12px;font-family:var(--mono)">'+_esc(msgLines)+'</textarea></div>'
     +'<div style="font-size:11px;color:var(--text2);margin-top:4px">Sending to: '+_esc(c.name)+' ('+ph+')</div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-p" onclick="_arSendWAConfirm(\''+custId+'\',\''+ph+'\')">💬 Send WhatsApp</button>'
   );
 }
 
-async function _arSendWAConfirm(custId, ph){
+async function _arSendWAConfirm(custId, ph){const _s=_L();
   const msgEl = document.getElementById('ar-wa-msg');
   const msg = msgEl ? msgEl.value.trim() : '';
   if(!msg){ toast('Message cannot be empty','error'); return; }
@@ -21216,14 +21216,14 @@ async function _arSendWAConfirm(custId, ph){
   }
 }
 
-function _arWriteOff(custId){
+function _arWriteOff(custId){const _s=_L();
   const c=D.cust.find(x=>x.id===custId); if(!c||!c.bal) return;
   const writeOffAmt=c.bal;
   const custName=c.name;
   modal('Write Off AR — '+_esc(custName),
     '<p style="font-size:14px;color:var(--ink);margin-bottom:8px">Write off <strong>'+fmt(writeOffAmt)+'</strong> outstanding balance for <strong>'+_esc(custName)+'</strong>?</p>'
     +'<div class="alrt alrt-y">This removes the AR balance from records. The original sale/rental records are preserved. Use for bad debts or balance corrections.</div>',
-    '<button class="btn btn-s btn-sm" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-d btn-sm" id="ar-wo-confirm">✕ Write Off</button>');
   setTimeout(function(){
     var btn=document.getElementById('ar-wo-confirm');
@@ -21240,7 +21240,7 @@ function _arWriteOff(custId){
   },30);
 }
 
-function _arWriteOffAll(){
+function _arWriteOffAll(){const _s=_L();
   const debtors=D.cust.filter(c=>c.bal>0);
   const total=debtors.reduce((a,c)=>a+c.bal,0);
   const count=debtors.length;
@@ -21248,7 +21248,7 @@ function _arWriteOffAll(){
   modal('Write Off All AR',
     '<p style="font-size:14px;color:var(--ink);margin-bottom:8px">Write off <strong>'+fmt(total)+'</strong> across <strong>'+count+' customer'+(count!==1?'s':'')+'</strong>?</p>'
     +'<div class="alrt alrt-r">This cannot be undone. All customer AR balances will be zeroed. Original records are preserved.</div>',
-    '<button class="btn btn-s btn-sm" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-d btn-sm" id="ar-woa-confirm">✕ Write Off All</button>');
   setTimeout(function(){
     var btn=document.getElementById('ar-woa-confirm');
@@ -21263,7 +21263,7 @@ function _arWriteOffAll(){
 }
 
 // ── AP Outstanding detail modal ───────────────────────────────
-function mAPDetail(){
+function mAPDetail(){const _s=_L();
   const creditors = D.vendors.filter(v=>v.bal>0).sort((a,b)=>b.bal-a.bal);
   const total     = creditors.reduce((a,v)=>a+v.bal,0);
   if(!creditors.length){
@@ -21295,21 +21295,21 @@ function mAPDetail(){
     <button class="btn btn-s btn-sm" onclick="closeModal();nav('vendors')">View Vendors →</button>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Vendor</th><th>Country</th><th>Terms</th><th>Open POs</th><th>Balance</th><th>Actions</th></tr></thead>
+    <thead><tr><th>${_s.ui_vendor}</th><th>Country</th><th>Terms</th><th>Open POs</th><th>${_s.ui_balance}</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>
   <div style="font-size:11px;color:var(--text3);margin-top:10px">💡 "Clear" marks the balance as settled. Use after recording payment in the vendor's PO.</div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>`,'lg');
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>`,'lg');
 }
 
-function _apWriteOff(vendorId){
+function _apWriteOff(vendorId){const _s=_L();
   const v=D.vendors.find(x=>x.id===vendorId); if(!v||!v.bal) return;
   const amt=v.bal;
   const vendorName=v.name;
   modal('Clear AP — '+_esc(vendorName),
     '<p style="font-size:14px;color:var(--ink);margin-bottom:8px">Clear <strong>'+fmt(amt)+'</strong> AP balance for <strong>'+_esc(vendorName)+'</strong>?</p>'
     +'<div class="alrt alrt-y">This marks the balance as settled. Use after confirming payment has been made to the vendor.</div>',
-    '<button class="btn btn-s btn-sm" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-p btn-sm" id="ap-clear-confirm">✓ Clear Balance</button>');
   setTimeout(function(){
     var btn=document.getElementById('ap-clear-confirm');
@@ -21327,7 +21327,7 @@ function _apWriteOff(vendorId){
 }
 
 // ── Services Revenue detail modal (completed appointments listing) ─
-function mServicesRevenue(){
+function mServicesRevenue(){const _s=_L();
   const completed = (D.appointments||[]).filter(a=>a.st==='Completed'&&(a.totalAmt||0)>0)
     .sort((a,b)=>b.date.localeCompare(a.date));
   const total     = completed.reduce((s,a)=>s+(a.totalAmt||0),0);
@@ -21371,10 +21371,10 @@ function mServicesRevenue(){
   ${topSvc.length>1?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Revenue by Service</div>${svcBreakdown}</div>`:''}
   <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Completed Appointments — click row for invoice</div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Ref</th><th>Date</th><th>Customer</th><th>Service</th><th>Staff</th><th>Duration</th><th>Amount</th><th></th></tr></thead>
+    <thead><tr><th>Ref</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>Service</th><th>Staff</th><th>Duration</th><th>${_s.ui_amount}</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-p btn-sm" onclick="closeModal();nav('appointments')">View All Appointments →</button>`,'xl');
 }
 
@@ -21641,7 +21641,7 @@ function setAcctPeriod(el, period){
 }
 
 // ── REPORTS PERIOD ────────────────────────────────────────────
-function setReportPeriod(el, period){
+function setReportPeriod(el, period){const _s=_L();
   el.closest('.dtabs').querySelectorAll('.dtab').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
   // Keep _acctPeriod in sync so all report modal functions use the correct period
@@ -21652,7 +21652,7 @@ function setReportPeriod(el, period){
       <div class="fg"><label class="fl">Start Date</label><input class="fi" type="date" id="rpt-start" value="${PERIOD_RANGES.month.start}"/></div>
       <div class="fg"><label class="fl">End Date</label><input class="fi" type="date" id="rpt-end" value="${localDateStr()}"/></div>
     </div>`,
-    `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+    `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
      <button class="btn btn-p" onclick="applyCustomReportRange()">Apply Range</button>`);
     return;
   }
@@ -22447,7 +22447,7 @@ function _renderRentalCalendar(){
     </div>
   </div>`,
 
-  `<button class="btn btn-s btn-sm" onclick="closeModal()">Close</button>
+  `<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-g btn-sm" onclick="_calNav(${todayY},${todayM})">&#8962; Today</button>
    <button class="btn btn-p btn-sm" onclick="_calNewRental('${selDs}')">+ Book on ${selDs.slice(5).replace('-','/')}</button>`,
   'xl');
@@ -22460,7 +22460,7 @@ function _calNav(y, m){
 }
 
 // ── Select a day in the calendar (updates sidebar) ────────────
-function _calSelectDay(d){
+function _calSelectDay(d){const _s=_L();
   _calSelDay = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
   _renderRentalCalendar();
 }
@@ -22470,7 +22470,7 @@ function _calSelRental(rentalId){
   closeModal();
   setTimeout(()=>mRentalDetail(rentalId), 60);
 }
-function _calNewRental(dateStr){
+function _calNewRental(dateStr){const _s=_L();
   _mStack.length=0;
   $('mc').innerHTML='';
   setTimeout(function(){ mCreateRental(dateStr||null); },60);
@@ -22479,7 +22479,7 @@ function _calNewRental(dateStr){
 // ============================================================
 // PURCHASE VIEW MODAL
 // ============================================================
-function mViewPurchase(id){
+function mViewPurchase(id){const _s=_L();
   const p=D.purchases.find(x=>x.id===id);if(!p)return;
   const landedCosts = (p.freight||0)+(p.duties||0)+(p.taxes||0)+(p.other||0);
   const landedPct   = p.sub>0 ? Math.round(landedCosts/p.sub*100) : 0;
@@ -22492,7 +22492,7 @@ function mViewPurchase(id){
     <div class="kpi y" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Landed Costs</div>
       <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--y)">${fmt(landedCosts)}</div>
       <div style="font-size:10px;color:var(--text2)">${landedPct}% of sub</div></div>
-    <div class="kpi g" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Total Landed</div>
+    <div class="kpi g" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">${_s.po_landed}</div>
       <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(p.total)}</div></div>
     <div class="kpi" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">Status</div>
       <div style="margin-top:4px">${badge(p.st)}</div></div>
@@ -22512,7 +22512,7 @@ function mViewPurchase(id){
   <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);padding:12px;font-size:13px;color:var(--text);white-space:pre-line;line-height:1.6;margin-bottom:${p.notes?'12px':'0'}">${_esc(p.items||'—')}</div>
   ${p.notes?`<div class="fl" style="margin-bottom:4px;margin-top:10px">Notes</div><div style="font-size:12px;color:var(--text2)">${_esc(p.notes)}</div>`:''}`,
 
-  `<button class="btn btn-s" onclick="closeModal()">Close</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mEditPurchase('${p.id}')">✏ Edit</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();genPODoc('${p.id}')">🖨 Print PO</button>
    ${p.st==='Pending'||p.st==='Partial'?`<button class="btn btn-p btn-sm" id="po-recv-btn">✅ Mark Received</button>`:''}
@@ -22632,7 +22632,7 @@ function genPODoc(id){
 // ============================================================
 // EXPENSE EDIT MODAL
 // ============================================================
-async function mEditExp(id){
+async function mEditExp(id){const _s=_L();
   await _syncCatsFromDB();
   if(!can('edit_expenses')){ toast('\u26d4 Edit Expenses — permission denied for your role','error'); return; }
   const e=D.exp.find(x=>x.id===id);if(!e)return;
@@ -22643,8 +22643,8 @@ async function mEditExp(id){
     .map(m=>`<option${m===e.method?' selected':''}>${m}</option>`).join('');
   modal(`✏️ Edit Expense — ${e.id}`,`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="edit-exp-dt" value="${e.dt}"/></div>
-    <div class="fg"><label class="fl">Category</label>
+    <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" type="date" id="edit-exp-dt" value="${e.dt}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_category}</label>
       <div style="display:flex;gap:6px;align-items:center">
         <div id="edit-exp-cat-wrap" style="position:relative;flex:1"></div>
         <input type="hidden" id="edit-exp-cat" value="${_esc(e.cat||D.expCats[0]||'')}"/>
@@ -22652,13 +22652,13 @@ async function mEditExp(id){
     </div>
     <div class="fg"><label class="fl">Payee *</label><input class="fi" id="edit-exp-payee" value="${_esc(e.payee)}"/></div>
     <div class="fg"><label class="fl">Amount * <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="edit-exp-amt" value="${Math.round(e.amt*(CUR.rate||1)*100)/100}" step="any"/></div>
-    <div class="fg"><label class="fl">Type</label><select class="fs" id="edit-exp-type">${typeOpts}</select></div>
-    <div class="fg"><label class="fl">Payment Method</label><select class="fs" id="edit-exp-method">${methodOpts}</select></div>
+    <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="edit-exp-type">${typeOpts}</select></div>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="edit-exp-method">${methodOpts}</select></div>
   </div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="edit-exp-notes" placeholder="Additional notes…" style="min-height:52px">${_esc(e.notes||'')}</textarea></div>`,
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="edit-exp-notes" placeholder="Additional notes…" style="min-height:52px">${_esc(e.notes||'')}</textarea></div>`,
   `<button class="btn btn-d btn-sm" onclick="confirmDo('Delete this expense?',function(){D.exp=D.exp.filter(function(x){return x.id!==id;});_dbDelExp(id);
     refreshLiveKpis();addAudit('Expense deleted',id);closeModal();toast('Expense deleted','success');nav('expenses');})">🗑 Delete</button>
-   <button class="btn btn-s" onclick="closeModal()">Cancel</button>
+   <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveExpEdit('${id}')">💾 Save Changes</button>`);
   // Init category searchable select with live D.expCats
   setTimeout(function(){
@@ -23113,7 +23113,7 @@ function exportSinglePO(id){
 // GLOBAL SEARCH
 // ============================================================
 let _searchTimeout = null;
-function globalSearch(q){
+function globalSearch(q){const _s=_L();
   clearTimeout(_searchTimeout);
   if(!q || q.trim().length < 2) return;
   _searchTimeout = setTimeout(()=>{
@@ -23140,7 +23140,7 @@ function globalSearch(q){
       </div>`).join('')}
       ${results.length>20?`<div style="text-align:center;font-size:12px;color:var(--text2);padding:6px">…and ${results.length-20} more results</div>`:''}
     </div>`,
-    `<button class="btn btn-s" onclick="closeModal()">Close</button>`,'lg');
+    `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>`,'lg');
   }, 300);
 }
 
@@ -23249,7 +23249,7 @@ function _checkPlanExpiry(){
 }
 
 // ── Full-screen paywall modal ──────────────────────────────────
-function _showTrialPaywall(daysLeft, hardBlock){
+function _showTrialPaywall(daysLeft, hardBlock){const _s=_L();
   if(document.getElementById('trial-paywall-overlay')) return;
   var salesCount = D.sales.length;
   var custCount  = D.cust.length;
@@ -23276,7 +23276,7 @@ function _showTrialPaywall(daysLeft, hardBlock){
     +'<div style="padding:20px 24px 0">'
       +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Your data is safe \u2014 waiting for you</div>'
       +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'
-        +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--a);font-family:var(--mono)">'+salesCount+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Sales</div></div>'
+        +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--a);font-family:var(--mono)">'+salesCount+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${_s.acc_row_sales}</div></div>'
         +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--g);font-family:var(--mono)">'+custCount+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Customers</div></div>'
         +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--p);font-family:var(--mono)">'+invCount+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Products</div></div>'
         +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:15px;font-weight:800;color:var(--g);font-family:var(--mono)">'+fmtKpi(totalRev)+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Revenue</div></div>'
@@ -23300,18 +23300,18 @@ function _showTrialPaywall(daysLeft, hardBlock){
   _pwSelectPlan('Premium');
 }
 
-function _pwSelectPlan(plan){
+function _pwSelectPlan(plan){const _s=_L();
   window._pwSelectedPlan = 'Premium';
   var btn=document.getElementById('pw-upgrade-btn');
   if(btn) btn.textContent='\u25b6 Upgrade to Premium \u2014 8,900 XAF/mo';
 }
 
-function _pwDismiss(){
+function _pwDismiss(){const _s=_L();
   var ov=document.getElementById('trial-paywall-overlay'); if(ov) ov.remove();
   toast('\uD83D\uDC40 Read-only mode \u2014 you can view your data but not record new transactions','info');
 }
 
-function _pwProceed(){
+function _pwProceed(){const _s=_L();
   var ov=document.getElementById('trial-paywall-overlay'); if(ov) ov.remove();
   var planId = 'Premium';
   if(_sb && SESSION.bizId){
@@ -23331,7 +23331,7 @@ function _trialWriteBlocked(actionLabel, checkType){
 }
 
 // ── Record vendor payment (AP) ───────────────────────────────────────────
-function mPayVendor(vendorId){
+function mPayVendor(vendorId){const _s=_L();
   const v = D.vendors.find(x=>x.id===vendorId);
   if(!v) return;
   const today = localDateStr();
@@ -23343,19 +23343,19 @@ function mPayVendor(vendorId){
   <div class="fg-2">
     <div class="fg"><label class="fl">Payment Amount</label>
       <input class="fi" id="vp-amt" type="number" value="${(v.bal*CUR.rate).toFixed(2)}" min="0" step="0.01" placeholder="Amount in ${CUR.code}"/></div>
-    <div class="fg"><label class="fl">Payment Date</label>
+    <div class="fg"><label class="fl">${_s.sal_pay_date}</label>
       <input class="fi" id="vp-dt" type="date" value="${today}"/></div>
   </div>
   <div class="fg-2">
-    <div class="fg"><label class="fl">Payment Method</label>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
       <select class="fs" id="vp-method">
-        <option>Bank Transfer</option><option>Cash</option>
-        <option>Mobile Money</option><option>Cheque</option><option>Card</option>
+        <option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option>
+        <option>Mobile Money</option><option>${_s.ui_cheque}</option><option>Card</option>
       </select></div>
     <div class="fg"><label class="fl">Reference / Note</label>
       <input class="fi" id="vp-ref" placeholder="e.g. Bank ref, receipt no…"/></div>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button>
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="
      const amtDisplay = parseFloat(document.getElementById('vp-amt').value)||0;
      if(!amtDisplay){ toast('Enter a payment amount','error'); return; }
@@ -23725,7 +23725,7 @@ function _apptCalHTML(){
   </div></div>
 </div>`;
 }
-function _apptListHTML(){
+function _apptListHTML(){const _s=_L();
   const appts=[...D.appointments].sort((a,b)=>a.date<b.date?1:-1);
   const canEdit=canAccess('rentals'); // appointments follow same permission as services/bookings
   return `<div class="card">
@@ -23734,15 +23734,15 @@ function _apptListHTML(){
       <input class="fi-s" id="al-q" placeholder="Search name, service…" style="width:160px" oninput="_apptFilter()"/>
       <select class="sel" id="al-st" onchange="_apptFilter()" style="font-size:12px">
         <option value="">All Status</option>
-        <option>Reserved</option><option>Confirmed</option><option>In Progress</option>
-        <option>Completed</option><option>No-Show</option><option>Cancelled</option>
+        <option>${_s.rent_st_reserved}</option><option>Confirmed</option><option>In Progress</option>
+        <option>${_s.ui_st_completed}</option><option>No-Show</option><option>${_s.ui_st_cancelled}</option>
       </select>
       <input type="date" class="fi-s" id="al-dt" onchange="_apptFilter()" style="width:135px" title="Filter by date"/>
       <button class="btn btn-s btn-xs" onclick="document.getElementById('al-dt').value='';document.getElementById('al-st').value='';document.getElementById('al-q').value='';_apptFilter()" title="Clear filters">✕ Clear</button>
     </div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>ID</th><th>Date & Time</th><th>Customer</th><th>Service</th><th>Staff</th><th>Status</th><th>Amount</th><th>Actions</th></tr></thead>
+    <thead><tr><th>ID</th><th>Date & Time</th><th>${_s.ui_customer}</th><th>Service</th><th>Staff</th><th>${_s.ui_status}</th><th>${_s.ui_amount}</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody id="al-tbody">
     ${appts.map(a=>`<tr data-st="${a.st}" data-dt="${a.date}" data-q="${_esc((a.custName+' '+a.serviceName+' '+(a.staffName||'')).toLowerCase())}" style="cursor:pointer" onclick="mViewAppt('${a.id}')">
       <td>
@@ -24058,7 +24058,7 @@ function pgAppointments(){
 
     // Services → navigate to services page
     +'<div class="kpi" style="cursor:pointer" onclick="nav(\'services\')" title="Manage services">'
-      +'<div class="kpi-lbl">Services</div>'
+      +'<div class="kpi-lbl">${_s.acc_row_services}</div>'
       +'<div class="kpi-val">'+activeServices+'</div>'
       +'<div class="kpi-sub">Active → Manage</div>'
     +'</div>'
@@ -24100,7 +24100,7 @@ async function _syncServicesToCloud(){
 }
 
 // ── Fix service prices that were saved in display currency instead of base USD ─
-function _fixServicePrices(){
+function _fixServicePrices(){const _s=_L();
   // A price is suspicious if it's >= 100 and CUR.rate >= 100 (i.e. likely stored as XAF/NGN amount)
   // In correct storage: price should be the USD-base value (small number for XAF e.g. 16.26 = 10,000 Frs)
   var suspicious = D.services.filter(function(s){
@@ -24128,7 +24128,7 @@ function _fixServicePrices(){
     +'<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Checked services will have their price divided by the exchange rate ('
     +CUR.code+' ÷ '+CUR.rate.toFixed(2)+' = USD base). Un-check any that look correct already.</div>'
     +'<div style="max-height:300px;overflow-y:auto">'+rows+'</div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-p" onclick="_applyPriceFix()">🔧 Fix Selected</button>'
   );
 }
@@ -24338,7 +24338,7 @@ function pgServices(){
   return out;
 }
 // ── Service category filter ──────────────────────────────────
-function _filterSvcs(cat){
+function _filterSvcs(cat){const _s=_L();
   document.querySelectorAll('.svc-card-item').forEach(function(el){
     el.style.display=(!cat||el.dataset.svcCat===cat)?'':'none';
   });
@@ -24349,7 +24349,7 @@ function _filterSvcs(cat){
   var allBtn=document.getElementById('svc-cat-all');
   if(allBtn){allBtn.style.borderColor=cat?'':'var(--a)';allBtn.style.color=cat?'':'var(--a)';}
 }
-function _apptQuickStatus(id, newSt){
+function _apptQuickStatus(id, newSt){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a) return;
   a.st=newSt; _dbSaveAppt(a);
   addAudit('Appt status',id+' \u2192 '+newSt);
@@ -24360,7 +24360,7 @@ function _apptQuickStatus(id, newSt){
 }
 
 // ── EDIT APPOINTMENT ─────────────────────────────────────────
-function mEditAppt(id){
+function mEditAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a){toast('Not found','error');return;}
   var svcOpts=D.services.filter(function(s){return s.active;}).map(function(s){var pt=s.priceType||'flat';var totalDisp=_computeSvcTotal(s.price,pt,s.duration)*CUR.rate;return '<option value="'+s.id+'" data-dur="'+s.duration+'" data-p="'+s.price+'" data-pt="'+pt+'"'+(s.id===a.serviceId?' selected':'')+'>'+s.name+' ('+s.duration+'min · '+fmt(s.price)+'/'+_ptLabel(pt)+')</option>';}).join('');
   var custOpts=D.cust.map(function(c){return '<option value="'+c.id+'" data-ph="'+(c.phone||c.whatsapp||'')+'"'+(c.id===a.custId?' selected':'')+'>'+c.name+'</option>';}).join('');
@@ -24369,24 +24369,24 @@ function mEditAppt(id){
   modal('\u270F Edit \u2014 '+a.id,
     '<div class="fg-2">'
     +'<div class="fg"><label class="fl">Service</label><select class="fs" id="ea-svc" onchange="_eaSync()">'+svcOpts+'</select></div>'
-    +'<div class="fg"><label class="fl">Date</label><input class="fi" id="ea-date" type="date" value="'+a.date+'"/></div>'
-    +'<div class="fg"><label class="fl">Start</label><input class="fi" id="ea-st" type="time" value="'+(a.startTime||'09:00')+'" oninput="_eaSync()"/></div>'
+    +'<div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" id="ea-date" type="date" value="'+a.date+'"/></div>'
+    +'<div class="fg"><label class="fl">${_s.rent_start_lbl}</label><input class="fi" id="ea-st" type="time" value="'+(a.startTime||'09:00')+'" oninput="_eaSync()"/></div>'
     +'<div class="fg"><label class="fl">End</label><input class="fi" id="ea-et" type="time" value="'+(a.endTime||'')+'" readonly style="background:var(--bg3);color:var(--text2)"/></div>'
     +'</div>'
     +'<div class="fg">'+_newCustBtnHTML('ea')+'<select class="fs" id="ea-cust"><option value="">Walk-in</option>'+custOpts+'</select>'+_inlineCustFormHTML('ea')+'</div>'
     +'<div class="fg-2">'
-    +'<div class="fg"><label class="fl">Phone</label><input class="fi" id="ea-phone" value="'+(a.custPhone||'')+'"/></div>'
+    +'<div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="ea-phone" value="'+(a.custPhone||'')+'"/></div>'
     +'<div class="fg"><label class="fl">Staff</label><select class="fs" id="ea-staff"><option value="">Any</option>'+stfOpts+'</select></div>'
     +'<div class="fg"><label class="fl">Amount ('+CUR.symbol+')</label><input class="fi" id="ea-amt" type="number" value="'+Math.round((a.totalAmt||0)*CUR.rate*100)/100+'" step="0.01" oninput="this._t=true"/></div>'
-    +'<div class="fg"><label class="fl">Status</label><select class="fs" id="ea-status">'+stList+'</select></div>'
+    +'<div class="fg"><label class="fl">${_s.ui_status}</label><select class="fs" id="ea-status">'+stList+'</select></div>'
     +'</div>'
-    +'<div class="fg"><label class="fl">Notes</label><textarea class="ft" id="ea-notes" rows="2">'+(a.notes||'')+'</textarea></div>',
+    +'<div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ea-notes" rows="2">'+(a.notes||'')+'</textarea></div>',
     '<button class="btn btn-d btn-sm" onclick="confirmDo(\'Delete this appointment?\',function(){_delAppt(\''+id+'\');})">&#128465;</button>'
-    +' <button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    +' <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +' <button class="btn btn-p" onclick="_saveEditAppt(\''+id+'\')">&#128190; Save</button>');
   setTimeout(_eaSync,60);
 }
-function _eaSync(){
+function _eaSync(){const _s=_L();
   var sel=document.getElementById('ea-svc');
   var opt=sel&&sel.options[sel.selectedIndex];
   var dur=parseInt(opt&&opt.dataset&&opt.dataset.dur)||60;
@@ -24397,7 +24397,7 @@ function _eaSync(){
   var amtEl=document.getElementById('ea-amt');
   if(amtEl&&!amtEl._t){ var total=_computeSvcTotal(pr,pt,dur)*CUR.rate; amtEl.value=total.toFixed(2); }
 }
-function _saveEditAppt(id){
+function _saveEditAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a) return;
   var svcId=document.getElementById('ea-svc')?document.getElementById('ea-svc').value:a.serviceId;
   var svc=D.services.find(function(s){return s.id===svcId;});
@@ -24424,14 +24424,14 @@ function _saveEditAppt(id){
 }
 
 // ── CANCEL / NO-SHOW ─────────────────────────────────────────
-function mCancelAppt(id){
+function mCancelAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a) return;
   modal('\u274C Cancel \u2014 '+a.custName,
     '<div class="alrt alrt-r" style="margin-bottom:12px">Cancel <strong>'+a.serviceName+'</strong> for <strong>'+a.custName+'</strong> on '+a.date+' at '+_timeLabel(a.startTime)+'?</div>'
-    +'<div class="fg"><label class="fl">Reason</label>'
+    +'<div class="fg"><label class="fl">${_s.inv_reason}</label>'
     +'<select class="fs" id="ca-reason"><option value="">No reason</option>'
     +'<option>Client requested</option><option>No-show</option><option>Staff unavailable</option>'
-    +'<option>Rescheduled</option><option>Other</option></select></div>'
+    +'<option>Rescheduled</option><option>${_s.po_other}</option></select></div>'
     +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:8px">'
     +'<input type="checkbox" id="ca-noshow" style="accent-color:var(--r)"/> Mark as No-Show</label>',
     '<button class="btn btn-s" onclick="closeModal()">Keep</button>'
@@ -24447,7 +24447,7 @@ function mCancelAppt(id){
 }
 
 // ── RESCHEDULE ───────────────────────────────────────────────
-function mRescheduleAppt(id){
+function mRescheduleAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a) return;
   var stfOpts=BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId;}).map(function(u){return '<option value="'+u.id+'"'+(u.id===a.staffId?' selected':'')+'>'+u.name+'</option>';}).join('');
   modal('\uD83D\uDD04 Reschedule \u2014 '+a.custName,
@@ -24458,9 +24458,9 @@ function mRescheduleAppt(id){
     +'<div class="fg"><label class="fl">New End</label><input class="fi" id="rs-et" type="time" value="'+(a.endTime||'')+'" readonly style="background:var(--bg3);color:var(--text2)"/></div>'
     +'<div class="fg"><label class="fl">Staff</label><select class="fs" id="rs-staff" onchange="_rsSync(\''+id+'\')"><option value="">Any</option>'+stfOpts+'</select></div>'
     +'</div>'
-    +'<div class="fg"><label class="fl">Reason</label><input class="fi" id="rs-reason" placeholder="e.g. Client request\u2026"/></div>'
+    +'<div class="fg"><label class="fl">${_s.inv_reason}</label><input class="fi" id="rs-reason" placeholder="e.g. Client request\u2026"/></div>'
     +'<div id="rs-conflict" style="display:none;margin-top:8px" class="alrt alrt-y"></div>',
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +' <button class="btn btn-p" onclick="_saveReschedule(\''+id+'\')">&#128197; Reschedule</button>','sm');
   setTimeout(function(){_rsSync(id);},60);
 }
@@ -24505,7 +24505,7 @@ function _saveReschedule(id){
 }
 
 // ── BULK ACTIONS ─────────────────────────────────────────────
-function _apptBulkConfirm(){
+function _apptBulkConfirm(){const _s=_L();
   var today=localDateStr();
   var reserved=(D.appointments||[]).filter(function(a){return a.st==='Reserved'&&a.date>=today;});
   if(!reserved.length){toast('No pending appointments to confirm','info');return;}
@@ -24515,7 +24515,7 @@ function _apptBulkConfirm(){
     toast(reserved.length+' appointments confirmed ✓','success'); nav('appointments');
   }, 'Confirm All', 'btn-p');
 }
-function _apptSendReminders(){
+function _apptSendReminders(){const _s=_L();
   var tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   var tStr=tomorrow.toISOString().slice(0,10);
   var tmr=(D.appointments||[]).filter(function(a){return a.date===tStr&&a.st!=='Cancelled'&&a.st!=='No-Show'&&a.st!=='Completed'&&a.custPhone;});
@@ -24526,7 +24526,7 @@ function mAddService(){ mNewService(); }
 function mEditService(id){ mEditSvc(id); }
 
 
-async function mNewService(){
+async function mNewService(){const _s=_L();
   await _syncCatsFromDB();
   window._svcImgData = undefined; window._svcExistingImg = undefined; // fresh modal
   const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId).map(u=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="${u.id}" style="accent-color:var(--a)"/> ${u.name}</label>`).join('');
@@ -24535,7 +24535,7 @@ async function mNewService(){
   modal('🛠 New Service',`
   <div class="fg-2">
     <div class="fg"><label class="fl">Service Name</label><input class="fi" id="sv-nm" placeholder="e.g. Interior Consultation, Haircut…"/></div>
-    <div class="fg"><label class="fl">Category</label>
+    <div class="fg"><label class="fl">${_s.ui_category}</label>
       <div id="sv-cat-wrap" style="position:relative"></div>
       <input type="hidden" id="sv-cat" value=""/>
     </div>
@@ -24556,7 +24556,7 @@ async function mNewService(){
       <div id="sv-total-preview" style="display:none;font-size:11px;color:var(--g);margin-top:4px;font-weight:600"></div>
     </div>
   </div>
-  <div class="fg"><label class="fl">Description</label><textarea class="ft" id="sv-ds" rows="2" placeholder="Brief description shown on booking page…"></textarea></div>
+  <div class="fg"><label class="fl">${_s.ui_description}</label><textarea class="ft" id="sv-ds" rows="2" placeholder="Brief description shown on booking page…"></textarea></div>
   <div class="fg">${_costBreakdownHTML('cs',[])}</div>
   ${stO?`<div class="fg"><label class="fl">Staff (leave blank = any)</label><div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:var(--bg3);border-radius:var(--r6)" id="sv-stl">${stO}</div></div>`:''}
   <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:6px"><input type="checkbox" id="sv-ac" checked style="accent-color:var(--a)"/> Active</label>
@@ -24571,7 +24571,7 @@ async function mNewService(){
       <button type="button" class="btn btn-s btn-xs" onclick="document.getElementById('sv-img-inp').value='';document.getElementById('sv-img-preview').innerHTML='📷';window._svcImgData=null">✕</button>
     </div>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="_saveSvc()">💾 Save</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button><button class="btn btn-p" onclick="_saveSvc()">💾 Save</button>`);
   setTimeout(_svPtChange, 50);
   // Init service category searchable select with live D.svcCats
   setTimeout(function(){
@@ -24582,7 +24582,7 @@ async function mNewService(){
     }, 'Service category…');
   }, 80);
 }
-async function mEditSvc(id){
+async function mEditSvc(id){const _s=_L();
   await _syncCatsFromDB();
   const s=D.services.find(x=>x.id===id); if(!s) return;
   // Track existing photo so _getSvcData can preserve it if user doesn't upload a new one
@@ -24596,7 +24596,7 @@ async function mEditSvc(id){
   modal('✏ Edit — '+s.name,`
   <div class="fg-2">
     <div class="fg"><label class="fl">Service Name</label><input class="fi" id="sv-nm" value="${_esc(s.name)}"/></div>
-    <div class="fg"><label class="fl">Category</label>
+    <div class="fg"><label class="fl">${_s.ui_category}</label>
       <div id="sv-cat-wrap" style="position:relative"></div>
       <input type="hidden" id="sv-cat" value="${_esc(sCat)}"/>
     </div>
@@ -24617,7 +24617,7 @@ async function mEditSvc(id){
       <div id="sv-total-preview" style="display:none;font-size:11px;color:var(--g);margin-top:4px;font-weight:600"></div>
     </div>
   </div>
-  <div class="fg"><label class="fl">Description</label><textarea class="ft" id="sv-ds" rows="2">${s.desc||''}</textarea></div>
+  <div class="fg"><label class="fl">${_s.ui_description}</label><textarea class="ft" id="sv-ds" rows="2">${s.desc||''}</textarea></div>
   <div class="fg">${_costBreakdownHTML('cs', s.costLines||[])}</div>
   ${stO?`<div class="fg"><label class="fl">Staff</label><div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:var(--bg3);border-radius:var(--r6)" id="sv-stl">${stO}</div></div>`:''}
   <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:6px"><input type="checkbox" id="sv-ac" ${s.active!==false?'checked':''} style="accent-color:var(--a)"/> Active</label>
@@ -24632,7 +24632,7 @@ async function mEditSvc(id){
       <button type="button" class="btn btn-s btn-xs" onclick="document.getElementById('sv-img-inp').value='';document.getElementById('sv-img-preview').innerHTML='📷';window._svcImgData=null">✕</button>
     </div>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="_saveSvcEdit('${id}')">💾 Update</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button><button class="btn btn-p" onclick="_saveSvcEdit('${id}')">💾 Update</button>`);
   setTimeout(function(){ _svPtChange(); _svSyncTotal(); }, 50);
   // Init service category searchable select with live D.svcCats
   setTimeout(function(){
@@ -24705,7 +24705,7 @@ function _getSvcData(){
   window._svcImgData = undefined; // reset after use
   return result;
 }
-async function _saveSvc(){
+async function _saveSvc(){const _s=_L();
   if(_planWriteBlocked('Adding a service','services')) return;
   const d=_getSvcData(); if(!d) return;
   const s={id:_newSvcId(),...d};
@@ -24718,7 +24718,7 @@ async function _saveSvc(){
   toast(s.name+' added & synced to booking page ✓','success');
   nav('services');
 }
-async function _saveSvcEdit(id){
+async function _saveSvcEdit(id){const _s=_L();
   const d=_getSvcData(); if(!d) return;
   const s=D.services.find(x=>x.id===id); if(!s) return;
   Object.assign(s,d);
@@ -24730,7 +24730,7 @@ async function _saveSvcEdit(id){
   toast(s.name+' updated & synced ✓','success');
   nav('services');
 }
-function _delSvc(id){
+function _delSvc(id){const _s=_L();
   var svc=D.services.find(function(x){return x.id===id;}); if(!svc) return;
   var futureAppts=(D.appointments||[]).filter(function(a){return a.serviceId===id&&!['Completed','Cancelled'].includes(a.st);});
   var allAppts=(D.appointments||[]).filter(function(a){return a.serviceId===id;});
@@ -24751,8 +24751,8 @@ function _delSvc(id){
   var mid=id, mname=svc.name;
   modal('Delete Service — '+_esc(svc.name),
     '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(svc.name)+'</strong>? This cannot be undone.</p>'+historyNote,
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn btn-d" id="confirm-del-svc-btn">Delete</button>');
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-d" id="confirm-del-svc-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-svc-btn');
     if(btn) btn.onclick=function(){
@@ -25130,7 +25130,7 @@ function _L(){
     set_doc_upload:    fr ? '📷 Téléverser'               : '📷 Upload',
     set_doc_remove:    fr ? '🗑 Supprimer'                : '🗑 Remove',
     set_imp_title:     fr ? '📥 Importer des Données'     : '📥 Import Business Data',
-    set_imp_hint:      fr ? 'Utilisez le modèle Excel ShopTrack pour importer en masse. <strong>Seuls les fichiers .xlsx sont acceptés.</strong>' : 'Use the ShopTrack Excel template to import inventory, customers, sales, vendors and expenses in bulk. <strong>Only .xlsx files are supported.</strong>',
+    set_imp_hint:      fr ? 'Utilisez le modèle Excel ShopTrack pour importer en masse. <strong>Seuls les fichiers .xlsx sont acceptés.</strong>' : 'Use the ShopTrack Excel template to import inventory, customers, sales, vendors and expenses in bulk. <strong>${_s.set_imp_xlsx_only}</strong>',
     set_imp_step1:     fr ? 'Étape 1 — Télécharger le Modèle' : 'Step 1 — Download Template',
     set_imp_step1d:    fr ? 'Téléchargez le modèle Excel pré-formaté avec données exemples.' : 'Download the pre-formatted Excel template with sample data and dropdown validation on every sheet.',
     set_imp_dl:        fr ? '⬇ Télécharger le modèle .xlsx' : '⬇ Download .xlsx Template',
@@ -25323,6 +25323,463 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     dash_appt_st:        fr ? function(st){ var m={Confirmed:'Confirmé',Pending:'En attente',Completed:'Terminé',Cancelled:'Annulé','No-show':'Absent'}; return m[st]||st; }
                            : function(st){ return st; },
 
+    // ── Sales page ────────────────────────────────────────────
+    sal_kpi_rev:       fr ? 'CA Ventes'                   : 'Sales Revenue',
+    sal_kpi_cash:      fr ? 'Encaissements'               : 'Cash Collected',
+    sal_kpi_ar:        fr ? 'Créances Clients'            : 'AR Outstanding',
+    sal_kpi_gp:        fr ? 'Marge Brute'                 : 'Gross Profit',
+    sal_kpi_month:     fr ? 'Ce mois'                     : 'This month',
+    sal_empty_title:   fr ? 'Aucune vente enregistrée'    : 'No sales recorded yet',
+    sal_empty_sub:     fr ? 'Enregistrez votre première vente en moins de 30 secondes — un reçu est généré automatiquement.' : 'Record your first sale in under 30 seconds — a receipt is generated automatically.',
+    sal_empty_btn:     fr ? '+ Enregistrer ma première vente' : '+ Record your first sale',
+    sal_flt_custs:     fr ? 'Tous les Clients'            : 'All Customers',
+    sal_flt_prods:     fr ? 'Tous les Produits'           : 'All Products',
+    sal_col_id:        fr ? 'N° Vente'                    : 'Sale #',
+    sal_col_date:      fr ? 'Date'                        : 'Date',
+    sal_col_cust:      fr ? 'Client'                      : 'Customer',
+    sal_col_items:     fr ? 'Articles'                    : 'Items',
+    sal_col_total:     fr ? 'Total'                       : 'Total',
+    sal_col_paid:      fr ? 'Payé'                        : 'Paid',
+    sal_col_bal:       fr ? 'Solde'                       : 'Balance',
+    sal_col_gp:        fr ? 'Marge Brute'                 : 'Gross Profit',
+    sal_col_status:    fr ? 'Statut'                      : 'Status',
+    sal_col_actions:   fr ? 'Actions'                     : 'Actions',
+    sal_ttl_invoice:   fr ? 'Facture'                     : 'Invoice',
+    sal_ttl_receipt:   fr ? 'Reçu'                        : 'Receipt',
+    sal_ttl_payment:   fr ? 'Encaisser'                   : 'Record Payment',
+    sal_ttl_edit:      fr ? 'Modifier'                    : 'Edit',
+    sal_ttl_dup:       fr ? 'Dupliquer'                   : 'Duplicate',
+    sal_ttl_delete:    fr ? 'Supprimer'                   : 'Delete',
+    sal_st_paid:       fr ? 'Payé'                        : 'Paid',
+    sal_st_unpaid:     fr ? 'Impayé'                      : 'Unpaid',
+    sal_st_partial:    fr ? 'Partiel'                     : 'Partial',
+
+    // ── Shared / common UI strings ────────────────────────────
+    ui_cancel:         fr ? 'Annuler'                     : 'Cancel',
+    ui_close:          fr ? 'Fermer'                      : 'Close',
+    ui_delete:         fr ? 'Supprimer'                   : 'Delete',
+    ui_save:           fr ? 'Enregistrer'                 : 'Save',
+    ui_edit:           fr ? 'Modifier'                    : 'Edit',
+    ui_view:           fr ? 'Voir'                        : 'View',
+    ui_duplicate:      fr ? 'Dupliquer'                   : 'Duplicate',
+    ui_actions:        fr ? 'Actions'                     : 'Actions',
+    ui_status:         fr ? 'Statut'                      : 'Status',
+    ui_date:           fr ? 'Date'                        : 'Date',
+    ui_notes:          fr ? 'Notes'                       : 'Notes',
+    ui_method:         fr ? 'Mode'                        : 'Method',
+    ui_amount:         fr ? 'Montant'                     : 'Amount',
+    ui_total:          fr ? 'Total'                       : 'Total',
+    ui_paid:           fr ? 'Payé'                        : 'Paid',
+    ui_balance:        fr ? 'Solde'                       : 'Balance',
+    ui_customer:       fr ? 'Client'                      : 'Customer',
+    ui_vendor:         fr ? 'Fournisseur'                 : 'Vendor',
+    ui_category:       fr ? 'Catégorie'                   : 'Category',
+    ui_type:           fr ? 'Type'                        : 'Type',
+    ui_reference:      fr ? 'Référence'                   : 'Reference',
+    ui_phone:          fr ? 'Téléphone'                   : 'Phone',
+    ui_email:          fr ? 'E-mail'                      : 'Email',
+    ui_country:        fr ? 'Pays'                        : 'Country',
+    ui_city:           fr ? 'Ville'                       : 'City',
+    ui_contact:        fr ? 'Contact'                     : 'Contact',
+    ui_this_month:     fr ? 'Ce mois'                     : 'This month',
+    ui_all_cats:       fr ? 'Toutes les Catégories'       : 'All Categories',
+    ui_all_types:      fr ? 'Tous les Types'              : 'All Types',
+    ui_view_all:       fr ? 'Voir tout'                   : 'View All',
+    ui_no_data_filter: fr ? 'Essayez de modifier les filtres ou la période' : 'Try adjusting the filters or date range',
+    ui_this_cannot:    fr ? 'Cette action est irréversible.' : 'This cannot be undone.',
+    ui_cash:           fr ? 'Espèces'                     : 'Cash',
+    ui_card:           fr ? 'Carte bancaire'              : 'Card',
+    ui_bank_transfer:  fr ? 'Virement bancaire'           : 'Bank Transfer',
+    ui_mobile_mtn:     fr ? 'Mobile Money (MTN)'          : 'Mobile Money (MTN)',
+    ui_orange:         fr ? 'Orange Money'                : 'Orange Money',
+    ui_credit_card:    fr ? 'Carte de Crédit'             : 'Credit Card',
+    ui_direct_debit:   fr ? 'Prélèvement automatique'    : 'Direct Debit',
+    ui_st_paid:        fr ? 'Payé'                        : 'Paid',
+    ui_st_unpaid:      fr ? 'Impayé'                      : 'Unpaid',
+    ui_st_partial:     fr ? 'Partiel'                     : 'Partial',
+    ui_st_pending:     fr ? 'En attente'                  : 'Pending',
+    ui_st_received:    fr ? 'Reçu'                        : 'Received',
+    ui_st_cancelled:   fr ? 'Annulé'                      : 'Cancelled',
+    ui_st_active:      fr ? 'Actif'                       : 'Active',
+    ui_whatsapp:       fr ? 'WhatsApp'                    : 'WhatsApp',
+    ui_description:    fr ? 'Description'                 : 'Description',
+    ui_subtotal:       fr ? 'Sous-total'                  : 'Subtotal',
+    ui_detail:         fr ? 'Détail'                      : 'Detail',
+    ui_outstanding:    fr ? 'En cours'                    : 'Outstanding',
+    ui_overview:       fr ? "Vue d'ensemble"             : 'Overview',
+    ui_quick_actions:  fr ? 'Actions Rapides'             : 'Quick Actions',
+    ui_add:            fr ? '+ Ajouter'                   : '+ Add',
+    ui_print:          fr ? 'Imprimer'                    : 'Print',
+    ui_send_wa:        fr ? 'Envoyer WA'                  : 'Send WhatsApp',
+
+    // ── Inventory page ────────────────────────────────────────
+    inv_add_item:      fr ? '+ Ajouter un Article'        : '+ Add Item',
+    inv_col_name:      fr ? 'Article'                     : 'Item',
+    inv_col_sku:       fr ? 'SKU'                         : 'SKU',
+    inv_col_cat:       fr ? 'Catégorie'                   : 'Category',
+    inv_col_qty:       fr ? 'Stock'                       : 'Qty',
+    inv_col_avail:     fr ? 'Dispo.'                      : 'Avail',
+    inv_col_sp:        fr ? 'Prix Vente'                  : 'Sell Price',
+    inv_col_cost:      fr ? 'Coût'                        : 'Cost',
+    inv_col_status:    fr ? 'Statut'                      : 'Status',
+    inv_col_actions:   fr ? 'Actions'                     : 'Actions',
+    inv_flt_all_cats:  fr ? 'Toutes les Catégories'       : 'All Categories',
+    inv_flt_all_st:    fr ? 'Tous les Statuts'            : 'All Statuses',
+    inv_flt_all_cond:  fr ? 'Tous les États'              : 'All Conditions',
+    inv_st_sale:       fr ? 'Vente'                       : 'For Sale',
+    inv_st_rent:       fr ? 'Location'                    : 'For Rent',
+    inv_st_both:       fr ? 'Vente & Location'            : 'Both',
+    inv_empty:         fr ? 'Aucun article dans l\'inventaire' : 'No items in inventory',
+    inv_add_photos:    fr ? '+ Ajouter Photos'            : 'Add Photos',
+    inv_edit_photos:   fr ? 'Ajouter/Remplacer Photos'    : 'Add / Replace Photos',
+    inv_active_rent:   fr ? 'En location active'          : 'Active rentals',
+    inv_ttl_edit:      fr ? 'Modifier'                    : 'Edit',
+    inv_ttl_sell:      fr ? 'Vendre'                      : 'Sell',
+    inv_ttl_rent:      fr ? 'Louer'                       : 'Rent',
+    inv_ttl_delete:    fr ? 'Supprimer'                   : 'Delete',
+    inv_ttl_photos:    fr ? 'Photos'                      : 'Photos',
+
+    // ── Rentals page ─────────────────────────────────────────
+    rent_kpi_rev:      fr ? 'CA Locations'                : 'Rental Revenue',
+    rent_kpi_active:   fr ? 'Locations Actives'           : 'Active Rentals',
+    rent_kpi_overdue:  fr ? 'En Retard'                   : 'Overdue',
+    rent_kpi_deps:     fr ? 'Cautions Retenues'           : 'Deposits Held',
+    rent_kpi_fees:     fr ? 'Pénalités de Retard'         : 'Late Fees',
+    rent_tab_all:      fr ? 'Toutes les Locations'        : 'All Rentals',
+    rent_tab_active:   fr ? 'Actives'                     : 'Active Rentals',
+    rent_tab_overdue:  fr ? 'En Retard'                   : 'Overdue',
+    rent_tab_returned: fr ? 'Retournées'                  : 'Returned',
+    rent_tab_today:    fr ? 'Retours Aujourd\'hui'        : 'Returned Today',
+    rent_col_id:       fr ? 'N° Location'                 : 'Rental #',
+    rent_col_cust:     fr ? 'Client'                      : 'Customer',
+    rent_col_item:     fr ? 'Article'                     : 'Item',
+    rent_col_period:   fr ? 'Période'                     : 'Period',
+    rent_col_fee:      fr ? 'Frais'                       : 'Rental Fee',
+    rent_col_dep:      fr ? 'Caution'                     : 'Deposit',
+    rent_col_late:     fr ? 'Retard'                      : 'Late Fee',
+    rent_col_status:   fr ? 'Statut'                      : 'Status',
+    rent_col_actions:  fr ? 'Actions'                     : 'Actions',
+    rent_st_reserved:  fr ? 'Réservé'                     : 'Reserved',
+    rent_st_out:       fr ? 'Sorti'                       : 'Checked Out',
+    rent_st_overdue:   fr ? 'En Retard'                   : 'Overdue',
+    rent_st_returned:  fr ? 'Retourné'                    : 'Returned',
+    rent_btn_create:   fr ? 'Créer une Location'          : 'Create Rental',
+    rent_btn_return:   fr ? 'Enregistrer le Retour'       : 'Record Return',
+    rent_btn_receipt:  fr ? 'Reçu de Location'            : 'Rental Receipt',
+    rent_btn_contract: fr ? 'Générer le Contrat'          : 'Generate Contract',
+    rent_btn_payment:  fr ? 'Encaisser'                   : 'Record Payment',
+    rent_timeline:     fr ? 'Chronologie'                 : 'Timeline',
+    rent_period:       fr ? 'Période de Location'         : 'Rental Period',
+    rent_start:        fr ? 'Date de Début *'             : 'Rental Start *',
+    rent_due:          fr ? 'Date de Retour *'            : 'Return Due *',
+    rent_fee:          fr ? 'Frais de Location'           : 'Rental Fee',
+    rent_dep_held:     fr ? 'Caution Retenue'             : 'Deposit Held',
+    rent_dep_settle:   fr ? 'Règlement de Caution'        : 'Deposit Settlement',
+    rent_dep_method:   fr ? 'Mode de Paiement Caution'    : 'Deposit Payment Method',
+    rent_late_fees:    fr ? 'Pénalités de Retard'         : 'Late Fees',
+    rent_unpaid_fee:   fr ? 'Frais Impayés'               : 'Unpaid Rental Fee',
+    rent_refund:       fr ? 'Remboursement Client'        : 'Refund to Customer',
+    rent_damage:       fr ? 'Déduction Dommages'          : 'Damage Deduction',
+    rent_cond_before:  fr ? 'État avant Sortie'           : 'Condition Before Release',
+    rent_cond_before2: fr ? 'État Avant'                  : 'Condition Before',
+    rent_cond_after:   fr ? 'État après Retour *'         : 'Condition After Return *',
+    rent_pre_damage:   fr ? 'Notes de Dommages Préexistants' : 'Pre-existing Damage Notes',
+    rent_cust_sig:     fr ? 'Signature Client'            : 'Customer Signature',
+    rent_sign_here:    fr ? 'Signer ici'                  : 'Sign here',
+    rent_unsigned:     fr ? 'Non signé'                   : 'Unsigned',
+    rent_pending_sig:  fr ? 'Signature en attente'        : 'Pending Signature',
+    rent_send_wa:      fr ? 'Envoyer rappel WhatsApp'     : 'Send WhatsApp reminder',
+    rent_docs:         fr ? 'Documents'                   : 'Docs',
+    rent_cond_good:    fr ? 'Bon état'                    : 'Good',
+    rent_cond_exc:     fr ? 'Excellent'                   : 'Excellent',
+    rent_cond_fair:    fr ? 'Passable'                    : 'Fair',
+    rent_cond_worn:    fr ? 'Usé'                         : 'Worn',
+    rent_cond_damaged: fr ? 'Endommagé'                   : 'Damaged',
+    rent_sec_dep:      fr ? 'Caution de Sécurité'         : 'Security Deposit',
+    rent_amt_paid:     fr ? 'Montant Payé'                : 'Amount Paid',
+
+    // ── Expenses page ─────────────────────────────────────────
+    exp_col_id:        fr ? 'N° Dép.'                     : 'Exp #',
+    exp_col_date:      fr ? 'Date'                        : 'Date',
+    exp_col_cat:       fr ? 'Catégorie'                   : 'Category',
+    exp_col_payee:     fr ? 'Bénéficiaire'                : 'Payee',
+    exp_col_amount:    fr ? 'Montant'                     : 'Amount',
+    exp_col_type:      fr ? 'Type'                        : 'Type',
+    exp_col_method:    fr ? 'Mode'                        : 'Method',
+    exp_col_actions:   fr ? 'Actions'                     : 'Actions',
+    exp_kpi_total:     fr ? 'Total Dépenses'              : 'Total Expenses',
+    exp_kpi_month:     fr ? 'Ce mois'                     : 'This month',
+    exp_kpi_top_cat:   fr ? 'Catégorie Principale'        : 'Top Category',
+    exp_kpi_by_cat:    fr ? 'Par Catégorie'               : 'By Category',
+    exp_kpi_entries:   fr ? 'Entrées'                     : 'Entries',
+    exp_empty:         fr ? 'Aucune dépense ce mois'      : 'No expenses this month.',
+    exp_empty2:        fr ? 'Aucune dépense trouvée'      : 'No expenses found',
+    exp_no_data:       fr ? 'Essayez de modifier les filtres ou la période' : 'Try adjusting the filters or date range',
+    exp_payee_ph:      fr ? 'Bénéficiaire / Fournisseur *' : 'Payee / Vendor *',
+    exp_notes_ph:      fr ? 'Notes / Description'         : 'Notes / Description',
+    exp_type_once:     fr ? 'Unique'                      : 'One-Time',
+    exp_type_recur:    fr ? 'Récurrent'                   : 'Recurring',
+    exp_type_asset:    fr ? "Achat d'Actif"              : 'Asset Purchase',
+    exp_type_op:       fr ? 'Exploitation'                : 'Operating',
+    exp_type_fixed:    fr ? 'Charges fixes'               : 'Fixed costs',
+    exp_type_var:      fr ? 'Charges variables'           : 'Variable costs',
+    exp_by_cat:        fr ? 'Par Catégorie'               : 'By Category',
+    exp_quick:         fr ? 'Actions Rapides'             : 'Quick Actions',
+
+    // ── Customers page ────────────────────────────────────────
+    cust_total:        fr ? 'Total Clients'               : 'Total Customers',
+    cust_vip:          fr ? 'Clients VIP'                 : 'VIP Customers',
+    cust_ar:           fr ? 'Créances Clients'            : 'AR Outstanding',
+    cust_spend:        fr ? 'Dépenses Totales'            : 'Total Spend',
+    cust_col_name:     fr ? 'Nom'                         : 'Customer',
+    cust_col_contact:  fr ? 'Contact'                     : 'Contact',
+    cust_col_orders:   fr ? 'Commandes'                   : 'Orders',
+    cust_col_spend:    fr ? 'Dépenses Vie'                : 'Lifetime Spend',
+    cust_col_bal:      fr ? 'Solde'                       : 'Balance',
+    cust_col_last:     fr ? 'Dernière Activité'           : 'Last Activity',
+    cust_col_actions:  fr ? 'Actions'                     : 'Actions',
+    cust_col_type:     fr ? 'Type'                        : 'Type',
+    cust_col_outstanding:fr ? 'En cours'                  : 'Outstanding',
+    cust_add:          fr ? '+ Ajouter un Client'         : 'Add Customer',
+    cust_collect:      fr ? 'Encaisser maintenant'        : 'Collect Now',
+    cust_collect_tip:  fr ? 'Encaisser le solde en cours' : 'Collect outstanding balance',
+    cust_stmt:         fr ? 'Relevé de Compte'            : 'Account Statement',
+    cust_stmt2:        fr ? 'Relevé'                      : 'Statement',
+    cust_no_sales:     fr ? 'Aucune vente trouvée.'       : 'No sales records found.',
+    cust_no_history:   fr ? 'Aucun historique de transaction.' : 'No transaction history yet.',
+    cust_name_ph:      fr ? 'Nom complet *'               : 'Full Name *',
+    cust_total_charged:fr ? 'Total Facturé'               : 'Total Charged',
+    cust_total_paid:   fr ? 'Total Payé'                  : 'Total Paid',
+    cust_outstanding:  fr ? 'Solde en cours'              : 'Outstanding Balance',
+    cust_type_reg:     fr ? 'Standard'                    : 'Regular',
+    cust_click_filter: fr ? 'Cliquer pour filtrer'        : 'Click to filter',
+
+    // ── Vendors page ──────────────────────────────────────────
+    vend_add:          fr ? '+ Ajouter un Fournisseur'    : 'Add Vendor',
+    vend_total:        fr ? 'Fournisseurs Actifs'         : 'Active Vendors',
+    vend_ap:           fr ? 'Dettes Fournisseurs'         : 'AP Outstanding',
+    vend_spent:        fr ? 'Total Achats'                : 'Total Spent',
+    vend_top:          fr ? 'Fournisseur Principal'       : 'Top Supplier',
+    vend_col_name:     fr ? 'Fournisseur'                 : 'Vendor',
+    vend_col_contact:  fr ? 'Contact'                     : 'Contact',
+    vend_col_cat:      fr ? 'Catégorie'                   : 'Category',
+    vend_col_orders:   fr ? 'Commandes passées'           : 'Orders Placed',
+    vend_col_spent:    fr ? 'Total Achats'                : 'Total Spent',
+    vend_col_ap:       fr ? 'Dettes'                      : 'AP Outstanding',
+    vend_col_actions:  fr ? 'Actions'                     : 'Actions',
+    vend_name_ph:      fr ? 'Nom du Fournisseur *'        : 'Vendor Name *',
+    vend_contact_ph:   fr ? 'Personne de Contact'         : 'Contact Person',
+    vend_email_ph:     fr ? 'E-mail de Contact'           : 'Contact Email',
+    vend_terms:        fr ? 'Conditions de Paiement'      : 'Payment Terms',
+    vend_immediate:    fr ? 'Immédiat'                    : 'Immediate',
+    vend_stmt:         fr ? 'Relevé Fournisseur'          : 'Vendor Statement',
+    vend_pay_ap:       fr ? 'Régler la dette'             : 'Pay AP',
+    vend_no_pos:       fr ? 'Aucune commande trouvée pour ce fournisseur.' : 'No purchase orders found for this vendor.',
+    vend_no_pos2:      fr ? 'Aucune commande enregistrée pour ce fournisseur.' : 'No purchase orders recorded for this vendor yet.',
+    vend_overview:     fr ? 'Vue d\'ensemble'             : 'Overview',
+    vend_purchases:    fr ? 'Achats'                      : 'Purchase Orders',
+    vend_outstanding_ap:fr ? 'Dettes en cours'            : 'Outstanding AP',
+    vend_owed:         fr ? 'Dû aux fournisseurs'         : 'Owed to suppliers',
+    vend_full_name:    fr ? 'Nom complet'                 : 'Full name',
+    vend_phone:        fr ? 'Téléphone / WhatsApp'        : 'Phone / WhatsApp',
+
+    // ── Purchases page ────────────────────────────────────────
+    po_create:         fr ? 'Créer un Bon de Commande'    : 'Create PO',
+    po_col_id:         fr ? 'N° BC'                       : 'PO #',
+    po_col_date:       fr ? 'Date commande'               : 'Order Date',
+    po_col_vendor:     fr ? 'Fournisseur'                 : 'Vendor',
+    po_col_items:      fr ? 'Articles'                    : 'Items',
+    po_col_total:      fr ? 'Total'                       : 'Total',
+    po_col_status:     fr ? 'Statut'                      : 'Status',
+    po_col_actions:    fr ? 'Actions'                     : 'Actions',
+    po_kpi_total:      fr ? 'Total Achats'                : 'Total Purchases',
+    po_kpi_month:      fr ? 'Achats ce mois'              : 'Purchases YTD',
+    po_kpi_ap:         fr ? 'Dettes Fournisseurs'         : 'AP Outstanding',
+    po_kpi_ar:         fr ? 'Créances Clients'            : 'AR Outstanding',
+    po_empty:          fr ? 'Aucun bon de commande ce mois' : 'No purchases this month.',
+    po_empty2:         fr ? 'Aucun bon de commande trouvé' : 'No purchase orders found',
+    po_delivery:       fr ? 'Livraison prévue'            : 'Expected Delivery',
+    po_delivery_note:  fr ? 'En attente de livraison'     : 'Awaiting delivery',
+    po_ref:            fr ? 'Réf. BC'                     : 'PO Reference',
+    po_landed:         fr ? 'Total Coût Rendu'            : 'Total Landed',
+    po_unit_cost:      fr ? 'Coût unitaire'               : 'Unit cost',
+    po_auto_id:        fr ? 'Généré automatiquement si vide' : 'Auto-generated if blank',
+    po_no_docs:        fr ? 'Aucun document joint.'       : 'No documents attached yet.',
+    po_add_docs:       fr ? 'Ajouter des documents'       : 'Add more documents',
+    po_view:           fr ? 'Voir BC'                     : 'View PO',
+    po_print:          fr ? 'Imprimer BC'                 : 'Print PO',
+    po_received:       fr ? 'Réceptionné'                 : 'Paid/Received',
+    po_on_delivery:    fr ? 'À la livraison'              : 'On Delivery',
+    po_docs_attach:    fr ? 'Documents joints'            : 'Attached Documents',
+
+    // ── Accounting page ───────────────────────────────────────
+    acc_ar:            fr ? 'Créances Clients'            : 'Accounts Receivable',
+    acc_ap:            fr ? 'Dettes Fournisseurs'         : 'Accounts Payable',
+    acc_cashflow:      fr ? 'Flux de Trésorerie'          : 'Cash Flow',
+    acc_ledger:        fr ? 'Journal des Transactions'    : 'Transaction Ledger',
+    acc_total_ar:      fr ? 'Total Créances'              : 'Total AR',
+    acc_total_ap:      fr ? 'Total Dettes'                : 'Total AP',
+    acc_net_cash:      fr ? 'Flux Net'                    : 'Net Cash Flow',
+    acc_col_date:      fr ? 'Date'                        : 'Date',
+    acc_col_desc:      fr ? 'Description'                 : 'Description',
+    acc_col_ref:       fr ? 'Référence'                   : 'Reference',
+    acc_col_type:      fr ? 'Type'                        : 'Type',
+    acc_col_detail:    fr ? 'Détail'                      : 'Detail',
+    acc_row_sales:     fr ? 'Ventes'                      : 'Sales',
+    acc_row_rentals:   fr ? 'Locations'                   : 'Rentals',
+    acc_row_services:  fr ? 'Services'                    : 'Services',
+    acc_row_expenses:  fr ? 'Dépenses'                    : 'Expenses',
+    acc_row_purchases: fr ? 'Achats'                      : 'Purchases',
+    acc_row_vendors:   fr ? 'Fournisseurs'                : 'Vendors',
+    acc_cash_in:       fr ? 'Encaissements'               : 'Cash In (collected)',
+    acc_credit_in:     fr ? 'Crédit (Entrée)'             : 'Credit (In)',
+    acc_debit_out:     fr ? 'Débit (Sortie)'              : 'Debit (Out)',
+
+    // ── Shared UI strings (added for pass 2) ─────────────────
+    ui_card_visa:      fr ? 'Carte (Visa/Mastercard)'     : 'Card (Visa/Mastercard)',
+    ui_cheque:         fr ? 'Chèque'                      : 'Cheque',
+    ui_on_account:     fr ? 'Compte client'               : 'On Account',
+    ui_pay_method:     fr ? 'Mode de Paiement'            : 'Payment Method',
+    ui_pay_terms:      fr ? 'Conditions de Paiement'      : 'Payment Terms',
+    ui_st_completed:   fr ? 'Terminé'                     : 'Completed',
+    ui_no_data_filter: fr ? 'Essayez de modifier les filtres ou la période' : 'Try adjusting the filters or date range',
+    ui_this_month:     fr ? 'Ce mois'                     : 'This month',
+    ui_save:           fr ? '💾 Enregistrer'             : 'Save Changes',
+
+    // ── Sales modal ───────────────────────────────────────────
+    sal_date_lbl:      fr ? 'Date de Vente'               : 'Sale Date',
+    sal_items_ph:      fr ? 'Description / notes sur les articles' : 'Description / notes on items',
+    sal_pay_date:      fr ? 'Date de Paiement'            : 'Payment Date',
+    sal_pay_for:       fr ? 'Paiement pour *'             : 'Payment For *',
+    sal_pay_method_req:fr ? 'Mode de Paiement *'          : 'Payment Method *',
+    sal_ref_ph:        fr ? 'ex. TXN-12345'               : 'e.g. TXN-12345',
+    sal_create_btn:    fr ? 'Créer la Vente'              : 'Create Sale',
+    sal_confirm_pay:   fr ? '✅ Confirmer le Paiement'    : '✅ Confirm Payment',
+    sal_terms_receipt: fr ? 'Paiement à la réception'     : 'Due on Receipt',
+    sal_terms_net7:    fr ? 'Net 7'                       : 'Net 7',
+    sal_terms_net14:   fr ? 'Net 14'                      : 'Net 14',
+    sal_terms_net30:   fr ? 'Net 30'                      : 'Net 30',
+    sal_terms_net60:   fr ? 'Net 60'                      : 'Net 60',
+    sal_terms_custom:  fr ? 'Personnalisé…'               : 'Custom…',
+    sal_min_price_warn:fr ? "Seul le propriétaire peut approuver les prix en dessous du minimum." : 'Only the owner can approve below-minimum pricing.',
+
+    // ── Inventory modal ───────────────────────────────────────
+    inv_name_lbl:      fr ? 'Nom du Produit *'            : 'Product Name *',
+    inv_cat_lbl:       fr ? 'Catégorie *'                 : 'Category *',
+    inv_status_lbl:    fr ? 'Statut *'                    : 'Status *',
+    inv_sku_lbl:       fr ? 'SKU / Code'                  : 'SKU / Code',
+    inv_brand_lbl:     fr ? 'Marque'                      : 'Brand',
+    inv_brand_ph:      fr ? 'Nom de la marque'            : 'Brand name',
+    inv_cond_lbl:      fr ? 'État'                        : 'Condition',
+    inv_sp_lbl:        fr ? 'Prix de Vente'               : 'Sell Price',
+    inv_cost_lbl:      fr ? 'Prix de Revient'             : 'Cost Price',
+    inv_selling_lbl:   fr ? 'Prix de Vente'               : 'Selling Price',
+    inv_qty_lbl:       fr ? 'Qté en Stock'                : 'Qty on Hand',
+    inv_size_lbl:      fr ? 'Taille'                      : 'Size',
+    inv_color_lbl:     fr ? 'Couleur'                     : 'Color',
+    inv_deposit_lbl:   fr ? 'Montant Caution'             : 'Deposit Amount',
+    inv_rentday_lbl:   fr ? 'Prix/Jour'                   : 'Rent/Day',
+    inv_no_match:      fr ? 'Aucun article ne correspond' : 'No items match the filter',
+    inv_oos:           fr ? 'RUPTURE DE STOCK'            : 'OUT OF STOCK',
+    inv_low_stock:     fr ? 'Stock Faible'                : 'Low Stock',
+    inv_in_stock:      fr ? 'En stock'                    : 'In stock',
+    inv_del_warn:      fr ? 'Retournez toutes les locations actives avant de supprimer cet article.' : 'Return all active rentals before deleting this item.',
+    inv_stock_val:     fr ? 'Valeur du Stock'             : 'Stock Value',
+    inv_total_items:   fr ? 'Total Articles'              : 'Total Items',
+    inv_gross_margin:  fr ? 'Marge Brute'                 : 'Gross Margin',
+    inv_rented_out:    fr ? 'En Location'                 : 'Rented Out',
+    inv_retail_val:    fr ? 'Valeur Détail'               : 'Retail Value',
+
+    // ── Rentals modal ─────────────────────────────────────────
+    rent_item_lbl:     fr ? 'Article'                     : 'Item',
+    rent_start_lbl:    fr ? 'Date de Début'               : 'Start',
+    rent_dep_lbl:      fr ? 'Caution'                     : 'Deposit',
+    rent_fee_lbl:      fr ? 'Frais de Location'           : 'Rental Fee',
+    rent_late_lbl:     fr ? 'Pénalité de Retard'          : 'Late Fee',
+    rent_cond_lbl:     fr ? 'État'                        : 'Condition',
+    rent_cond_release: fr ? 'État (à la sortie)'          : 'Condition (at release)',
+    rent_click_active: fr ? 'Voir les locations actives'  : 'Click to view active rentals',
+    rent_click_overdue_all: fr ? 'Voir toutes les locations en retard' : 'Click to view all overdue rentals',
+    rent_click_all:    fr ? 'Voir toutes les locations'   : 'Click to view all rentals',
+    rent_click_overdue:fr ? 'Voir les locations en retard (avec pénalités)' : 'Click to view overdue rentals with late fees',
+    rent_click_returned:fr? 'Voir les locations retournées' : 'Click to view returned rentals',
+
+    // ── Expenses modal ────────────────────────────────────────
+    exp_payee_lbl:     fr ? 'Bénéficiaire'                : 'Payee',
+
+    // ── Customers modal ───────────────────────────────────────
+    cust_del_warn:     fr ? 'Réglez tous les soldes et retournez les locations actives avant de supprimer.' : 'Settle all balances and return active rentals first.',
+
+    // ── Vendors/Purchases ────────────────────────────────────
+    vend_del_warn:     fr ? 'Réglez les soldes en cours et clôturez les BC en attente avant de supprimer.' : 'Settle outstanding balances and close pending POs first.',
+    po_by_vendor:      fr ? 'Par Fournisseur'             : 'By Vendor',
+    po_desc_lbl:       fr ? 'Description / Notes'         : 'Description / Notes',
+    po_pay_status:     fr ? 'Statut du Paiement'          : 'Payment Status',
+
+    // ── Settings (remaining) ──────────────────────────────────
+    set_fin_tax_ph:    fr ? 'TVA / VAT / GST'             : 'VAT / GST / TVA',
+    set_imp_xlsx_only: fr ? 'Seuls les fichiers .xlsx sont acceptés.' : 'Only .xlsx files are supported.',
+    po_other:          fr ? 'Autre'                       : 'Other',
+
+    // ── Inventory detail & modal extra strings ────────────────
+    inv_add_photos_lbl:  fr ? 'Ajouter Photos'               : 'Add Photos',
+    inv_edit_photos_lbl: fr ? 'Ajouter/Remplacer Photos'     : 'Add / Replace Photos',
+    inv_photos_via_edit: fr ? 'Ajouter via Modifier'         : 'Add photos via Edit',
+    inv_add_cat_btn:     fr ? 'Ajouter Catégorie'            : 'Add Category',
+    inv_all_conds:       fr ? 'Tous les États'               : 'All Conditions',
+    inv_at_cost:         fr ? 'Au prix de revient'           : 'At cost price',
+    inv_at_sell:         fr ? 'Au prix de vente'             : 'At selling price',
+    inv_available:       fr ? 'Disponible'                   : 'Available',
+    inv_click_stock_tbl: fr ? 'Voir tableau valeur stock'    : 'Click to see table with stock values',
+    inv_click_csv:       fr ? 'Cliquer pour choisir un CSV'  : 'Click to select CSV file',
+    inv_click_fullsize:  fr ? 'Voir en plein écran'          : 'Click to view full size',
+    inv_tab_details:     fr ? 'Détails'                      : 'Details',
+    inv_tab_history:     fr ? 'Historique'                   : 'History',
+    inv_tab_pricing:     fr ? 'Tarification'                 : 'Pricing',
+    inv_tab_photos:      fr ? 'Photos'                       : 'Photos',
+    inv_tab_movements:   fr ? 'Mouvements'                   : 'Movements',
+    inv_go_rentals:      fr ? 'Voir les Locations'           : 'Go to Rentals',
+    inv_grid:            fr ? 'Grille'                       : 'Grid',
+    inv_table:           fr ? 'Tableau'                      : 'Table',
+    inv_hidden_staff:    fr ? 'Caché du personnel'           : 'Hidden from store staff',
+    inv_hint_optional:   fr ? 'Indice (optionnel)'           : 'Hint (optional)',
+    inv_icon:            fr ? 'Icône'                        : 'Icon',
+    inv_leave_blank:     fr ? 'Laisser vide pour désactiver' : 'Leave blank to disable',
+    inv_no_lines:        fr ? 'Aucune ligne'                 : 'No lines yet',
+    inv_none_yet:        fr ? 'Aucun'                        : 'None yet',
+    inv_read_only:       fr ? 'Lecture seule pour votre rôle': 'Read-only for your role',
+    inv_reason:          fr ? 'Raison'                       : 'Reason',
+    inv_remove:          fr ? 'Retirer'                      : 'Remove',
+    inv_rental_day:      fr ? 'Loc./Jour'                    : 'Rental/Day',
+    inv_rented:          fr ? 'En location'                  : 'Rented',
+    inv_skus:            fr ? 'SKUs'                         : 'SKUs',
+    inv_sell_btn:        fr ? 'Vendre'                       : 'Sell',
+    inv_stock_val_cost:  fr ? 'Valeur stock (coût)'          : 'Stock Value (cost)',
+    inv_total_cost_calc: fr ? 'Coût total (calculé)'         : 'Total Cost (calculated)',
+    inv_retail_total:    fr ? 'Valeur détail totale'         : 'Total retail value of all stock',
+    inv_unit:            fr ? 'Unité'                        : 'Unit',
+    inv_upload_csv:      fr ? 'Téléverser le CSV rempli'     : 'Upload Completed CSV',
+    inv_name_col:        fr ? 'Nom'                          : 'Name',
+    inv_product_photos:  fr ? 'Photos Produit'               : 'Product Photos',
+    inv_edit_photos_use: fr ? 'Utilisez <strong>Modifier</strong> pour ajouter des photos' : 'use <strong>Edit</strong> to add photos',
+    inv_edit_lbl:        fr ? 'Modifier'                     : 'Edit',
+
+    // ── Sales extra ────────────────────────────────────────────
+    sal_price_lbl:       fr ? 'Prix'                         : 'Price',
+    sal_ref_receipt:     fr ? 'Réf. / N° Reçu'              : 'Reference / Receipt #',
+
+    // ── Rentals extra ──────────────────────────────────────────
+    rent_active_lbl:     fr ? 'Actif'                        : 'Active',
+
+    // ── Expenses/Accounting extra ──────────────────────────────
+    exp_add_docs:        fr ? 'Ajouter des documents'        : 'Add more documents',
+
+    // ── Settings extra ─────────────────────────────────────────
+    inv_cond_short:      fr ? 'État'                        : 'Cond.',
+    inv_cat_name_lbl:    fr ? 'Nom de Catégorie *'           : 'Category Name *',
+    set_stripe_note_inner: fr ? 'Paiements sécurisés via Stripe.' : 'Secure payments via Stripe.',
+    set_stripe_note:     fr ? '🔒 <strong>Paiements sécurisés via Stripe.</strong> Vos coordonnées bancaires ne sont jamais stockées. Vous serez redirigé vers ShopTrack après le paiement.' : _s.set_stripe_note,
+
   };
 }
 
@@ -25463,7 +25920,7 @@ function _updateCurPreview(code){
 
 // ── Save financial settings properly ─────────────────────────────────────────
 // Late fee rate stored on BIZ object; editable in Settings > Financial
-function _saveFinancialSettings(){
+function _saveFinancialSettings(){const _s=_L();
   const taxRate = parseFloat(document.getElementById('fin-tax-rate')?.value)||0;
   const taxName = (document.getElementById('fin-tax-name')?.value||'VAT').trim();
   const taxNum  = (document.getElementById('fin-tax-num')?.value||'').trim();
@@ -25491,7 +25948,7 @@ function _saveFinancialSettings(){
 
 // ── Shared PDF styles ────────────────────────────────────────
 // ── Universal report PDF generator ───────────────────────────
-function _rptPDF(title, summaryHtml, tableHtml, period){
+function _rptPDF(title, summaryHtml, tableHtml, period){const _s=_L();
   var periodLabel = period || (PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month).label;
   var body = '<div class="doc-title">'+title+'</div>'
     + (periodLabel ? '<div style="font-size:11px;color:#64748b;margin-bottom:16px;font-weight:500">Period: '+periodLabel+'</div>' : '')
@@ -25503,7 +25960,7 @@ function _rptPDF(title, summaryHtml, tableHtml, period){
 
 // ── Report PDF export functions ──────────────────────────────
 
-function _rptSalesPDF(){
+function _rptSalesPDF(){const _s=_L();
   var range = PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month;
   var sales = D.sales.filter(function(s){return inRange(s.dt,range);});
   var total=sales.reduce(function(a,s){return a+(s.total||s.amt);},0);
@@ -25514,11 +25971,11 @@ function _rptSalesPDF(){
     +'<div class="sum-box"><div class="sum-lbl">Outstanding</div><div class="sum-val red">'+fmt(total-paid)+'</div></div>'
     +'</div>';
   var rows=sales.map(function(s){var t=s.total||s.amt;return '<tr><td>'+s.id+'</td><td>'+s.dt+'</td><td>'+_esc(s.cust)+'</td><td>'+_esc(s.items.substring(0,40))+'</td><td class="num">'+fmt(t)+'</td><td class="num">'+fmt(s.paid)+'</td><td class="num '+(t-s.paid>0?'red':'green')+'">'+fmt(t-s.paid)+'</td><td>'+s.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>Date</th><th>Customer</th><th>Items</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>Items</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Sales Report', summary, table);
 }
 
-function _rptRevProductPDF(){
+function _rptRevProductPDF(){const _s=_L();
   var byProd={};
   D.sales.forEach(function(s){var k=s.items.split(',')[0].split('×')[0].trim();byProd[k]=(byProd[k]||0)+(s.total||s.amt);});
   var sorted=Object.entries(byProd).sort(function(a,b){return b[1]-a[1];});
@@ -25528,63 +25985,63 @@ function _rptRevProductPDF(){
   _rptPDF('Revenue by Product', null, table);
 }
 
-function _rptRevCustPDF(){
+function _rptRevCustPDF(){const _s=_L();
   var byCust={};
   D.sales.forEach(function(s){byCust[s.cust]=(byCust[s.cust]||0)+(s.total||s.amt);});
   var sorted=Object.entries(byCust).sort(function(a,b){return b[1]-a[1];});
   var rows=sorted.map(function(r){var c=D.cust.find(function(x){return x.name===r[0];});return '<tr><td>'+_esc(r[0])+'</td><td class="num green">'+fmt(r[1])+'</td><td class="num '+(c&&c.bal>0?'red':'')+'">'+fmt(c?c.bal:0)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Customer</th><th class="num">Total Purchases</th><th class="num">Outstanding</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_customer}</th><th class="num">Total Purchases</th><th class="num">Outstanding</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Revenue by Customer', null, table);
 }
 
-function _rptProfitPDF(){
+function _rptProfitPDF(){const _s=_L();
   var rows=D.sales.map(function(s){var tot=s.total||s.amt;var gp=s.profit!==undefined?s.profit:(tot-s.cost);return '<tr><td>'+s.id+'</td><td>'+_esc(s.cust)+'</td><td>'+_esc(s.items.substring(0,35))+'</td><td class="num">'+fmt(tot)+'</td><td class="num green">'+fmt(gp)+'</td><td class="num">'+(tot>0?Math.round(gp/tot*100):0)+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Sale</th><th>Customer</th><th>Items</th><th class="num">Revenue</th><th class="num">Gross Profit</th><th class="num">Margin</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>Sale</th><th>${_s.ui_customer}</th><th>Items</th><th class="num">Revenue</th><th class="num">Gross Profit</th><th class="num">Margin</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Product Profitability', null, table);
 }
 
-function _rptRentalsPDF(){
+function _rptRentalsPDF(){const _s=_L();
   var rows=D.rentals.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.start+'</td><td>'+r.due+'</td><td class="num green">'+fmt(r.fee)+'</td><td class="num">'+fmt(r.dep)+'</td><td>'+r.st+'</td></tr>';}).join('');
   var totFee=D.rentals.reduce(function(a,r){return a+r.fee;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Rental Revenue</div><div class="sum-val green">'+fmt(totFee)+'</div></div><div class="sum-box"><div class="sum-lbl">Active Rentals</div><div class="sum-val blue">'+D.rentals.filter(function(r){return r.st==='Checked Out';}).length+'</div></div><div class="sum-box"><div class="sum-lbl">Overdue</div><div class="sum-val red">'+D.rentals.filter(function(r){return r.st==='Overdue';}).length+'</div></div></div>';
-  var table='<table><thead><tr><th>ID</th><th>Customer</th><th>Item</th><th>Start</th><th>Due</th><th class="num">Fee</th><th class="num">Deposit</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Start</th><th>Due</th><th class="num">Fee</th><th class="num">Deposit</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Rentals Report', summary, table);
 }
 
-function _rptDepositsPDF(){
+function _rptDepositsPDF(){const _s=_L();
   var active=D.rentals.filter(function(r){return !['Returned','Closed'].includes(r.st);});
   var total=active.reduce(function(a,r){return a+r.dep;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Deposit Liability</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Active Rentals</div><div class="sum-val blue">'+active.length+'</div></div></div>';
   var rows=active.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td class="num red">'+fmt(r.dep)+'</td><td>'+r.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>Customer</th><th>Item</th><th class="num">Deposit</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th class="num">Deposit</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Deposit Liability Report', summary, table);
 }
 
-function _rptLateFeesPDF(){
+function _rptLateFeesPDF(){const _s=_L();
   var late=D.rentals.filter(function(r){return r.lf>0;});
   var total=late.reduce(function(a,r){return a+r.lf;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Late Fees</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
   var rows=late.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.due+'</td><td class="num red">'+fmt(r.lf)+'</td><td>'+r.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>Customer</th><th>Item</th><th>Due Date</th><th class="num">Late Fee</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due Date</th><th class="num">Late Fee</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Late Fees Report', summary, table);
 }
 
-function _rptOverduePDF(){
+function _rptOverduePDF(){const _s=_L();
   var od=D.rentals.filter(function(r){return r.st==='Overdue';});
   var rows=od.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.due+'</td><td class="num red">'+fmt(r.lf)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>Customer</th><th>Item</th><th>Due Date</th><th class="num">Late Fee</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due Date</th><th class="num">Late Fee</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Overdue Rentals', null, table);
 }
 
-function _rptInvValPDF(){
+function _rptInvValPDF(){const _s=_L();
   var total=D.inv.reduce(function(a,i){return a+(i.cost||0)*(i.qty||0);},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Inventory Value</div><div class="sum-val green">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Total Items</div><div class="sum-val blue">'+D.inv.length+'</div></div><div class="sum-box"><div class="sum-lbl">Rented Out</div><div class="sum-val">'+D.inv.reduce(function(a,i){return a+i.rented;},0)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Inventory Value</div><div class="sum-val green">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.inv_total_items}</div><div class="sum-val blue">'+D.inv.length+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.inv_rented_out}</div><div class="sum-val">'+D.inv.reduce(function(a,i){return a+i.rented;},0)+'</div></div></div>';
   var rows=D.inv.map(function(i){return '<tr><td>'+_esc(i.name)+'</td><td>'+_esc(i.cat)+'</td><td>'+i.sku+'</td><td class="num">'+fmt(i.cost)+'</td><td>'+i.qty+'</td><td>'+i.rented+'</td><td class="num green">'+fmt((i.cost||0)*(i.qty||0))+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Item</th><th>Category</th><th>SKU</th><th class="num">Cost</th><th>Qty</th><th>Rented</th><th class="num">Value</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.ui_category}</th><th>SKU</th><th class="num">Cost</th><th>Qty</th><th>Rented</th><th class="num">Value</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Inventory Valuation', summary, table);
 }
 
-function _rptLowStockPDF(){
+function _rptLowStockPDF(){const _s=_L();
   var low=D.inv.filter(function(i){
     var avail=(i.qty||0)-(i.rented||0);
     var min=i.minStock||i.minQty||0;
@@ -25602,34 +26059,34 @@ function _rptLowStockPDF(){
       +'<td class="num">'+(thr>0?'≤ '+thr:'—')+'</td>'
       +'<td>'+status+'</td></tr>';
   }).join('');
-  var table='<table><thead><tr><th>Item</th><th>Category</th><th>SKU</th><th class="num">Available</th><th class="num">Total Qty</th><th class="num">Threshold</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.ui_category}</th><th>SKU</th><th class="num">Available</th><th class="num">Total Qty</th><th class="num">Threshold</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Low Stock & Out of Stock Report', null, table);
 }
 
-function _rptGPPDF(){
+function _rptGPPDF(){const _s=_L();
   var k=refreshLiveKpis();
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Revenue</div><div class="sum-val blue">'+fmt(k.rev)+'</div></div><div class="sum-box"><div class="sum-lbl">COGS</div><div class="sum-val red">'+fmt(k.cogs)+'</div></div><div class="sum-box"><div class="sum-lbl">Gross Profit</div><div class="sum-val green">'+fmt(k.gp)+'</div></div></div>';
   var rows=D.sales.map(function(s){var t=s.total||s.amt;var gp=s.profit!==undefined?s.profit:(t-(s.cost||0));return '<tr><td>'+s.id+'</td><td>'+_esc(s.cust)+'</td><td class="num">'+fmt(t)+'</td><td class="num">'+fmt(s.cost||0)+'</td><td class="num green">'+fmt(gp)+'</td><td class="num">'+(t>0?Math.round(gp/t*100):0)+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Sale</th><th>Customer</th><th class="num">Revenue</th><th class="num">COGS</th><th class="num">Gross Profit</th><th class="num">Margin</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>Sale</th><th>${_s.ui_customer}</th><th class="num">Revenue</th><th class="num">COGS</th><th class="num">Gross Profit</th><th class="num">Margin</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Gross Profit Report', summary, table);
 }
 
-function _rptNPPDF(){
+function _rptNPPDF(){const _s=_L();
   var k=refreshLiveKpis();
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Gross Profit</div><div class="sum-val green">'+fmt(k.gp)+'</div></div><div class="sum-box"><div class="sum-lbl">Overhead</div><div class="sum-val red">'+fmt(k.oh)+'</div></div><div class="sum-box"><div class="sum-lbl">Net Profit</div><div class="sum-val '+(k.np>=0?'green':'red')+'">'+fmt(k.np)+'</div></div></div>';
   var rows=D.exp.map(function(e){return '<tr><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee)+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+e.method+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Date</th><th>Category</th><th>Payee</th><th class="num">Amount</th><th>Method</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">Amount</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Net Profit Report', summary, table);
 }
 
-function _rptCashPDF(){
+function _rptCashPDF(){const _s=_L();
   var cashIn=D.sales.reduce(function(a,s){return a+s.paid;},0)+D.rentals.reduce(function(a,r){return a+(r.paid||0)+(r.dep||0);},0)+(D.appointments||[]).filter(function(a){return a.st==='Completed';}).reduce(function(a,ap){return a+(ap.totalAmt||0);},0);
   var cashOut=D.exp.reduce(function(a,e){return a+e.amt;},0)+D.purchases.filter(function(p){return p.st==='Paid';}).reduce(function(a,p){return a+p.total;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Cash In</div><div class="sum-val green">'+fmt(cashIn)+'</div></div><div class="sum-box"><div class="sum-lbl">Cash Out</div><div class="sum-val red">'+fmt(cashOut)+'</div></div><div class="sum-box"><div class="sum-lbl">Net Cash</div><div class="sum-val '+(cashIn-cashOut>=0?'green':'red')+'">'+fmt(cashIn-cashOut)+'</div></div></div>';
   _rptPDF('Cash Flow Summary', summary, null);
 }
 
-function _rptMonthlyPDF(){
+function _rptMonthlyPDF(){const _s=_L();
   var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var y=new Date().getFullYear();
   var rows='';
@@ -25644,25 +26101,25 @@ function _rptMonthlyPDF(){
   _rptPDF('Monthly Financial Summary', null, table);
 }
 
-function _rptARPDF(){
+function _rptARPDF(){const _s=_L();
   var debtors=D.cust.filter(function(c){return c.bal>0;});
   var total=debtors.reduce(function(a,c){return a+c.bal;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total AR</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Customers Owing</div><div class="sum-val blue">'+debtors.length+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.acc_total_ar}</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Customers Owing</div><div class="sum-val blue">'+debtors.length+'</div></div></div>';
   var rows=debtors.sort(function(a,b){return b.bal-a.bal;}).map(function(c){var sales=D.sales.filter(function(s){return (s.custId===c.id||s.cust===c.name)&&s.st!=='Paid';});return '<tr><td>'+_esc(c.name)+'</td><td>'+_esc(c.phone||c.whatsapp||'')+'</td><td>'+sales.length+' unpaid</td><td class="num red">'+fmt(c.bal)+'</td><td>'+_esc(c.last||'—')+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Customer</th><th>Contact</th><th>Open Invoices</th><th class="num">Balance</th><th>Last Activity</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_customer}</th><th>${_s.ui_contact}</th><th>Open Invoices</th><th class="num">Balance</th><th>${_s.cust_col_last}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Accounts Receivable (AR)', summary, table);
 }
 
-function _rptAPPDF(){
+function _rptAPPDF(){const _s=_L();
   var creditors=D.vendors.filter(function(v){return v.bal>0;});
   var total=creditors.reduce(function(a,v){return a+v.bal;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total AP</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Vendors Owed</div><div class="sum-val blue">'+creditors.length+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.acc_total_ap}</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Vendors Owed</div><div class="sum-val blue">'+creditors.length+'</div></div></div>';
   var rows=creditors.sort(function(a,b){return b.bal-a.bal;}).map(function(v){return '<tr><td>'+_esc(v.name)+'</td><td>'+_esc(v.country||'')+'</td><td>'+_esc(v.terms||'—')+'</td><td class="num red">'+fmt(v.bal)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Vendor</th><th>Country</th><th>Terms</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_vendor}</th><th>Country</th><th>Terms</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Accounts Payable (AP)', summary, table);
 }
 
-function _rptRevCatPDF(){
+function _rptRevCatPDF(){const _s=_L();
   var cats={};
   D.sales.forEach(function(s){
     var inv=D.inv.find(function(i){return i.id===s.invId;})||D.inv.find(function(i){return s.items.includes(i.name.split(' ')[0]);});
@@ -25675,11 +26132,11 @@ function _rptRevCatPDF(){
   var sorted=Object.entries(cats).sort(function(a,b){return b[1]-a[1];});
   var total=sorted.reduce(function(a,r){return a+r[1];},0);
   var rows=sorted.map(function(r){return '<tr><td>'+_esc(r[0])+'</td><td class="num green">'+fmt(r[1])+'</td><td class="num">'+Math.round(r[1]/Math.max(total,1)*100)+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Category</th><th class="num">Revenue</th><th class="num">Share</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_category}</th><th class="num">Revenue</th><th class="num">Share</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Revenue by Category', null, table);
 }
 
-function _rptCustStmtPDF(){
+function _rptCustStmtPDF(){const _s=_L();
   var custId=window._stmtCustId;
   var cust=custId?D.cust.find(function(c){return c.id===custId;}):D.cust[0];
   if(!cust){ toast('No customer selected','error'); return; }
@@ -25694,64 +26151,64 @@ function _rptCustStmtPDF(){
     +'</div>';
   var rows=sales.map(function(s){var tot=s.total||s.amt;var bal=tot-(s.paid||0);return '<tr><td>'+s.dt+'</td><td>Sale</td><td>'+_esc(s.items.substring(0,40))+'</td><td class="num">'+fmt(tot)+'</td><td class="num green">'+fmt(s.paid||0)+'</td><td class="num '+(bal>0?'red':'')+'">'+fmt(bal)+'</td></tr>';}).join('');
   rows+=rentals.map(function(r){var bal=r.fee-(r.paid||0);return '<tr><td>'+r.start+'</td><td>Rental</td><td>'+_esc(r.item)+'</td><td class="num">'+fmt(r.fee)+'</td><td class="num green">'+fmt(r.paid||0)+'</td><td class="num '+(bal>0?'red':'')+'">'+fmt(bal)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Date</th><th>Type</th><th>Description</th><th class="num">Invoiced</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>Description</th><th class="num">Invoiced</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Customer Statement — '+_esc(cust.name), summary, table);
 }
 
-function _rptVendorPurchPDF(){
+function _rptVendorPurchPDF(){const _s=_L();
   var total=D.purchases.reduce(function(a,p){return a+(p.total||0);},0);
   var paid=D.purchases.filter(function(p){return p.st==='Paid';}).reduce(function(a,p){return a+(p.total||0);},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Purchases</div><div class="sum-val blue">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Paid</div><div class="sum-val green">'+fmt(paid)+'</div></div><div class="sum-box"><div class="sum-lbl">Outstanding</div><div class="sum-val red">'+fmt(total-paid)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.vend_col_spent}</div><div class="sum-val blue">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Paid</div><div class="sum-val green">'+fmt(paid)+'</div></div><div class="sum-box"><div class="sum-lbl">Outstanding</div><div class="sum-val red">'+fmt(total-paid)+'</div></div></div>';
   var rows=D.purchases.map(function(p){return '<tr><td>'+p.id+'</td><td>'+p.dt+'</td><td>'+_esc(p.vendor)+'</td><td>'+_esc((p.items||'').substring(0,35))+'</td><td class="num green">'+fmt(p.total||0)+'</td><td>'+p.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>PO</th><th>Date</th><th>Vendor</th><th>Items</th><th class="num">Total</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>PO</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>Items</th><th class="num">Total</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Vendor Purchases Report', summary, table);
 }
 
-function _rptPayHistPDF(){
+function _rptPayHistPDF(){const _s=_L();
   var paid=D.sales.filter(function(s){return (s.paid||0)>0;}).sort(function(a,b){return b.dt.localeCompare(a.dt);});
   var totalCollected=paid.reduce(function(a,s){return a+(s.paid||0);},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Collected</div><div class="sum-val green">'+fmt(totalCollected)+'</div></div><div class="sum-box"><div class="sum-lbl">Transactions</div><div class="sum-val blue">'+paid.length+'</div></div></div>';
   var rows=paid.map(function(s){var tot=s.total||s.amt;var bal=tot-(s.paid||0);return '<tr><td>'+s.id+'</td><td>'+s.dt+'</td><td>'+_esc(s.cust)+'</td><td class="num">'+fmt(tot)+'</td><td class="num green">'+fmt(s.paid||0)+'</td><td class="num '+(bal>0?'red':'green')+'">'+fmt(bal)+'</td><td>'+s.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>Date</th><th>Customer</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Payment History', summary, table);
 }
 
-function _rptExpFullPDF(){
+function _rptExpFullPDF(){const _s=_L();
   var total=D.exp.reduce(function(a,e){return a+e.amt;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Expenses</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Entries</div><div class="sum-val blue">'+D.exp.length+'</div></div></div>';
   var rows=D.exp.map(function(e){return '<tr><td>'+e.id+'</td><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee||'')+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+_esc(e.method||'')+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>Date</th><th>Category</th><th>Payee</th><th class="num">Amount</th><th>Method</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">Amount</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Full Expense Report', summary, table);
 }
 
-function _rptRepairsPDF(){
+function _rptRepairsPDF(){const _s=_L();
   var rep=D.exp.filter(function(e){return e.cat==='Repairs'||e.cat==='Cleaning'||e.cat==='Maintenance';});
   var total=rep.reduce(function(a,e){return a+e.amt;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
   var rows=rep.map(function(e){return '<tr><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee||'')+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+_esc(e.method||'')+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Date</th><th>Category</th><th>Payee</th><th class="num">Amount</th><th>Method</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">Amount</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Repairs & Maintenance Report', summary, table);
 }
 
-function _rptRentalUtilPDF(){
+function _rptRentalUtilPDF(){const _s=_L();
   var util=D.inv.filter(function(i){return i.rp;}).map(function(i){return {name:i.name,qty:i.qty,rented:i.rented||0,rate:Math.round((i.rented||0)/Math.max(i.qty,1)*100)};}).sort(function(a,b){return b.rate-a.rate;});
   var rows=util.map(function(u){return '<tr><td>'+_esc(u.name)+'</td><td class="num">'+u.qty+'</td><td class="num blue">'+u.rented+'</td><td class="num '+(u.rate>60?'green':u.rate>30?'':'red')+'">'+u.rate+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Item</th><th class="num">Total Qty</th><th class="num">Rented</th><th class="num">Utilization</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th class="num">Total Qty</th><th class="num">Rented</th><th class="num">Utilization</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Rental Utilization Report', null, table);
 }
 
-function _rptRentedOutPDF(){
+function _rptRentedOutPDF(){const _s=_L();
   var out=D.inv.filter(function(i){return (i.rented||0)>0;});
   var rows=out.map(function(i){return '<tr><td>'+_esc(i.name)+'</td><td>'+i.qty+'</td><td class="num blue">'+i.rented+'</td><td class="num '+(i.qty-i.rented>0?'green':'red')+'">'+(i.qty-i.rented)+'</td><td class="num">'+fmt(i.rp||0)+'/day</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Item</th><th>Total Qty</th><th class="num">Rented Out</th><th class="num">Available</th><th class="num">Rate</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>Total Qty</th><th class="num">Rented Out</th><th class="num">Available</th><th class="num">Rate</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Items Currently Rented Out', null, table);
 }
 
-function _rptStockCatPDF(){
+function _rptStockCatPDF(){const _s=_L();
   var cats={};
   D.inv.forEach(function(i){if(!cats[i.cat])cats[i.cat]={items:0,qty:0,val:0};cats[i.cat].items++;cats[i.cat].qty+=i.qty;cats[i.cat].val+=(i.cost||0)*(i.qty||0);});
   var rows=Object.entries(cats).map(function(e){return '<tr><td>'+_esc(e[0])+'</td><td class="num">'+e[1].items+'</td><td class="num">'+e[1].qty+'</td><td class="num green">'+fmt(e[1].val)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Category</th><th class="num">SKUs</th><th class="num">Units</th><th class="num">Value</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>${_s.ui_category}</th><th class="num">SKUs</th><th class="num">Units</th><th class="num">Value</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Stock by Category', null, table);
 }
 
@@ -25857,7 +26314,7 @@ function _pdfOpen(title, body){
 
 
 // ── SALES PDF ────────────────────────────────────────────────
-function exportSalesPDF(){
+function exportSalesPDF(){const _s=_L();
   const sales = D.sales;
   const total  = sales.reduce((a,s)=>a+(s.total||s.amt),0);
   const paid   = sales.reduce((a,s)=>a+s.paid,0);
@@ -25870,7 +26327,7 @@ function exportSalesPDF(){
       <div class="sum-box"><div class="sum-lbl">Outstanding</div><div class="sum-val ${unpaid>0?'red':'green'}">${fmt(unpaid)}</div></div>
     </div>
     <table>
-      <thead><tr><th>Sale #</th><th>Date</th><th>Customer</th><th>Items</th><th class="num">Amount</th><th class="num">Paid</th><th>Method</th><th>Status</th></tr></thead>
+      <thead><tr><th>Sale #</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>Items</th><th class="num">Amount</th><th class="num">Paid</th><th>${_s.ui_method}</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${sales.map(s=>`<tr>
         <td><strong>${s.id}</strong></td>
         <td>${s.dt}</td>
@@ -25886,7 +26343,7 @@ function exportSalesPDF(){
 }
 
 // ── RENTALS PDF ──────────────────────────────────────────────
-function exportRentalsPDF(){
+function exportRentalsPDF(){const _s=_L();
   const rents = D.rentals;
   const active  = rents.filter(r=>r.st==='Checked Out'||r.st==='Reserved').length;
   const overdue = rents.filter(r=>r.st==='Overdue').length;
@@ -25899,7 +26356,7 @@ function exportRentalsPDF(){
       <div class="sum-box"><div class="sum-lbl">Revenue (returned)</div><div class="sum-val green">${fmt(revenue)}</div></div>
     </div>
     <table>
-      <thead><tr><th>Rental #</th><th>Customer</th><th>Item</th><th>Start</th><th>Due</th><th class="num">Fee</th><th class="num">Deposit</th><th>Status</th></tr></thead>
+      <thead><tr><th>Rental #</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Start</th><th>Due</th><th class="num">Fee</th><th class="num">Deposit</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${rents.map(r=>`<tr>
         <td><strong>${r.id}</strong></td>
         <td>${r.cust}</td>
@@ -25915,19 +26372,19 @@ function exportRentalsPDF(){
 }
 
 // ── INVENTORY PDF ────────────────────────────────────────────
-function exportInventoryPDF(){
+function exportInventoryPDF(){const _s=_L();
   const inv = D.inv;
   const totalVal = inv.reduce((a,i)=>a+(i.cost||0)*(i.qty||0),0);
   const inStock  = inv.filter(i=>i.qty>0).length;
   const body = `
     <div class="doc-title">Inventory Report</div>
     <div class="summary">
-      <div class="sum-box"><div class="sum-lbl">Total Items</div><div class="sum-val blue">${inv.length}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.inv_total_items}</div><div class="sum-val blue">${inv.length}</div></div>
       <div class="sum-box"><div class="sum-lbl">In Stock</div><div class="sum-val green">${inStock}</div></div>
       <div class="sum-box"><div class="sum-lbl">Total Value</div><div class="sum-val blue">${fmt(totalVal)}</div></div>
     </div>
     <table>
-      <thead><tr><th>SKU</th><th>Name</th><th>Category</th><th>Brand</th><th>Status</th><th>Condition</th><th class="num">Cost</th><th class="num">Sale Price</th><th class="num">Qty</th></tr></thead>
+      <thead><tr><th>SKU</th><th>Name</th><th>${_s.ui_category}</th><th>Brand</th><th>${_s.ui_status}</th><th>Condition</th><th class="num">Cost</th><th class="num">Sale Price</th><th class="num">Qty</th></tr></thead>
       <tbody>${inv.map(i=>`<tr>
         <td style="font-family:monospace;font-size:11px">${i.sku||'—'}</td>
         <td><strong>${i.name}</strong></td>
@@ -25944,7 +26401,7 @@ function exportInventoryPDF(){
 }
 
 // ── CUSTOMERS PDF ────────────────────────────────────────────
-function exportCustomersPDF(){
+function exportCustomersPDF(){const _s=_L();
   const custs = D.cust;
   const vips    = custs.filter(c=>c.vip).length;
   const totalSpend = custs.reduce((a,c)=>a+(c.spent||0),0);
@@ -25956,7 +26413,7 @@ function exportCustomersPDF(){
       <div class="sum-box"><div class="sum-lbl">Total Revenue</div><div class="sum-val green">${fmt(totalSpend)}</div></div>
     </div>
     <table>
-      <thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Type</th><th class="num">Total Spend</th><th class="num">Orders</th><th>Status</th></tr></thead>
+      <thead><tr><th>Name</th><th>Phone</th><th>City</th><th>${_s.ui_type}</th><th class="num">Total Spend</th><th class="num">Orders</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${custs.map(c=>`<tr>
         <td><strong>${c.name}</strong>${c.vip?' <span class="badge badge-p">VIP</span>':''}</td>
         <td>${c.phone||c.whatsapp||'—'}</td>
@@ -25971,7 +26428,7 @@ function exportCustomersPDF(){
 }
 
 // ── VENDORS PDF ──────────────────────────────────────────────
-function exportVendorsPDF(){
+function exportVendorsPDF(){const _s=_L();
   const vends = D.vendors;
   const totalAP = vends.filter(v=>v.bal>0).reduce((a,v)=>a+v.bal,0);
   const body = `
@@ -25982,7 +26439,7 @@ function exportVendorsPDF(){
       <div class="sum-box"><div class="sum-lbl">AP Outstanding</div><div class="sum-val ${totalAP>0?'red':'green'}">${fmt(totalAP)}</div></div>
     </div>
     <table>
-      <thead><tr><th>Vendor Name</th><th>Category</th><th>Country</th><th>Contact</th><th>Phone</th><th>Terms</th><th class="num">Balance</th><th>Status</th></tr></thead>
+      <thead><tr><th>Vendor Name</th><th>${_s.ui_category}</th><th>Country</th><th>${_s.ui_contact}</th><th>Phone</th><th>Terms</th><th class="num">Balance</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${vends.map(v=>`<tr>
         <td><strong>${v.name}</strong></td>
         <td>${v.cat||'—'}</td>
@@ -25998,7 +26455,7 @@ function exportVendorsPDF(){
 }
 
 // ── EXPENSES PDF ─────────────────────────────────────────────
-function exportExpensesPDF(){
+function exportExpensesPDF(){const _s=_L();
   const exps = D.exp;
   const total = exps.reduce((a,e)=>a+e.amt,0);
   const recurring = exps.filter(e=>e.type==='Recurring').reduce((a,e)=>a+e.amt,0);
@@ -26015,7 +26472,7 @@ function exportExpensesPDF(){
     </div>
     ${topCat?`<p style="font-size:11px;color:#64748b;margin-bottom:14px">Top categories: ${topCat}</p>`:''}
     <table>
-      <thead><tr><th>Exp #</th><th>Date</th><th>Category</th><th>Payee</th><th class="num">Amount</th><th>Type</th><th>Method</th><th>Status</th></tr></thead>
+      <thead><tr><th>Exp #</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">Amount</th><th>${_s.ui_type}</th><th>${_s.ui_method}</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${exps.map(e=>`<tr>
         <td style="font-family:monospace;font-size:11px">${e.id}</td>
         <td>${e.dt}</td>
@@ -26031,7 +26488,7 @@ function exportExpensesPDF(){
 }
 
 // ── PURCHASES PDF ────────────────────────────────────────────
-function exportPurchasesPDF(){
+function exportPurchasesPDF(){const _s=_L();
   const pos = D.purchases;
   const total = pos.reduce((a,p)=>a+p.total,0);
   const pending = pos.filter(p=>p.st==='Pending'||p.st==='Ordered').length;
@@ -26043,7 +26500,7 @@ function exportPurchasesPDF(){
       <div class="sum-box"><div class="sum-lbl">Total Value</div><div class="sum-val blue">${fmt(total)}</div></div>
     </div>
     <table>
-      <thead><tr><th>PO #</th><th>Date</th><th>Vendor</th><th>Items</th><th class="num">Subtotal</th><th class="num">Freight</th><th class="num">Total</th><th>Status</th></tr></thead>
+      <thead><tr><th>PO #</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>Items</th><th class="num">Subtotal</th><th class="num">Freight</th><th class="num">Total</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${pos.map(p=>`<tr>
         <td><strong>${p.id}</strong></td>
         <td>${p.dt}</td>
@@ -26059,7 +26516,7 @@ function exportPurchasesPDF(){
 }
 
 // ── APPOINTMENTS PDF ─────────────────────────────────────────
-function exportAppointmentsPDF(){
+function exportAppointmentsPDF(){const _s=_L();
   const appts = D.appointments||[];
   const completed = appts.filter(a=>a.st==='Completed').length;
   const revenue   = appts.filter(a=>a.st==='Completed').reduce((s,a)=>s+a.totalAmt,0);
@@ -26071,7 +26528,7 @@ function exportAppointmentsPDF(){
       <div class="sum-box"><div class="sum-lbl">Revenue</div><div class="sum-val green">${fmt(revenue)}</div></div>
     </div>
     <table>
-      <thead><tr><th>ID</th><th>Date</th><th>Time</th><th>Customer</th><th>Service</th><th>Staff</th><th class="num">Amount</th><th>Status</th></tr></thead>
+      <thead><tr><th>ID</th><th>${_s.ui_date}</th><th>Time</th><th>${_s.ui_customer}</th><th>Service</th><th>Staff</th><th class="num">Amount</th><th>${_s.ui_status}</th></tr></thead>
       <tbody>${appts.map(a=>`<tr>
         <td style="font-family:monospace;font-size:11px">${a.id}</td>
         <td>${a.date}</td>
@@ -26087,7 +26544,7 @@ function exportAppointmentsPDF(){
 }
 
 // ── FULL FINANCIAL SUMMARY PDF ───────────────────────────────
-function exportFinancialSummaryPDF(){
+function exportFinancialSummaryPDF(){const _s=_L();
   const k = D.kpis;
   const period = new Date().toLocaleDateString('en-GB',{month:'long',year:'numeric'});
   const body = `
@@ -26096,7 +26553,7 @@ function exportFinancialSummaryPDF(){
       <div class="sum-box"><div class="sum-lbl">Total Revenue</div><div class="sum-val blue">${fmt(k.rev)}</div></div>
       <div class="sum-box"><div class="sum-lbl">Gross Profit</div><div class="sum-val green">${fmt(k.gp)}</div></div>
       <div class="sum-box"><div class="sum-lbl">Net Profit</div><div class="sum-val ${k.np>=0?'green':'red'}">${fmt(k.np)}</div></div>
-      <div class="sum-box"><div class="sum-lbl">Expenses</div><div class="sum-val red">${fmt(k.exp||0)}</div></div>
+      <div class="sum-box"><div class="sum-lbl">${_s.acc_row_expenses}</div><div class="sum-val red">${fmt(k.exp||0)}</div></div>
     </div>
     <table>
       <thead><tr><th>Metric</th><th class="num">Amount</th></tr></thead>
@@ -26211,7 +26668,7 @@ function _waOwnerNewSale(sale, staffName) {
               +'<p style="font-size:13px;color:var(--text2);margin:0 0 12px">Know another business owner? Share ShopTrack — you get 1 free month when they subscribe.</p>'
               +'<div style="background:var(--bg3);border-radius:var(--r8);padding:10px 14px;display:flex;align-items:center;gap:8px;margin-bottom:4px">'
               +'<span style="flex:1;font-family:var(--mono);font-size:11px;color:var(--a)">'+refLink+'</span>'
-              +'<button class="btn btn-p btn-xs" onclick="navigator.clipboard.writeText(\''+refLink+'\').then(function(){toast(\'Copied!\',\'success\');}).catch(function(){toast(refLink,\'info\')})">Copy</button>'
+              +'<button class="btn btn-p btn-xs" onclick="navigator.clipboard.writeText(\''+refLink+'\').then(function(){toast(\'Copied!\',\'success\');}).catch(function(){toast(refLink,\'info\')})">${_s.set_copy}</button>'
               +'</div>',
               '<button class="btn btn-s btn-sm" onclick="closeModal()">Later</button>'
               +'<button class="btn btn-g btn-sm" onclick="var m=\'Hi! I use ShopTrack \xe2\x80\x94 try free: \'+refLink;window.open(\'https://wa.me/?text=\'+encodeURIComponent(m),\'_blank\');closeModal()">'
@@ -26727,7 +27184,7 @@ function _bulkWAReminders(type){
           <button class="btn btn-g btn-xs" onclick="window.open('https://wa.me/${r.ph}?text=${r.msg}','_blank')">Send</button>
         </div>`).join('')}
     </div>`,
-    `<button class="btn btn-s" onclick="closeModal()">Close</button>
+    `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
      <button class="btn btn-p" onclick="(function(){
        ${recipients.map((r,i)=>`setTimeout(()=>window.open('https://wa.me/${r.ph}?text=${r.msg}','_blank'),${i*1200})`).join(';')};
        closeModal();
@@ -26965,7 +27422,7 @@ function refreshNotifPanel(){
   }
   // Append WA quick-action footer to notification panel
   html += '<div style="border-top:1px solid var(--border);margin-top:10px;padding:10px 14px;display:flex;flex-direction:column;gap:7px">'
-    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:2px">Quick Actions</div>'
+    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:2px">${_s.ui_quick_actions}</div>'
     + '<button class="btn btn-g btn-sm" style="justify-content:flex-start;gap:8px" onclick="nav(\'settings\');setTimeout(function(){var t=document.querySelector(\'.stab[onclick*=tab-notif]\');if(t){t.click();}},300)">'
     + '⚙️ Notification Settings</button>'
     + '</div>';
@@ -27036,7 +27493,7 @@ function _saveAppt(){
   nav('appointments');
 }
 
-function _deleteAppt(id){
+function _deleteAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;});
   if(!a){ toast('Not found','error'); return; }
   var linkedSale=a.saleId?D.sales.find(function(s){return s.id===a.saleId;}):null;
@@ -27047,8 +27504,8 @@ function _deleteAppt(id){
   if(a.totalAmt>0&&!linkedSale) warnHtml+='<p style="font-size:12px;color:var(--text3)">Revenue of '+fmt(a.totalAmt)+' will be removed from KPIs.</p>';
   var mid=id;
   modal('Delete Appointment', warnHtml,
-    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn btn-d" id="confirm-del-appt-btn">Delete</button>');
+    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-d" id="confirm-del-appt-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-appt-btn');
     if(btn) btn.onclick=function(){
@@ -27060,29 +27517,29 @@ function _deleteAppt(id){
   },30);
 }
 
-function mEditApptCompleted(id){
+function mEditApptCompleted(id){const _s=_L();
   var a = D.appointments.find(function(x){return x.id===id;});
   if(!a){ toast('Not found','error'); return; }
   var rate = CUR.rate||1;
   var sym  = CUR.symbol;
   var body = '<div class="fg-2">'
-    +'<div class="fg"><label class="fl">Date</label>'
+    +'<div class="fg"><label class="fl">${_s.ui_date}</label>'
     +'<input class="fi" type="date" id="eac-date" value="'+a.date+'"/></div>'
     +'<div class="fg"><label class="fl">Amount ('+sym+')</label>'
     +'<input class="fi" type="number" id="eac-amt" value="'+Math.round((a.totalAmt||0)*rate)+'" step="any"/></div>'
     +'</div>'
-    +'<div class="fg"><label class="fl">Payment Method</label>'
+    +'<div class="fg"><label class="fl">${_s.ui_pay_method}</label>'
     +'<select class="fs" id="eac-method">'
-    +'<option'+(a.payMethod==='Cash'?' selected':'')+'>Cash</option>'
-    +'<option'+(a.payMethod==='Mobile Money (MTN)'?' selected':'')+'>Mobile Money (MTN)</option>'
-    +'<option'+(a.payMethod==='Orange Money'?' selected':'')+'>Orange Money</option>'
-    +'<option'+(a.payMethod==='Bank Transfer'?' selected':'')+'>Bank Transfer</option>'
+    +'<option'+(a.payMethod==='Cash'?' selected':'')+'>${_s.ui_cash}</option>'
+    +'<option'+(a.payMethod==='Mobile Money (MTN)'?' selected':'')+'>${_s.ui_mobile_mtn}</option>'
+    +'<option'+(a.payMethod==='Orange Money'?' selected':'')+'>${_s.ui_orange}</option>'
+    +'<option'+(a.payMethod==='Bank Transfer'?' selected':'')+'>${_s.ui_bank_transfer}</option>'
     +'<option'+(a.payMethod==='Card'?' selected':'')+'>Card</option>'
     +'</select></div>'
-    +'<div class="fg"><label class="fl">Notes</label>'
+    +'<div class="fg"><label class="fl">${_s.ui_notes}</label>'
     +'<textarea class="ft" id="eac-notes" style="min-height:60px">'+(a.notes||'')+'</textarea></div>';
-  var footer = '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
-    +' <button class="btn btn-p" id="eac-save-btn">Save Changes</button>';
+  var footer = '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    +' <button class="btn btn-p" id="eac-save-btn">${_s.ui_save}</button>';
   modal('Edit Completed Appointment', body, footer, 'sm');
   // Wire save button after modal renders (avoids all quote-nesting)
   setTimeout(function(){
@@ -27261,7 +27718,7 @@ function mViewAppt(id){
   var editAmtBtn = canEditAmt ? '<button class="btn btn-s btn-sm" onclick="closeModal();mEditApptCompleted(\''+id+'\')">✏ Edit Amount</button>' : '';
   var invoiceBtn = (a.st==='Completed'&&(a.totalAmt||0)>0) ? '<button class="btn btn-g btn-sm" onclick="genApptInvoice(\''+id+'\')">🧾 Invoice</button>' : '';
   var deleteBtn  = '<button class="btn btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="_deleteAppt(\''+id+'\')">🗑 Delete</button>';
-  var saveBtn     = canEdit ? '<button class="btn btn-p btn-sm" onclick="_updAppt(\''+id+'\')">💾 Save</button>' : '<button class="btn btn-s btn-sm" onclick="closeModal()">Close</button>';
+  var saveBtn     = canEdit ? '<button class="btn btn-p btn-sm" onclick="_updAppt(\''+id+'\')">💾 Save</button>' : '<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_close}</button>';
 
   var footer = '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:6px;flex-wrap:wrap">'
     +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+waBtn+reschedBtn+cancelBtn+checkoutBtn+deleteBtn+'</div>'
@@ -27271,7 +27728,7 @@ function mViewAppt(id){
 }
 
 
-function mNewAppt(date){
+function mNewAppt(date){const _s=_L();
   const td=date||localDateStr();
   const so=D.services.filter(s=>s.active).map(s=>{const pt=s.priceType||'flat';return `<option value="${s.id}" data-dur="${s.duration}" data-p="${s.price}" data-pt="${pt}">${s.name} (${s.duration}min · ${fmt(s.price)}/${_ptLabel(pt)})</option>`;}).join('');
   const co=D.cust.map(c=>`<option value="${c.id}" data-ph="${c.phone||c.whatsapp||''}">${c.name}</option>`).join('');
@@ -27281,7 +27738,7 @@ function mNewAppt(date){
     <div class="fg"><label class="fl">Service</label>
       <div id="na-s-wrap" style="position:relative"></div><input type="hidden" id="na-s" value=""/>
     </div>
-    <div class="fg"><label class="fl">Date</label><input class="fi" id="na-d" type="date" value="${td}"/></div>
+    <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" id="na-d" type="date" value="${td}"/></div>
   </div>
   <div class="fg-2">
     <div class="fg"><label class="fl">Start Time</label><input class="fi" id="na-t" type="time" value="09:00" oninput="_naSync()"/></div>
@@ -27298,26 +27755,26 @@ function mNewAppt(date){
   <div id="na-new-cust-form" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);padding:12px;margin-bottom:8px">
     <div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">New Customer Details</div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">Full Name *</label><input class="fi" id="na-nc-name" placeholder="Customer name"/></div>
+      <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="na-nc-name" placeholder="Customer name"/></div>
       <div class="fg"><label class="fl">Phone *</label><input class="fi" id="na-nc-phone" type="tel" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     </div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">Email</label><input class="fi" id="na-nc-email" type="email" placeholder="email"+'@'+"example.com"/></div>
-      <div class="fg"><label class="fl">City</label><input class="fi" id="na-nc-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
+      <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" id="na-nc-email" type="email" placeholder="email"+'@'+"example.com"/></div>
+      <div class="fg"><label class="fl">${_s.ui_city}</label><input class="fi" id="na-nc-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:2px">
       <button type="button" class="btn btn-p btn-sm" onclick="_apptSaveNewCust()" style="flex:1">✓ Save & Select</button>
-      <button type="button" class="btn btn-s btn-sm" onclick="_apptCancelNewCust()">Cancel</button>
+      <button type="button" class="btn btn-s btn-sm" onclick="_apptCancelNewCust()">${_s.ui_cancel}</button>
     </div>
   </div>
-  <div class="fg"><label class="fl">Phone</label><input class="fi" id="na-ph" placeholder="Auto-filled from customer"/></div>
+  <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="na-ph" placeholder="Auto-filled from customer"/></div>
   <div class="fg-2">
     <div class="fg"><label class="fl">Staff</label><select class="fs" id="na-st"><option value="">Any Available</option>${stO}</select></div>
-    <div class="fg"><label class="fl">Amount</label><input class="fi" id="na-amt" type="number" placeholder="Price" step="0.01" oninput="this._t=true"/></div>
+    <div class="fg"><label class="fl">${_s.ui_amount}</label><input class="fi" id="na-amt" type="number" placeholder="${_s.sal_price_lbl}" step="0.01" oninput="this._t=true"/></div>
   </div>
-  <div class="fg"><label class="fl">Notes</label><textarea class="ft" id="na-n" rows="2" placeholder="Special requests, notes…"></textarea></div>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="na-n" rows="2" placeholder="Special requests, notes…"></textarea></div>
   <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px"><input type="checkbox" id="na-wi" style="accent-color:var(--a)"/> Walk-in (no prior booking)</label>`,
-  `<button class="btn btn-s" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="_saveAppt()">📅 Book</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button><button class="btn btn-p" onclick="_saveAppt()">📅 Book</button>`);
   setTimeout(_naSync,60);
 }
 
