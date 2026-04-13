@@ -1089,7 +1089,7 @@ function _addExpCatSettings(){
   _renderExpCatPills();
   toast('"'+val+'" added ✓','success');
 }
-function _renderSvcCatPills(){
+function _renderSvcCatPills(){const _s=_L();
   var html='<div id="svc-cats-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'
     +(D.svcCats||[]).map(function(c,i){
       return '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:20px;padding:5px 10px 5px 13px">'
@@ -1153,7 +1153,7 @@ function _addExpCat(){
 
 
 
-function _csAddLine(){
+function _csAddLine(){const _s=_L();
   var row = document.createElement('div');
   row.className = 'cs-line-row';
   row.style.cssText = 'display:grid;grid-template-columns:1fr auto auto auto;gap:6px;margin-bottom:6px;align-items:center';
@@ -1286,7 +1286,7 @@ function _csCheckCostWarn(){
   warnEl.style.display = (!hasLinkedInv && costVal === 0) ? '' : 'none';
 }
 
-function _poAddLine(){
+function _poAddLine(){const _s=_L();
   var row=document.createElement('div');
   row.className='po-line-row';
   row.style.cssText='display:grid;grid-template-columns:1fr auto auto auto;gap:6px;margin-bottom:6px;align-items:center';
@@ -1815,7 +1815,7 @@ const co = new Proxy({}, { get(_,k){ return _co()[k]; } });
 
 // ── Recurring expense reminder ─────────────────────────────────────────
 // Checks once per session if any recurring expense hasn't been recorded this month
-function _checkRecurringExpenses(){
+function _checkRecurringExpenses(){const _s=_L();
   if(SESSION.isSuperAdmin||!D.exp||!D.exp.length) return;
   var _sesKey='st_rec_exp_check_'+localDateStr().slice(0,7); // monthly key
   try{ if(sessionStorage.getItem(_sesKey)) return; }catch(e){}
@@ -2528,7 +2528,7 @@ async function _pgConfirmPlan(){
 }
 
 // Returns true if business uses USD (routes to Stripe instead of CamPay)
-function _isUSD(){ return CUR.code==='USD' || (BIZ.country||'').toLowerCase().includes('united states') || BIZ.country==='US'; }
+function _isUSD(){const _s=_L(); return CUR.code==='USD' || (BIZ.country||'').toLowerCase().includes('united states') || BIZ.country==='US'; }
 
 // Stripe payment flow for USD businesses
 async function mSubPayNowStripe(){const _s=_L();
@@ -3318,7 +3318,7 @@ function _invStatusBadge(st){
     +c.label+'</div>';
 }
 
-function mItem(id){
+function mItem(id){const _s=_L();
   const it=D.inv.find(i=>i.id===id);if(!it)return;
   const detailPhoto = (it.photoDataUrls&&it.photoDataUrls.length)
     ? '<img loading="lazy" src="'+it.photoDataUrls[0]+'" style="width:100%;height:100%;object-fit:cover"/>'
@@ -3497,7 +3497,7 @@ var _COST_CATS=_COST_CATS_DEFAULT;
 // Render the collapsible cost breakdown panel
 // prefix = 'ci' (inventory) | 'cs' (service)
 // existingLines = array of {cat, desc, unit, qty, unitCost} already saved
-function _costBreakdownHTML(prefix, existingLines){
+function _costBreakdownHTML(prefix, existingLines){const _s=_L();
   var lines = existingLines && existingLines.length ? existingLines : [];
   var hasLines = lines.length > 0;
   var totalFromLines = lines.reduce(function(s,l){ return s + ((parseFloat(l.qty)||1)*(parseFloat(l.unitCost)||0)); }, 0);
@@ -5051,7 +5051,7 @@ function _saveRecordPayment(){
 }
 
 
-function mInvoiceNew(){
+function mInvoiceNew(){const _s=_L();
   // Pre-build option lists for each invoice type
   const saleItems = D.inv.filter(i=>i.st==='For Sale'||i.st==='Both')
     .map(i=>`<option value="${_esc(i.name)}" data-price="${Math.round((i.sp||0)*CUR.rate)}">${_esc(i.name)}${i.sku?' ('+i.sku+')':''} — ${fmt(i.sp||0)}</option>`).join('');
@@ -5209,7 +5209,7 @@ function _invAddFromCatalogue(){
 
 
 // ── Add a new line row to the invoice ──────────────────────────
-function _invAddRow(name, price){
+function _invAddRow(name, price){const _s=_L();
   const tbody = document.getElementById('inv-lines-body'); if(!tbody) return;
   const tr = document.createElement('tr');
   tr.className = 'inv-line-row';
@@ -5328,7 +5328,7 @@ function _saveInvoice(){
   nav('sales');
 }
 
-function mPhotoUpload(preselectedId, preselectedType){
+function mPhotoUpload(preselectedId, preselectedType){const _s=_L();
   // Build options for each category
   const invSaleOpts = D.inv.filter(i=>i.st==='For Sale'||i.st==='Both')
     .map(i=>`<option value="${i.id}" data-src="inv"${preselectedId===i.id&&(!preselectedType||preselectedType==='inv')?' selected':''}>${_esc(i.name)}${i.sku?' ('+i.sku+')':''}</option>`).join('');
@@ -5419,7 +5419,7 @@ function _photoTabSwitch(el, tab){
 }
 
 // ── Load existing photos for selected item ──────────────────────
-function _photoLoadExisting(tab){
+function _photoLoadExisting(tab){const _s=_L();
   const sel = document.getElementById('photo-sel-'+tab);
   const id  = sel?.value; if(!id) return;
   const existWrap = document.getElementById('photo-existing-wrap');
@@ -6182,7 +6182,7 @@ function processReturn(rid){
   nav('rentals');
 }
 
-function mRentalDetail(id){
+function mRentalDetail(id){const _s=_L();
   const r=D.rentals.find(x=>x.id===id); if(!r) return;
   const uid='rent-doc-'+id;
   modal(`Rental ${id} — ${r.cust}`,`
@@ -10075,7 +10075,7 @@ async function _aiLoadHistory(){
   _aiRenderHistory();
 }
 
-function _aiRenderHistory(){
+function _aiRenderHistory(){const _s=_L();
   const el = document.getElementById('ai-history-list');
   const clearBtn = document.getElementById('ai-clear-hist-btn');
   if(!el) return;
@@ -11491,7 +11491,7 @@ async function _mbSave(bizId){
   nav('admin-biz');
 }
 
-function _mbResetLogin(bizId){
+function _mbResetLogin(bizId){const _s=_L();
   const b = D.adminBiz.find(x=>x.id===bizId); if(!b) return;
   const newPass = _genTempPassword();
   const ownerEmail = document.getElementById('mb-email')?.value || b.email || '';
@@ -12041,7 +12041,7 @@ function mRequestProfileAccess(userId){const _s=_L();
    <button class="btn btn-p" onclick="doSubmitProfileRequest('${userId}','${ownerEmail}','${ownerName}','${u.bizId}')">📧 Send Request to Owner</button>`);
 }
 
-function doSubmitProfileRequest(userId, ownerEmail, ownerName, bizId){
+function doSubmitProfileRequest(userId, ownerEmail, ownerName, bizId){const _s=_L();
   const sel   = document.getElementById('par-reason-sel')?.value;
   const other = document.getElementById('par-reason-other')?.value?.trim();
   const reason = sel === 'Other' ? other : sel;
@@ -12644,7 +12644,7 @@ async function _sendWA(phone, message, opts){
 }
 
 // Legacy helper kept for non-API contexts (share links, flyer sharing etc.)
-function _openWA(phone, message){
+function _openWA(phone, message){const _s=_L();
   const digits = String(phone||'').replace(/\D/g,'');
   // Normalise: US 10-digit → add 1, international → use as-is
   const norm = digits.length === 10 ? '1'+digits
@@ -13275,7 +13275,7 @@ function _affUpdateKPIs(){
   set('aff-kpi-unpaid',   fmt(totalUnpaid));
 }
 
-function _affRenderTable(){
+function _affRenderTable(){const _s=_L();
   var list = _affiliates;
   if(_affCurrentTab !== 'all') list = list.filter(a=>a.status===_affCurrentTab);
   var tb = document.getElementById('aff-tbody');
@@ -21217,7 +21217,7 @@ function _arExportPDF(){
   }
 }
 
-function _arSendWA(custId){
+function _arSendWA(custId){const _s=_L();
   const c=D.cust.find(x=>x.id===custId); if(!c) return;
   const ph=(c.whatsapp||c.phone||'').replace(/[^0-9]/g,'');
   if(!ph){ toast('No phone number on record for '+c.name,'error'); return; }
@@ -23110,7 +23110,7 @@ function exportAllDataXLSX(){
 }
 
 
-function exportPnLPDF(){
+function exportPnLPDF(){const _s=_L();
   const k=D.kpis;
   const biz=BIZ.name||'ShopTrack';
   const period=new Date().toLocaleDateString('en-GB',{month:'long',year:'numeric'});
@@ -27138,7 +27138,7 @@ function _waOwnerCheck() {
 }
 
 // 1. New sale alert to owner
-function _waOwnerNewSale(sale, staffName) {
+function _waOwnerNewSale(sale, staffName) {const _s=_L();
   var total = sale.total || sale.amt || 0;
   var isLarge = NOTIF_PREFS.waOwnerLargeOrder &&
     total >= (NOTIF_PREFS.waOwnerLargeOrderThreshold || 500);
