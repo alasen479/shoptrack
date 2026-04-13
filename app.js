@@ -13808,7 +13808,7 @@ async function _idbClear(bizId){
 var _queueDraining = false;
 var _queueBadgeEl  = null;
 
-// ── Enqueue one write operation ───────────────────────────────
+// ── Enqueue one write (upsert) operation ─────────────────────
 async function _queueEnqueue(bizId, table, payload){
   try{
     var db = await _idbOpen();
@@ -13816,16 +13816,86 @@ async function _queueEnqueue(bizId, table, payload){
       var tx = db.transaction(_IDB_QUEUE, 'readwrite');
       var st = tx.objectStore(_IDB_QUEUE);
       st.add({
+        bizId:    bizId,
+        op:       'upsert',   // 'upsert' | 'delete' | 'update' | 'insert'
+        table:    table,
+        payload:  payload,
+        rowId:    null,
+        queuedAt: Date.now(),
+        attempts: 0,
+      });
+      tx.oncomplete = resolve;
+      tx.onerror    = function(){ resolve(); };
+    });
+  }catch(e){ console.warn('[Queue] Enqueue error:', e.message); }
+}
+
+// ── Enqueue one delete operation ──────────────────────────────
+async function _queueEnqueueDelete(bizId, table, rowId){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx = db.transaction(_IDB_QUEUE, 'readwrite');
+      var st = tx.objectStore(_IDB_QUEUE);
+      st.add({
+        bizId:    bizId,
+        op:       'delete',
+        table:    table,
+        payload:  null,
+        rowId:    rowId,
+        queuedAt: Date.now(),
+        attempts: 0,
+      });
+      tx.oncomplete = resolve;
+      tx.onerror    = function(){ resolve(); };
+    });
+  }catch(e){ console.warn('[Queue] EnqueueDelete error:', e.message); }
+}
+
+// ── Enqueue a raw update (for BizProfile, categories etc.) ────
+async function _queueEnqueueUpdate(bizId, table, payload, matchCol, matchVal){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx = db.transaction(_IDB_QUEUE, 'readwrite');
+      var st = tx.objectStore(_IDB_QUEUE);
+      st.add({
         bizId:     bizId,
+        op:        'update',
         table:     table,
         payload:   payload,
+        matchCol:  matchCol,   // e.g. 'id'
+        matchVal:  matchVal,   // e.g. SESSION.bizId
+        rowId:     null,
         queuedAt:  Date.now(),
         attempts:  0,
       });
       tx.oncomplete = resolve;
       tx.onerror    = function(){ resolve(); };
     });
-  }catch(e){ console.warn('[Queue] Enqueue error:', e.message); }
+  }catch(e){ console.warn('[Queue] EnqueueUpdate error:', e.message); }
+}
+
+// ── Enqueue a raw insert (for categories, audit etc.) ─────────
+async function _queueEnqueueInsert(bizId, table, rows){
+  try{
+    var db = await _idbOpen();
+    return new Promise(function(resolve){
+      var tx = db.transaction(_IDB_QUEUE, 'readwrite');
+      var st = tx.objectStore(_IDB_QUEUE);
+      st.add({
+        bizId:    bizId,
+        op:       'insert',
+        table:    table,
+        payload:  rows,   // array of row objects
+        rowId:    null,
+        queuedAt: Date.now(),
+        attempts: 0,
+      });
+      tx.oncomplete = resolve;
+      tx.onerror    = function(){ resolve(); };
+    });
+  }catch(e){ console.warn('[Queue] EnqueueInsert error:', e.message); }
 }
 
 // ── Count pending items for this business ─────────────────────
@@ -13903,32 +13973,68 @@ async function _queueDrain(){
 
   for(var i = 0; i < items.length; i++){
     var item = items[i];
-    // Skip items that have failed too many times (max 5 attempts)
+    var op = item.op || 'upsert'; // default to upsert for legacy queue items
+
+    // Drop items that have exceeded max retries
     if((item.attempts||0) >= 5){
       await _queueDelete(item.qid);
-      console.warn('[Queue] Dropped after 5 failures:', item.table, item.payload.id);
+      console.warn('[Queue] Dropped after 5 failures:', op, item.table, item.rowId||((item.payload||{}).id));
       continue;
     }
+
     try{
-      var res = await _sb.from(item.table)
-        .upsert(item.payload, { onConflict: 'id,biz_id' })
-        .select();
-      if(res.error){
-        // Column missing — strip optional fields and retry inline
-        if(res.error.code === 'PGRST204' || (res.error.message||'').includes('column')){
+      var err = null;
+
+      if(op === 'delete'){
+        // ── DELETE ─────────────────────────────────────────
+        var dr = await _sb.from(item.table).delete()
+          .eq('id', item.rowId).eq('biz_id', bizId);
+        err = dr.error;
+
+      } else if(op === 'update'){
+        // ── UPDATE (BizProfile) or DELETE-all (categories) ────
+        if(item.table === 'categories' && Object.keys(item.payload||{}).length === 0){
+          // Empty payload = delete-all for this biz (categories pattern)
+          var dr2 = await _sb.from('categories').delete().eq('biz_id', bizId);
+          err = dr2.error;
+        } else {
+          var ur = await _sb.from(item.table).update(item.payload)
+            .eq(item.matchCol || 'id', item.matchVal || bizId);
+          err = ur.error;
+        }
+
+      } else if(op === 'insert'){
+        // ── INSERT (categories rows, audit entries) ─────────
+        if(Array.isArray(item.payload) && item.payload.length){
+          var ir = await _sb.from(item.table).insert(item.payload);
+          err = ir.error;
+        }
+
+      } else {
+        // ── UPSERT (default — all _safeUpsert writes) ──────
+        var res = await _sb.from(item.table)
+          .upsert(item.payload, { onConflict: 'id,biz_id' })
+          .select();
+        err = res.error;
+        if(err && (err.code === 'PGRST204' || (err.message||'').includes('column'))){
+          // Strip optional columns and retry
           var safe = Object.assign({}, item.payload);
           ['dob','birthday','docs','contract_sig_url','contract_signed_date',
            'contract_signed','photo_data_urls','line_items'].forEach(function(k){ delete safe[k]; });
           var res2 = await _sb.from(item.table).upsert(safe, {onConflict:'id,biz_id'}).select();
-          if(res2.error){ await _queueBumpAttempt(item); failed++; continue; }
-        } else {
-          await _queueBumpAttempt(item); failed++; continue;
+          err = res2.error;
         }
+      }
+
+      if(err){
+        console.warn('[Queue] Sync error ('+op+'):', item.table, err.message);
+        await _queueBumpAttempt(item); failed++; continue;
       }
       await _queueDelete(item.qid);
       synced++;
+
     }catch(e){
-      console.warn('[Queue] Sync error:', item.table, e.message);
+      console.warn('[Queue] Exception ('+op+'):', item.table, e.message);
       await _queueBumpAttempt(item);
       failed++;
     }
@@ -13940,8 +14046,10 @@ async function _queueDrain(){
 
   if(synced > 0){
     console.log('[Queue] Synced', synced, 'write(s) to Supabase');
-    // Refresh IDB data cache after successful sync
-    _dbLoadBizDataCached(bizId).catch(function(){});
+    // Refresh full data cache after successful sync (catches all table types)
+    setTimeout(function(){
+      _dbLoadBizDataCached(bizId).catch(function(){});
+    }, 500);
     if(typeof toast === 'function'){
       toast(synced + ' offline record' + (synced>1?'s':'') + ' synced ✓', 'success');
     }
@@ -14439,7 +14547,33 @@ async function _sbUpsertWithFallback(table, payload, ctx){
 }
 
 async function _dbSaveBizProfile(bizId){
-  if(!_sb || !bizId || SESSION.isSuperAdmin) return;
+  if(!bizId || SESSION.isSuperAdmin) return;
+  // Always update IDB cache immediately (works offline)
+  _idbSave(bizId, 'biz', BIZ).catch(function(){});
+
+  if(!_sb || !navigator.onLine){
+    // Queue all profile updates as a single merged payload
+    var profilePayload = {
+      name:BIZ.name, owner:BIZ.owner||null, type:BIZ.type||null, tagline:BIZ.tagline,
+      email:BIZ.email, phone:BIZ.phone, whatsapp:BIZ.whatsapp, address:BIZ.address,
+      website:BIZ.website, instagram:BIZ.instagram, facebook:BIZ.facebook,
+      tiktok:BIZ.tiktok, twitter:BIZ.twitter, logo_data_url:BIZ.logoDataUrl,
+      stamp_data_url:BIZ.stampDataUrl, sign_data_url:BIZ.signDataUrl,
+      primary_color:BIZ.primaryColor, accent_color:BIZ.accentColor,
+      invoice_note:BIZ.invoiceNote, tax_rate:BIZ.taxRate,
+      tax_name:BIZ.taxName||'', tax_reg_number:BIZ.taxRegNumber||'',
+      contract_enabled:BIZ.contractEnabled, contract_title:BIZ.contractTitle,
+      contract_template:BIZ.contractTemplate,
+      payment_terms:BIZ.paymentTerms||'Net 7', bank_details:BIZ.bankDetails||'',
+      payment_methods:BIZ.paymentMethods||'', theme:BIZ.theme||'dark',
+      ai_api_key:BIZ.aiKey||'', country:BIZ.country||'Cameroon',
+      language:BIZ.language||'en', currency:CUR.code||'XAF',
+      notif_prefs: JSON.stringify(NOTIF_PREFS),
+    };
+    await _queueEnqueueUpdate(bizId, 'businesses', profilePayload, 'id', bizId);
+    var qc=await _queueCount(bizId); _queueUpdateBadge(qc);
+    return;
+  }
   try {
     await _sb.from('businesses').update({
       name:BIZ.name, owner:BIZ.owner||null, type:BIZ.type||null, tagline:BIZ.tagline, email:BIZ.email, phone:BIZ.phone,
@@ -14453,13 +14587,11 @@ async function _dbSaveBizProfile(bizId){
       contract_enabled:BIZ.contractEnabled, contract_title:BIZ.contractTitle,
       contract_template:BIZ.contractTemplate
     }).eq('id', bizId);
-    // New columns — wrapped separately in case not yet migrated
     try{ await _sb.from('businesses').update({
       payment_terms:BIZ.paymentTerms||'Net 7',
       bank_details:BIZ.bankDetails||'',
       payment_methods:BIZ.paymentMethods||'',
     }).eq('id',bizId); }catch(_pe){}
-    // theme + booking columns — wrapped separately in case columns don't exist yet
     try{ await _sb.from('businesses').update({
       theme:BIZ.theme||'dark',
       ai_api_key:BIZ.aiKey||'',
@@ -14468,11 +14600,23 @@ async function _dbSaveBizProfile(bizId){
       currency:CUR.code||'XAF',
     }).eq('id',bizId); }catch(_te){}
     try{await _sb.from('businesses').update({cost_cats:BIZ.costCats&&BIZ.costCats.length?JSON.stringify(BIZ.costCats):null}).eq('id',bizId);}catch(_cc){}
-    // Notification prefs
     try{ await _sb.from('businesses').update({
       notif_prefs: JSON.stringify(NOTIF_PREFS)
     }).eq('id',bizId); }catch(_np){}
-  } catch(e){ _dbErr('saveBizProfile', e); }
+  } catch(e){
+    // Network error — queue for later
+    if(!navigator.onLine || (e.message||'').includes('fetch')){
+      var fallbackPayload = {
+        name:BIZ.name, tagline:BIZ.tagline, email:BIZ.email, phone:BIZ.phone,
+        whatsapp:BIZ.whatsapp, address:BIZ.address, theme:BIZ.theme||'dark',
+        primary_color:BIZ.primaryColor, accent_color:BIZ.accentColor,
+        invoice_note:BIZ.invoiceNote, country:BIZ.country||'Cameroon',
+      };
+      _queueEnqueueUpdate(bizId, 'businesses', fallbackPayload, 'id', bizId).catch(function(){});
+    } else {
+      _dbErr('saveBizProfile', e);
+    }
+  }
 }
 
 // ── Row mappers: DB → app format ──────────────────────────────
@@ -14717,8 +14861,30 @@ async function _dbSaveInv(item){
   await _safeUpsert('inventory', _invToDB(item, SESSION.bizId), 'saveInv');
 }
 async function _dbDelInv(id){
-  if(!_sb||!SESSION.bizId) return;
-  await _sb.from('inventory').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  if(!SESSION.bizId) return;
+  // Update IDB cache immediately
+  var _tbl = 'inventory';
+  if(_tbl==='inventory')  D.inv       = D.inv.filter(function(x){return x.id!==id;});
+  if(_tbl==='sales')      D.sales     = D.sales.filter(function(x){return x.id!==id;});
+  if(_tbl==='rentals')    D.rentals   = D.rentals.filter(function(x){return x.id!==id;});
+  if(_tbl==='expenses')   D.exp       = D.exp.filter(function(x){return x.id!==id;});
+  if(_tbl==='vendors')    D.vendors   = D.vendors.filter(function(x){return x.id!==id;});
+  if(_tbl==='purchases')  D.purchases = D.purchases.filter(function(x){return x.id!==id;});
+  _idbSave(SESSION.bizId, _tbl==='inventory'?'inv':_tbl==='expenses'?'exp':_tbl, 
+    _tbl==='inventory'?D.inv:_tbl==='sales'?D.sales:_tbl==='rentals'?D.rentals:
+    _tbl==='expenses'?D.exp:_tbl==='vendors'?D.vendors:D.purchases
+  ).catch(function(){});
+  if(!_sb||!navigator.onLine){
+    await _queueEnqueueDelete(SESSION.bizId, 'inventory', id);
+    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
+  }
+  try{
+    await _sb.from('inventory').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  }catch(e){
+    // Network failed — queue the delete
+    await _queueEnqueueDelete(SESSION.bizId, 'inventory', id);
+    var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
+  }
 }
 async function _dbSaveCust(cu){
   if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
@@ -14765,51 +14931,172 @@ function _loadCustCache(){
   }catch(_e){}
 }
 async function _dbDelCust(id){
-  if(!_sb||!SESSION.bizId) return;
-  await _sb.from('customers').delete().eq('id',id).eq('biz_id',SESSION.bizId);
-  // Immediately update localStorage cache so stale deleted customer cannot
-  // be restored by _loadCustCache on the next page refresh
+  if(!SESSION.bizId) return;
+  // Remove from D.cust and update IDB/localStorage immediately
+  D.cust = D.cust.filter(function(x){ return x.id!==id; });
   _cacheCust();
+  _idbSave(SESSION.bizId, 'cust', D.cust).catch(function(){});
+  if(!_sb||!navigator.onLine){
+    await _queueEnqueueDelete(SESSION.bizId, 'customers', id);
+    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
+  }
+  try{
+    await _sb.from('customers').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+    _cacheCust();
+  }catch(e){
+    await _queueEnqueueDelete(SESSION.bizId, 'customers', id);
+    var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
+  }
 }
 async function _dbSaveSale(s){
   if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
   await _safeUpsert('sales', _saleToDB(s, SESSION.bizId), 'saveSale');
 }
 async function _dbDelSale(id){
-  if(!_sb||!SESSION.bizId) return;
-  await _sb.from('sales').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  if(!SESSION.bizId) return;
+  // Update IDB cache immediately
+  var _tbl = 'sales';
+  if(_tbl==='inventory')  D.inv       = D.inv.filter(function(x){return x.id!==id;});
+  if(_tbl==='sales')      D.sales     = D.sales.filter(function(x){return x.id!==id;});
+  if(_tbl==='rentals')    D.rentals   = D.rentals.filter(function(x){return x.id!==id;});
+  if(_tbl==='expenses')   D.exp       = D.exp.filter(function(x){return x.id!==id;});
+  if(_tbl==='vendors')    D.vendors   = D.vendors.filter(function(x){return x.id!==id;});
+  if(_tbl==='purchases')  D.purchases = D.purchases.filter(function(x){return x.id!==id;});
+  _idbSave(SESSION.bizId, _tbl==='inventory'?'inv':_tbl==='expenses'?'exp':_tbl, 
+    _tbl==='inventory'?D.inv:_tbl==='sales'?D.sales:_tbl==='rentals'?D.rentals:
+    _tbl==='expenses'?D.exp:_tbl==='vendors'?D.vendors:D.purchases
+  ).catch(function(){});
+  if(!_sb||!navigator.onLine){
+    await _queueEnqueueDelete(SESSION.bizId, 'sales', id);
+    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
+  }
+  try{
+    await _sb.from('sales').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  }catch(e){
+    // Network failed — queue the delete
+    await _queueEnqueueDelete(SESSION.bizId, 'sales', id);
+    var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
+  }
 }
 async function _dbSaveRental(r){
   if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
   await _safeUpsert('rentals', _rentalToDB(r, SESSION.bizId), 'saveRental');
 }
 async function _dbDelRental(id){
-  if(!_sb||!SESSION.bizId) return;
-  await _sb.from('rentals').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  if(!SESSION.bizId) return;
+  // Update IDB cache immediately
+  var _tbl = 'rentals';
+  if(_tbl==='inventory')  D.inv       = D.inv.filter(function(x){return x.id!==id;});
+  if(_tbl==='sales')      D.sales     = D.sales.filter(function(x){return x.id!==id;});
+  if(_tbl==='rentals')    D.rentals   = D.rentals.filter(function(x){return x.id!==id;});
+  if(_tbl==='expenses')   D.exp       = D.exp.filter(function(x){return x.id!==id;});
+  if(_tbl==='vendors')    D.vendors   = D.vendors.filter(function(x){return x.id!==id;});
+  if(_tbl==='purchases')  D.purchases = D.purchases.filter(function(x){return x.id!==id;});
+  _idbSave(SESSION.bizId, _tbl==='inventory'?'inv':_tbl==='expenses'?'exp':_tbl, 
+    _tbl==='inventory'?D.inv:_tbl==='sales'?D.sales:_tbl==='rentals'?D.rentals:
+    _tbl==='expenses'?D.exp:_tbl==='vendors'?D.vendors:D.purchases
+  ).catch(function(){});
+  if(!_sb||!navigator.onLine){
+    await _queueEnqueueDelete(SESSION.bizId, 'rentals', id);
+    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
+  }
+  try{
+    await _sb.from('rentals').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  }catch(e){
+    // Network failed — queue the delete
+    await _queueEnqueueDelete(SESSION.bizId, 'rentals', id);
+    var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
+  }
 }
 async function _dbSaveExp(e){
   if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
   await _safeUpsert('expenses', _expToDB(e, SESSION.bizId), 'saveExp');
 }
 async function _dbDelExp(id){
-  if(!_sb||!SESSION.bizId) return;
-  await _sb.from('expenses').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  if(!SESSION.bizId) return;
+  // Update IDB cache immediately
+  var _tbl = 'expenses';
+  if(_tbl==='inventory')  D.inv       = D.inv.filter(function(x){return x.id!==id;});
+  if(_tbl==='sales')      D.sales     = D.sales.filter(function(x){return x.id!==id;});
+  if(_tbl==='rentals')    D.rentals   = D.rentals.filter(function(x){return x.id!==id;});
+  if(_tbl==='expenses')   D.exp       = D.exp.filter(function(x){return x.id!==id;});
+  if(_tbl==='vendors')    D.vendors   = D.vendors.filter(function(x){return x.id!==id;});
+  if(_tbl==='purchases')  D.purchases = D.purchases.filter(function(x){return x.id!==id;});
+  _idbSave(SESSION.bizId, _tbl==='inventory'?'inv':_tbl==='expenses'?'exp':_tbl, 
+    _tbl==='inventory'?D.inv:_tbl==='sales'?D.sales:_tbl==='rentals'?D.rentals:
+    _tbl==='expenses'?D.exp:_tbl==='vendors'?D.vendors:D.purchases
+  ).catch(function(){});
+  if(!_sb||!navigator.onLine){
+    await _queueEnqueueDelete(SESSION.bizId, 'expenses', id);
+    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
+  }
+  try{
+    await _sb.from('expenses').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  }catch(e){
+    // Network failed — queue the delete
+    await _queueEnqueueDelete(SESSION.bizId, 'expenses', id);
+    var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
+  }
 }
 async function _dbSaveVendor(v){
   if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
   await _safeUpsert('vendors', _vendorToDB(v, SESSION.bizId), 'saveVendor');
 }
 async function _dbDelVendor(id){
-  if(!_sb||!SESSION.bizId) return;
-  await _sb.from('vendors').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  if(!SESSION.bizId) return;
+  // Update IDB cache immediately
+  var _tbl = 'vendors';
+  if(_tbl==='inventory')  D.inv       = D.inv.filter(function(x){return x.id!==id;});
+  if(_tbl==='sales')      D.sales     = D.sales.filter(function(x){return x.id!==id;});
+  if(_tbl==='rentals')    D.rentals   = D.rentals.filter(function(x){return x.id!==id;});
+  if(_tbl==='expenses')   D.exp       = D.exp.filter(function(x){return x.id!==id;});
+  if(_tbl==='vendors')    D.vendors   = D.vendors.filter(function(x){return x.id!==id;});
+  if(_tbl==='purchases')  D.purchases = D.purchases.filter(function(x){return x.id!==id;});
+  _idbSave(SESSION.bizId, _tbl==='inventory'?'inv':_tbl==='expenses'?'exp':_tbl, 
+    _tbl==='inventory'?D.inv:_tbl==='sales'?D.sales:_tbl==='rentals'?D.rentals:
+    _tbl==='expenses'?D.exp:_tbl==='vendors'?D.vendors:D.purchases
+  ).catch(function(){});
+  if(!_sb||!navigator.onLine){
+    await _queueEnqueueDelete(SESSION.bizId, 'vendors', id);
+    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
+  }
+  try{
+    await _sb.from('vendors').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  }catch(e){
+    // Network failed — queue the delete
+    await _queueEnqueueDelete(SESSION.bizId, 'vendors', id);
+    var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
+  }
 }
 async function _dbSavePurchase(p){
   if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
   await _safeUpsert('purchases', _purchaseToDB(p, SESSION.bizId), 'savePurchase');
 }
 async function _dbDelPurchase(id){
-  if(!_sb||!SESSION.bizId) return;
-  await _sb.from('purchases').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  if(!SESSION.bizId) return;
+  // Update IDB cache immediately
+  var _tbl = 'purchases';
+  if(_tbl==='inventory')  D.inv       = D.inv.filter(function(x){return x.id!==id;});
+  if(_tbl==='sales')      D.sales     = D.sales.filter(function(x){return x.id!==id;});
+  if(_tbl==='rentals')    D.rentals   = D.rentals.filter(function(x){return x.id!==id;});
+  if(_tbl==='expenses')   D.exp       = D.exp.filter(function(x){return x.id!==id;});
+  if(_tbl==='vendors')    D.vendors   = D.vendors.filter(function(x){return x.id!==id;});
+  if(_tbl==='purchases')  D.purchases = D.purchases.filter(function(x){return x.id!==id;});
+  _idbSave(SESSION.bizId, _tbl==='inventory'?'inv':_tbl==='expenses'?'exp':_tbl, 
+    _tbl==='inventory'?D.inv:_tbl==='sales'?D.sales:_tbl==='rentals'?D.rentals:
+    _tbl==='expenses'?D.exp:_tbl==='vendors'?D.vendors:D.purchases
+  ).catch(function(){});
+  if(!_sb||!navigator.onLine){
+    await _queueEnqueueDelete(SESSION.bizId, 'purchases', id);
+    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
+  }
+  try{
+    await _sb.from('purchases').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+  }catch(e){
+    // Network failed — queue the delete
+    await _queueEnqueueDelete(SESSION.bizId, 'purchases', id);
+    var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
+  }
 }
 async function _dbSaveAudit(entry){
   if(!_sb||!SESSION.bizId) return;
@@ -14858,16 +15145,35 @@ async function _dbSavePlatformUser(user, password){
   if(error) _dbErr('savePlatformUser', error);
 }
 async function _dbSaveCategories(bizId){
-  if(!_sb||!bizId) return;
-  // Delete and re-insert all categories for this business
-  await _sb.from('categories').delete().eq('biz_id', bizId);
-  const rows = [
-    ...D.invCats.map(n=>({biz_id:bizId, type:'inv', name:n})),
-    ...D.vendorCats.map(n=>({biz_id:bizId, type:'vendor', name:n})),
-    ...(D.svcCats||[]).map(n=>({biz_id:bizId, type:'svc', name:n})),
-    ...D.expCats.map(n=>({biz_id:bizId, type:'exp', name:n})),
+  if(!bizId) return;
+  // Save to IDB immediately
+  _idbSave(bizId,'invCats',D.invCats).catch(function(){});
+  _idbSave(bizId,'expCats',D.expCats).catch(function(){});
+  _idbSave(bizId,'vendorCats',D.vendorCats).catch(function(){});
+  _idbSave(bizId,'svcCats',D.svcCats).catch(function(){});
+
+  var rows = [
+    ...D.invCats.map(function(n){return {biz_id:bizId,type:'inv',name:n};}),
+    ...D.vendorCats.map(function(n){return {biz_id:bizId,type:'vendor',name:n};}),
+    ...(D.svcCats||[]).map(function(n){return {biz_id:bizId,type:'svc',name:n};}),
+    ...D.expCats.map(function(n){return {biz_id:bizId,type:'exp',name:n};}),
   ];
-  if(rows.length) await _sb.from('categories').insert(rows);
+
+  if(!_sb || !navigator.onLine){
+    // Queue: delete existing then insert new rows
+    await _queueEnqueueUpdate(bizId, 'categories', {}, 'biz_id', bizId);  // acts as delete
+    if(rows.length) await _queueEnqueueInsert(bizId, 'categories', rows);
+    var qc=await _queueCount(bizId); _queueUpdateBadge(qc);
+    return;
+  }
+  try{
+    await _sb.from('categories').delete().eq('biz_id', bizId);
+    if(rows.length) await _sb.from('categories').insert(rows);
+  }catch(e){
+    if(!navigator.onLine||(e.message||'').includes('fetch')){
+      await _queueEnqueueInsert(bizId, 'categories', rows).catch(function(){});
+    } else { _dbErr('saveCategories',e); }
+  }
 }
 
 // ── Login via Supabase ────────────────────────────────────────
@@ -23030,48 +23336,97 @@ function _dbToAppt(r){ return {id:r.id,serviceId:r.service_id||'',serviceName:r.
 function _serviceDB(s,bizId){ return {id:s.id,biz_id:bizId,name:s.name,duration_mins:s.duration,price:s.price||0,price_type:s.priceType||'flat',category:s.cat||'',color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null,cost_lines:s.costLines?JSON.stringify(s.costLines):null}; }
 function _apptDB(a,bizId){ return {id:a.id,biz_id:bizId,service_id:a.serviceId,service_name:a.serviceName,customer_id:a.custId,customer_name:a.custName,customer_phone:a.custPhone,staff_id:a.staffId,staff_name:a.staffName,date:a.date,start_time:a.startTime,end_time:a.endTime,status:a.st,notes:a.notes,walk_in:a.walkIn,total_amount:a.totalAmt,pay_method:a.payMethod||'',sale_id:a.saleId||''}; }
 async function _dbSaveService(s){
-  if(!_sb) return;
-  if(!SESSION.bizId){
-    for(var _w=0; _w<10; _w++){
-      await new Promise(function(r){ setTimeout(r, 500); });
-      if(SESSION.bizId) break;
-    }
-  }
-  if(!SESSION.bizId){
-    toast('Cannot save service — please sign out and sign in again','error');
-    console.error('_dbSaveService: SESSION.bizId still null after waiting');
-    return;
+  if(!SESSION.bizId) return;
+  // Update IDB cache immediately
+  var _sIdx = (D.services||[]).findIndex(function(x){return x.id===s.id;});
+  if(_sIdx>=0) D.services[_sIdx]=s; else (D.services=D.services||[]).push(s);
+  _idbSave(SESSION.bizId, 'services', D.services).catch(function(){});
+
+  if(!_sb || !navigator.onLine){
+    var _sp = _serviceDB(s, SESSION.bizId);
+    await _queueEnqueue(SESSION.bizId, 'services', _sp);
+    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc);
+    _showSaved(); return;
   }
   try{
-    // Try full payload (includes price_type and category if columns exist)
     var payload = _serviceDB(s, SESSION.bizId);
     var {error} = await _sb.from('services').upsert(payload);
     if(error){
-      // If error is about missing columns, retry with base columns only
       if(error.message && (error.message.includes('price_type')||error.message.includes('category')||error.message.includes('column'))){
         console.warn('[ShopTrack] New service columns not yet in DB, falling back to base payload:', error.message);
         var base = {id:s.id,biz_id:SESSION.bizId,name:s.name,duration_mins:s.duration,price:s.price||0,color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null};
         var {error:e2} = await _sb.from('services').upsert(base);
         if(e2){
-          console.error('_dbSaveService fallback error:', e2.message);
-          toast('Service saved locally but cloud sync failed: '+e2.message,'error');
-        } else {
-          _showSaved();
-          console.log('[ShopTrack] Service saved (base columns) to Supabase:', s.name);
-        }
+          // Queue the base payload
+          await _queueEnqueue(SESSION.bizId, 'services', base).catch(function(){});
+          toast('Service saved locally — will sync when online','warn');
+        } else { _showSaved(); }
       } else {
-        console.error('_dbSaveService error:', error.message);
-        toast('Service saved locally but cloud sync failed: '+error.message,'error');
+        // Queue full payload for retry
+        await _queueEnqueue(SESSION.bizId, 'services', payload).catch(function(){});
+        toast('Service saved locally — will sync when online','warn');
       }
     } else {
       _showSaved();
-      console.log('[ShopTrack] Service saved to Supabase:', s.name, 'biz:', SESSION.bizId);
     }
-  }catch(e){ _dbErr('saveService',e); }
+  }catch(e){
+    if(!navigator.onLine||(e.message||'').includes('fetch')){
+      await _queueEnqueue(SESSION.bizId, 'services', _serviceDB(s,SESSION.bizId)).catch(function(){});
+      var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
+      _showSaved();
+    } else { _dbErr('saveService',e); }
+  }
 }
-async function _dbSaveAppt(a){ if(!_sb||!SESSION.bizId) return; try{ await _sb.from('appointments').upsert(_apptDB(a,SESSION.bizId)); _showSaved(); }catch(e){ _dbErr('saveAppt',e); } }
-async function _dbDelService(id){ if(!_sb||!SESSION.bizId) return; try{ await _sb.from('services').delete().eq('id',id).eq('biz_id',SESSION.bizId); }catch(e){ _dbErr('delService',e); } }
-async function _dbDelAppt(id){ if(!_sb||!SESSION.bizId) return; try{ await _sb.from('appointments').delete().eq('id',id).eq('biz_id',SESSION.bizId); }catch(e){ _dbErr('delAppt',e); } }
+async function _dbSaveAppt(a){
+  if(!SESSION.bizId) return;
+  // Update IDB cache immediately
+  var _aIdx=(D.appointments||[]).findIndex(function(x){return x.id===a.id;});
+  if(_aIdx>=0) D.appointments[_aIdx]=a; else (D.appointments=D.appointments||[]).push(a);
+  _idbSave(SESSION.bizId,'appts',D.appointments).catch(function(){});
+  if(!_sb||!navigator.onLine){
+    await _queueEnqueue(SESSION.bizId,'appointments',_apptDB(a,SESSION.bizId));
+    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc);
+    _showSaved(); return;
+  }
+  try{
+    await _sb.from('appointments').upsert(_apptDB(a,SESSION.bizId));
+    _showSaved();
+  }catch(e){
+    if(!navigator.onLine||(e.message||'').includes('fetch')){
+      await _queueEnqueue(SESSION.bizId,'appointments',_apptDB(a,SESSION.bizId)).catch(function(){});
+      var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
+      _showSaved();
+    } else { _dbErr('saveAppt',e); }
+  }
+}
+async function _dbDelService(id){
+  if(!SESSION.bizId) return;
+  D.services=(D.services||[]).filter(function(x){return x.id!==id;});
+  _idbSave(SESSION.bizId,'services',D.services).catch(function(){});
+  if(!_sb||!navigator.onLine){
+    await _queueEnqueueDelete(SESSION.bizId,'services',id);
+    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
+  }
+  try{ await _sb.from('services').delete().eq('id',id).eq('biz_id',SESSION.bizId); }
+  catch(e){
+    await _queueEnqueueDelete(SESSION.bizId,'services',id).catch(function(){});
+    var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
+  }
+}
+async function _dbDelAppt(id){
+  if(!SESSION.bizId) return;
+  D.appointments=(D.appointments||[]).filter(function(x){return x.id!==id;});
+  _idbSave(SESSION.bizId,'appts',D.appointments).catch(function(){});
+  if(!_sb||!navigator.onLine){
+    await _queueEnqueueDelete(SESSION.bizId,'appointments',id);
+    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
+  }
+  try{ await _sb.from('appointments').delete().eq('id',id).eq('biz_id',SESSION.bizId); }
+  catch(e){
+    await _queueEnqueueDelete(SESSION.bizId,'appointments',id).catch(function(){});
+    var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
+  }
+}
 
 // ── Helpers ──────────────────────────────────────────────────
 function _newSvcId(){ var mx=(D.services||[]).reduce(function(m,s){var n=parseInt((s.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0); return 'SVC-'+String(mx+1).padStart(3,'0'); }
