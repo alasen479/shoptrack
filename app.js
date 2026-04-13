@@ -26212,16 +26212,16 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     rent_del_po:       fr ? 'Supprimer le BC —'           : 'Delete PO —',
     // Inventory modals
     inv_del_title:     fr ? 'Supprimer l\'Article —'     : 'Delete Item —',
-    inv_cant_del:      fr ? 'Impossible de Supprimer'     : _s.inv_cant_del,
+    inv_cant_del:      fr ? 'Impossible de Supprimer'     : 'Cannot Delete',
     inv_desc_ph:       fr ? 'Description du produit...'   : 'Description',
     // Customer/Vendor delete
     cust_del_title:    fr ? 'Supprimer le Client —'       : 'Delete Customer —',
     vend_del_title:    fr ? 'Supprimer le Fournisseur —'  : 'Delete Vendor —',
-    cust_cant_del:     fr ? 'Impossible de Supprimer le Client' : _s.cust_cant_del,
-    vend_cant_del:     fr ? 'Impossible de Supprimer le Fournisseur' : _s.vend_cant_del,
+    cust_cant_del:     fr ? 'Impossible de Supprimer le Client' : 'Cannot Delete Customer',
+    vend_cant_del:     fr ? 'Impossible de Supprimer le Fournisseur' : 'Cannot Delete Vendor',
     // Service modals
     svc_del_title:     fr ? 'Supprimer le Service —'      : 'Delete Service —',
-    svc_cant_del:      fr ? 'Impossible de Supprimer le Service' : _s.svc_cant_del,
+    svc_cant_del:      fr ? 'Impossible de Supprimer le Service' : 'Cannot Delete Service',
     svc_colour:        fr ? 'Couleur'                     : 'Colour',
     svc_price_model:   fr ? 'Modèle de Prix'              : 'Pricing Model',
     // Sales modals
