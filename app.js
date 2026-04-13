@@ -15473,70 +15473,74 @@ let SA_PROFILE = {
 // Subscription plans definition
 const SUBSCRIPTION_PLANS = [
   {
-    id:'free', name:'Free', emoji:'🌱',
+    id:'free', name:'Free', name_fr:'Gratuit', emoji:'\uD83C\uDF31',
     tagline:'Essential tools to get your business started',
+    tagline_fr:'Outils essentiels pour démarrer votre entreprise',
     monthlyXAF:0, yearlyXAF:0,
-    color:'#2dd4a0', colorDim:'rgba(45,212,160,.12)', badge:null,
+    color:'#2dd4a0', colorDim:'rgba(45,212,160,.12)', badge:null, badge_fr:null,
     highlight: false,
     limits:{staff:'1 user', customers:'30 customers', products:'30 products', invoices:'30/month'},
+    limits_fr:{staff:'1 utilisateur', customers:'30 clients', products:'30 produits', invoices:'30/mois'},
     sections:[
-      { title:'Core Features', items:[
-        {label:'Dashboard & KPI overview',              inc:true},
-        {label:'Inventory management (30 products)',    inc:true},
-        {label:'Unlimited sales recording',             inc:true},
-        {label:'Unlimited expense tracking',            inc:true},
-        {label:'Unlimited purchases',                   inc:true},
-        {label:'Customer database (30 max)',            inc:true},
-        {label:'Vendor database (10 max)',              inc:true},
+      { title:'Core Features', title_fr:'Fonctionnalités de Base', items:[
+        {label:'Dashboard & KPI overview',              label_fr:'Tableau de bord & aperçu KPI',           inc:true},
+        {label:'Inventory management (30 products)',    label_fr:'Gestion des stocks (30 produits)',        inc:true},
+        {label:'Unlimited sales recording',             label_fr:'Enregistrement illimité des ventes',     inc:true},
+        {label:'Unlimited expense tracking',            label_fr:'Suivi illimité des dépenses',            inc:true},
+        {label:'Unlimited purchases',                   label_fr:'Achats illimités',                       inc:true},
+        {label:'Customer database (30 max)',            label_fr:'Base clients (30 max)',                   inc:true},
+        {label:'Vendor database (10 max)',              label_fr:'Base fournisseurs (10 max)',              inc:true},
       ]},
-      { title:'Documents & Branding', items:[
-        {label:'Invoices & receipts (30/month)',        inc:true},
-        {label:'ShopTrack watermark on documents',      inc:true},
-        {label:'Product catalog (with watermark)',      inc:true},
-        {label:'Custom business branding',              inc:false},
-        {label:'No watermark',                          inc:false},
+      { title:'Documents & Branding', title_fr:'Documents & Image de Marque', items:[
+        {label:'Invoices & receipts (30/month)',        label_fr:'Factures & reçus (30/mois)',             inc:true},
+        {label:'ShopTrack watermark on documents',      label_fr:'Filigrane ShopTrack sur les documents',  inc:true},
+        {label:'Product catalog (with watermark)',      label_fr:'Catalogue produits (avec filigrane)',     inc:true},
+        {label:'Custom business branding',              label_fr:'Image de marque personnalisée',           inc:false},
+        {label:'No watermark',                          label_fr:'Sans filigrane',                          inc:false},
       ]},
-      { title:'Advanced Tools', items:[
-        {label:'WhatsApp — share documents only',       inc:true},
-        {label:'Monthly inventory & sales reports PDF', inc:true},
-        {label:'Appointments & bookings',               inc:false},
-        {label:'Rental management',                     inc:false},
-        {label:'AI Studio assistant',                   inc:false},
-        {label:'Real-time & accounting reports',        inc:false},
-        {label:'PDF & CSV export',                      inc:false},
+      { title:'Advanced Tools', title_fr:'Outils Avancés', items:[
+        {label:'WhatsApp — share documents only',       label_fr:'WhatsApp — partage de documents uniquement', inc:true},
+        {label:'Monthly inventory & sales reports PDF', label_fr:'Rapports mensuels inventaire & ventes PDF',  inc:true},
+        {label:'Appointments & bookings',               label_fr:'Rendez-vous & réservations',              inc:false},
+        {label:'Rental management',                     label_fr:'Gestion des locations',                   inc:false},
+        {label:'AI Studio assistant',                   label_fr:'Assistant AI Studio',                     inc:false},
+        {label:'Real-time & accounting reports',        label_fr:'Rapports comptables en temps réel',       inc:false},
+        {label:'PDF & CSV export',                      label_fr:'Export PDF & CSV',                        inc:false},
       ]},
     ],
   },
   {
-    id:'premium', name:'Premium', emoji:'🚀',
+    id:'premium', name:'Premium', name_fr:'Premium', emoji:'\uD83D\uDE80',
     tagline:'Full power to run and grow your business',
+    tagline_fr:'Toute la puissance pour gérer et développer votre entreprise',
     monthlyXAF:4900, yearlyXAF:49000,
-    color:'#5b7fff', colorDim:'rgba(91,127,255,.12)', badge:'Most Popular',
+    color:'#5b7fff', colorDim:'rgba(91,127,255,.12)', badge:'Most Popular', badge_fr:'Le Plus Populaire',
     highlight: true,
     limits:{staff:'Up to 5 users', customers:'Unlimited', products:'Unlimited', invoices:'Unlimited'},
+    limits_fr:{staff:'Jusqu\u2019à 5 utilisateurs', customers:'Illimités', products:'Illimités', invoices:'Illimités'},
     sections:[
-      { title:'Core Features', items:[
-        {label:'Dashboard & KPI overview',              inc:true},
-        {label:'Unlimited inventory (products)',         inc:true},
-        {label:'Unlimited sales recording',             inc:true},
-        {label:'Unlimited expense tracking',            inc:true},
-        {label:'Unlimited purchases',                   inc:true},
-        {label:'Unlimited customers',                   inc:true},
-        {label:'Unlimited vendors',                     inc:true},
+      { title:'Core Features', title_fr:'Fonctionnalités de Base', items:[
+        {label:'Dashboard & KPI overview',              label_fr:'Tableau de bord & aperçu KPI',           inc:true},
+        {label:'Unlimited inventory (products)',         label_fr:'Inventaire illimité (produits)',          inc:true},
+        {label:'Unlimited sales recording',             label_fr:'Enregistrement illimité des ventes',     inc:true},
+        {label:'Unlimited expense tracking',            label_fr:'Suivi illimité des dépenses',            inc:true},
+        {label:'Unlimited purchases',                   label_fr:'Achats illimités',                       inc:true},
+        {label:'Unlimited customers',                   label_fr:'Clients illimités',                      inc:true},
+        {label:'Unlimited vendors',                     label_fr:'Fournisseurs illimités',                 inc:true},
       ]},
-      { title:'Documents & Branding', items:[
-        {label:'Unlimited invoices & receipts',         inc:true},
-        {label:'No watermark',                          inc:true},
-        {label:'Custom business branding',              inc:true},
-        {label:'Branded product catalog',               inc:true},
+      { title:'Documents & Branding', title_fr:'Documents & Image de Marque', items:[
+        {label:'Unlimited invoices & receipts',         label_fr:'Factures & reçus illimités',             inc:true},
+        {label:'No watermark',                          label_fr:'Sans filigrane',                          inc:true},
+        {label:'Custom business branding',              label_fr:'Image de marque personnalisée',           inc:true},
+        {label:'Branded product catalog',               label_fr:'Catalogue produits personnalisé',         inc:true},
       ]},
-      { title:'Advanced Tools', items:[
-        {label:'WhatsApp — documents + full automation',inc:true},
-        {label:'Appointments & bookings (multi-staff)', inc:true},
-        {label:'Rental management',                     inc:true},
-        {label:'AI Studio assistant',                   inc:true},
-        {label:'Real-time + accounting & mgmt reports', inc:true},
-        {label:'PDF & CSV export',                      inc:true},
+      { title:'Advanced Tools', title_fr:'Outils Avancés', items:[
+        {label:'WhatsApp — documents + full automation',label_fr:'WhatsApp — documents + automatisation complète', inc:true},
+        {label:'Appointments & bookings (multi-staff)', label_fr:'Rendez-vous & réservations (multi-personnel)',   inc:true},
+        {label:'Rental management',                     label_fr:'Gestion des locations',                   inc:true},
+        {label:'AI Studio assistant',                   label_fr:'Assistant AI Studio',                     inc:true},
+        {label:'Real-time + accounting & mgmt reports', label_fr:'Rapports comptables & gestion en temps réel',    inc:true},
+        {label:'PDF & CSV export',                      label_fr:'Export PDF & CSV',                        inc:true},
       ]},
     ],
   },
@@ -19204,13 +19208,13 @@ function pgSettingsSA(){const _s=_L();
 <div class="ph">
   <div class="bc">ShopTrack / <span>${_s.sa_settings_title}</span></div>
   <div class="ph-row"><h1>${_s.sa_settings}</h1></div>
-  <p>Super Admin profile, security, and platform-wide configuration</p>
+  <p>${_s.sa_settings_subtitle||'Super Admin profile, security, and platform-wide configuration'}</p>
 </div>
 <div class="stabs" id="settingsTabs">
-  <button class="stab on"  onclick="switchSettingsTab(this,'sa-tab-profile')">👤 My Profile</button>
-  <button class="stab"     onclick="switchSettingsTab(this,'sa-tab-plans')">💳 Subscription Plans</button>
-  <button class="stab"     onclick="switchSettingsTab(this,'sa-tab-security')">🔐 Security</button>
-  <button class="stab"     onclick="switchSettingsTab(this,'sa-tab-notif')">🔔 Notifications</button>
+  <button class="stab on"  onclick="switchSettingsTab(this,'sa-tab-profile')">👤 ${_s.sa_tab_profile||'My Profile'}</button>
+  <button class="stab"     onclick="switchSettingsTab(this,'sa-tab-plans')">💳 ${_s.sa_tab_plans||'Subscription Plans'}</button>
+  <button class="stab"     onclick="switchSettingsTab(this,'sa-tab-security')">🔐 ${_s.sa_tab_security||'Security'}</button>
+  <button class="stab"     onclick="switchSettingsTab(this,'sa-tab-notif')">🔔 ${_s.sa_tab_notif||'Notifications'}</button>
 </div>
 
 <!-- SA PROFILE TAB -->
@@ -19396,36 +19400,43 @@ function saveSAProfile(){
 
 // ── Subscription Plans renderer ───────────────────────────────────────────────
 function renderPlansTab(){const _s=_L();
+  var _fr = (BIZ.lang||localStorage.getItem('st_lang')||'en')==='fr';
   // Build plan cards using string concatenation — no nested template literals
   var cards = SUBSCRIPTION_PLANS.map(function(plan){
+    var planName = _fr && plan.name_fr ? plan.name_fr : plan.name;
+    var planTagline = _fr && plan.tagline_fr ? plan.tagline_fr : plan.tagline;
+    var planBadge = _fr && plan.badge_fr ? plan.badge_fr : plan.badge;
+    var planLimits = _fr && plan.limits_fr ? plan.limits_fr : plan.limits;
     var isHighlight = plan.highlight;
     var border = isHighlight ? plan.color : 'var(--border2)';
     var glow   = isHighlight ? 'box-shadow:0 0 0 1px '+plan.color+',0 8px 32px '+plan.colorDim+';' : '';
     var transform = isHighlight ? 'transform:scale(1.02);' : '';
 
     // Badge
-    var badge = plan.badge
-      ? '<div style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:'+plan.color+';color:#0a0c12;font-size:10px;font-weight:800;padding:4px 14px;border-radius:20px;white-space:nowrap;letter-spacing:.5px;z-index:1">'+plan.badge+'</div>'
+    var badge = planBadge
+      ? '<div style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:'+plan.color+';color:#0a0c12;font-size:10px;font-weight:800;padding:4px 14px;border-radius:20px;white-space:nowrap;letter-spacing:.5px;z-index:1">'+planBadge+'</div>'
       : '';
 
     // Limits strip
-    var limits = Object.values(plan.limits).map(function(v){
+    var limits = Object.values(planLimits).map(function(v){
       return '<div style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;padding:4px 9px;font-size:10px;color:var(--text2);white-space:nowrap"><span style="color:'+plan.color+';font-weight:700">'+v.split(' ')[0]+'</span> '+v.split(' ').slice(1).join(' ')+'</div>';
     }).join('');
 
     // Section rows
     var sections = plan.sections.map(function(sec){
+      var secTitle = _fr && sec.title_fr ? sec.title_fr : sec.title;
       var rows = sec.items.map(function(f){
+        var fLabel = _fr && f.label_fr ? f.label_fr : f.label;
         var icon = f.inc
           ? '<span style="color:'+plan.color+';font-size:14px;font-weight:700;flex-shrink:0">✓</span>'
           : '<span style="color:var(--text2);font-size:14px;flex-shrink:0">–</span>';
         var color = f.inc ? 'var(--text)' : 'var(--text3)';
         return '<div style="display:flex;align-items:flex-start;gap:9px;font-size:12px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03)">'
           + icon
-          + '<span style="color:'+color+';line-height:1.4">'+f.label+'</span></div>';
+          + '<span style="color:'+color+';line-height:1.4">'+fLabel+'</span></div>';
       }).join('');
       return '<div style="margin-bottom:14px">'
-        + '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--text2);margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid var(--border)">'+sec.title+'</div>'
+        + '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--text2);margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid var(--border)">'+secTitle+'</div>'
         + rows
         + '</div>';
     }).join('');
@@ -19438,17 +19449,17 @@ function renderPlansTab(){const _s=_L();
     return '<div style="background:var(--bg2);border:2px solid '+border+';border-radius:18px;padding:26px 22px;position:relative;'+glow+transform+'">'
       + badge
       + '<div style="font-size:32px;margin-bottom:10px">'+plan.emoji+'</div>'
-      + '<div style="font-size:20px;font-weight:900;color:var(--ink);font-family:var(--display);letter-spacing:-.5px">'+plan.name+'</div>'
-      + '<div style="font-size:12px;color:var(--text2);margin-bottom:18px;margin-top:3px;line-height:1.4">'+plan.tagline+'</div>'
+      + '<div style="font-size:20px;font-weight:900;color:var(--ink);font-family:var(--display);letter-spacing:-.5px">'+planName+'</div>'
+      + '<div style="font-size:12px;color:var(--text2);margin-bottom:18px;margin-top:3px;line-height:1.4">'+planTagline+'</div>'
       // Price block
       + '<div style="background:var(--bg3);border-radius:12px;padding:14px 16px;margin-bottom:18px;border:1px solid var(--border)">'
         + '<div class="plan-price-monthly-'+plan.id+'">'
           + '<div><span style="font-size:32px;font-weight:900;color:'+plan.color+';font-family:var(--display);letter-spacing:-1px">'+plan.monthlyXAF.toLocaleString()+' Frs</span></div>'
-          + '<div style="font-size:11px;color:var(--text2);margin-top:2px">per month · billed monthly</div>'
+          + '<div style="font-size:11px;color:var(--text2);margin-top:2px">'+(_s.sa_per_month||'per month · billed monthly')+'</div>'
         + '</div>'
         + '<div class="plan-price-yearly-'+plan.id+'" style="display:none">'
           + '<div><span style="font-size:32px;font-weight:900;color:'+plan.color+';font-family:var(--display);letter-spacing:-1px">'+Math.round(plan.yearlyXAF/12).toLocaleString()+' Frs</span></div>'
-          + '<div style="font-size:11px;color:var(--text2);margin-top:2px">per month · billed as <strong style="color:'+plan.color+'">'+plan.yearlyXAF.toLocaleString()+' Frs/yr</strong></div>'
+          + '<div style="font-size:11px;color:var(--text2);margin-top:2px">'+(_s.sa_per_month_yr||'per month · billed as')+' <strong style="color:'+plan.color+'">'+plan.yearlyXAF.toLocaleString()+' Frs/'+(_s.sa_yr||'yr')+'</strong></div>'
         + '</div>'
       + '</div>'
       // Limits
@@ -19456,7 +19467,7 @@ function renderPlansTab(){const _s=_L();
       // Feature sections
       + sections
       // CTA
-      + '<button style="width:100%;padding:11px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;font-family:var(--display);letter-spacing:-.2px;'+ctaStyle+'" data-pid="'+plan.id+'" onclick="mSetDefaultPlan(this.dataset.pid)">${_s.sa_set_default_plan}</button>'
+      + '<button style="width:100%;padding:11px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;font-family:var(--display);letter-spacing:-.2px;'+ctaStyle+'" data-pid="'+plan.id+'" onclick="mSetDefaultPlan(this.dataset.pid)">'+_s.sa_set_default_plan+'</button>'
     + '</div>';
   }).join('');
 
@@ -19465,13 +19476,13 @@ function renderPlansTab(){const _s=_L();
   var enfBg    = enfState ? 'var(--g-dim)' : 'rgba(245,200,66,.12)';
   var enfBdr   = enfState ? 'rgba(45,212,160,.3)' : 'rgba(245,200,66,.3)';
   var enfColor = enfState ? 'var(--g)' : 'var(--y)';
-  var enfLabel = enfState ? '🔒 Subscriptions Enforced' : '🧪 Testing Mode — Subscriptions Not Enforced';
+  var enfLabel = enfState ? (_s.sa_enforced||'\uD83D\uDD12 Subscriptions Enforced') : (_s.sa_testing||'\uD83E\uddEA Testing Mode \u2014 Subscriptions Not Enforced');
   var enfDesc  = enfState
-    ? 'Businesses are restricted to their assigned plan limits. Downgrade and access restrictions are active.'
-    : 'All businesses have full platform access regardless of plan. Enable enforcement when you are ready to go live.';
+    ? (_s.sa_enforced_desc||'Businesses are restricted to their assigned plan limits. Downgrade and access restrictions are active.')
+    : (_s.sa_testing_desc||'All businesses have full platform access regardless of plan. Enable enforcement when you are ready to go live.');
   var enfBtn   = enfState
-    ? '<button style="background:var(--r-dim);color:var(--r);border:1px solid rgba(255,95,122,.3);padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer" onclick="toggleSubscriptionEnforcement(false)">${_s.sa_testing_mode}</button>'
-    : '<button style="background:var(--g-dim);color:var(--g);border:1px solid rgba(45,212,160,.3);padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer" onclick="toggleSubscriptionEnforcement(true)">${_s.sa_enforcement}</button>';
+    ? '<button style="background:var(--r-dim);color:var(--r);border:1px solid rgba(255,95,122,.3);padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer" onclick="toggleSubscriptionEnforcement(false)">'+(_s.sa_testing_mode||'Switch to Testing Mode')+'</button>'
+    : '<button style="background:var(--g-dim);color:var(--g);border:1px solid rgba(45,212,160,.3);padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer" onclick="toggleSubscriptionEnforcement(true)">'+(_s.sa_enforcement||'Enable Enforcement')+'</button>';
 
   var enforcementBanner = '<div style="background:'+enfBg+';border:1px solid '+enfBdr+';border-radius:14px;padding:18px 22px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">'
     + '<div>'
@@ -19483,7 +19494,7 @@ function renderPlansTab(){const _s=_L();
 
   // Billing toggle
   var billingToggle = '<div style="text-align:center;margin-bottom:28px">'
-    + '<h2 style="font-size:22px;font-weight:900;color:var(--ink);font-family:var(--display);margin-bottom:6px">ShopTrack Subscription Plans</h2>'
+    + '<h2 style="font-size:22px;font-weight:900;color:var(--ink);font-family:var(--display);margin-bottom:6px">'+(_s.sa_plans_title||'ShopTrack Subscription Plans')+'</h2>'
     + '<p style="color:var(--text2);font-size:13px;max-width:480px;margin:0 auto">Choose the right plan for your businesses. All plans include a 30-day free trial and can be changed at any time.</p>'
     + '<div style="display:inline-flex;align-items:center;gap:10px;margin-top:16px;background:var(--bg3);padding:7px 16px;border-radius:30px;border:1px solid var(--border2)">'
       + '<span id="lbl-monthly" style="font-size:12px;font-weight:700;color:var(--ink)">${_s.adm_monthly}</span>'
@@ -19561,7 +19572,7 @@ function mSetDefaultPlan(planId){const _s=_L();
 
 
 function mViewPlans(){const _s=_L();
-  modal('💳 Subscription Plans','<div style="overflow-y:auto;max-height:70vh">'+renderPlansTab()+'</div>','<button class="btn btn-p" onclick="closeModal()">${_s.ui_close}</button>','xl');
+  modal('\uD83D\uDCB3 '+(_s.sa_plans_title||'Subscription Plans'),'<div style="overflow-y:auto;max-height:70vh">'+renderPlansTab()+'</div>','<button class="btn btn-p" onclick="closeModal()">'+_s.ui_close+'</button>','xl');
 }
 
 
@@ -26211,8 +26222,21 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     sa_enforcement:    fr ? 'Activer la Supervision'      : 'Enable Enforcement',
     sa_testing_mode:   fr ? 'Mode Test'                   : 'Switch to Testing Mode',
     sa_set_default_plan: fr ? 'Définir comme Formule par Défaut' : 'Set as Default Plan',
+    sa_plans_title:    fr ? 'Formules d\u2019Abonnement ShopTrack' : 'ShopTrack Subscription Plans',
+    sa_per_month:      fr ? 'par mois · facturation mensuelle' : 'per month · billed monthly',
+    sa_per_month_yr:   fr ? 'par mois · facturé'          : 'per month · billed as',
+    sa_yr:             fr ? 'an'                           : 'yr',
+    sa_enforced:       fr ? '\uD83D\uDD12 Abonnements Actifs'  : '\uD83D\uDD12 Subscriptions Enforced',
+    sa_testing:        fr ? '\uD83E\uddEA Mode Test \u2014 Abonnements Non Actifs' : '\uD83E\uddEA Testing Mode \u2014 Subscriptions Not Enforced',
+    sa_enforced_desc:  fr ? 'Les entreprises sont limitées à leur formule. Les restrictions d\u2019accès sont actives.' : 'Businesses are restricted to their assigned plan limits. Downgrade and access restrictions are active.',
+    sa_testing_desc:   fr ? 'Toutes les entreprises ont un accès complet. Activez la supervision quand vous êtes prêt.' : 'All businesses have full platform access regardless of plan. Enable enforcement when you are ready to go live.',
     sa_revoke:         fr ? 'Révoquer'                    : 'Revoke',
     sa_settings_title: fr ? 'Paramètres'                  : 'Settings',
+    sa_settings_subtitle: fr ? 'Profil Super Admin, sécurité et configuration de la plateforme' : 'Super Admin profile, security, and platform-wide configuration',
+    sa_tab_profile:    fr ? 'Mon Profil'                  : 'My Profile',
+    sa_tab_plans:      fr ? 'Formules d\u2019Abonnement'  : 'Subscription Plans',
+    sa_tab_security:   fr ? 'Sécurité'                    : 'Security',
+    sa_tab_notif:      fr ? 'Notifications'               : 'Notifications',
     // ── Services page ─────────────────────────────────────────
     svc_title:         fr ? 'Services'                    : 'Services',
     svc_add:           fr ? '+ Ajouter un Service'        : '+ Add Service',
