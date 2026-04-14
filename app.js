@@ -19610,12 +19610,14 @@ function mViewPlans(){const _s=_L();
 
 
 function switchSettingsTab(el, tabId){
+  console.log('[Settings] Switching to tab:', tabId);
   document.querySelectorAll('#settingsTabs .stab').forEach(t=>t.classList.remove('on'));
   el.classList.add('on');
   const allTabs = ['tab-profile','tab-users','tab-security','tab-subscription','tab-docs','tab-import','tab-financial','tab-notif','tab-contract','tab-categories',
                    'sa-tab-profile','sa-tab-plans','sa-tab-security','sa-tab-notif'];
   allTabs.forEach(id=>{
     const el=document.getElementById(id);
+    if(id===tabId) console.log('[Settings] Target tab element:', el ? 'FOUND, innerHTML length=' + el.innerHTML.length : 'NOT FOUND');
     if(el) el.style.display = id===tabId?'block':'none';
   });
   if(tabId==='tab-contract') _initContractTab();
