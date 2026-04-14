@@ -18565,7 +18565,7 @@ function pgSettings(){
     // Per-row extra controls
     var extraBtn = '';
     if(p.key === 'waOwnerNewSale'){
-      extraBtn = '<button class="btn btn-p btn-xs" style="margin-left:6px" title="'+_s.set_notif_send_test+' onclick="_waOwnerNewSale({id:\'TEST\',cust:\'Test Customer\',items:\'Sample Item\',total:99,paid:99,method:\'Cash\'},\'Staff\');_markWATestDone()">\uD83D\uDCF1 Send Test</button>';
+      extraBtn = '<button class="btn btn-p btn-xs" style="margin-left:6px" title="'+_s.set_notif_send_test+'" onclick="_waOwnerNewSale({id:\'TEST\',cust:\'Test Customer\',items:\'Sample Item\',total:99,paid:99,method:\'Cash\'},\'Staff\');_markWATestDone()">\uD83D\uDCF1 Send Test</button>';
     } else if(p.key === 'waOwnerMinBlock'){
       extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerMinBlock(\'Sample Item\',18*CUR.rate,25,\'Staff\')">'+_s.set_notif_test+'</button>';
     } else if(p.key === 'waOwnerPayment'){
