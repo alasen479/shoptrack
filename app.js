@@ -19109,6 +19109,7 @@ ${tabDocsHtml}
       <input class="fi" id="settings-new-expcat-inp" placeholder="${_s.set_cat_exp_ph}" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addExpCatSettings();}"/>
       <button class="btn btn-g btn-sm" onclick="_addExpCatSettings()">+ Add</button>
     </div>
+  </div>
 
   <div style="padding-top:16px;border-top:1px solid var(--border)">
     <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px">${_s.set_cat_cost}</div>
