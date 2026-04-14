@@ -25259,7 +25259,7 @@ function _L(){
     set_doc_upload:    fr ? '📷 Téléverser'               : '📷 Upload',
     set_doc_remove:    fr ? '🗑 Supprimer'                : '🗑 Remove',
     set_imp_title:     fr ? '📥 Importer des Données'     : '📥 Import Business Data',
-    set_imp_hint:      fr ? 'Utilisez le modèle Excel ShopTrack pour importer en masse. <strong>Seuls les fichiers .xlsx sont acceptés.</strong>' : 'Use the ShopTrack Excel template to import inventory, customers, sales, vendors and expenses in bulk. <strong>'+_s.set_imp_xlsx_only+'</strong>',
+    set_imp_hint:      fr ? 'Utilisez le modèle Excel ShopTrack pour importer en masse. <strong>Seuls les fichiers .xlsx sont acceptés.</strong>' : 'Use the ShopTrack Excel template to import inventory, customers, sales, vendors and expenses in bulk. <strong>.xlsx files only.</strong>',
     set_imp_step1:     fr ? 'Étape 1 — Télécharger le Modèle' : 'Step 1 — Download Template',
     set_imp_step1d:    fr ? 'Téléchargez le modèle Excel pré-formaté avec données exemples.' : 'Download the pre-formatted Excel template with sample data and dropdown validation on every sheet.',
     set_imp_dl:        fr ? '⬇ Télécharger le modèle .xlsx' : '⬇ Download .xlsx Template',
@@ -25329,7 +25329,7 @@ function _L(){
     set_n_waAR_d:      fr ? "Envoyer WA au client avec facture impayée" : 'Prompt to send WA to customer with unpaid invoice',
     set_con_title:     fr ? '📋 Modèle de Contrat de Location' : '📋 Rental Contract Template',
     set_con_enable:    fr ? 'Activer les contrats'        : 'Enable contracts',
-    set_con_hint:      fr ? "Quand activé, un bouton <strong>Générer le Contrat</strong> apparaît sur chaque location. Les contrats sont pré-remplis et peuvent être signés sur n'importe quel appareil." : 'When enabled, a <strong>${_s.rent_btn_contract}</strong> button appears on every rental. Contracts are pre-filled with rental details and can be signed on any device.',
+    set_con_hint:      fr ? "Quand activé, un bouton <strong>Générer le Contrat</strong> apparaît sur chaque location. Les contrats sont pré-remplis et peuvent être signés sur n'importe quel appareil." : 'When enabled, a <strong>Generate Contract</strong> button appears on every rental. Contracts are pre-filled with rental details and can be signed on any device.',
     set_con_ph_title:  fr ? '📌 Paramètres disponibles — remplacés automatiquement à la génération :' : '📌 Available placeholders — these are replaced automatically when generating a contract:',
     set_con_title_lbl: fr ? 'Titre du Contrat'           : 'Contract Title',
     set_con_title_ph:  fr ? 'ex. Contrat de Location'    : 'e.g. Rental Agreement',
@@ -25907,7 +25907,7 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     inv_upload_csv:      fr ? 'Téléverser le CSV rempli'     : 'Upload Completed CSV',
     inv_name_col:        fr ? 'Nom'                          : 'Name',
     inv_product_photos:  fr ? 'Photos Produit'               : 'Product Photos',
-    inv_edit_photos_use: fr ? 'Utilisez <strong>Modifier</strong> pour ajouter des photos' : 'use <strong>'+_s.inv_edit_lbl+'</strong> '+_s.inv_edit_photos_use2+'',
+    inv_edit_photos_use: fr ? 'Utilisez <strong>Modifier</strong> pour ajouter des photos' : 'use <strong>Edit</strong> to add photos',
     inv_edit_lbl:        fr ? 'Modifier'                     : 'Edit',
 
     // ── Sales extra ────────────────────────────────────────────
