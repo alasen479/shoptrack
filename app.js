@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.5 - build:1775610382");
+console.log("ShopTrack v2.6 - build:1776170000");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -17745,7 +17745,12 @@ try {
     navigator.serviceWorker.addEventListener('controllerchange', function(){
       if(_swRefreshing) return;
       _swRefreshing = true;
+      location.reload();
     });
+    // Force check for SW updates on every page load
+    if(navigator.serviceWorker.controller){
+      navigator.serviceWorker.ready.then(function(reg){ reg.update(); });
+    }
   }
 } catch(e){ console.warn('[SW] Error:', e.message); }
 
