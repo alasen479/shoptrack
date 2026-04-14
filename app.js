@@ -24309,7 +24309,7 @@ function pgBookingSettings(){const _s=_L();
 </div>`;
 }
 
-function pgServices(){const _s=_L();
+function pgServices(){const _s=_L();const _ui=_s;
   var activeCats=[...new Set((D.services||[]).filter(function(s){return s.cat;}).map(function(s){return s.cat;}))].sort();
   var out = '';
 
