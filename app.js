@@ -19611,7 +19611,6 @@ function mViewPlans(){const _s=_L();
 
 
 function switchSettingsTab(el, tabId){
-  console.log('[Settings] Switching to tab:', tabId);
   document.querySelectorAll('#settingsTabs .stab').forEach(t=>t.classList.remove('on'));
   el.classList.add('on');
   const allTabs = ['tab-profile','tab-users','tab-security','tab-subscription','tab-docs','tab-import','tab-financial','tab-notif','tab-contract','tab-categories',
@@ -19620,14 +19619,6 @@ function switchSettingsTab(el, tabId){
     const el=document.getElementById(id);
     if(el) el.style.display = id===tabId?'block':'none';
   });
-  // Debug: check after display change
-  var _dbgEl = document.getElementById(tabId);
-  if(_dbgEl){
-    requestAnimationFrame(function(){
-      console.log('[Settings] Tab:', tabId, 'offsetHeight:', _dbgEl.offsetHeight, 'children:', _dbgEl.children.length, 'display:', _dbgEl.style.display);
-      if(_dbgEl.offsetHeight === 0) console.log('[Settings] ZERO HEIGHT! Parent offsetHeight:', _dbgEl.parentElement.offsetHeight, 'Parent tag:', _dbgEl.parentElement.tagName, 'Parent id:', _dbgEl.parentElement.id);
-    });
-  }
   if(tabId==='tab-contract') _initContractTab();
   if(tabId==='tab-import')   _renderImportGateBanner();
   if(tabId==='tab-subscription') _loadReferralCount();
