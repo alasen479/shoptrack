@@ -1767,7 +1767,7 @@ function nav(p){
   afterRender(p);
   setTimeout(_autoSizeKpis, 50);
   // sync bottom nav bar
-  const bnMap={dashboard:'bn-dashboard',inventory:'bn-inventory',sales:'bn-sales',rentals:'bn-rentals'};
+  const bnMap={dashboard:'bn-dashboard',inventory:'bn-inventory',sales:'bn-sales',rentals:'bn-rentals','admin-biz':'bn-sa-biz','admin-users':'bn-sa-users','admin-analytics':'bn-sa-analytics','admin-affiliates':'bn-sa-aff'};
   document.querySelectorAll('.bni').forEach(el=>el.classList.remove('on'));
   const mapped=bnMap[p];
   const bnEl=document.getElementById(mapped||'bn-more');
@@ -25012,6 +25012,7 @@ function _L(){
     nav_businesses:    fr ? 'Entreprises'                : 'Businesses',
     nav_users:         fr ? 'Utilisateurs'               : 'Platform Users',
     nav_analytics:     fr ? 'Analytique'                 : 'Analytics',
+    nav_affiliates:    fr ? 'Affiliés'                   : 'Affiliates',
     nav_home:          fr ? 'Accueil'                    : 'Home',
     nav_more:          fr ? 'Plus'                       : 'More',
 
@@ -26679,7 +26680,7 @@ function _applyLanguage(lang){
     'admin-biz':       L.nav_businesses,
     'admin-users':     L.nav_users,
     'admin-analytics': L.nav_analytics,
-      'admin-affiliates': 'Affiliates',
+      'admin-affiliates': L.nav_affiliates||'Affiliates',
   };
   document.querySelectorAll('.sb-item[data-p]').forEach(function(el){
     const lbl = el.querySelector('.sb-lbl-txt');
@@ -26702,9 +26703,7 @@ function _applyLanguage(lang){
     'dr-admin-biz':      L.nav_businesses,
     'dr-admin-users':    L.nav_users,
     'dr-admin-analytics':L.nav_analytics,
-    'dr-admin-affiliates':'Affiliates',
-    'dr-admin-biz':      L.nav_businesses,
-    'dr-admin-users':    L.nav_users,
+    'dr-admin-affiliates':L.nav_affiliates||'Affiliates',
     'dr-settings':       L.nav_settings,
     'dr-signout':        L.nav_signout,
   };
@@ -26731,8 +26730,8 @@ function _applyLanguage(lang){
   var moreEl = document.querySelector('#bn-more .bni-lbl');
   if(moreEl) moreEl.textContent = L.nav_more;
   // SA bottom nav labels
-  ['bn-sa-biz','bn-sa-users','bn-sa-aff'].forEach(function(bid){
-    var bMap={'bn-sa-biz':L.nav_businesses,'bn-sa-users':L.nav_users,'bn-sa-aff':'Affiliates'};
+  ['bn-sa-biz','bn-sa-users','bn-sa-analytics','bn-sa-aff'].forEach(function(bid){
+    var bMap={'bn-sa-biz':L.nav_businesses,'bn-sa-users':L.nav_users,'bn-sa-analytics':L.nav_analytics,'bn-sa-aff':L.nav_affiliates||'Affiliates'};
     var bel=document.getElementById(bid);
     if(bel){var sp=bel.querySelector('.bni-lbl');if(sp)sp.textContent=bMap[bid];}
   });
