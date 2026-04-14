@@ -1094,7 +1094,7 @@ function _renderSvcCatPills(){const _s=_L();
     +(D.svcCats||[]).map(function(c,i){
       return '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:20px;padding:5px 10px 5px 13px">'
         +'<span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c)+'</span>'
-        +'<button type="button" onclick="_delSvcCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="${_s.inv_remove}">✕</button>'
+        +'<button type="button" onclick="_delSvcCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="'+_s.inv_remove+'">✕</button>'
         +'</div>';
     }).join('')+'</div>';
   var el=document.getElementById('svc-cats-list'); if(el) el.outerHTML=html;
@@ -1167,7 +1167,7 @@ function _csAddLine(){const _s=_L();
     +(svcOpts?'<optgroup label="✂️ Services">'+svcOpts+'</optgroup>':'')
     +'<option value="__custom__">── Custom item ──</option></select>'
     +'<input class="fi cs-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" oninput="_csRecalcTotal()" placeholder="Qty"/>'
-    +'<input class="fi cs-line-price" type="number" placeholder="${_s.sal_price_lbl}" style="width:90px" oninput="_csRecalcTotal();_csCheckMinSpWarn()"/>'
+    +'<input class="fi cs-line-price" type="number" placeholder="'+_s.sal_price_lbl+'" style="width:90px" oninput="_csRecalcTotal();_csCheckMinSpWarn()"/>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_csRemoveLine(this)" style="padding:6px 8px">✕</button>';
   var container = document.getElementById('cs-line-rows');
   if(container) container.appendChild(row);
@@ -1295,7 +1295,7 @@ function _poAddLine(){const _s=_L();
   row.innerHTML='<select class="fs po-inv-sel" onchange="_poLineChange(this)"><option value="">-- Link to inventory --</option>'+invOpts
     +'<option value="__custom__">── Custom item ──</option></select>'
     +'<input class="fi po-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" placeholder="Qty" oninput="_poRecalcTotal()"/>'
-    +'<input class="fi po-line-cost" type="number" placeholder="${_s.po_unit_cost}" style="width:90px" oninput="_poRecalcTotal()"/>'
+    +'<input class="fi po-line-cost" type="number" placeholder="'+_s.po_unit_cost+'" style="width:90px" oninput="_poRecalcTotal()"/>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_poRemoveLine(this)" style="padding:6px 8px">✕</button>';
   var c=document.getElementById('po-line-rows'); if(c) c.appendChild(row);
 }
@@ -1844,7 +1844,7 @@ function _checkRecurringExpenses(){const _s=_L();
   banner.innerHTML='<span style="font-size:22px;flex-shrink:0">🔁</span>'
     +'<div><div style="font-size:13px;font-weight:700;color:var(--y);margin-bottom:3px">Recurring expenses may be due this month</div>'
     +'<div style="font-size:12px;color:var(--text2)">'+items+more+'</div>'
-    +'<div style="font-size:11px;color:var(--a);margin-top:6px;font-weight:600">${_s.acc_row_expenses}</div></div>';
+    +'<div style="font-size:11px;color:var(--a);margin-top:6px;font-weight:600">'+_s.acc_row_expenses+'</div></div>';
   banner.onclick=function(){ nav('expenses'); document.getElementById('rec-exp-banner')?.remove(); };
   var pg=document.getElementById('page');
   if(pg&&pg.firstChild) pg.insertBefore(banner,pg.firstChild);
@@ -1928,7 +1928,7 @@ function _arBulkCollect(){const _s=_L();
     +'<div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--text2)">Selected total</span>'
     +'<strong id="bc-total-display" style="font-family:var(--mono);color:var(--g)">'+fmt(debtors.reduce(function(a,cu){return a+cu.bal;},0))+'</strong></div></div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
-    +'<button class="btn btn-p" onclick="_arBulkCollectSave(\'' + today + '\')" >${_s.sal_ttl_payment}</button>'
+    +'<button class="btn btn-p" onclick="_arBulkCollectSave(\'' + today + '\')" >'+_s.sal_ttl_payment+'</button>'
   );
   // Update total on check/amount change
   setTimeout(function(){
@@ -2312,7 +2312,7 @@ function _showProductSales(invId){const _s=_L();
         +'<div style="font-size:11px;color:var(--text2)">'+sales.length+' sale'+(sales.length!==1?'s':'')+' &middot; '+PERIOD_RANGES[_dashPeriod].label+'</div>'
       +'</div>'
     +'</div>'
-    +'<div class="tbl-wrap"><table><thead><tr><th>${_s.sal_col_id}</th><th>${_s.ui_customer}</th><th>${_s.ui_date}</th><th>${_s.rpt_revenue}</th><th>${_s.ui_status}</th></tr></thead>'
+    +'<div class="tbl-wrap"><table><thead><tr><th>'+_s.sal_col_id+'</th><th>'+_s.ui_customer+'</th><th>'+_s.ui_date+'</th><th>'+_s.rpt_revenue+'</th><th>'+_s.ui_status+'</th></tr></thead>'
     +'<tbody>'+rows+'</tbody></table></div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>'
     +'<button class="btn btn-p btn-sm" id="go-inv-btn-sp">View Item</button>');
@@ -2551,7 +2551,7 @@ async function mSubPayNowStripe(){const _s=_L();
     +'<div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Billing</span><span>'+( cycle==='yearly'?'Annual':'Monthly')+'</span></div>'
     +'<div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Renews until</span><strong style="font-family:var(--mono);color:var(--g)">'+newExpiry+'</strong></div>'
     +'<div style="border-top:1px solid var(--border);padding-top:9px;display:flex;justify-content:space-between;align-items:center">'
-    +'<span style="color:var(--text2)">${_s.ui_amount}</span>'
+    +'<span style="color:var(--text2)">'+_s.ui_amount+'</span>'
     +'<strong style="font-size:20px;font-family:var(--mono);color:var(--g)">$'+amtUSD+' USD</strong></div></div>'
     +'<div class="alrt alrt-b">\uD83D\uDD12 Secure card payment via Stripe. You will be redirected to a Stripe checkout page. After payment, your account activates automatically.</div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
@@ -3168,7 +3168,7 @@ function _filterInv(){const _s=_L();
 function _buildInvGridFiltered(items){const _s=_L();
   if(!items||!items.length) return '<div style="color:var(--text2);font-size:13px;padding:40px 20px;text-align:center">'
     +'<div style="font-size:32px;margin-bottom:10px">📦</div>'
-    +'<div style="font-weight:600;color:var(--ink);margin-bottom:6px">${_s.inv_no_match}</div>'
+    +'<div style="font-weight:600;color:var(--ink);margin-bottom:6px">'+_s.inv_no_match+'</div>'
     +'<button class="btn btn-s btn-sm" onclick="_invClearFilters()" style="margin-top:4px">✕ Clear Filters</button>'
     +'</div>';
   return items.map(function(it){
@@ -3325,7 +3325,7 @@ function mItem(id){const _s=_L();
     : itemPhoto(it.img||'gown-aline',it.imgC?.[0],it.imgC?.[1],it.imgC?.[2]);
   const photosHtml = (it.photoDataUrls&&it.photoDataUrls.length)
     ? it.photoDataUrls.map(function(url,pi){
-        return '<div class="pthumb" style="overflow:hidden;cursor:pointer" onclick="window.open(this.querySelector(\'img\').src,\'_blank\')" title="${_s.inv_click_fullsize}"><img loading="lazy" src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r6)"/></div>';
+        return '<div class="pthumb" style="overflow:hidden;cursor:pointer" onclick="window.open(this.querySelector(\'img\').src,\'_blank\')" title="'+_s.inv_click_fullsize+'"><img loading="lazy" src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r6)"/></div>';
       }).join('')
     : '<div style="grid-column:1/-1;font-size:12px;color:var(--text2);padding:14px 0;text-align:center">\uD83D\uDCF7 No photos yet \u2014 use <strong>${_s.inv_edit_lbl}</strong> ${_s.inv_edit_photos_use2}</div>';
   modal(it.name,`
@@ -3369,7 +3369,7 @@ function mItem(id){const _s=_L();
     <div class="kpi g" style="padding:13px"><div class="kpi-lbl">${_s.inv_sp_lbl}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--g)">${it.sp?fmt(it.sp):'N/A'}</div></div>
     <div class="kpi c" style="padding:13px"><div class="kpi-lbl">${_s.inv_rental_day}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--c)">${it.rp?fmt(it.rp):'N/A'}</div></div>
     <div class="kpi" style="padding:13px"><div class="kpi-lbl">${_s.inv_cost_lbl}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono)">${fmt(it.cost)}</div></div>
-    <div class="kpi p" style="padding:13px"><div class="kpi-lbl">${_s.inv_gross_margin}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--p)">${it.sp?Math.round((it.sp-it.cost)/it.sp*100)+'%':'—'}</div></div>
+    <div class="kpi p" style="padding:13px"><div class="kpi-lbl">'+_s.inv_gross_margin+'</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--p)">${it.sp?Math.round((it.sp-it.cost)/it.sp*100)+'%':'—'}</div></div>
     <div class="kpi b" style="padding:13px"><div class="kpi-lbl">${_s.inv_stock_val}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--a)">${fmt((it.cost||0)*(it.qty||0))}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${it.qty} units × ${fmt(it.cost)} cost</div></div>
     ${it.sp&&it.qty?`<div class="kpi g" style="padding:13px"><div class="kpi-lbl">${_s.inv_retail_val}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(it.sp*it.qty)}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${it.qty} units × ${fmt(it.sp)} sell price</div></div>`:''}
   </div>
@@ -3537,8 +3537,8 @@ function _costBreakdownHTML(prefix, existingLines){const _s=_L();
 
       // Column headers
       +'<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:170px 1fr 70px 80px 90px 30px;gap:6px;align-items:center;margin-bottom:8px;padding:0 2px;min-width:560px">'
-        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">${_s.ui_category}</div>'
-        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">${_s.ui_description}</div>'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">'+_s.ui_category+'</div>'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">'+_s.ui_description+'</div>'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Unit</div>'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Qty</div>'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Unit Cost ('+CUR.symbol+')</div>'
@@ -3561,7 +3561,7 @@ function _costBreakdownHTML(prefix, existingLines){const _s=_L();
 
       // Total row
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:10px 14px;background:var(--bg3);border-radius:var(--r8);border:1px solid var(--border2)">'
-        +'<div style="font-size:12px;font-weight:600;color:var(--text2)">${_s.inv_total_cost_calc}</div>'
+        +'<div style="font-size:12px;font-weight:600;color:var(--text2)">'+_s.inv_total_cost_calc+'</div>'
         +'<div>'
           +'<span id="'+prefix+'-cb-grand" style="font-family:var(--mono);font-size:15px;font-weight:900;color:var(--ink)">'+fmt(totalFromLines/CUR.rate)+'</span>'
           +'<span style="font-size:10px;color:var(--text3);margin-left:6px">auto-fills Cost Price above ↑</span>'
@@ -3586,7 +3586,7 @@ function _costLineRowHTML(prefix, idx, line, catOpts){const _s=_L();
     +'<input class="fi cb-unit" type="text" placeholder="pcs / m / kg…" value="'+unit+'" style="font-size:12px;height:34px;padding:6px 8px"/>'
     +'<input class="fi cb-qty" type="number" value="'+qty+'" min="0.001" step="any" style="font-size:12px;height:34px;padding:6px 8px;text-align:right" oninput="_cbRecalc(\''+prefix+'\')" />'
     +'<input class="fi cb-uc" type="number" placeholder="0.00" value="'+uc+'" min="0" step="any" style="font-size:12px;height:34px;padding:6px 8px;text-align:right" oninput="_cbRecalc(\''+prefix+'\')" />'
-    +'<button type="button" onclick="_cbRemoveLine(this,\''+prefix+'\')" style="width:28px;height:28px;background:var(--r-dim);border:none;border-radius:6px;color:var(--r);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="${_s.inv_remove}">✕</button>'
+    +'<button type="button" onclick="_cbRemoveLine(this,\''+prefix+'\')" style="width:28px;height:28px;background:var(--r-dim);border:none;border-radius:6px;color:var(--r);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="'+_s.inv_remove+'">✕</button>'
     +'</div>';
 }
 
@@ -3596,12 +3596,12 @@ function _cbAddCustomCat(prefix){const _s=_L();
     '<div class="fg"><label class="fl">${_s.inv_cat_name_lbl}</label>'
     +'<input class="fi" id="cbc-name" placeholder="e.g. Land Survey, Import Bond, Staging Fee"/></div>'
     +'<div class="fg" style="display:flex;gap:8px">'
-    +'<div style="flex:0 0 70px"><label class="fl">${_s.inv_icon}</label>'
+    +'<div style="flex:0 0 70px"><label class="fl">'+_s.inv_icon+'</label>'
     +'<input class="fi" id="cbc-icon" placeholder="📋" maxlength="4" style="font-size:18px;text-align:center"/></div>'
-    +'<div style="flex:1"><label class="fl">${_s.inv_hint_optional}</label>'
+    +'<div style="flex:1"><label class="fl">'+_s.inv_hint_optional+'</label>'
     +'<input class="fi" id="cbc-hint" placeholder="e.g. Enter fee amount"/></div></div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
-    +'<button class="btn btn-p" onclick="window._cbSaveCustomCat()">${_s.inv_add_cat_btn}</button>');
+    +'<button class="btn btn-p" onclick="window._cbSaveCustomCat()">'+_s.inv_add_cat_btn+'</button>');
   setTimeout(function(){var e=document.getElementById('cbc-name');if(e)e.focus();},80);
 }
 window._cbSaveCustomCat=function(){
@@ -5215,11 +5215,11 @@ function _invAddRow(name, price){const _s=_L();
   tr.className = 'inv-line-row';
   const descVal  = name  ? String(name).replace(/"/g,'&quot;')  : '';
   const priceVal = price ? (price/CUR.rate).toFixed(2) : '';
-  tr.innerHTML = '<td style="padding:5px 7px"><input class="fi inv-desc" style="font-size:12px;margin:0" placeholder="${_s.inv_modal_desc}" value="'+descVal+'"/></td>'
+  tr.innerHTML = '<td style="padding:5px 7px"><input class="fi inv-desc" style="font-size:12px;margin:0" placeholder="'+_s.inv_modal_desc+'" value="'+descVal+'"/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-qty" type="number" value="1" min="1" style="width:60px;margin:0;text-align:center" oninput="_invUpdateRow(this)"/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-price" type="number" placeholder="0.00" step="any" style="width:90px;margin:0" value="'+priceVal+'" oninput="_invUpdateRow(this)"/></td>'
     +'<td style="padding:5px 7px;font-family:var(--mono);color:var(--g);min-width:70px" class="inv-row-total">'+(priceVal?fmt(parseFloat(priceVal)||0):'—')+'</td>'
-    +'<td style="padding:5px 3px"><button type="button" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px" onclick="this.closest(\'tr\').remove();_invUpdateTotals()" title="${_s.photo_remove_row}">✕</button></td>';
+    +'<td style="padding:5px 3px"><button type="button" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px" onclick="this.closest(\'tr\').remove();_invUpdateTotals()" title="'+_s.photo_remove_row+'">✕</button></td>';
   tbody.appendChild(tr);
   if(!name) tr.querySelector('.inv-desc').focus();
   _invUpdateTotals();
@@ -6673,8 +6673,8 @@ function pgPurchases(){const _s=_L();const _ui=_s;
       +'<td style="font-size:11px;color:var(--text2)">'+_esc(p.method||'—')+'</td>'
       +'<td onclick="event.stopPropagation()">'
         +'<div class="btn-row">'
-          +'<button class="btn btn-g btn-xs" onclick="mEditPurchase(\''+p.id+'\')" title="${_s.ui_edit}">✏</button>'
-          +'<button class="btn btn-g btn-xs" onclick="genPODoc(\''+p.id+'\')" title="${_s.po_print}">🖨</button>'
+          +'<button class="btn btn-g btn-xs" onclick="mEditPurchase(\''+p.id+'\')" title="'+_s.ui_edit+'">✏</button>'
+          +'<button class="btn btn-g btn-xs" onclick="genPODoc(\''+p.id+'\')" title="'+_s.po_print+'">🖨</button>'
           +'<button class="btn btn-d btn-xs" onclick="deletePurchase(\''+p.id+'\')" title="Delete">🗑</button>'
         +'</div>'
       +'</td>'
@@ -6955,8 +6955,8 @@ function pgCust(){const _s=_L();const _ui=_s;
       +'<td onclick="event.stopPropagation()">'
         +'<div class="btn-row">'
           +'<button class="btn btn-g btn-xs" onclick="mEditCustomer(\''+c.id+'\')">✏</button>'
-          +(c.bal>0?'<button class="btn btn-p btn-xs" onclick="mCollectBalance(\''+c.id+'\')" title="${_s.cust_collect_tip}">💰</button>':'')
-          +'<button class="btn btn-g btn-xs" onclick="mCustomerStatement(\''+c.id+'\')" title="${_s.cust_stmt2}">📄</button>'
+          +(c.bal>0?'<button class="btn btn-p btn-xs" onclick="mCollectBalance(\''+c.id+'\')" title="'+_s.cust_collect_tip+'">💰</button>':'')
+          +'<button class="btn btn-g btn-xs" onclick="mCustomerStatement(\''+c.id+'\')" title="'+_s.cust_stmt2+'">📄</button>'
           +(phone?'<button class="btn btn-g btn-xs" onclick="_arSendWA(\''+c.id+'\')" title="WhatsApp">💬</button>':'')
           +'<button class="btn btn-d btn-xs" onclick="mDeleteCustomer(\''+c.id+'\')">🗑</button>'
         +'</div>'
@@ -7055,7 +7055,7 @@ function mAddCustomer(_returnSelectId){const _s=_L();
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="ac-name" placeholder="e.g. Jessica Williams"/></div>
     <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="ac-type"><option>${_s.cust_type_reg}</option><option>VIP</option><option>New</option></select></div>
-    <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" type="email" id="ac-email" placeholder="email"+'@'+"example.com"/></div>
+    <div class="fg"><label class="fl">'+_s.ui_email+'</label><input class="fi" type="email" id="ac-email" placeholder="email"+'@'+"example.com"/></div>
     <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="ac-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="ac-whatsapp" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     <div class="fg"><label class="fl">${_s.ui_city}</label><input class="fi" id="ac-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
@@ -7772,7 +7772,7 @@ async function mAddVendor(_returnSelectId){const _s=_L();
     </div>
     <div class="fg"><label class="fl">${_s.ui_country}</label><input class="fi" id="av-country" placeholder="${_ph('countryPh')}" data-locale="country"/></div>
     <div class="fg"><label class="fl">${_s.vend_contact_ph}</label><input class="fi" id="av-contact" placeholder="${_s.vend_full_name}"/></div>
-    <div class="fg"><label class="fl">${_s.vend_email_ph}</label><input class="fi" type="email" id="av-email" placeholder="orders"+'@'+"vendor.com"/></div>
+    <div class="fg"><label class="fl">'+_s.vend_email_ph+'</label><input class="fi" type="email" id="av-email" placeholder="orders"+'@'+"vendor.com"/></div>
     <div class="fg"><label class="fl">${_s.vend_phone}</label><input class="fi" id="av-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     <div class="fg"><label class="fl">${_s.ui_pay_terms}</label><select class="fs" id="av-terms"><option>${_s.vend_immediate}</option><option>Net 15</option><option>${_s.sal_terms_net30}</option><option>${_s.po_on_delivery}</option></select></div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="av-method"><option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option><option>${_s.po_other}</option></select></div>
@@ -8031,7 +8031,7 @@ function pgExp(){const _s=_L();const _ui=_s;
     +'<td onclick="event.stopPropagation()">'
       +'<div class="btn-row">'
         +'<button class="btn btn-g btn-xs" onclick="mEditExp(\''+e.id+'\')">✏</button>'
-        +'<button class="btn btn-g btn-xs" onclick="mDuplicateExp(\''+e.id+'\')" title="${_s.ui_duplicate}">⧉</button>'
+        +'<button class="btn btn-g btn-xs" onclick="mDuplicateExp(\''+e.id+'\')" title="'+_s.ui_duplicate+'">⧉</button>'
         +'<button class="btn btn-d btn-xs" onclick="mDeleteExp(\''+e.id+'\')">&#x1F5D1;</button>'
       +'</div>'
     +'</td>'
@@ -8214,7 +8214,7 @@ function mDeleteExp(id){const _s=_L();
   modal('&#x1F5D1; Delete Expense',
     '<div class="alrt alrt-r" style="margin-bottom:12px">Delete <strong>'
     +_esc(e.id)+'</strong> &#x2014; '+_esc(e.payee)+' &#x2014; <strong>'+fmt(e.amt)+'</strong>?'
-    +'<br><span style="font-size:12px">${_s.ui_this_cannot}</span></div>',
+    +'<br><span style="font-size:12px">'+_s.ui_this_cannot+'</span></div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-d" onclick="closeModal();_doDeleteExp(\''+id+'\')">&#x1F5D1; Delete</button>'
   );
@@ -9266,7 +9266,7 @@ function pgCatalog(){const _s=_L();
     var imgHtml = s.imgDataUrl
       ? '<img loading="lazy" src="'+s.imgDataUrl+'" style="width:100%;height:100%;object-fit:cover;display:block"/>'
       : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;background:'+s.color+'18">✂️</div>';
-    itemCards += '<div class="icard" data-cat="'+_esc(s.cat||'')+'" onclick="mNewAppt();setTimeout(function(){var el=document.getElementById(\'na-s\');if(el){el.value=\''+s.id+'\';_naSync();}},100)" title="${_s.cat_book}"><div class="icard-img" style="height:140px;overflow:hidden">'+imgHtml+'</div><div class="icard-body"><div class="icard-name">'+_esc(s.name)+'</div><div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(s.cat||'')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;font-weight:700;color:'+ptColor+'">'+_esc(priceLabel)+'</span><span style="font-size:10px;color:var(--text3)">· '+_esc(durLabel)+'</span></div></div></div>';
+    itemCards += '<div class="icard" data-cat="'+_esc(s.cat||'')+'" onclick="mNewAppt();setTimeout(function(){var el=document.getElementById(\'na-s\');if(el){el.value=\''+s.id+'\';_naSync();}},100)" title="'+_s.cat_book+'"><div class="icard-img" style="height:140px;overflow:hidden">'+imgHtml+'</div><div class="icard-body"><div class="icard-name">'+_esc(s.name)+'</div><div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(s.cat||'')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;font-weight:700;color:'+ptColor+'">'+_esc(priceLabel)+'</span><span style="font-size:10px;color:var(--text3)">· '+_esc(durLabel)+'</span></div></div></div>';
   });
 
   if(!itemCards){
@@ -9274,8 +9274,8 @@ function pgCatalog(){const _s=_L();
   }
 
   return '<div class="ph">'
-    +'<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>${_s.cat_tab}</span></div>'
-    +'<div class="ph-row"><h1>${_s.cat_title}</h1><div class="btn-row">'
+    +'<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>'+_s.cat_tab+'</span></div>'
+    +'<div class="ph-row"><h1>'+_s.cat_title+'</h1><div class="btn-row">'
     +'<button class="btn btn-s btn-sm" onclick="genCatalogDoc()">👁 Preview</button>'
     +'<button class="btn btn-p btn-sm" onclick="genCatalogDoc()">⬇ Generate PDF</button>'
     +'</div></div>'
@@ -9283,15 +9283,15 @@ function pgCatalog(){const _s=_L();
     +'</div>'
     +'<div class="g2" style="margin-bottom:14px">'
     +'<div class="card">'
-    +'<div class="card-hd"><div class="card-ttl">${_s.cat_settings}</div></div>'
-    +'<div class="fg"><label class="fl">${_s.cat_name}</label><input class="fi" id="cat-name-input" value="'+_esc(catName)+'"/></div>'
-    +'<div class="fg"><label class="fl">${_s.cat_tagline}</label><input class="fi" id="cat-tagline-input" value="'+_esc(catTagline)+'"/></div>'
+    +'<div class="card-hd"><div class="card-ttl">'+_s.cat_settings+'</div></div>'
+    +'<div class="fg"><label class="fl">'+_s.cat_name+'</label><input class="fi" id="cat-name-input" value="'+_esc(catName)+'"/></div>'
+    +'<div class="fg"><label class="fl">'+_s.cat_tagline+'</label><input class="fi" id="cat-tagline-input" value="'+_esc(catTagline)+'"/></div>'
     +'<div class="fg-2">'
-    +'<div class="fg"><label class="fl">${_s.cat_show_p}</label><select class="fs" id="cat-show-prices"><option value="all">${_s.cat_show_all}</option><option value="sale">${_s.cat_sale_only}</option><option value="rent">${_s.cat_rent_only}</option><option value="hide">${_s.cat_hide_prices}</option></select></div>'
-    +'<div class="fg"><label class="fl">${_s.cat_filter_status}</label><select class="fs" id="cat-filter-status"><option value="both">Both Sale &amp; Rent</option><option value="sale">${_s.cat_for_sale_only}</option><option value="rent">${_s.cat_for_rent_only}</option></select></div>'
+    +'<div class="fg"><label class="fl">'+_s.cat_show_p+'</label><select class="fs" id="cat-show-prices"><option value="all">'+_s.cat_show_all+'</option><option value="sale">'+_s.cat_sale_only+'</option><option value="rent">'+_s.cat_rent_only+'</option><option value="hide">'+_s.cat_hide_prices+'</option></select></div>'
+    +'<div class="fg"><label class="fl">'+_s.cat_filter_status+'</label><select class="fs" id="cat-filter-status"><option value="both">Both Sale &amp; Rent</option><option value="sale">'+_s.cat_for_sale_only+'</option><option value="rent">'+_s.cat_for_rent_only+'</option></select></div>'
     +'</div>'
-    +'<div class="fg"><label class="fl">${_s.cat_contact}</label><input class="fi" id="cat-contact" value="'+_esc((BIZ.email||'')+(BIZ.phone?' | '+BIZ.phone:''))+'"/></div>'
-    +'<button class="btn btn-p" onclick="BIZ.catalogContact=document.getElementById(\'cat-contact\')?.value||BIZ.catalogContact||\'\';BIZ.catalogPrices=document.getElementById(\'cat-show-prices\')?.value||BIZ.catalogPrices||\'\';BIZ.catalogStatus=document.getElementById(\'cat-filter-status\')?.value||BIZ.catalogStatus||\'\';BIZ.catalogName=document.getElementById(\'cat-name-input\')?.value||BIZ.catalogName||\''+_esc(defaultCatName)+'\';BIZ.catalogTagline=document.getElementById(\'cat-tagline-input\')?.value||\'\';_dbSaveBizProfile(SESSION.bizId);toast(\'Catalog settings saved \u2713\',\'success\')">${_s.cat_save}</button>'
+    +'<div class="fg"><label class="fl">'+_s.cat_contact+'</label><input class="fi" id="cat-contact" value="'+_esc((BIZ.email||'')+(BIZ.phone?' | '+BIZ.phone:''))+'"/></div>'
+    +'<button class="btn btn-p" onclick="BIZ.catalogContact=document.getElementById(\'cat-contact\')?.value||BIZ.catalogContact||\'\';BIZ.catalogPrices=document.getElementById(\'cat-show-prices\')?.value||BIZ.catalogPrices||\'\';BIZ.catalogStatus=document.getElementById(\'cat-filter-status\')?.value||BIZ.catalogStatus||\'\';BIZ.catalogName=document.getElementById(\'cat-name-input\')?.value||BIZ.catalogName||\''+_esc(defaultCatName)+'\';BIZ.catalogTagline=document.getElementById(\'cat-tagline-input\')?.value||\'\';_dbSaveBizProfile(SESSION.bizId);toast(\'Catalog settings saved \u2713\',\'success\')">'+_s.cat_save+'</button>'
     +'</div>'
     +'<div class="card" style="background:linear-gradient(135deg,var(--bg3),var(--bg4));border-style:dashed;text-align:center;padding:28px">'
     +'<div style="font-size:44px;margin-bottom:10px">📋</div>'
@@ -9302,7 +9302,7 @@ function pgCatalog(){const _s=_L();
     +'</div>'
     +'</div>'
     +'<div class="card">'
-    +'<div class="card-hd"><div class="card-ttl">${_s.cat_items}</div>'
+    +'<div class="card-hd"><div class="card-ttl">'+_s.cat_items+'</div>'
     +'<div class="btn-row">'
     +'<button id="cat-cat-all" class="btn btn-g btn-sm cat-filter-btn on" onclick="document.querySelectorAll(\'.icard\').forEach(function(c){c.style.display=\'\';});document.querySelectorAll(\'.cat-filter-btn\').forEach(function(b){b.classList.remove(\'on\');});this.classList.add(\'on\')">All</button>'
     +(allCats.map(function(c){ return '<button class="btn btn-s btn-sm cat-filter-btn" onclick="var cat=\''+c.replace(/'/g,"\\'")+'\'  ;document.querySelectorAll(\'.icard\').forEach(function(el){el.style.display=(el.dataset.cat===cat)?\'\'  :\'none\';});document.querySelectorAll(\'.cat-filter-btn\').forEach(function(b){b.classList.remove(\'on\');});this.classList.add(\'on\')">'+_esc(c)+'</button>'; }).join(''))
@@ -12281,22 +12281,22 @@ function mAddBizUser(){const _s=_L();
   var tempPwd = 'TempPass'+new Date().getFullYear()+'!';
   modal('+ Add Team Member',
   '<div class="fg-2">'
-  +'<div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="abu-name" placeholder="${_s.vend_full_name}"/></div>'
+  +'<div class="fg"><label class="fl">'+_s.cust_name_ph+'</label><input class="fi" id="abu-name" placeholder="'+_s.vend_full_name+'"/></div>'
   +'<div class="fg"><label class="fl">Email *</label><input class="fi" id="abu-email" type="email" placeholder="user@business.com"/></div>'
   +bizFieldHTML
   +'<div class="fg"><label class="fl">User Level *</label><select class="fs" id="abu-level">'
-  +'<option value="staff">${_s.adm_store_staff}</option>'
-  +'<option value="accountant">${_s.adm_accountant}</option>'
-  +'<option value="manager">${_s.adm_manager}</option>'
-  +'<option value="owner">${_s.adm_owner_role}</option>'
+  +'<option value="staff">'+_s.adm_store_staff+'</option>'
+  +'<option value="accountant">'+_s.adm_accountant+'</option>'
+  +'<option value="manager">'+_s.adm_manager+'</option>'
+  +'<option value="owner">'+_s.adm_owner_role+'</option>'
   +'</select></div>'
-  +'<div class="fg"><label class="fl">${_s.usr_temp_pass}</label>'
+  +'<div class="fg"><label class="fl">'+_s.usr_temp_pass+'</label>'
   +'<input class="fi" id="abu-pass" value="'+_esc(tempPwd)+'"/>'
   +'<div class="fh">Share securely — user should change on first login</div>'
   +'</div>'
   +'</div>',
   '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
-  +' <button class="btn btn-p" onclick="_doAddBizUser()">${_s.usr_add_title}</button>');
+  +' <button class="btn btn-p" onclick="_doAddBizUser()">'+_s.usr_add_title+'</button>');
 }
 function _doAddBizUser(){
   var nm  = (document.getElementById('abu-name')?.value||'').trim();
@@ -12331,7 +12331,7 @@ function mEditBizUser(uid){const _s=_L();
     var bizOpts2 = D.adminBiz.filter(function(b){return b.st==='Active';}).map(function(b){
       return '<option value="'+b.id+'"'+(b.id===u.bizId?' selected':'')+'>'+_esc(b.name)+'</option>';
     }).join('');
-    bizFieldHTML = '<div class="fg"><label class="fl">${_s.adm_businesses}</label><select class="fs" id="eu-biz">'+bizOpts2+'</select></div>';
+    bizFieldHTML = '<div class="fg"><label class="fl">'+_s.adm_businesses+'</label><select class="fs" id="eu-biz">'+bizOpts2+'</select></div>';
   } else {
     var resolvedName = BIZ.name || u.bizId;
     var resolvedId   = SESSION.bizId || u.bizId;
@@ -12347,10 +12347,10 @@ function mEditBizUser(uid){const _s=_L();
 
   modal('✏️ Edit User — '+_esc(u.name),
     '<div class="fg-2">'
-    +'<div class="fg"><label class="fl">${_s.sa_full_name}</label><input class="fi" id="eu-name" value="'+_esc(u.name)+'"/></div>'
-    +'<div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" id="eu-email" type="email" value="'+_esc(u.email)+'"/></div>'
+    +'<div class="fg"><label class="fl">'+_s.sa_full_name+'</label><input class="fi" id="eu-name" value="'+_esc(u.name)+'"/></div>'
+    +'<div class="fg"><label class="fl">'+_s.ui_email+'</label><input class="fi" id="eu-email" type="email" value="'+_esc(u.email)+'"/></div>'
     +bizFieldHTML
-    +'<div class="fg"><label class="fl">${_s.adm_level}</label><select class="fs" id="eu-level">'+lvlOpts+'</select></div>'
+    +'<div class="fg"><label class="fl">'+_s.adm_level+'</label><select class="fs" id="eu-level">'+lvlOpts+'</select></div>'
     +'</div>'
     +'<div class="alrt alrt-b" style="margin-top:12px">💡 Changing the level resets custom rights to the level\'s defaults. Use the Rights button to set custom overrides.</div>',
     '<button class="btn btn-d btn-sm" onclick="confirmDo(\'Remove <strong>'+_esc(u.name)+'</strong>?\',function(){'
@@ -12360,7 +12360,7 @@ function mEditBizUser(uid){const _s=_L();
       +'closeModal();toast(\'User removed\',\'success\');nav(\'settings\');'
     +'})">🗑 Remove</button>'
     +' <button class="btn btn-s btn-sm" onclick="closeModal();mUserRights(\''+uid+'\')">🔐 Rights</button>'
-    +' <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    +' <button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +' <button class="btn btn-p" onclick="_doEditBizUser(\''+uid+'\')">💾 Save</button>');
 }
 function _doEditBizUser(uid){
@@ -13033,7 +13033,7 @@ function _affPayPartial(id){const _s=_L();
     '</div>'+
     '<div class="fg">'+
       '<label class="fl">Payment Amount (XAF) *</label>'+
-      '<input class="fi" id="aff-pay-amt" type="number" min="1" max="'+unpaid+'" placeholder="${_s.adm_enter_amount}" style="font-size:18px;font-weight:600"/>'+
+      '<input class="fi" id="aff-pay-amt" type="number" min="1" max="'+unpaid+'" placeholder="'+_s.adm_enter_amount+'" style="font-size:18px;font-weight:600"/>'+
     '</div>'+
     '<div class="fg" style="margin-top:10px">'+
       '<label class="fl">${_s.ui_pay_method}</label>'+
@@ -13310,7 +13310,7 @@ function _affRenderTable(){const _s=_L();
           '<button class="btn btn-p btn-xs" onclick="_affPayPartial(\''+a.id+'\')">&#x1F4B3; Pay</button>'+
           (a.unpaid_xaf>0?'<button class="btn btn-g btn-xs" onclick="_affMarkPaid(\''+a.id+'\')">&#x2714; All Paid</button>':'')+
           '<button class="btn btn-s btn-xs" onclick="_affViewHistory(\''+a.id+'\')">&#x1F4CB; History</button>'+
-          (a.email?'<button class="btn btn-b btn-xs" onclick="_affResendApprovalEmail(\''+a.id+'\')" title="${_s.adm_resend_aff}">&#x1F4E7; Send Link</button>':'')
+          (a.email?'<button class="btn btn-b btn-xs" onclick="_affResendApprovalEmail(\''+a.id+'\')" title="'+_s.adm_resend_aff+'">&#x1F4E7; Send Link</button>':'')
         :'')+
         (a.status==='suspended'?
           '<button class="btn btn-g btn-xs" onclick="_affApprove(\''+a.id+'\')">&#x21BA; Reactivate</button>':
@@ -13434,7 +13434,7 @@ async function _affMarkPaid(id){const _s=_L();
   modal('Mark as Fully Paid',
     '<div class="alrt alrt-b" style="margin-bottom:12px">Clear full unpaid balance for <strong>'+_esc(a.name)+'</strong>?</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:13px;display:flex;justify-content:space-between">'
-    +'<span style="color:var(--text2)">${_s.adm_unpaid_bal}</span><strong style="color:var(--r)">'+fmt(unpaid)+'</strong></div>',
+    +'<span style="color:var(--text2)">'+_s.adm_unpaid_bal+'</span><strong style="color:var(--r)">'+fmt(unpaid)+'</strong></div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +'<button class="btn btn-p" onclick="closeModal();_doAffMarkPaid(\''+id+'\')">\u2714 Mark Paid</button>'
   );
@@ -15607,6 +15607,9 @@ function updateSidebarForRole(){
   const overdueR = (D.rentals||[]).filter(r=>r.st==='Overdue'||r.st==='overdue').length;
   const rBadge = document.getElementById('sb-rentals-badge');
   if(rBadge){ if(overdueR>0){rBadge.textContent=overdueR;rBadge.style.display='';}else{rBadge.style.display='none';} }
+  // Mobile bottom nav rentals dot
+  const rDot = document.getElementById('bn-rentals-dot');
+  if(rDot){ if(overdueR>0){rDot.textContent=overdueR;rDot.style.display='';}else{rDot.style.display='none';} }
 // Update billing badge on Businesses sidebar item
   if(isSA){
     const billingAlert = D.adminBiz.filter(function(b){
@@ -16844,7 +16847,7 @@ function showSignup(){
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Your Name *</label>'
-          +'<input id="su-name" placeholder="${_s.vend_full_name}" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
+          +'<input id="su-name" placeholder="'+_s.vend_full_name+'" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
         +'</div>'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Phone / WhatsApp *</label>'
@@ -16866,7 +16869,7 @@ function showSignup(){
         +'</div>'
       +'</div>'
       +'<div style="margin-bottom:14px">'
-        +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${_s.adm_confirm_pass}</label>'
+        +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+_s.adm_confirm_pass+'</label>'
         +'<div style="position:relative">'
         +'<input id="su-pwd2" type="password" placeholder="Repeat your password" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 36px 9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
         +'<button type="button" onclick="(function(){var i=document.getElementById(\'su-pwd2\');i.type=i.type===\'password\'?\'text\':\'password\';})();" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#64748b;font-size:14px">👁</button>'
@@ -18455,13 +18458,13 @@ function pgSettings(){
   var invCatPills = D.invCats.map(function(c,i){
     return '<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 10px 5px 13px">'
       +'<span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c)+'</span>'
-      +'<button type="button" onclick="_delInvCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="${_s.set_delete_cat}">\u2715</button>'
+      +'<button type="button" onclick="_delInvCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="'+_s.set_delete_cat+'">\u2715</button>'
       +'</div>';
   }).join('');
   var svcCatPills = (D.svcCats||[]).map(function(c,i){
     return '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:20px;padding:5px 10px 5px 13px">'
       +'<span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c)+'</span>'
-      +'<button type="button" onclick="_delSvcCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="${_s.set_remove}">\u2715</button>'
+      +'<button type="button" onclick="_delSvcCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="'+_s.set_remove+'">\u2715</button>'
       +'</div>';
   }).join('');
   var expCatPills = D.expCats.map(function(c,i){
@@ -18564,13 +18567,13 @@ function pgSettings(){
     if(p.key === 'waOwnerNewSale'){
       extraBtn = '<button class="btn btn-p btn-xs" style="margin-left:6px" title="'+_s.set_notif_send_test+' onclick="_waOwnerNewSale({id:\'TEST\',cust:\'Test Customer\',items:\'Sample Item\',total:99,paid:99,method:\'Cash\'},\'Staff\');_markWATestDone()">\uD83D\uDCF1 Send Test</button>';
     } else if(p.key === 'waOwnerMinBlock'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerMinBlock(\'Sample Item\',18*CUR.rate,25,\'Staff\')">${_s.set_notif_test}</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerMinBlock(\'Sample Item\',18*CUR.rate,25,\'Staff\')">'+_s.set_notif_test+'</button>';
     } else if(p.key === 'waOwnerPayment'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerPayment(250,\'Test Customer\',\'TEST-001\',\'Cash\')">${_s.set_notif_test}</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerPayment(250,\'Test Customer\',\'TEST-001\',\'Cash\')">'+_s.set_notif_test+'</button>';
     } else if(p.key === 'waOwnerLowStock'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerLowStock(\'Test Item\',2,5)">${_s.set_notif_test}</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerLowStock(\'Test Item\',2,5)">'+_s.set_notif_test+'</button>';
     } else if(p.key === 'waOwnerNewBooking'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerNewBooking({custName:\'Test Client\',custPhone:\'0000\',serviceName:\'Test Service\',date:\''+localDateStr()+'\',startTime:\'10:00\',totalAmt:50})">${_s.set_notif_test}</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerNewBooking({custName:\'Test Client\',custPhone:\'0000\',serviceName:\'Test Service\',date:\''+localDateStr()+'\',startTime:\'10:00\',totalAmt:50})">'+_s.set_notif_test+'</button>';
     }
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg3);border-radius:var(--r6);margin-bottom:6px;border-left:3px solid '+borderColor+'">'
       + '<div style="flex:1;min-width:0">'
@@ -18600,26 +18603,26 @@ function pgSettings(){
   var _stampRemoveBtn = BIZ.stampDataUrl ? '<button class="btn btn-d btn-xs" onclick="_clearDocImage(\'stamp\')">&#128465; Remove</button>' : '';
   var tabDocsHtml = '<div id="tab-docs" style="display:none">'
     +'<div class="card">'
-    +'<div class="card-hd"><div class="card-ttl">${_s.set_doc_title}</div></div>'
+    +'<div class="card-hd"><div class="card-ttl">'+_s.set_doc_title+'</div></div>'
     +'<div class="fg-2"><div>'
-    +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">${_s.set_doc_invoice}</div>'
-    +'<div class="fg"><label class="fl">${_s.set_doc_terms}</label>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">'+_s.set_doc_invoice+'</div>'
+    +'<div class="fg"><label class="fl">'+_s.set_doc_terms+'</label>'
     +'<select class="fs" id="doc-payment-terms">'+_ptOpts+'</select></div>'
     +'<div class="fg"><label class="fl">'+_s.set_doc_methods+'</label>'
     +'<input class="fi" id="doc-pay-methods" value="'+_esc(BIZ.paymentMethods||'Cash, Bank Transfer, Mobile Money (MTN), Orange Money')+'" placeholder="'+_s.set_doc_methods_ph+'"/>'
-    +'<div style="font-size:10px;color:var(--text2);margin-top:3px">${_s.set_doc_methods_hint}</div></div>'
+    +'<div style="font-size:10px;color:var(--text2);margin-top:3px">'+_s.set_doc_methods_hint+'</div></div>'
     +'<div class="fg"><label class="fl">'+_s.set_doc_bank+'</label>'
     +'<textarea class="ft" id="doc-bank-details" rows="4" placeholder="'+_s.set_doc_bank_ph+'">'+_esc(BIZ.bankDetails||'')+'</textarea></div>'
-    +'<div class="fg"><label class="fl">${_s.set_doc_footer}</label>'
+    +'<div class="fg"><label class="fl">'+_s.set_doc_footer+'</label>'
     +'<textarea class="ft" id="biz-invoice-note" rows="2" placeholder="e.g. Thank you for your business! Payment due within 7 days.">'+_esc(BIZ.invoiceNote||'')+'</textarea></div>'
-    +'<div class="fg"><label class="fl">${_s.set_doc_tax}</label>'
+    +'<div class="fg"><label class="fl">'+_s.set_doc_tax+'</label>'
     +'<input class="fi" id="biz-tax" type="number" value="'+(BIZ.taxRate||0)+'" placeholder="0" oninput="BIZ.taxRate=parseFloat(this.value)||0"/></div>'
-    +'<button class="btn btn-p btn-sm" onclick="saveDocSettings()">${_s.set_doc_save}</button>'
+    +'<button class="btn btn-p btn-sm" onclick="saveDocSettings()">'+_s.set_doc_save+'</button>'
     +'</div><div>'
-    +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">${_s.set_doc_sigs}</div>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px">'+_s.set_doc_sigs+'</div>'
     +'<div style="display:grid;gap:14px">'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:16px;border:1px solid var(--border2)">'
-    +'<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px">${_s.set_doc_sig}</div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px">'+_s.set_doc_sig+'</div>'
     +'<div id="sign-preview" style="min-height:52px;margin-bottom:10px;display:'+(BIZ.signDataUrl?'block':'none')+'">'+_signPreviewHtml+'</div>'
     +'<div style="display:flex;gap:8px;align-items:center">'
     +'<label style="display:inline-flex;align-items:center;gap:7px;background:var(--a-dim);border:1px solid var(--a);color:var(--a);padding:7px 12px;border-radius:var(--r6);cursor:pointer;font-size:12px;font-weight:600">'
@@ -18628,7 +18631,7 @@ function pgSettings(){
     +'<div style="font-size:10px;color:var(--text2);margin-top:6px">'+_s.set_doc_png_hint+'</div>'
     +'</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:16px;border:1px solid var(--border2)">'
-    +'<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px">${_s.set_doc_stamp}</div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px">'+_s.set_doc_stamp+'</div>'
     +'<div id="stamp-preview" style="min-height:64px;margin-bottom:10px;display:'+(BIZ.stampDataUrl?'block':'none')+'">'+_stampPreviewHtml+'</div>'
     +'<div style="display:flex;gap:8px;align-items:center">'
     +'<label style="display:inline-flex;align-items:center;gap:7px;background:var(--a-dim);border:1px solid var(--a);color:var(--a);padding:7px 12px;border-radius:var(--r6);cursor:pointer;font-size:12px;font-weight:600">'
@@ -18987,7 +18990,7 @@ ${(function(){
     </div>
     ${payBtn}
     ${urgentNote}
-    ${isTrial?'<div class="alrt alrt-b" style="margin-top:12px;font-size:12px">🎁 You are on a <strong>30-day free trial</strong> with full Premium access. Trial ends <strong>'+(BIZ.trialEnd||BIZ.subExpires||'')+'</strong>.</div>':isFree?'<div class="alrt alrt-b" style="margin-top:12px;font-size:12px">${_s.set_sub_free} <button class="btn btn-p btn-xs" onclick="mChangePlan()">${_s.set_sub_upgrade}</button></div>':''}
+    ${isTrial?'<div class="alrt alrt-b" style="margin-top:12px;font-size:12px">🎁 You are on a <strong>30-day free trial</strong> with full Premium access. Trial ends <strong>'+(BIZ.trialEnd||BIZ.subExpires||'')+'</strong>.</div>':isFree?'<div class="alrt alrt-b" style="margin-top:12px;font-size:12px">'+_s.set_sub_free+' <button class="btn btn-p btn-xs" onclick="mChangePlan()">'+_s.set_sub_upgrade+'</button></div>':''}
     <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
       <button class="btn btn-p btn-sm" onclick="mChangePlan()" style="width:100%">🔄 Change Plan</button>
       <button class="btn btn-s btn-sm" onclick="mViewPlans()" style="width:100%">📋 View All Plans</button>
@@ -19275,7 +19278,7 @@ function pgSettingsSA(){const _s=_L();
     <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:4px">
       <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px">${_s.sa_contact}</div>
       <div class="fg-2">
-        <div class="fg"><label class="fl">${_s.sa_email}</label><input class="fi" id="sa-email" type="email" value="${p.email}" placeholder="admin"+'@'+"shoptrack.work"/></div>
+        <div class="fg"><label class="fl">'+_s.sa_email+'</label><input class="fi" id="sa-email" type="email" value="${p.email}" placeholder="admin"+'@'+"shoptrack.work"/></div>
         <div class="fg"><label class="fl">${_s.sa_phone}</label><input class="fi" id="sa-phone" type="tel" value="${p.phone}" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
         <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="sa-whatsapp" type="tel" value="${p.whatsapp}" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
         <div class="fg"><label class="fl">${_s.sa_website}</label><input class="fi" id="sa-website" value="${p.website}" placeholder="www.shoptrack.org"/></div>
@@ -19591,7 +19594,7 @@ function mSetDefaultPlan(planId){const _s=_L();
       +'</div>'
     +'</div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
-    +'<button class="btn btn-p" onclick="addAudit(\'Default plan changed\',\'Set to \'+plan.name);closeModal();toast(\'Plan set to \'+ plan.name,\'success\')">${_s.appt_confirm_btn}</button>'
+    +'<button class="btn btn-p" onclick="addAudit(\'Default plan changed\',\'Set to \'+plan.name);closeModal();toast(\'Plan set to \'+ plan.name,\'success\')">'+_s.appt_confirm_btn+'</button>'
   );
 }
 
@@ -20631,7 +20634,7 @@ function mDuplicateCategory(type){const _s=_L();
   html += '<div style="padding:12px 14px;background:var(--a-dim);border:2px solid var(--a);border-radius:var(--r8);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="_execDuplicate(\''+type+'\',\'__all__\')">';
   html += '<div><div style="font-weight:700;color:var(--a)">⧉ Duplicate Everything</div>';
   html += '<div style="font-size:11px;color:var(--text2);margin-top:2px">All '+items.length+' '+(isInv?'products':'services')+' across '+cats.length+' categories</div></div>';
-  html += '<button class="btn btn-p btn-sm" onclick="event.stopPropagation();_execDuplicate(\''+type+'\',\'__all__\')">${_s.sal_dup_all}</button>';
+  html += '<button class="btn btn-p btn-sm" onclick="event.stopPropagation();_execDuplicate(\''+type+'\',\'__all__\')">'+_s.sal_dup_all+'</button>';
   html += '</div>';
   // Per category
   cats.forEach(function(cat){
@@ -21302,11 +21305,11 @@ function _arSendWA(custId){const _s=_L();
 
   modal('💬 WhatsApp AR Reminder — '+_esc(c.name),
     '<div style="background:var(--bg3);border-radius:var(--r8);padding:10px 12px;margin-bottom:10px">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${_s.vc_out_inv}</div>'
+    +'<div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">'+_s.vc_out_inv+'</div>'
     +invoiceLines
-    +'<div style="display:flex;justify-content:space-between;padding-top:8px;font-weight:700;font-size:13px"><span>${_s.vc_total_due}</span><span style="font-family:var(--mono);color:var(--y)">'+fmt(c.bal)+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;padding-top:8px;font-weight:700;font-size:13px"><span>'+_s.vc_total_due+'</span><span style="font-family:var(--mono);color:var(--y)">'+fmt(c.bal)+'</span></div>'
     +'</div>'
-    +'<div class="fg"><label class="fl">${_s.adm_msg_preview}</label>'
+    +'<div class="fg"><label class="fl">'+_s.adm_msg_preview+'</label>'
     +'<textarea class="ft" id="ar-wa-msg" rows="8" style="font-size:12px;font-family:var(--mono)">'+_esc(msgLines)+'</textarea></div>'
     +'<div style="font-size:11px;color:var(--text2);margin-top:4px">Sending to: '+_esc(c.name)+' ('+ph+')</div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
@@ -23386,10 +23389,10 @@ function _showTrialPaywall(daysLeft, hardBlock){const _s=_L();
     +'<div style="padding:20px 24px 0">'
       +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Your data is safe \u2014 waiting for you</div>'
       +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'
-        +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--a);font-family:var(--mono)">'+salesCount+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${_s.acc_row_sales}</div></div>'
+        +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--a);font-family:var(--mono)">'+salesCount+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">'+_s.acc_row_sales+'</div></div>'
         +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--g);font-family:var(--mono)">'+custCount+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Customers</div></div>'
         +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--p);font-family:var(--mono)">'+invCount+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Products</div></div>'
-        +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:15px;font-weight:800;color:var(--g);font-family:var(--mono)">'+fmtKpi(totalRev)+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${_s.rpt_revenue}</div></div>'
+        +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center"><div style="font-size:15px;font-weight:800;color:var(--g);font-family:var(--mono)">'+fmtKpi(totalRev)+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">'+_s.rpt_revenue+'</div></div>'
       +'</div>'
       +'<div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:8px;padding:10px 12px;font-size:12px;color:#dc2626;margin-bottom:14px">\u26a0\ufe0f '+accessMsg+'</div>'
       +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Upgrade to keep full access</div>'
@@ -24111,8 +24114,8 @@ function pgAppointments(){const _s=_L();
     : '';
 
   return '<div class="ph">'
-    +'<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>${_ui.nav_appointments}</span></div>'
-    +'<div class="ph-row"><h1>${_s.appt_title}</h1>'
+    +'<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>'+_ui.nav_appointments+'</span></div>'
+    +'<div class="ph-row"><h1>'+_s.appt_title+'</h1>'
     +'<div class="btn-row">'
     +'<button class="btn btn-s btn-sm" onclick="_togApptView()">'+(_apptView==='calendar'?'📋 List':'📅 Calendar')+'</button>'
     +'<button class="btn btn-s btn-sm" onclick="_apptBulkConfirm()">✓ Confirm All</button>'
@@ -24126,34 +24129,34 @@ function pgAppointments(){const _s=_L();
 
     // Today → filters list to today
     +'<div class="kpi c" style="cursor:pointer" onclick="_togApptView(\'list\',\'today\')" title="View today\'s appointments">'
-      +'<div class="kpi-lbl">${_s.appt_today}</div>'
+      +'<div class="kpi-lbl">'+_s.appt_today+'</div>'
       +'<div class="kpi-val c">'+todayList.length+'</div>'
       +'<div class="kpi-sub">'+(todayList.length ? todayList.filter(a=>a.st==='Completed').length+' done · '+todayList.filter(a=>a.st!=='Completed'&&a.st!=='Cancelled').length+' remaining' : 'Nothing booked')+'</div>'
     +'</div>'
 
     // Upcoming → filters list to future non-cancelled
-    +'<div class="kpi b" style="cursor:pointer" onclick="_togApptView(\'list\',\'upcoming\')" title="${_s.appt_view_up}">'
-      +'<div class="kpi-lbl">${_s.appt_upcoming}</div>'
+    +'<div class="kpi b" style="cursor:pointer" onclick="_togApptView(\'list\',\'upcoming\')" title="'+_s.appt_view_up+'">'
+      +'<div class="kpi-lbl">'+_s.appt_upcoming+'</div>'
       +'<div class="kpi-val b">'+upcoming.length+'</div>'
       +'<div class="kpi-sub">Next 30 days</div>'
     +'</div>'
 
     // Pending confirmation → filters to Reserved
-    +'<div class="kpi p" style="cursor:pointer" onclick="_togApptView(\'list\',\'pending\')" title="${_s.appt_view_confirm}">'
-      +'<div class="kpi-lbl">${_s.ui_st_pending}</div>'
+    +'<div class="kpi p" style="cursor:pointer" onclick="_togApptView(\'list\',\'pending\')" title="'+_s.appt_view_confirm+'">'
+      +'<div class="kpi-lbl">'+_s.ui_st_pending+'</div>'
       +'<div class="kpi-val p">'+pending.length+'</div>'
-      +'<div class="kpi-sub">${_s.appt_confirm_tab}</div>'
+      +'<div class="kpi-sub">'+_s.appt_confirm_tab+'</div>'
     +'</div>'
 
     // Completed → opens revenue breakdown modal
     +'<div class="kpi g" style="cursor:pointer" onclick="mServicesRevenue()" title="View completed appointments & revenue">'
-      +'<div class="kpi-lbl">${_s.ui_st_completed}</div>'
+      +'<div class="kpi-lbl">'+_s.ui_st_completed+'</div>'
       +'<div class="kpi-val g">'+completed.length+'</div>'
       +'<div class="kpi-sub">'+(totalRev>0?fmt(totalRev)+' earned':'No revenue yet')+'</div>'
     +'</div>'
 
     // Revenue KPI — avg per appointment
-    +'<div class="kpi y" style="cursor:pointer" onclick="mServicesRevenue()" title="${_s.appt_view_rev}">'
+    +'<div class="kpi y" style="cursor:pointer" onclick="mServicesRevenue()" title="'+_s.appt_view_rev+'">'
       +'<div class="kpi-lbl">Avg / Appt</div>'
       +'<div class="kpi-val y">'+fmtKpi(avgRev)+'</div>'
       +'<div class="kpi-sub">'+(completed.length?completed.length+' completed':'—')+'</div>'
@@ -24161,14 +24164,14 @@ function pgAppointments(){const _s=_L();
 
     // No-shows → filters list
     +'<div class="kpi r" style="cursor:pointer" onclick="_togApptView(\'list\',\'no-show\')" title="View no-show appointments">'
-      +'<div class="kpi-lbl">${_s.appt_no_show}</div>'
+      +'<div class="kpi-lbl">'+_s.appt_no_show+'</div>'
       +'<div class="kpi-val r">'+noShows.length+'</div>'
       +'<div class="kpi-sub">'+noShowRate+'% rate</div>'
     +'</div>'
 
     // Services → navigate to services page
     +'<div class="kpi" style="cursor:pointer" onclick="nav(\'services\')" title="Manage services">'
-      +'<div class="kpi-lbl">${_s.acc_row_services}</div>'
+      +'<div class="kpi-lbl">'+_s.acc_row_services+'</div>'
       +'<div class="kpi-val">'+activeServices+'</div>'
       +'<div class="kpi-sub">Active → Manage</div>'
     +'</div>'
@@ -24312,7 +24315,7 @@ function pgServices(){const _s=_L();
 
   // ── Page header ───────────────────────────────────────────
   out += '<div class="ph">';
-  out += '<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>${_ui.nav_services}</span></div>';
+  out += '<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>'+_ui.nav_services+'</span></div>';
   out += '<div class="ph-row"><h1>${_s.svc_title}</h1><div class="btn-row">';
   out += '<button class="btn btn-s btn-sm" onclick="_syncServicesToCloud()" title="Save all services to cloud so they appear on your booking page">\u2601 Sync to Cloud</button>';
   out += '<button class="btn btn-g btn-sm" onclick="_fixServicePrices()" title="Detect and fix prices that appear wrong on the booking page">🔧 Fix Prices</button>';
@@ -24478,21 +24481,21 @@ function mEditAppt(id){const _s=_L();
   var stList=['Reserved','Confirmed','In Progress','Completed','No-Show','Cancelled'].map(function(s){return '<option'+(s===a.st?' selected':'')+'>'+s+'</option>';}).join('');
   modal('\u270F Edit \u2014 '+a.id,
     '<div class="fg-2">'
-    +'<div class="fg"><label class="fl">${_s.appt_service}</label><select class="fs" id="ea-svc" onchange="_eaSync()">'+svcOpts+'</select></div>'
-    +'<div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" id="ea-date" type="date" value="'+a.date+'"/></div>'
-    +'<div class="fg"><label class="fl">${_s.rent_start_lbl}</label><input class="fi" id="ea-st" type="time" value="'+(a.startTime||'09:00')+'" oninput="_eaSync()"/></div>'
+    +'<div class="fg"><label class="fl">'+_s.appt_service+'</label><select class="fs" id="ea-svc" onchange="_eaSync()">'+svcOpts+'</select></div>'
+    +'<div class="fg"><label class="fl">'+_s.ui_date+'</label><input class="fi" id="ea-date" type="date" value="'+a.date+'"/></div>'
+    +'<div class="fg"><label class="fl">'+_s.rent_start_lbl+'</label><input class="fi" id="ea-st" type="time" value="'+(a.startTime||'09:00')+'" oninput="_eaSync()"/></div>'
     +'<div class="fg"><label class="fl">End</label><input class="fi" id="ea-et" type="time" value="'+(a.endTime||'')+'" readonly style="background:var(--bg3);color:var(--text2)"/></div>'
     +'</div>'
-    +'<div class="fg">'+_newCustBtnHTML('ea')+'<select class="fs" id="ea-cust"><option value="">${_s.appt_walkin}</option>'+custOpts+'</select>'+_inlineCustFormHTML('ea')+'</div>'
+    +'<div class="fg">'+_newCustBtnHTML('ea')+'<select class="fs" id="ea-cust"><option value="">'+_s.appt_walkin+'</option>'+custOpts+'</select>'+_inlineCustFormHTML('ea')+'</div>'
     +'<div class="fg-2">'
-    +'<div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="ea-phone" value="'+(a.custPhone||'')+'"/></div>'
-    +'<div class="fg"><label class="fl">${_s.appt_staff}</label><select class="fs" id="ea-staff"><option value="">Any</option>'+stfOpts+'</select></div>'
+    +'<div class="fg"><label class="fl">'+_s.ui_phone+'</label><input class="fi" id="ea-phone" value="'+(a.custPhone||'')+'"/></div>'
+    +'<div class="fg"><label class="fl">'+_s.appt_staff+'</label><select class="fs" id="ea-staff"><option value="">Any</option>'+stfOpts+'</select></div>'
     +'<div class="fg"><label class="fl">Amount ('+CUR.symbol+')</label><input class="fi" id="ea-amt" type="number" value="'+Math.round((a.totalAmt||0)*CUR.rate*100)/100+'" step="0.01" oninput="this._t=true"/></div>'
-    +'<div class="fg"><label class="fl">${_s.ui_status}</label><select class="fs" id="ea-status">'+stList+'</select></div>'
+    +'<div class="fg"><label class="fl">'+_s.ui_status+'</label><select class="fs" id="ea-status">'+stList+'</select></div>'
     +'</div>'
-    +'<div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ea-notes" rows="2">'+(a.notes||'')+'</textarea></div>',
+    +'<div class="fg"><label class="fl">'+_s.ui_notes+'</label><textarea class="ft" id="ea-notes" rows="2">'+(a.notes||'')+'</textarea></div>',
     '<button class="btn btn-d btn-sm" onclick="confirmDo(\'Delete this appointment?\',function(){_delAppt(\''+id+'\');})">&#128465;</button>'
-    +' <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    +' <button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +' <button class="btn btn-p" onclick="_saveEditAppt(\''+id+'\')">&#128190; Save</button>');
   setTimeout(_eaSync,60);
 }
@@ -24538,10 +24541,10 @@ function mCancelAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a) return;
   modal('\u274C Cancel \u2014 '+a.custName,
     '<div class="alrt alrt-r" style="margin-bottom:12px">Cancel <strong>'+a.serviceName+'</strong> for <strong>'+a.custName+'</strong> on '+a.date+' at '+_timeLabel(a.startTime)+'?</div>'
-    +'<div class="fg"><label class="fl">${_s.inv_reason}</label>'
-    +'<select class="fs" id="ca-reason"><option value="">${_s.appt_no_reason}</option>'
-    +'<option>${_s.appt_client_req}</option><option>${_s.appt_noshow}</option><option>${_s.appt_staff_unavail}</option>'
-    +'<option>${_s.appt_reschedule}</option><option>${_s.po_other}</option></select></div>'
+    +'<div class="fg"><label class="fl">'+_s.inv_reason+'</label>'
+    +'<select class="fs" id="ca-reason"><option value="">'+_s.appt_no_reason+'</option>'
+    +'<option>'+_s.appt_client_req+'</option><option>'+_s.appt_noshow+'</option><option>'+_s.appt_staff_unavail+'</option>'
+    +'<option>'+_s.appt_reschedule+'</option><option>'+_s.po_other+'</option></select></div>'
     +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:8px">'
     +'<input type="checkbox" id="ca-noshow" style="accent-color:var(--r)"/> Mark as No-Show</label>',
     '<button class="btn btn-s" onclick="closeModal()">Keep</button>'
@@ -24563,12 +24566,12 @@ function mRescheduleAppt(id){const _s=_L();
   modal('\uD83D\uDD04 Reschedule \u2014 '+a.custName,
     '<div class="alrt alrt-b" style="margin-bottom:12px">Currently: <strong>'+a.date+'</strong> at <strong>'+_timeLabel(a.startTime)+'</strong></div>'
     +'<div class="fg-2">'
-    +'<div class="fg"><label class="fl">${_s.appt_edit_newdate}</label><input class="fi" id="rs-date" type="date" value="'+a.date+'"/></div>'
-    +'<div class="fg"><label class="fl">${_s.appt_edit_newstart}</label><input class="fi" id="rs-st" type="time" value="'+(a.startTime||'09:00')+'" oninput="_rsSync(\''+id+'\')"/></div>'
-    +'<div class="fg"><label class="fl">${_s.appt_edit_newend}</label><input class="fi" id="rs-et" type="time" value="'+(a.endTime||'')+'" readonly style="background:var(--bg3);color:var(--text2)"/></div>'
-    +'<div class="fg"><label class="fl">${_s.appt_staff}</label><select class="fs" id="rs-staff" onchange="_rsSync(\''+id+'\')"><option value="">Any</option>'+stfOpts+'</select></div>'
+    +'<div class="fg"><label class="fl">'+_s.appt_edit_newdate+'</label><input class="fi" id="rs-date" type="date" value="'+a.date+'"/></div>'
+    +'<div class="fg"><label class="fl">'+_s.appt_edit_newstart+'</label><input class="fi" id="rs-st" type="time" value="'+(a.startTime||'09:00')+'" oninput="_rsSync(\''+id+'\')"/></div>'
+    +'<div class="fg"><label class="fl">'+_s.appt_edit_newend+'</label><input class="fi" id="rs-et" type="time" value="'+(a.endTime||'')+'" readonly style="background:var(--bg3);color:var(--text2)"/></div>'
+    +'<div class="fg"><label class="fl">'+_s.appt_staff+'</label><select class="fs" id="rs-staff" onchange="_rsSync(\''+id+'\')"><option value="">Any</option>'+stfOpts+'</select></div>'
     +'</div>'
-    +'<div class="fg"><label class="fl">${_s.inv_reason}</label><input class="fi" id="rs-reason" placeholder="e.g. Client request\u2026"/></div>'
+    +'<div class="fg"><label class="fl">'+_s.inv_reason+'</label><input class="fi" id="rs-reason" placeholder="e.g. Client request\u2026"/></div>'
     +'<div id="rs-conflict" style="display:none;margin-top:8px" class="alrt alrt-y"></div>',
     '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
     +' <button class="btn btn-p" onclick="_saveReschedule(\''+id+'\')">&#128197; Reschedule</button>','sm');
@@ -26844,12 +26847,12 @@ function _rptSalesPDF(){const _s=_L();
   var total=sales.reduce(function(a,s){return a+(s.total||s.amt);},0);
   var paid=sales.reduce(function(a,s){return a+s.paid;},0);
   var summary='<div class="summary">'
-    +'<div class="sum-box"><div class="sum-lbl">${_s.rpt_total_rev}</div><div class="sum-val green">'+fmt(total)+'</div></div>'
-    +'<div class="sum-box"><div class="sum-lbl">${_s.rpt_cash_coll}</div><div class="sum-val blue">'+fmt(paid)+'</div></div>'
+    +'<div class="sum-box"><div class="sum-lbl">'+_s.rpt_total_rev+'</div><div class="sum-val green">'+fmt(total)+'</div></div>'
+    +'<div class="sum-box"><div class="sum-lbl">'+_s.rpt_cash_coll+'</div><div class="sum-val blue">'+fmt(paid)+'</div></div>'
     +'<div class="sum-box"><div class="sum-lbl">Outstanding</div><div class="sum-val red">'+fmt(total-paid)+'</div></div>'
     +'</div>';
   var rows=sales.map(function(s){var t=s.total||s.amt;return '<tr><td>'+s.id+'</td><td>'+s.dt+'</td><td>'+_esc(s.cust)+'</td><td>'+_esc(s.items.substring(0,40))+'</td><td class="num">'+fmt(t)+'</td><td class="num">'+fmt(s.paid)+'</td><td class="num '+(t-s.paid>0?'red':'green')+'">'+fmt(t-s.paid)+'</td><td>'+s.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th>${_s.sal_col_items}</th><th class="num">${_s.ui_total}</th><th class="num">Paid</th><th class="num">Balance</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>'+_s.ui_date+'</th><th>'+_s.ui_customer+'</th><th>'+_s.sal_col_items+'</th><th class="num">'+_s.ui_total+'</th><th class="num">Paid</th><th class="num">Balance</th><th>'+_s.ui_status+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Sales Report', summary, table);
 }
 
@@ -26859,7 +26862,7 @@ function _rptRevProductPDF(){const _s=_L();
   var sorted=Object.entries(byProd).sort(function(a,b){return b[1]-a[1];});
   var total=sorted.reduce(function(a,r){return a+r[1];},0);
   var rows=sorted.map(function(r){return '<tr><td>'+_esc(r[0])+'</td><td class="num green">'+fmt(r[1])+'</td><td class="num">'+Math.round(r[1]/total*100)+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.rpt_product}</th><th class="num">${_s.rpt_revenue}</th><th class="num">${_s.rpt_share}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.rpt_product+'</th><th class="num">'+_s.rpt_revenue+'</th><th class="num">'+_s.rpt_share+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Revenue by Product', null, table);
 }
 
@@ -26868,21 +26871,21 @@ function _rptRevCustPDF(){const _s=_L();
   D.sales.forEach(function(s){byCust[s.cust]=(byCust[s.cust]||0)+(s.total||s.amt);});
   var sorted=Object.entries(byCust).sort(function(a,b){return b[1]-a[1];});
   var rows=sorted.map(function(r){var c=D.cust.find(function(x){return x.name===r[0];});return '<tr><td>'+_esc(r[0])+'</td><td class="num green">'+fmt(r[1])+'</td><td class="num '+(c&&c.bal>0?'red':'')+'">'+fmt(c?c.bal:0)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_customer}</th><th class="num">Total Purchases</th><th class="num">Outstanding</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.ui_customer+'</th><th class="num">Total Purchases</th><th class="num">Outstanding</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Revenue by Customer', null, table);
 }
 
 function _rptProfitPDF(){const _s=_L();
   var rows=D.sales.map(function(s){var tot=s.total||s.amt;var gp=s.profit!==undefined?s.profit:(tot-s.cost);return '<tr><td>'+s.id+'</td><td>'+_esc(s.cust)+'</td><td>'+_esc(s.items.substring(0,35))+'</td><td class="num">'+fmt(tot)+'</td><td class="num green">'+fmt(gp)+'</td><td class="num">'+(tot>0?Math.round(gp/tot*100):0)+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Sale</th><th>${_s.ui_customer}</th><th>${_s.sal_col_items}</th><th class="num">${_s.rpt_revenue}</th><th class="num">${_s.rpt_gp}</th><th class="num">${_s.rpt_margin}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>Sale</th><th>'+_s.ui_customer+'</th><th>'+_s.sal_col_items+'</th><th class="num">'+_s.rpt_revenue+'</th><th class="num">'+_s.rpt_gp+'</th><th class="num">'+_s.rpt_margin+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Product Profitability', null, table);
 }
 
 function _rptRentalsPDF(){const _s=_L();
   var rows=D.rentals.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.start+'</td><td>'+r.due+'</td><td class="num green">'+fmt(r.fee)+'</td><td class="num">'+fmt(r.dep)+'</td><td>'+r.st+'</td></tr>';}).join('');
   var totFee=D.rentals.reduce(function(a,r){return a+r.fee;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Rental Revenue</div><div class="sum-val green">'+fmt(totFee)+'</div></div><div class="sum-box"><div class="sum-lbl">Active Rentals</div><div class="sum-val blue">'+D.rentals.filter(function(r){return r.st==='Checked Out';}).length+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.adm_overdue}</div><div class="sum-val red">'+D.rentals.filter(function(r){return r.st==='Overdue';}).length+'</div></div></div>';
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.appt_start}</th><th>Due</th><th class="num">Fee</th><th class="num">${_s.rpt_deposit}</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Rental Revenue</div><div class="sum-val green">'+fmt(totFee)+'</div></div><div class="sum-box"><div class="sum-lbl">Active Rentals</div><div class="sum-val blue">'+D.rentals.filter(function(r){return r.st==='Checked Out';}).length+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.adm_overdue+'</div><div class="sum-val red">'+D.rentals.filter(function(r){return r.st==='Overdue';}).length+'</div></div></div>';
+  var table='<table><thead><tr><th>ID</th><th>'+_s.ui_customer+'</th><th>'+_s.rent_item_lbl+'</th><th>'+_s.appt_start+'</th><th>Due</th><th class="num">Fee</th><th class="num">'+_s.rpt_deposit+'</th><th>'+_s.ui_status+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Rentals Report', summary, table);
 }
 
@@ -26891,31 +26894,31 @@ function _rptDepositsPDF(){const _s=_L();
   var total=active.reduce(function(a,r){return a+r.dep;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Deposit Liability</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Active Rentals</div><div class="sum-val blue">'+active.length+'</div></div></div>';
   var rows=active.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td class="num red">'+fmt(r.dep)+'</td><td>'+r.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th class="num">${_s.rpt_deposit}</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>'+_s.ui_customer+'</th><th>'+_s.rent_item_lbl+'</th><th class="num">'+_s.rpt_deposit+'</th><th>'+_s.ui_status+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Deposit Liability Report', summary, table);
 }
 
 function _rptLateFeesPDF(){const _s=_L();
   var late=D.rentals.filter(function(r){return r.lf>0;});
   var total=late.reduce(function(a,r){return a+r.lf;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.rpt_total_late}</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.rpt_total_late+'</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
   var rows=late.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.due+'</td><td class="num red">'+fmt(r.lf)+'</td><td>'+r.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.rpt_due_date}</th><th class="num">${_s.rpt_late_fee}</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>'+_s.ui_customer+'</th><th>'+_s.rent_item_lbl+'</th><th>'+_s.rpt_due_date+'</th><th class="num">'+_s.rpt_late_fee+'</th><th>'+_s.ui_status+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Late Fees Report', summary, table);
 }
 
 function _rptOverduePDF(){const _s=_L();
   var od=D.rentals.filter(function(r){return r.st==='Overdue';});
   var rows=od.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.due+'</td><td class="num red">'+fmt(r.lf)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.rpt_due_date}</th><th class="num">${_s.rpt_late_fee}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>'+_s.ui_customer+'</th><th>'+_s.rent_item_lbl+'</th><th>'+_s.rpt_due_date+'</th><th class="num">'+_s.rpt_late_fee+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Overdue Rentals', null, table);
 }
 
 function _rptInvValPDF(){const _s=_L();
   var total=D.inv.reduce(function(a,i){return a+(i.cost||0)*(i.qty||0);},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Inventory Value</div><div class="sum-val green">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.inv_total_items}</div><div class="sum-val blue">'+D.inv.length+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.inv_rented_out}</div><div class="sum-val">'+D.inv.reduce(function(a,i){return a+i.rented;},0)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Inventory Value</div><div class="sum-val green">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.inv_total_items+'</div><div class="sum-val blue">'+D.inv.length+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.inv_rented_out+'</div><div class="sum-val">'+D.inv.reduce(function(a,i){return a+i.rented;},0)+'</div></div></div>';
   var rows=D.inv.map(function(i){return '<tr><td>'+_esc(i.name)+'</td><td>'+_esc(i.cat)+'</td><td>'+i.sku+'</td><td class="num">'+fmt(i.cost)+'</td><td>'+i.qty+'</td><td>'+i.rented+'</td><td class="num green">'+fmt((i.cost||0)*(i.qty||0))+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.ui_category}</th><th>SKU</th><th class="num">Cost</th><th>Qty</th><th>${_s.inv_rented}</th><th class="num">Value</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.rent_item_lbl+'</th><th>'+_s.ui_category+'</th><th>SKU</th><th class="num">Cost</th><th>Qty</th><th>'+_s.inv_rented+'</th><th class="num">Value</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Inventory Valuation', summary, table);
 }
 
@@ -26937,23 +26940,23 @@ function _rptLowStockPDF(){const _s=_L();
       +'<td class="num">'+(thr>0?'≤ '+thr:'—')+'</td>'
       +'<td>'+status+'</td></tr>';
   }).join('');
-  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.ui_category}</th><th>SKU</th><th class="num">${_s.rpt_available}</th><th class="num">${_s.rpt_total_qty}</th><th class="num">${_s.rpt_threshold}</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.rent_item_lbl+'</th><th>'+_s.ui_category+'</th><th>SKU</th><th class="num">'+_s.rpt_available+'</th><th class="num">'+_s.rpt_total_qty+'</th><th class="num">'+_s.rpt_threshold+'</th><th>'+_s.ui_status+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Low Stock & Out of Stock Report', null, table);
 }
 
 function _rptGPPDF(){const _s=_L();
   var k=refreshLiveKpis();
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.rpt_revenue}</div><div class="sum-val blue">'+fmt(k.rev)+'</div></div><div class="sum-box"><div class="sum-lbl">COGS</div><div class="sum-val red">'+fmt(k.cogs)+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.rpt_gp}</div><div class="sum-val green">'+fmt(k.gp)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.rpt_revenue+'</div><div class="sum-val blue">'+fmt(k.rev)+'</div></div><div class="sum-box"><div class="sum-lbl">COGS</div><div class="sum-val red">'+fmt(k.cogs)+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.rpt_gp+'</div><div class="sum-val green">'+fmt(k.gp)+'</div></div></div>';
   var rows=D.sales.map(function(s){var t=s.total||s.amt;var gp=s.profit!==undefined?s.profit:(t-(s.cost||0));return '<tr><td>'+s.id+'</td><td>'+_esc(s.cust)+'</td><td class="num">'+fmt(t)+'</td><td class="num">'+fmt(s.cost||0)+'</td><td class="num green">'+fmt(gp)+'</td><td class="num">'+(t>0?Math.round(gp/t*100):0)+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>Sale</th><th>${_s.ui_customer}</th><th class="num">${_s.rpt_revenue}</th><th class="num">COGS</th><th class="num">${_s.rpt_gp}</th><th class="num">${_s.rpt_margin}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>Sale</th><th>'+_s.ui_customer+'</th><th class="num">'+_s.rpt_revenue+'</th><th class="num">COGS</th><th class="num">'+_s.rpt_gp+'</th><th class="num">'+_s.rpt_margin+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Gross Profit Report', summary, table);
 }
 
 function _rptNPPDF(){const _s=_L();
   var k=refreshLiveKpis();
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.rpt_gp}</div><div class="sum-val green">'+fmt(k.gp)+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.rpt_overhead}</div><div class="sum-val red">'+fmt(k.oh)+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.rpt_np}</div><div class="sum-val '+(k.np>=0?'green':'red')+'">'+fmt(k.np)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.rpt_gp+'</div><div class="sum-val green">'+fmt(k.gp)+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.rpt_overhead+'</div><div class="sum-val red">'+fmt(k.oh)+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.rpt_np+'</div><div class="sum-val '+(k.np>=0?'green':'red')+'">'+fmt(k.np)+'</div></div></div>';
   var rows=D.exp.map(function(e){return '<tr><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee)+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+e.method+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">${_s.ui_amount}</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.ui_date+'</th><th>'+_s.ui_category+'</th><th>'+_s.exp_col_payee+'</th><th class="num">'+_s.ui_amount+'</th><th>'+_s.ui_method+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Net Profit Report', summary, table);
 }
 
@@ -26982,18 +26985,18 @@ function _rptMonthlyPDF(){const _s=_L();
 function _rptARPDF(){const _s=_L();
   var debtors=D.cust.filter(function(c){return c.bal>0;});
   var total=debtors.reduce(function(a,c){return a+c.bal;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.acc_total_ar}</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Customers Owing</div><div class="sum-val blue">'+debtors.length+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.acc_total_ar+'</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Customers Owing</div><div class="sum-val blue">'+debtors.length+'</div></div></div>';
   var rows=debtors.sort(function(a,b){return b.bal-a.bal;}).map(function(c){var sales=D.sales.filter(function(s){return (s.custId===c.id||s.cust===c.name)&&s.st!=='Paid';});return '<tr><td>'+_esc(c.name)+'</td><td>'+_esc(c.phone||c.whatsapp||'')+'</td><td>'+sales.length+' unpaid</td><td class="num red">'+fmt(c.bal)+'</td><td>'+_esc(c.last||'—')+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_customer}</th><th>${_s.ui_contact}</th><th>${_s.rpt_open_inv}</th><th class="num">Balance</th><th>${_s.cust_col_last}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.ui_customer+'</th><th>'+_s.ui_contact+'</th><th>'+_s.rpt_open_inv+'</th><th class="num">Balance</th><th>'+_s.cust_col_last+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Accounts Receivable (AR)', summary, table);
 }
 
 function _rptAPPDF(){const _s=_L();
   var creditors=D.vendors.filter(function(v){return v.bal>0;});
   var total=creditors.reduce(function(a,v){return a+v.bal;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.acc_total_ap}</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Vendors Owed</div><div class="sum-val blue">'+creditors.length+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.acc_total_ap+'</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Vendors Owed</div><div class="sum-val blue">'+creditors.length+'</div></div></div>';
   var rows=creditors.sort(function(a,b){return b.bal-a.bal;}).map(function(v){return '<tr><td>'+_esc(v.name)+'</td><td>'+_esc(v.country||'')+'</td><td>'+_esc(v.terms||'—')+'</td><td class="num red">'+fmt(v.bal)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_vendor}</th><th>${_s.ui_country}</th><th>${_s.rpt_terms}</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.ui_vendor+'</th><th>'+_s.ui_country+'</th><th>'+_s.rpt_terms+'</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Accounts Payable (AP)', summary, table);
 }
 
@@ -27010,7 +27013,7 @@ function _rptRevCatPDF(){const _s=_L();
   var sorted=Object.entries(cats).sort(function(a,b){return b[1]-a[1];});
   var total=sorted.reduce(function(a,r){return a+r[1];},0);
   var rows=sorted.map(function(r){return '<tr><td>'+_esc(r[0])+'</td><td class="num green">'+fmt(r[1])+'</td><td class="num">'+Math.round(r[1]/Math.max(total,1)*100)+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_category}</th><th class="num">${_s.rpt_revenue}</th><th class="num">${_s.rpt_share}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.ui_category+'</th><th class="num">'+_s.rpt_revenue+'</th><th class="num">'+_s.rpt_share+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Revenue by Category', null, table);
 }
 
@@ -27029,56 +27032,56 @@ function _rptCustStmtPDF(){const _s=_L();
     +'</div>';
   var rows=sales.map(function(s){var tot=s.total||s.amt;var bal=tot-(s.paid||0);return '<tr><td>'+s.dt+'</td><td>Sale</td><td>'+_esc(s.items.substring(0,40))+'</td><td class="num">'+fmt(tot)+'</td><td class="num green">'+fmt(s.paid||0)+'</td><td class="num '+(bal>0?'red':'')+'">'+fmt(bal)+'</td></tr>';}).join('');
   rows+=rentals.map(function(r){var bal=r.fee-(r.paid||0);return '<tr><td>'+r.start+'</td><td>Rental</td><td>'+_esc(r.item)+'</td><td class="num">'+fmt(r.fee)+'</td><td class="num green">'+fmt(r.paid||0)+'</td><td class="num '+(bal>0?'red':'')+'">'+fmt(bal)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>${_s.ui_description}</th><th class="num">Invoiced</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.ui_date+'</th><th>'+_s.ui_type+'</th><th>'+_s.ui_description+'</th><th class="num">Invoiced</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Customer Statement — '+_esc(cust.name), summary, table);
 }
 
 function _rptVendorPurchPDF(){const _s=_L();
   var total=D.purchases.reduce(function(a,p){return a+(p.total||0);},0);
   var paid=D.purchases.filter(function(p){return p.st==='Paid';}).reduce(function(a,p){return a+(p.total||0);},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.vend_col_spent}</div><div class="sum-val blue">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Paid</div><div class="sum-val green">'+fmt(paid)+'</div></div><div class="sum-box"><div class="sum-lbl">Outstanding</div><div class="sum-val red">'+fmt(total-paid)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.vend_col_spent+'</div><div class="sum-val blue">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Paid</div><div class="sum-val green">'+fmt(paid)+'</div></div><div class="sum-box"><div class="sum-lbl">Outstanding</div><div class="sum-val red">'+fmt(total-paid)+'</div></div></div>';
   var rows=D.purchases.map(function(p){return '<tr><td>'+p.id+'</td><td>'+p.dt+'</td><td>'+_esc(p.vendor)+'</td><td>'+_esc((p.items||'').substring(0,35))+'</td><td class="num green">'+fmt(p.total||0)+'</td><td>'+p.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>PO</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>${_s.sal_col_items}</th><th class="num">${_s.ui_total}</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>PO</th><th>'+_s.ui_date+'</th><th>'+_s.ui_vendor+'</th><th>'+_s.sal_col_items+'</th><th class="num">'+_s.ui_total+'</th><th>'+_s.ui_status+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Vendor Purchases Report', summary, table);
 }
 
 function _rptPayHistPDF(){const _s=_L();
   var paid=D.sales.filter(function(s){return (s.paid||0)>0;}).sort(function(a,b){return b.dt.localeCompare(a.dt);});
   var totalCollected=paid.reduce(function(a,s){return a+(s.paid||0);},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Collected</div><div class="sum-val green">'+fmt(totalCollected)+'</div></div><div class="sum-box"><div class="sum-lbl">${_s.rpt_transactions}</div><div class="sum-val blue">'+paid.length+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Collected</div><div class="sum-val green">'+fmt(totalCollected)+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.rpt_transactions+'</div><div class="sum-val blue">'+paid.length+'</div></div></div>';
   var rows=paid.map(function(s){var tot=s.total||s.amt;var bal=tot-(s.paid||0);return '<tr><td>'+s.id+'</td><td>'+s.dt+'</td><td>'+_esc(s.cust)+'</td><td class="num">'+fmt(tot)+'</td><td class="num green">'+fmt(s.paid||0)+'</td><td class="num '+(bal>0?'red':'green')+'">'+fmt(bal)+'</td><td>'+s.st+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_customer}</th><th class="num">${_s.ui_total}</th><th class="num">Paid</th><th class="num">Balance</th><th>${_s.ui_status}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>'+_s.ui_date+'</th><th>'+_s.ui_customer+'</th><th class="num">'+_s.ui_total+'</th><th class="num">Paid</th><th class="num">Balance</th><th>'+_s.ui_status+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Payment History', summary, table);
 }
 
 function _rptExpFullPDF(){const _s=_L();
   var total=D.exp.reduce(function(a,e){return a+e.amt;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.exp_kpi_total}</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Entries</div><div class="sum-val blue">'+D.exp.length+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.exp_kpi_total+'</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Entries</div><div class="sum-val blue">'+D.exp.length+'</div></div></div>';
   var rows=D.exp.map(function(e){return '<tr><td>'+e.id+'</td><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee||'')+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+_esc(e.method||'')+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">${_s.ui_amount}</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>ID</th><th>'+_s.ui_date+'</th><th>'+_s.ui_category+'</th><th>'+_s.exp_col_payee+'</th><th class="num">'+_s.ui_amount+'</th><th>'+_s.ui_method+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Full Expense Report', summary, table);
 }
 
 function _rptRepairsPDF(){const _s=_L();
   var rep=D.exp.filter(function(e){return e.cat==='Repairs'||e.cat==='Cleaning'||e.cat==='Maintenance';});
   var total=rep.reduce(function(a,e){return a+e.amt;},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">${_s.adm_total}</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.adm_total+'</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
   var rows=rep.map(function(e){return '<tr><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee||'')+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+_esc(e.method||'')+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th class="num">${_s.ui_amount}</th><th>${_s.ui_method}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.ui_date+'</th><th>'+_s.ui_category+'</th><th>'+_s.exp_col_payee+'</th><th class="num">'+_s.ui_amount+'</th><th>'+_s.ui_method+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Repairs & Maintenance Report', summary, table);
 }
 
 function _rptRentalUtilPDF(){const _s=_L();
   var util=D.inv.filter(function(i){return i.rp;}).map(function(i){return {name:i.name,qty:i.qty,rented:i.rented||0,rate:Math.round((i.rented||0)/Math.max(i.qty,1)*100)};}).sort(function(a,b){return b.rate-a.rate;});
   var rows=util.map(function(u){return '<tr><td>'+_esc(u.name)+'</td><td class="num">'+u.qty+'</td><td class="num blue">'+u.rented+'</td><td class="num '+(u.rate>60?'green':u.rate>30?'':'red')+'">'+u.rate+'%</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th class="num">${_s.rpt_total_qty}</th><th class="num">${_s.inv_rented}</th><th class="num">${_s.rpt_utilization}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.rent_item_lbl+'</th><th class="num">'+_s.rpt_total_qty+'</th><th class="num">'+_s.inv_rented+'</th><th class="num">'+_s.rpt_utilization+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Rental Utilization Report', null, table);
 }
 
 function _rptRentedOutPDF(){const _s=_L();
   var out=D.inv.filter(function(i){return (i.rented||0)>0;});
   var rows=out.map(function(i){return '<tr><td>'+_esc(i.name)+'</td><td>'+i.qty+'</td><td class="num blue">'+i.rented+'</td><td class="num '+(i.qty-i.rented>0?'green':'red')+'">'+(i.qty-i.rented)+'</td><td class="num">'+fmt(i.rp||0)+'/day</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.rpt_total_qty}</th><th class="num">${_s.inv_rented_out}</th><th class="num">${_s.inv_available}</th><th class="num">${_s.inv_col_sp}</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.rent_item_lbl+'</th><th>'+_s.rpt_total_qty+'</th><th class="num">'+_s.inv_rented_out+'</th><th class="num">'+_s.inv_available+'</th><th class="num">'+_s.inv_col_sp+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Items Currently Rented Out', null, table);
 }
 
@@ -27086,7 +27089,7 @@ function _rptStockCatPDF(){const _s=_L();
   var cats={};
   D.inv.forEach(function(i){if(!cats[i.cat])cats[i.cat]={items:0,qty:0,val:0};cats[i.cat].items++;cats[i.cat].qty+=i.qty;cats[i.cat].val+=(i.cost||0)*(i.qty||0);});
   var rows=Object.entries(cats).map(function(e){return '<tr><td>'+_esc(e[0])+'</td><td class="num">'+e[1].items+'</td><td class="num">'+e[1].qty+'</td><td class="num green">'+fmt(e[1].val)+'</td></tr>';}).join('');
-  var table='<table><thead><tr><th>${_s.ui_category}</th><th class="num">SKUs</th><th class="num">Units</th><th class="num">Value</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  var table='<table><thead><tr><th>'+_s.ui_category+'</th><th class="num">SKUs</th><th class="num">Units</th><th class="num">Value</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Stock by Category', null, table);
 }
 
@@ -27546,7 +27549,7 @@ function _waOwnerNewSale(sale, staffName) {const _s=_L();
               +'<p style="font-size:13px;color:var(--text2);margin:0 0 12px">Know another business owner? Share ShopTrack — you get 1 free month when they subscribe.</p>'
               +'<div style="background:var(--bg3);border-radius:var(--r8);padding:10px 14px;display:flex;align-items:center;gap:8px;margin-bottom:4px">'
               +'<span style="flex:1;font-family:var(--mono);font-size:11px;color:var(--a)">'+refLink+'</span>'
-              +'<button class="btn btn-p btn-xs" onclick="navigator.clipboard.writeText(\''+refLink+'\').then(function(){toast(\'Copied!\',\'success\');}).catch(function(){toast(refLink,\'info\')})">${_s.set_copy}</button>'
+              +'<button class="btn btn-p btn-xs" onclick="navigator.clipboard.writeText(\''+refLink+'\').then(function(){toast(\'Copied!\',\'success\');}).catch(function(){toast(refLink,\'info\')})">'+_s.set_copy+'</button>'
               +'</div>',
               '<button class="btn btn-s btn-sm" onclick="closeModal()">Later</button>'
               +'<button class="btn btn-g btn-sm" onclick="var m=\'Hi! I use ShopTrack \xe2\x80\x94 try free: \'+refLink;window.open(\'https://wa.me/?text=\'+encodeURIComponent(m),\'_blank\');closeModal()">'
@@ -28401,23 +28404,23 @@ function mEditApptCompleted(id){const _s=_L();
   var rate = CUR.rate||1;
   var sym  = CUR.symbol;
   var body = '<div class="fg-2">'
-    +'<div class="fg"><label class="fl">${_s.ui_date}</label>'
+    +'<div class="fg"><label class="fl">'+_s.ui_date+'</label>'
     +'<input class="fi" type="date" id="eac-date" value="'+a.date+'"/></div>'
     +'<div class="fg"><label class="fl">Amount ('+sym+')</label>'
     +'<input class="fi" type="number" id="eac-amt" value="'+Math.round((a.totalAmt||0)*rate)+'" step="any"/></div>'
     +'</div>'
-    +'<div class="fg"><label class="fl">${_s.ui_pay_method}</label>'
+    +'<div class="fg"><label class="fl">'+_s.ui_pay_method+'</label>'
     +'<select class="fs" id="eac-method">'
-    +'<option'+(a.payMethod==='Cash'?' selected':'')+'>${_s.ui_cash}</option>'
-    +'<option'+(a.payMethod==='Mobile Money (MTN)'?' selected':'')+'>${_s.ui_mobile_mtn}</option>'
-    +'<option'+(a.payMethod==='Orange Money'?' selected':'')+'>${_s.ui_orange}</option>'
-    +'<option'+(a.payMethod==='Bank Transfer'?' selected':'')+'>${_s.ui_bank_transfer}</option>'
+    +'<option'+(a.payMethod==='Cash'?' selected':'')+'>'+_s.ui_cash+'</option>'
+    +'<option'+(a.payMethod==='Mobile Money (MTN)'?' selected':'')+'>'+_s.ui_mobile_mtn+'</option>'
+    +'<option'+(a.payMethod==='Orange Money'?' selected':'')+'>'+_s.ui_orange+'</option>'
+    +'<option'+(a.payMethod==='Bank Transfer'?' selected':'')+'>'+_s.ui_bank_transfer+'</option>'
     +'<option'+(a.payMethod==='Card'?' selected':'')+'>Card</option>'
     +'</select></div>'
-    +'<div class="fg"><label class="fl">${_s.ui_notes}</label>'
+    +'<div class="fg"><label class="fl">'+_s.ui_notes+'</label>'
     +'<textarea class="ft" id="eac-notes" style="min-height:60px">'+(a.notes||'')+'</textarea></div>';
   var footer = '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
-    +' <button class="btn btn-p" id="eac-save-btn">${_s.ui_save}</button>';
+    +' <button class="btn btn-p" id="eac-save-btn">'+_s.ui_save+'</button>';
   modal(_s.appt_edit_title, body, footer, 'sm');
   // Wire save button after modal renders (avoids all quote-nesting)
   setTimeout(function(){
@@ -28564,18 +28567,18 @@ function mViewAppt(id){const _s=_L();
       +'<div style="font-weight:700;color:var(--ink)">'+a.date+'</div>'
       +'<div style="font-size:11px;color:var(--text2)">'+_timeLabel(a.startTime)+(a.endTime?' \u2013 '+_timeLabel(a.endTime):'')+'</div></div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px">'
-      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">${_s.ui_customer}</div>'
+      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_s.ui_customer+'</div>'
       +'<div style="font-weight:700;color:var(--ink)">'+a.custName+'</div>'
       +(a.custPhone?'<div style="font-size:11px;color:var(--a)">'+a.custPhone+'</div>':'')+'</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px">'
-      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">${_s.svc_col_name}</div>'
+      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_s.svc_col_name+'</div>'
       +'<div style="font-weight:700;color:var(--ink)">'+a.serviceName+'</div>'
       +(svc?'<div style="font-size:11px;color:var(--text2)">'+svc.duration+' min</div>':'')+'</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px">'
-      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">${_s.ui_amount}</div>'
+      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_s.ui_amount+'</div>'
       +'<div style="font-weight:700;color:var(--ink)">'+(a.totalAmt>0?fmt(a.totalAmt):'\u2014')+'</div>'
-      +(a.saleId?'<div style="font-size:11px;color:var(--g)">\u2713 Sale '+a.saleId+'</div>':canCheckout?'<div style="font-size:11px;color:var(--y)">${_s.appt_pending_co}</div>':'')+'</div>'
-    +(a.staffName?'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">${_s.appt_staff}</div><div style="font-weight:700;color:var(--ink)">'+a.staffName+'</div></div>':'')
+      +(a.saleId?'<div style="font-size:11px;color:var(--g)">\u2713 Sale '+a.saleId+'</div>':canCheckout?'<div style="font-size:11px;color:var(--y)">'+_s.appt_pending_co+'</div>':'')+'</div>'
+    +(a.staffName?'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_s.appt_staff+'</div><div style="font-weight:700;color:var(--ink)">'+a.staffName+'</div></div>':'')
     +'</div>';
 
   var notesHtml = a.notes ? '<div style="background:var(--bg3);border-radius:var(--r8);padding:10px 12px;margin-bottom:12px;font-size:12px">\uD83D\uDCDD '+a.notes+'</div>' : '';
@@ -28596,7 +28599,7 @@ function mViewAppt(id){const _s=_L();
   var editAmtBtn = canEditAmt ? '<button class="btn btn-s btn-sm" onclick="closeModal();mEditApptCompleted(\''+id+'\')">✏ Edit Amount</button>' : '';
   var invoiceBtn = (a.st==='Completed'&&(a.totalAmt||0)>0) ? '<button class="btn btn-g btn-sm" onclick="genApptInvoice(\''+id+'\')">🧾 Invoice</button>' : '';
   var deleteBtn  = '<button class="btn btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="_deleteAppt(\''+id+'\')">🗑 Delete</button>';
-  var saveBtn     = canEdit ? '<button class="btn btn-p btn-sm" onclick="_updAppt(\''+id+'\')">💾 Save</button>' : '<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_close}</button>';
+  var saveBtn     = canEdit ? '<button class="btn btn-p btn-sm" onclick="_updAppt(\''+id+'\')">💾 Save</button>' : '<button class="btn btn-s btn-sm" onclick="closeModal()">'+_s.ui_close+'</button>';
 
   var footer = '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:6px;flex-wrap:wrap">'
     +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+waBtn+reschedBtn+cancelBtn+checkoutBtn+deleteBtn+'</div>'
@@ -28637,7 +28640,7 @@ function mNewAppt(date){const _s=_L();
       <div class="fg"><label class="fl">Phone *</label><input class="fi" id="na-nc-phone" type="tel" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     </div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" id="na-nc-email" type="email" placeholder="email"+'@'+"example.com"/></div>
+      <div class="fg"><label class="fl">'+_s.ui_email+'</label><input class="fi" id="na-nc-email" type="email" placeholder="email"+'@'+"example.com"/></div>
       <div class="fg"><label class="fl">${_s.ui_city}</label><input class="fi" id="na-nc-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:2px">
