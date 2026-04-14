@@ -3440,7 +3440,7 @@ function _mItemDelete(id){const _s=_L();
   if(warnLines.length) msg+='<div class="alrt alrt-y">History will be unlinked: '+warnLines.join(', ')+'. Records are preserved.</div>';
   var mid=id, mname=it.name;
   modal(_s.inv_del_title+' '+_esc(it.name), msg,
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
     '<button class="btn btn-d" id="confirm-del-item-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-item-btn');
@@ -5960,7 +5960,7 @@ function deleteSale(id){const _s=_L();
   if(!warnHtml) warnHtml='<p style="font-size:13px;color:var(--text2)">Delete sale <strong>'+id+'</strong> — '+_esc(s.cust)+'?</p>';
   var mid=id;
   modal(_s.rent_del_sale+' '+id, warnHtml,
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
     '<button class="btn btn-d" id="confirm-del-sale-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-sale-btn');
@@ -6010,7 +6010,7 @@ function deleteRental(id){const _s=_L();
   if(!warnHtml) warnHtml='<p style="font-size:13px;color:var(--text2)">Delete rental <strong>'+id+'</strong> — '+_esc(r.cust)+' / '+_esc(r.item)+'?</p>';
   var mid=id;
   modal(_s.rent_del_title+' '+id, warnHtml,
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
     '<button class="btn btn-d" id="confirm-del-rental-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-rental-btn');
@@ -6051,7 +6051,7 @@ function deletePurchase(id){const _s=_L();
   if(apImpact) warnHtml+='<div class="alrt alrt-y" style="margin-bottom:8px">AP balance of <strong>'+fmt(p.total)+'</strong> owed to '+_esc(p.vendor)+' will be cancelled.</div>';
   var mid=id;
   modal(_s.rent_del_po+' '+id, warnHtml,
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
     '<button class="btn btn-d" id="confirm-del-po-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-po-btn');
@@ -7245,7 +7245,7 @@ function mDeleteCustomer(id){const _s=_L();
   if(warnLines.length) msg+='<div class="alrt alrt-y">Has '+warnLines.join(', ')+'. Records preserved.</div>';
   var mid=id, mname=c.name;
   modal(_s.cust_del_title+' '+_esc(c.name), msg,
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
     '<button class="btn btn-d" id="confirm-del-cust-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-cust-btn');
@@ -7549,7 +7549,7 @@ function mDeleteVendor(id){const _s=_L();
   if(allPOs.length) msg+='<div class="alrt alrt-y">'+allPOs.length+' PO record'+(allPOs.length!==1?'s':'')+' will be preserved.</div>';
   var mid=id, mname=v.name;
   modal(_s.vend_del_title+' '+_esc(v.name), msg,
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
     '<button class="btn btn-d" id="confirm-del-vendor-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-vendor-btn');
@@ -13024,11 +13024,11 @@ function _affPayPartial(id){const _s=_L();
   modal('💳 Process Payment — '+_esc(a.name),
     '<div style="margin-bottom:16px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--bg3);border-radius:var(--r8);margin-bottom:12px">'+
-      '<div><div style="font-size:12px;color:var(--text2);margin-bottom:2px">${_s.adm_affiliate}</div>'+
+      '<div><div style="font-size:12px;color:var(--text2);margin-bottom:2px">'+_s.adm_affiliate+'</div>'+
       '<div style="font-weight:600;color:var(--ink)">'+_esc(a.name)+'</div>'+
       '<div style="font-size:11px;color:var(--a)">'+_esc(a.email)+'</div></div>'+
       '<div style="text-align:right">'+
-      '<div style="font-size:12px;color:var(--text2);margin-bottom:2px">${_s.adm_total_unpaid}</div>'+
+      '<div style="font-size:12px;color:var(--text2);margin-bottom:2px">'+_s.adm_total_unpaid+'</div>'+
       '<div style="font-size:20px;font-weight:700;color:var(--r)">'+fmt(unpaid)+' XAF</div></div>'+
     '</div>'+
     '<div class="fg">'+
@@ -13036,10 +13036,10 @@ function _affPayPartial(id){const _s=_L();
       '<input class="fi" id="aff-pay-amt" type="number" min="1" max="'+unpaid+'" placeholder="'+_s.adm_enter_amount+'" style="font-size:18px;font-weight:600"/>'+
     '</div>'+
     '<div class="fg" style="margin-top:10px">'+
-      '<label class="fl">${_s.ui_pay_method}</label>'+
+      '<label class="fl">'+_s.ui_pay_method+'</label>'+
       '<select class="fs" id="aff-pay-method">'+
-        '<option>${_s.adm_mobile_money}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option>'+
-        '<option>${_s.ui_orange}</option><option>${_s.adm_mtn}</option><option>${_s.adm_paypal}</option><option>${_s.po_other}</option>'+
+        '<option>'+_s.adm_mobile_money+'</option><option>'+_s.ui_bank_transfer+'</option><option>'+_s.ui_cash+'</option>'+
+        '<option>'+_s.ui_orange+'</option><option>'+_s.adm_mtn+'</option><option>'+_s.adm_paypal+'</option><option>'+_s.po_other+'</option>'+
       '</select>'+
     '</div>'+
     '<div class="fg" style="margin-top:10px">'+
@@ -13048,7 +13048,7 @@ function _affPayPartial(id){const _s=_L();
     '</div>'+
     '<div class="fg" style="margin-top:10px">'+
       '<label class="fl">Notes <span style="font-size:11px;color:var(--text2)">(optional)</span></label>'+
-      '<textarea class="ft" id="aff-pay-notes" placeholder="${_s.adm_enter_amount}" style="min-height:55px"></textarea>'+
+      '<textarea class="ft" id="aff-pay-notes" placeholder="'+_s.adm_enter_amount+'" style="min-height:55px"></textarea>'+
     '</div>'+
     '<div class="fg" style="margin-top:10px">'+
       '<label class="fl">Receipts <span style="font-size:11px;color:var(--text2)">(optional — attach multiple images or PDFs)</span></label>'+
@@ -13057,7 +13057,7 @@ function _affPayPartial(id){const _s=_L();
         '<div id="aff-receipt-grid" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px"></div>'+
         '<div id="aff-receipt-placeholder" style="text-align:center;padding:8px 0">'+
           '<div style="font-size:26px;margin-bottom:4px">📎</div>'+
-          '<div style="font-size:13px;color:var(--ink);font-weight:500">${_s.adm_drop_files}</div>'+
+          '<div style="font-size:13px;color:var(--ink);font-weight:500">'+_s.adm_drop_files+'</div>'+
         '</div>'+
         '<div style="text-align:center;margin-top:4px">'+
           '<button type="button" class="btn btn-s btn-sm" id="aff-add-files-btn">+ Add Files</button>'+
@@ -13066,14 +13066,14 @@ function _affPayPartial(id){const _s=_L();
       '</div>'+
     '</div>'+
     '<div id="aff-pay-preview" style="margin-top:12px;padding:10px 14px;background:var(--bg3);border-radius:var(--r6);display:none">'+
-      '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">${_s.adm_after_pay}</div>'+
+      '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">'+_s.adm_after_pay+'</div>'+
       '<div style="display:flex;justify-content:space-between">'+
         '<span style="color:var(--ink)">Remaining unpaid:</span>'+
         '<span id="aff-pay-remaining" style="font-weight:700;color:var(--g)"></span>'+
       '</div>'+
     '</div>'+
     '</div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
     '<button class="btn btn-p" id="aff-pay-submit">💳 Process Payment</button>'
   );
   setTimeout(function(){
@@ -13177,7 +13177,7 @@ function _affViewHistory(id){const _s=_L();
     '</div>'+
     (hist.length
       ? '<div class="tbl-wrap"><table>'+
-          '<thead><tr><th>${_s.ui_date}</th><th>${_s.ui_amount}</th><th>${_s.ui_method}</th><th>${_s.ui_reference}</th><th>${_s.ui_notes}</th><th>${_s.adm_receipts}</th></tr></thead>'+
+          '<thead><tr><th>'+_s.ui_date+'</th><th>'+_s.ui_amount+'</th><th>'+_s.ui_method+'</th><th>'+_s.ui_reference+'</th><th>'+_s.ui_notes+'</th><th>'+_s.adm_receipts+'</th></tr></thead>'+
           '<tbody>'+rows+'</tbody></table></div>'
       : '<div style="text-align:center;padding:30px;color:var(--text2)"><div style="font-size:32px;margin-bottom:8px">📭</div>${_s.adm_no_pay_hist}</div>'
     ),
@@ -13504,12 +13504,12 @@ function _affCopyLink(link){
 
 function _affAddManual(){const _s=_L();
   modal('+ Add Affiliate Manually',
-    '<div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="aff-mn-name" placeholder="e.g. Amaka Johnson"/></div>'+
+    '<div class="fg"><label class="fl">'+_s.cust_name_ph+'</label><input class="fi" id="aff-mn-name" placeholder="e.g. Amaka Johnson"/></div>'+
     '<div class="fg"><label class="fl">Email *</label><input class="fi" id="aff-mn-email" type="email" placeholder="amaka@email.com"/></div>'+
     '<div class="fg"><label class="fl">Affiliate Code *</label><input class="fi" id="aff-mn-code" placeholder="e.g. AMAKA2026" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\')"/><div class="fh">Used in shoptrack.org/?aff=CODE</div></div>'+
     '<div class="fg"><label class="fl">TikTok / Social Handle</label><input class="fi" id="aff-mn-handle" placeholder="@handle"/></div>'+
     '<div class="fg"><label class="fl">${_s.adm_commission}</label><input class="fi" id="aff-mn-pct" type="number" value="20" min="1" max="50"/><div class="fh">% of first subscription payment</div></div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
     '<button class="btn btn-p" onclick="_affDoAddManual()">${_s.adm_add_aff}</button>'
   );
 }
@@ -24864,7 +24864,7 @@ function _delSvc(id){const _s=_L();
   var mid=id, mname=svc.name;
   modal(_s.svc_del_title+' '+_esc(svc.name),
     '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(svc.name)+'</strong>? This cannot be undone.</p>'+historyNote,
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
     '<button class="btn btn-d" id="confirm-del-svc-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-svc-btn');
@@ -28385,7 +28385,7 @@ function _deleteAppt(id){const _s=_L();
   if(a.totalAmt>0&&!linkedSale) warnHtml+='<p style="font-size:12px;color:var(--text3)">Revenue of '+fmt(a.totalAmt)+' will be removed from KPIs.</p>';
   var mid=id;
   modal('Delete Appointment', warnHtml,
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'+
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
     '<button class="btn btn-d" id="confirm-del-appt-btn">${_s.ui_delete}</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-appt-btn');
