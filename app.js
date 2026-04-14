@@ -15586,6 +15586,14 @@ function updateSidebarForRole(){
     var _si = document.querySelector('.sb-item[data-p="'+pg+'"]');
     if(_si){ _si.style.opacity = _isFreePln ? '0.4' : ''; _si.title = _isFreePln ? 'Premium feature' : ''; }
   });
+  // Dim premium drawer items for free plan (mobile parity)
+  ['dr-appointments','dr-services','dr-ai-studio'].forEach(function(did){
+    var _di = document.getElementById(did);
+    if(_di){ _di.style.opacity = _isFreePln ? '0.4' : ''; }
+  });
+  // Dim Rentals in bottom nav for free plan
+  var _bnRent = document.getElementById('bn-rentals');
+  if(_bnRent){ _bnRent.style.opacity = _isFreePln ? '0.4' : ''; }
   // Hide the prev dividers to avoid orphaned lines — only show dividers that have visible content below
   const dividers = document.querySelectorAll('#sb .sb-div');
   dividers.forEach((d,i) => {
@@ -15618,8 +15626,8 @@ function updateSidebarForRole(){
   // Mobile drawer: hide biz items for SA, hide SA items for biz users
   document.querySelectorAll('.dr-biz-item').forEach(el=>{ el.style.display=isSA?'none':''; });
   document.querySelectorAll('.dr-sa-item').forEach(el=>{ el.style.display=isSA?'':'none'; });
-  // Apply language to sidebar labels (silent — no toast, no page re-render here)
-  if(typeof BIZ !== 'undefined' && BIZ.language && BIZ.language !== 'en'){
+  // Apply language to sidebar, drawer, and bottom nav labels
+  {
     const _Lnav = _L();
     const _sbMap = {
       'dashboard':'nav_dashboard','inventory':'nav_inventory','sales':'nav_sales',
@@ -15640,19 +15648,31 @@ function updateSidebarForRole(){
       'dr-vendors':'nav_vendors','dr-expenses':'nav_expenses',
       'dr-accounting':'nav_accounting','dr-reports':'nav_reports',
       'dr-catalog':'nav_catalog','dr-ai-studio':'nav_ai','dr-auditlog':'nav_audit',
+      'dr-booking-settings':'nav_booking',
       'dr-admin-biz':'nav_businesses','dr-admin-users':'nav_users',
-      'dr-admin-analytics':'nav_analytics','dr-settings':'nav_settings',
-      'dr-signout':'nav_signout'};
+      'dr-admin-analytics':'nav_analytics','dr-admin-affiliates':'nav_affiliates',
+      'dr-settings':'nav_settings','dr-signout':'nav_signout'};
     Object.entries(_drMap).forEach(function(e){
       var el=document.getElementById(e[0]);
       if(el){var sp=el.querySelector('span');if(sp&&_Lnav[e[1]])sp.textContent=_Lnav[e[1]];}
     });
+    // Bottom nav — BIZ + SA items
     var _bnMap={'bn-dashboard':'nav_home','bn-inventory':'nav_inventory',
-      'bn-sales':'nav_sales','bn-rentals':'nav_rentals'};
+      'bn-sales':'nav_sales','bn-rentals':'nav_rentals',
+      'bn-sa-biz':'nav_businesses','bn-sa-users':'nav_users',
+      'bn-sa-analytics':'nav_analytics','bn-sa-aff':'nav_affiliates'};
     Object.entries(_bnMap).forEach(function(e){
       var el=document.getElementById(e[0]);
       if(el){var sp=el.querySelector('.bni-lbl');if(sp&&_Lnav[e[1]])sp.textContent=_Lnav[e[1]];}
     });
+    // More button
+    var _moreEl=document.querySelector('#bn-more .bni-lbl');
+    if(_moreEl) _moreEl.textContent=_Lnav.nav_more||'More';
+    // Drawer title + lang toggle
+    var _dtEl=document.getElementById('drawer-ttl');
+    if(_dtEl) _dtEl.textContent=(BIZ.language||'en')==='fr'?'Toutes les sections':'All Sections';
+    var _dlEl=document.getElementById('dr-lang-label');
+    if(_dlEl) _dlEl.textContent=(BIZ.language||'en')==='fr'?'Switch to English':'Passer en Fran\u00e7ais';
   }
 }
 
@@ -26699,6 +26719,7 @@ function _applyLanguage(lang){
     'dr-reports':        L.nav_reports,
     'dr-catalog':        L.nav_catalog,
     'dr-ai-studio':      L.nav_ai,
+    'dr-booking-settings':L.nav_booking,
     'dr-auditlog':       L.nav_audit,
     'dr-admin-biz':      L.nav_businesses,
     'dr-admin-users':    L.nav_users,
