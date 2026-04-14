@@ -1927,7 +1927,7 @@ function _arBulkCollect(){const _s=_L();
     +'<div style="margin-top:12px;padding:10px;background:var(--bg3);border-radius:var(--r8)">'
     +'<div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--text2)">Selected total</span>'
     +'<strong id="bc-total-display" style="font-family:var(--mono);color:var(--g)">'+fmt(debtors.reduce(function(a,cu){return a+cu.bal;},0))+'</strong></div></div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-p" onclick="_arBulkCollectSave(\'' + today + '\')" >'+_s.sal_ttl_payment+'</button>'
   );
   // Update total on check/amount change
@@ -2314,7 +2314,7 @@ function _showProductSales(invId){const _s=_L();
     +'</div>'
     +'<div class="tbl-wrap"><table><thead><tr><th>'+_s.sal_col_id+'</th><th>'+_s.ui_customer+'</th><th>'+_s.ui_date+'</th><th>'+_s.rpt_revenue+'</th><th>'+_s.ui_status+'</th></tr></thead>'
     +'<tbody>'+rows+'</tbody></table></div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_close+'</button>'
     +'<button class="btn btn-p btn-sm" id="go-inv-btn-sp">View Item</button>');
   setTimeout(function(){ var b=document.getElementById('go-inv-btn-sp'); if(b) b.onclick=function(){closeModal();nav('inventory');}; },30);
 }
@@ -2554,7 +2554,7 @@ async function mSubPayNowStripe(){const _s=_L();
     +'<span style="color:var(--text2)">'+_s.ui_amount+'</span>'
     +'<strong style="font-size:20px;font-family:var(--mono);color:var(--g)">$'+amtUSD+' USD</strong></div></div>'
     +'<div class="alrt alrt-b">\uD83D\uDD12 Secure card payment via Stripe. You will be redirected to a Stripe checkout page. After payment, your account activates automatically.</div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-p" id="stripe-pay-btn" onclick="_doStripeCheckout(\''+(planKey)+'\',\''+(cycle)+'\',\''+(newExpiry)+'\')">\uD83D\uDD12 Pay $'+amtUSD+' USD \u2192 Stripe</button>'
   );
 }
@@ -3181,7 +3181,7 @@ function _buildInvGridFiltered(items){const _s=_L();
     var isOutOfStock = avail<=0 && (it.qty||0)>=0;
     var isLowStock   = minQty>0 && avail<=minQty && avail>0;  // only when threshold set AND not zero
     var stockBadge=isOutOfStock
-      ?'<div style="background:var(--r);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">${_s.inv_oos}</div>'
+      ?'<div style="background:var(--r);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">'+_s.inv_oos+'</div>'
       :isLowStock
         ?'<div style="background:var(--y);color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">⚠ LOW STOCK ('+avail+' left)</div>'
         :'';
@@ -3260,7 +3260,7 @@ function switchInvView(el,mode){const _s=_L();
       });
       moves.sort((a,b)=>b.dt.localeCompare(a.dt));
       if(!moves.length) return '<div style="color:var(--text2);font-size:13px;padding:16px 0;text-align:center">No stock movements for '+rng.label+'</div>';
-      return '<div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.rent_item_lbl}</th><th>${_s.ui_type}</th><th>Qty Δ</th><th>${_s.inv_reason}</th></tr></thead><tbody>'
+      return '<div class="tbl-wrap"><table><thead><tr><th>'+_s.ui_date+'</th><th>'+_s.rent_item_lbl+'</th><th>'+_s.ui_type+'</th><th>Qty Δ</th><th>'+_s.inv_reason+'</th></tr></thead><tbody>'
         +moves.slice(0,20).map(m=>`<tr><td>${m.dt}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.item}</td><td>${bx(m.type,m.cls)}</td><td style="color:${m.col};font-family:var(--mono)">${m.delta}</td><td>${m.reason}</td></tr>`).join('')
         +'</tbody></table></div>';
     })()
@@ -3327,7 +3327,7 @@ function mItem(id){const _s=_L();
     ? it.photoDataUrls.map(function(url,pi){
         return '<div class="pthumb" style="overflow:hidden;cursor:pointer" onclick="window.open(this.querySelector(\'img\').src,\'_blank\')" title="'+_s.inv_click_fullsize+'"><img loading="lazy" src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r6)"/></div>';
       }).join('')
-    : '<div style="grid-column:1/-1;font-size:12px;color:var(--text2);padding:14px 0;text-align:center">\uD83D\uDCF7 No photos yet \u2014 use <strong>${_s.inv_edit_lbl}</strong> ${_s.inv_edit_photos_use2}</div>';
+    : '<div style="grid-column:1/-1;font-size:12px;color:var(--text2);padding:14px 0;text-align:center">\uD83D\uDCF7 No photos yet \u2014 use <strong>'+_s.inv_edit_lbl+'</strong> '+_s.inv_edit_photos_use2+'</div>';
   modal(it.name,`
   <div class="stabs" style="margin-bottom:14px">
     <button class="stab on" onclick="mItemTab(this,'mi-details')">${_s.inv_tab_details}</button>
@@ -3429,7 +3429,7 @@ function _mItemDelete(id){const _s=_L();
       '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Return all active rentals before deleting this item.</p>'+
       '<div>'+rentalRows+'</div>',
       '<button class="btn btn-s" onclick="closeModal()">OK</button>'+
-      '<button class="btn btn-p btn-sm" id="go-rentals-btn">${_s.inv_go_rentals}</button>');
+      '<button class="btn btn-p btn-sm" id="go-rentals-btn">'+_s.inv_go_rentals+'</button>');
     setTimeout(function(){ var b=document.getElementById('go-rentals-btn'); if(b) b.onclick=function(){closeModal();nav('rentals');}; },30);
     return;
   }
@@ -3441,7 +3441,7 @@ function _mItemDelete(id){const _s=_L();
   var mid=id, mname=it.name;
   modal(_s.inv_del_title+' '+_esc(it.name), msg,
     '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
-    '<button class="btn btn-d" id="confirm-del-item-btn">${_s.ui_delete}</button>');
+    '<button class="btn btn-d" id="confirm-del-item-btn">'+_s.ui_delete+'</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-item-btn');
     if(btn) btn.onclick=function(){
@@ -3513,7 +3513,7 @@ function _costBreakdownHTML(prefix, existingLines){const _s=_L();
 
   var totalDisplay = hasLines
     ? '<span style="font-family:var(--mono);font-size:13px;font-weight:800;color:var(--g)">'+fmt(totalFromLines/CUR.rate)+'</span>'
-    : '<span style="font-size:12px;color:var(--text3)">${_s.inv_no_lines}</span>';
+    : '<span style="font-size:12px;color:var(--text3)">'+_s.inv_no_lines+'</span>';
 
   return ''
     // Collapsible toggle header
@@ -3593,14 +3593,14 @@ function _costLineRowHTML(prefix, idx, line, catOpts){const _s=_L();
 function _cbAddCustomCat(prefix){const _s=_L();
   window._pendingCbPfx=prefix;
   modal('+ New Cost Category',
-    '<div class="fg"><label class="fl">${_s.inv_cat_name_lbl}</label>'
+    '<div class="fg"><label class="fl">'+_s.inv_cat_name_lbl+'</label>'
     +'<input class="fi" id="cbc-name" placeholder="e.g. Land Survey, Import Bond, Staging Fee"/></div>'
     +'<div class="fg" style="display:flex;gap:8px">'
     +'<div style="flex:0 0 70px"><label class="fl">'+_s.inv_icon+'</label>'
     +'<input class="fi" id="cbc-icon" placeholder="📋" maxlength="4" style="font-size:18px;text-align:center"/></div>'
     +'<div style="flex:1"><label class="fl">'+_s.inv_hint_optional+'</label>'
     +'<input class="fi" id="cbc-hint" placeholder="e.g. Enter fee amount"/></div></div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-p" onclick="window._cbSaveCustomCat()">'+_s.inv_add_cat_btn+'</button>');
   setTimeout(function(){var e=document.getElementById('cbc-name');if(e)e.focus();},80);
 }
@@ -3998,7 +3998,7 @@ async function mEditItem(id){const _s=_L();
     <div class="fg"><label class="fl">${_s.inv_cond_lbl}</label><select class="fs" id="ei-cond"><option${it.cond==='New'?' selected':''}>New</option><option${it.cond==='Excellent'?' selected':''}>${_s.rent_cond_exc}</option><option${it.cond==='Good'?' selected':''}>${_s.rent_cond_good}</option><option${it.cond==='Fair'?' selected':''}>${_s.rent_cond_fair}</option><option${it.cond==='Worn'?' selected':''}>${_s.rent_cond_worn}</option></select></div>
   </div>
   <div class="fg-3">
-    ${showCost?`<div class="fg"><label class="fl">Cost Price ${!editCost?'🔒':''} <span style="font-size:10px;color:var(--text3);font-weight:400">auto-filled by breakdown ↓</span></label><input class="fi" id="ei-cost" type="number" value="${Math.round((it.cost||0)*CUR.rate)}" ${!editCost?'readonly style="opacity:.5"':''}/>${!editCost?'<div class="fh">${_s.inv_read_only}</div>':''}</div>`:'<div class="fg"><label class="fl" style="color:var(--text2)">${_s.inv_cost_lbl}</label><div style="font-size:12px;color:var(--text2);padding:8px 0">🔒 Hidden</div></div>'}
+    ${showCost?`<div class="fg"><label class="fl">Cost Price ${!editCost?'🔒':''} <span style="font-size:10px;color:var(--text3);font-weight:400">auto-filled by breakdown ↓</span></label><input class="fi" id="ei-cost" type="number" value="${Math.round((it.cost||0)*CUR.rate)}" ${!editCost?'readonly style="opacity:.5"':''}/>${!editCost?'<div class="fh">'+_s.inv_read_only+'</div>':''}</div>`:'<div class="fg"><label class="fl" style="color:var(--text2)">'+_s.inv_cost_lbl+'</label><div style="font-size:12px;color:var(--text2);padding:8px 0">🔒 Hidden</div></div>'}
     <div class="fg"><label class="fl">${_s.inv_selling_lbl}</label><input class="fi" id="ei-sp" type="number" value="${Math.round((it.sp||0)*CUR.rate)}"/></div>
     <div class="fg"><label class="fl">${_s.inv_rental_day}</label><input class="fi" id="ei-rp" type="number" value="${Math.round((it.rp||0)*CUR.rate)}"/></div>
     ${showMin?`<div class="fg"><label class="fl" style="display:flex;align-items:center;gap:5px">Min Sell Price 🔒 ${!editMin?'<span style="font-size:10px;color:var(--y)">(read-only)</span>':''}</label><input class="fi" id="ei-minsp" type="number" value="${Math.round((it.minSp||0)*CUR.rate)}" ${!editMin?'readonly style="opacity:.5"':''}/><div class="fh">${editMin?'Staff cannot sell below this price':'You can view but not edit this field'}</div></div>`:''}
@@ -4433,7 +4433,7 @@ function pgSales(){const _s=_L();const _ui=_s;
   <div class="kpi r"><div class="kpi-lbl">${_s.sal_kpi_ar}</div><div id="sales-kpi-ar" class="kpi-val r">${fmtKpi(kAR)}</div><div class="kpi-sub">${_s.sal_kpi_month}</div></div>
   <div class="kpi p"><div class="kpi-lbl">${_s.sal_kpi_gp}</div><div id="sales-kpi-gp" class="kpi-val p">${fmtKpi(kGP)}</div><div class="kpi-sub">${_s.sal_kpi_month}</div></div>
 </div>
-${D.sales.length===0?'<div style="background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r8);padding:28px 24px;text-align:center;margin-bottom:12px"><div style="font-size:28px;margin-bottom:10px">\uD83D\uDCB3</div><div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px">${_s.sal_empty_title}</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">${_s.sal_empty_sub}</div><button class="btn btn-p" onclick="mCreateSale()">${_s.sal_empty_btn}</button></div>':''}
+${D.sales.length===0?'<div style="background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r8);padding:28px 24px;text-align:center;margin-bottom:12px"><div style="font-size:28px;margin-bottom:10px">\uD83D\uDCB3</div><div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px">'+_s.sal_empty_title+'</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">'+_s.sal_empty_sub+'</div><button class="btn btn-p" onclick="mCreateSale()">'+_s.sal_empty_btn+'</button></div>':''}
 <div class="fbar">
   <input class="fi-s" id="sales-search" placeholder="${_ui.flt_search_sales}" style="width:200px" oninput="filterSalesTable()"/>
   <select class="sel" id="sales-status-filter" onchange="filterSalesTable()"><option value="">${_ui.flt_all_status}</option><option>${_s.sal_st_paid}</option><option>${_s.sal_st_unpaid}</option><option>${_s.sal_st_partial}</option></select>
@@ -4662,7 +4662,7 @@ function _csCheckMinSpWarn(){const _s=_L();
     warn.style.borderLeftColor = hasBlock?'var(--r)':'var(--y)';
     warn.style.color = hasBlock?'var(--r)':'var(--y)';
     warn.style.background = hasBlock?'rgba(220,38,38,.06)':'rgba(234,179,8,.06)';
-    if(hasBlock) warn.innerHTML += '<div style="font-size:10px;margin-top:4px;font-weight:600">${_s.sal_min_price_warn}</div>';
+    if(hasBlock) warn.innerHTML += '<div style="font-size:10px;margin-top:4px;font-weight:600">'+_s.sal_min_price_warn+'</div>';
   } else {
     warn.style.display='none';
   }
@@ -5961,7 +5961,7 @@ function deleteSale(id){const _s=_L();
   var mid=id;
   modal(_s.rent_del_sale+' '+id, warnHtml,
     '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
-    '<button class="btn btn-d" id="confirm-del-sale-btn">${_s.ui_delete}</button>');
+    '<button class="btn btn-d" id="confirm-del-sale-btn">'+_s.ui_delete+'</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-sale-btn');
     if(btn) btn.onclick=function(){
@@ -6011,7 +6011,7 @@ function deleteRental(id){const _s=_L();
   var mid=id;
   modal(_s.rent_del_title+' '+id, warnHtml,
     '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
-    '<button class="btn btn-d" id="confirm-del-rental-btn">${_s.ui_delete}</button>');
+    '<button class="btn btn-d" id="confirm-del-rental-btn">'+_s.ui_delete+'</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-rental-btn');
     if(btn) btn.onclick=function(){
@@ -6052,7 +6052,7 @@ function deletePurchase(id){const _s=_L();
   var mid=id;
   modal(_s.rent_del_po+' '+id, warnHtml,
     '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
-    '<button class="btn btn-d" id="confirm-del-po-btn">${_s.ui_delete}</button>');
+    '<button class="btn btn-d" id="confirm-del-po-btn">'+_s.ui_delete+'</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-po-btn');
     if(btn) btn.onclick=function(){
@@ -6348,7 +6348,7 @@ function _buildContractHTML(r, sigDataUrl){
   <div class="ref-box">
     <div><strong>${r.id}</strong></div>
     <div>Date: ${today}</div>
-    <div style="margin-top:4px">${sigDataUrl?'<span style="color:green;font-weight:700">✓ SIGNED</span>':'<span style="color:#4b5563">${_s.rent_pending_sig}</span>'}</div>
+    <div style="margin-top:4px">${sigDataUrl?'<span style="color:green;font-weight:700">✓ SIGNED</span>':'<span style="color:#4b5563">'+_s.rent_pending_sig+'</span>'}</div>
   </div>
 </div>
 
@@ -6650,7 +6650,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
           +'</div>'
         +'</div>';
       }).join('')
-    : '<div style="font-size:12px;color:var(--text2);padding:8px 0">${_s.po_empty}</div>';
+    : '<div style="font-size:12px;color:var(--text2);padding:8px 0">'+_s.po_empty+'</div>';
 
   // Build table rows
   const rows = D.purchases.map(p => {
@@ -7234,7 +7234,7 @@ function mDeleteCustomer(id){const _s=_L();
     if(activeRentals.length) blocking.push(activeRentals.length+' active rental'+(activeRentals.length!==1?'s':''));
     modal(_s.cust_cant_del,
       '<div class="alrt alrt-r" style="margin-bottom:10px"><strong>'+_esc(c.name)+'</strong> has '+blocking.join(' and ')+'.</div>'+
-      '<p style="font-size:13px;color:var(--text2)">${_s.cust_del_warn}</p>',
+      '<p style="font-size:13px;color:var(--text2)">'+_s.cust_del_warn+'</p>',
       '<button class="btn btn-s" onclick="closeModal()">OK</button>'); return;
   }
   var warnLines=[];
@@ -7246,7 +7246,7 @@ function mDeleteCustomer(id){const _s=_L();
   var mid=id, mname=c.name;
   modal(_s.cust_del_title+' '+_esc(c.name), msg,
     '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
-    '<button class="btn btn-d" id="confirm-del-cust-btn">${_s.ui_delete}</button>');
+    '<button class="btn btn-d" id="confirm-del-cust-btn">'+_s.ui_delete+'</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-cust-btn');
     if(btn) btn.onclick=function(){
@@ -7292,7 +7292,7 @@ function mCustomerStatement(id){const _s=_L();
       <span style="font-family:var(--mono);flex-shrink:0">${fmt(s.total||s.amt)}</span>
       ${badge(s.st)}
     </div>`).join('')
-    :'<div style="font-size:12px;color:var(--text2);padding:8px 0">${_s.cust_no_sales}</div>'}
+    :'<div style="font-size:12px;color:var(--text2);padding:8px 0">'+_s.cust_no_sales+'</div>'}
     <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:4px;border-top:1px solid var(--border)">
       <span style="font-size:12px;color:var(--text2)">${_s.cust_total_charged}</span>
       <span style="font-family:var(--mono);color:var(--b)">${fmt(totalCharged)}</span>
@@ -7541,7 +7541,7 @@ function mDeleteVendor(id){const _s=_L();
     if(openPOs.length) blocking.push(openPOs.length+' pending PO'+(openPOs.length!==1?'s':''));
     modal(_s.vend_cant_del,
       '<div class="alrt alrt-r" style="margin-bottom:10px"><strong>'+_esc(v.name)+'</strong> has '+blocking.join(' and ')+'.</div>'+
-      '<p style="font-size:13px;color:var(--text2)">${_s.vend_del_warn}</p>',
+      '<p style="font-size:13px;color:var(--text2)">'+_s.vend_del_warn+'</p>',
       '<button class="btn btn-s" onclick="closeModal()">OK</button>'); return;
   }
   var allPOs=D.purchases.filter(function(p){return p.vendorId===id;});
@@ -7550,7 +7550,7 @@ function mDeleteVendor(id){const _s=_L();
   var mid=id, mname=v.name;
   modal(_s.vend_del_title+' '+_esc(v.name), msg,
     '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
-    '<button class="btn btn-d" id="confirm-del-vendor-btn">${_s.ui_delete}</button>');
+    '<button class="btn btn-d" id="confirm-del-vendor-btn">'+_s.ui_delete+'</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-vendor-btn');
     if(btn) btn.onclick=function(){
@@ -8015,7 +8015,7 @@ function pgExp(){const _s=_L();const _ui=_s;
         +'<div style="background:var(--r);border-radius:3px;height:5px;width:'+barW+'%;transition:width .4s"></div>'
       +'</div>'
     +'</div>';
-  }).join('') : '<div style="font-size:12px;color:var(--text2);padding:8px 0">${_s.exp_empty}</div>';
+  }).join('') : '<div style="font-size:12px;color:var(--text2);padding:8px 0">'+_s.exp_empty+'</div>';
 
   const rows = D.exp.map(e=>'<tr data-date="'+e.dt+'" data-cat="'+_esc(e.cat)+'" data-type="'+(e.type||'')+'"'
     +' style="cursor:pointer" onclick="mViewExp(\''+e.id+'\')">'
@@ -8215,7 +8215,7 @@ function mDeleteExp(id){const _s=_L();
     '<div class="alrt alrt-r" style="margin-bottom:12px">Delete <strong>'
     +_esc(e.id)+'</strong> &#x2014; '+_esc(e.payee)+' &#x2014; <strong>'+fmt(e.amt)+'</strong>?'
     +'<br><span style="font-size:12px">'+_s.ui_this_cannot+'</span></div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-d" onclick="closeModal();_doDeleteExp(\''+id+'\')">&#x1F5D1; Delete</button>'
   );
 }
@@ -8278,7 +8278,7 @@ function pgAccounting(){const _s=_L();const _ui=_s;
     if(!lines.length) return '<div style="color:var(--text2);font-size:13px;padding:24px;text-align:center">No transactions in '+rng.label+'</div>';
     const totDr=lines.reduce((a,l)=>a+(l.dr||0),0);
     const totCr=lines.reduce((a,l)=>a+(l.cr||0),0);
-    return '<div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>${_s.ui_reference}</th><th>${_s.acc_col_desc}</th><th>${_s.acc_debit_out}</th><th>${_s.acc_credit_in}</th></tr></thead>'
+    return '<div class="tbl-wrap"><table><thead><tr><th>'+_s.ui_date+'</th><th>'+_s.ui_type+'</th><th>'+_s.ui_reference+'</th><th>'+_s.acc_col_desc+'</th><th>'+_s.acc_debit_out+'</th><th>'+_s.acc_credit_in+'</th></tr></thead>'
       +'<tbody id="ledger-body">'
       +lines.map(function(l){
         var _apBadge = l.ap!=null ? ' <span style="font-size:10px;background:var(--y-dim);color:var(--y);padding:1px 5px;border-radius:4px">AP " + fmt(l.ap) + "</span>' : '';
@@ -9246,7 +9246,7 @@ function pgCatalog(){const _s=_L();
   var catCount = allCats.length;
 
   // Category filter options built safely
-  var catFilterOpts = '<option value="">${_s.cat_all_cats}</option>'
+  var catFilterOpts = '<option value="">'+_s.cat_all_cats+'</option>'
     + allCats.map(function(c){ return '<option value="'+_esc(c)+'">'+_esc(c)+'</option>'; }).join('');
 
   // Build product+service cards safely (string concat, no nested templates)
@@ -11062,7 +11062,7 @@ function pgAdminBiz(){const _s=_L();
 
     // Amount display
     const amtDisplay = isTrial
-      ? '<span style="font-size:11px;color:var(--y)">${_s.adm_trial}</span>'
+      ? '<span style="font-size:11px;color:var(--y)">'+_s.adm_trial+'</span>'
       : isFreePl
         ? '<span style="font-size:11px;color:var(--text2)">Free</span>'
         : '<span style="font-family:var(--mono);font-size:11px;color:var(--g)">'+amt.toLocaleString()+' Frs</span>';
@@ -12247,7 +12247,7 @@ function _showUpsell(reason){const _s=_L();
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:12px;color:var(--text2)">'
     +'<strong style="color:var(--ink)">Includes:</strong> Unlimited everything \u00b7 5 users \u00b7 AI Studio \u00b7 Rentals \u00b7 No watermark'
     +'</div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.prof_not_now}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.prof_not_now+'</button>'
     +'<button class="btn btn-p" onclick="closeModal();_pwProceed()">\u25b6 Upgrade \u2014 4,900 XAF/mo</button>'
   );
 }
@@ -12273,7 +12273,7 @@ function mAddBizUser(){const _s=_L();
     bizFieldHTML = '<div class="fg"><label class="fl">Business *</label><select class="fs" id="abu-biz">'+bizOpts2+'</select></div>';
   } else {
     var myBizName = BIZ.name || SESSION.bizId;
-    bizFieldHTML = '<div class="fg"><label class="fl">${_s.adm_businesses}</label>'
+    bizFieldHTML = '<div class="fg"><label class="fl">'+_s.adm_businesses+'</label>'
       +'<div style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);font-size:13px;color:var(--ink);font-weight:600">'+_esc(myBizName)+'</div>'
       +'<input type="hidden" id="abu-biz" value="'+_esc(SESSION.bizId||'')+'"/>'
       +'</div>';
@@ -12295,7 +12295,7 @@ function mAddBizUser(){const _s=_L();
   +'<div class="fh">Share securely — user should change on first login</div>'
   +'</div>'
   +'</div>',
-  '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+  '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
   +' <button class="btn btn-p" onclick="_doAddBizUser()">'+_s.usr_add_title+'</button>');
 }
 function _doAddBizUser(){
@@ -12335,7 +12335,7 @@ function mEditBizUser(uid){const _s=_L();
   } else {
     var resolvedName = BIZ.name || u.bizId;
     var resolvedId   = SESSION.bizId || u.bizId;
-    bizFieldHTML = '<div class="fg"><label class="fl">${_s.adm_businesses}</label>'
+    bizFieldHTML = '<div class="fg"><label class="fl">'+_s.adm_businesses+'</label>'
       +'<div style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);font-size:13px;color:var(--ink);font-weight:600">'+_esc(resolvedName)+'</div>'
       +'<input type="hidden" id="eu-biz" value="'+_esc(resolvedId)+'"/>'
       +'</div>';
@@ -12822,7 +12822,7 @@ function mBillingRunReminders(){const _s=_L();
     '<div class="alrt alrt-b" style="margin-bottom:12px;font-size:12px">This opens WhatsApp for each business below — pre-filled with a payment reminder. You send it manually.</div>'
     +'<div style="max-height:240px;overflow-y:auto;margin-bottom:12px">'+listHtml+'</div>'
     +'<div style="font-size:12px;color:var(--text2)">Tap "Send All" to open WhatsApp for each business one by one.</div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-p" onclick="_sendReminderQueue()">💬 Send All ('+all.length+')</button>');
 }
 
@@ -12989,7 +12989,7 @@ function _affViewReceipt(dataUrl, fileName){const _s=_L();
     modal('🧾 Receipt'+(fileName?' — '+_esc(fileName):''),
       '<div style="text-align:center"><img src="'+dataUrl+'" style="max-width:100%;max-height:70vh;border-radius:var(--r8)"/></div>'+
       '<div style="text-align:center;margin-top:10px"><a href="'+dataUrl+'" download="'+(fileName||'receipt')+'" class="btn btn-s btn-sm">⬇ Download</a></div>',
-      '<button class="btn btn-p" onclick="closeModal()">${_s.ui_close}</button>','md'
+      '<button class="btn btn-p" onclick="closeModal()">'+_s.ui_close+'</button>','md'
     );
   }
 }
@@ -13179,9 +13179,9 @@ function _affViewHistory(id){const _s=_L();
       ? '<div class="tbl-wrap"><table>'+
           '<thead><tr><th>'+_s.ui_date+'</th><th>'+_s.ui_amount+'</th><th>'+_s.ui_method+'</th><th>'+_s.ui_reference+'</th><th>'+_s.ui_notes+'</th><th>'+_s.adm_receipts+'</th></tr></thead>'+
           '<tbody>'+rows+'</tbody></table></div>'
-      : '<div style="text-align:center;padding:30px;color:var(--text2)"><div style="font-size:32px;margin-bottom:8px">📭</div>${_s.adm_no_pay_hist}</div>'
+      : '<div style="text-align:center;padding:30px;color:var(--text2)"><div style="font-size:32px;margin-bottom:8px">📭</div>'+_s.adm_no_pay_hist+'</div>'
     ),
-    '<button class="btn btn-p" onclick="closeModal()">${_s.ui_close}</button>',
+    '<button class="btn btn-p" onclick="closeModal()">'+_s.ui_close+'</button>',
     'md'
   );
 }
@@ -13288,9 +13288,9 @@ function _affRenderTable(){const _s=_L();
     var rate = a.clicks>0 ? Math.round((a.conversions||0)/a.clicks*100)+'%' : '\u2014';
     var rateNum = a.clicks>0 ? (a.conversions||0)/a.clicks*100 : -1;
     var rateColor = rateNum<0?'var(--text2)':rateNum>=5?'var(--g)':rateNum>=2?'var(--y)':'var(--r)';
-    var statusBadge = a.status==='approved' ? '<span class="bx bx-g">${_s.adm_approved}</span>'
-      : a.status==='pending' ? '<span class="bx bx-y">${_s.ui_st_pending}</span>'
-      : '<span class="bx bx-r">${_s.adm_suspended}</span>';
+    var statusBadge = a.status==='approved' ? '<span class="bx bx-g">'+_s.adm_approved+'</span>'
+      : a.status==='pending' ? '<span class="bx bx-y">'+_s.ui_st_pending+'</span>'
+      : '<span class="bx bx-r">'+_s.adm_suspended+'</span>';
     var affLink = 'https://shoptrack.org/?aff='+_esc(a.affiliate_code||'');
     return '<tr>'+
       '<td><strong style="color:var(--ink)">'+_esc(a.name||'')+'</strong><div style="font-size:11px;color:var(--text2)">'+_esc(a.email||'')+'</div>'+(a.social_handle?'<div style="font-size:11px;color:var(--a)">'+_esc(a.social_handle)+'</div>':'')+'</td>'+
@@ -13412,7 +13412,7 @@ async function _affSuspend(id){const _s=_L();
   modal('\u26a0\uFE0F Suspend Affiliate',
     '<p style="font-size:13px;color:var(--text2)">Suspend <strong>'+(a?_esc(a.name):'this affiliate')+'</strong>?<br>'
     +'Their link will stop converting. You can reactivate at any time.</p>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-d" onclick="closeModal();_doAffSuspend(\''+id+'\')">\u26d4 Suspend</button>'
   );
 }
@@ -13435,7 +13435,7 @@ async function _affMarkPaid(id){const _s=_L();
     '<div class="alrt alrt-b" style="margin-bottom:12px">Clear full unpaid balance for <strong>'+_esc(a.name)+'</strong>?</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:13px;display:flex;justify-content:space-between">'
     +'<span style="color:var(--text2)">'+_s.adm_unpaid_bal+'</span><strong style="color:var(--r)">'+fmt(unpaid)+'</strong></div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-p" onclick="closeModal();_doAffMarkPaid(\''+id+'\')">\u2714 Mark Paid</button>'
   );
 }
@@ -13458,7 +13458,7 @@ function _affSetCode(id){const _s=_L();
     +' placeholder="e.g. AMAKA2026" style="text-transform:uppercase;font-family:var(--mono)"'
     +' oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\')"/>'
     +'<div class="fh">Min 3 chars, letters and numbers only. Used in shoptrack.org/?aff=CODE</div></div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-p" onclick="_doAffSetCode(\''+id+'\')">\u270F Save Code</button>'
   );
   setTimeout(function(){ var el=document.getElementById('aff-code-inp'); if(el){el.focus();el.select();} },80);
@@ -13480,7 +13480,7 @@ async function _affDelete(id){const _s=_L();
   modal('\uD83D\uDDD1 Delete Affiliate',
     '<div class="alrt alrt-r" style="margin-bottom:12px">Permanently delete <strong>'+_esc(label)+'</strong>?<br>'
     +'All their earnings data and commission history will be removed. This cannot be undone.</div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-d" onclick="closeModal();_doAffDelete(\''+id+'\')">\uD83D\uDDD1 Delete Permanently</button>'
   );
 }
@@ -13508,9 +13508,9 @@ function _affAddManual(){const _s=_L();
     '<div class="fg"><label class="fl">Email *</label><input class="fi" id="aff-mn-email" type="email" placeholder="amaka@email.com"/></div>'+
     '<div class="fg"><label class="fl">Affiliate Code *</label><input class="fi" id="aff-mn-code" placeholder="e.g. AMAKA2026" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\')"/><div class="fh">Used in shoptrack.org/?aff=CODE</div></div>'+
     '<div class="fg"><label class="fl">TikTok / Social Handle</label><input class="fi" id="aff-mn-handle" placeholder="@handle"/></div>'+
-    '<div class="fg"><label class="fl">${_s.adm_commission}</label><input class="fi" id="aff-mn-pct" type="number" value="20" min="1" max="50"/><div class="fh">% of first subscription payment</div></div>',
+    '<div class="fg"><label class="fl">'+_s.adm_commission+'</label><input class="fi" id="aff-mn-pct" type="number" value="20" min="1" max="50"/><div class="fh">% of first subscription payment</div></div>',
     '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
-    '<button class="btn btn-p" onclick="_affDoAddManual()">${_s.adm_add_aff}</button>'
+    '<button class="btn btn-p" onclick="_affDoAddManual()">'+_s.adm_add_aff+'</button>'
   );
 }
 
@@ -14190,7 +14190,7 @@ async function _queueShowStatus(){const _s=_L();
           }).join('')
         + '</div>' : '')
     + '<div style="margin-top:10px;font-size:12px;color:var(--text2)">Your data is saved locally and will not be lost.</div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_close+'</button>'
     + (online ? '<button class="btn btn-p btn-sm" onclick="closeModal();_queueDrain()">Sync Now</button>' : '')
   );
 }
@@ -18944,7 +18944,7 @@ ${(function(){
     + '</div>'
     + '<div style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:var(--r6);font-size:11px;color:var(--text2)">'
     + (_isUsdBiz
-        ? '&#128274; <strong>${_s.set_stripe_note_inner}</strong> We never store your card details. You will be returned to ShopTrack automatically after payment.'
+        ? '&#128274; <strong>'+_s.set_stripe_note_inner+'</strong> We never store your card details. You will be returned to ShopTrack automatically after payment.'
         : _fr
           ? '&#128161; <strong>Payez tôt, gardez votre date.</strong> Si votre formule expire le 31 et que vous payez le 20, votre nouvelle expiration sera le 31 suivant &mdash; pas 30 jours après le 20.'
           : '&#128161; <strong>Pay early, keep your date.</strong> If your plan expires on the 31st and you pay on the 20th, your new expiry will be the following 31st &mdash; not 30 days from the 20th.'
@@ -19353,7 +19353,7 @@ ${renderPlansTab()}
             <div style="font-weight:600;color:var(--ink)">${s.device}${s.cur?' <span style="color:var(--g);font-size:10px">· Current</span>':''}</div>
             <div style="color:var(--text2);margin-top:2px">${s.date} · ${s.loc}</div>
           </div>
-          ${s.cur?'':'<button style="font-size:10px;color:var(--r);background:none;border:none;cursor:pointer" onclick="toast(\'Session revoked\',\'success\')">${_s.adm_revoke}</button>'}
+          ${s.cur?'':'<button style="font-size:10px;color:var(--r);background:none;border:none;cursor:pointer" onclick="toast(\'Session revoked\',\'success\')">'+_s.adm_revoke+'</button>'}
         </div>`).join('')}
       </div>
     </div>
@@ -19531,7 +19531,7 @@ function renderPlansTab(){const _s=_L();
     + '<h2 style="font-size:22px;font-weight:900;color:var(--ink);font-family:var(--display);margin-bottom:6px">'+(_s.sa_plans_title||'ShopTrack Subscription Plans')+'</h2>'
     + '<p style="color:var(--text2);font-size:13px;max-width:480px;margin:0 auto">Choose the right plan for your businesses. All plans include a 30-day free trial and can be changed at any time.</p>'
     + '<div style="display:inline-flex;align-items:center;gap:10px;margin-top:16px;background:var(--bg3);padding:7px 16px;border-radius:30px;border:1px solid var(--border2)">'
-      + '<span id="lbl-monthly" style="font-size:12px;font-weight:700;color:var(--ink)">${_s.adm_monthly}</span>'
+      + '<span id="lbl-monthly" style="font-size:12px;font-weight:700;color:var(--ink)">'+_s.adm_monthly+'</span>'
       + '<label style="position:relative;display:inline-block;width:40px;height:22px">'
         + '<input type="checkbox" id="plan-billing-toggle" style="opacity:0;width:0;height:0" onchange="togglePlanBilling(this.checked)"/>'
         + '<span style="position:absolute;cursor:pointer;inset:0;background:var(--a);border-radius:22px"></span>'
@@ -19599,7 +19599,7 @@ function mSetDefaultPlan(planId){const _s=_L();
         +'<div style="font-size:14px;font-weight:700;color:'+plan.color+';margin-top:6px">'+plan.monthlyXAF.toLocaleString()+' Frs / month</div>'
       +'</div>'
     +'</div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-p" onclick="addAudit(\'Default plan changed\',\'Set to \'+plan.name);closeModal();toast(\'Plan set to \'+ plan.name,\'success\')">'+_s.appt_confirm_btn+'</button>'
   );
 }
@@ -19667,12 +19667,12 @@ function _renderImportGateBanner(){const _s=_L();
   const countryMissing = !(BIZ.country||'').trim();
   if(nameMissing || countryMissing){
     const missing = [];
-    if(nameMissing)    missing.push('<strong>${_s.adm_biz_name}</strong>');
-    if(countryMissing) missing.push('<strong>${_s.ui_country}</strong> (sets your currency)');
+    if(nameMissing)    missing.push('<strong>'+_s.adm_biz_name+'</strong>');
+    if(countryMissing) missing.push('<strong>'+_s.ui_country+'</strong> (sets your currency)');
     el.innerHTML = '<div class="alrt alrt-y" style="margin-bottom:16px;display:flex;align-items:flex-start;gap:12px">'
       + '<span style="font-size:18px;flex-shrink:0">⚠</span>'
       + '<div style="flex:1">'
-      + '<div style="font-weight:700;color:var(--ink);margin-bottom:4px">${_s.adm_biz_profile_inc}</div>'
+      + '<div style="font-weight:700;color:var(--ink);margin-bottom:4px">'+_s.adm_biz_profile_inc+'</div>'
       + '<div style="font-size:12px;line-height:1.7;color:var(--text)">Complete your profile before downloading or importing — this locks in the correct currency for your template.<br>'
       + 'Missing: ' + missing.join(' and ') + '.</div>'
       + '<button class="btn btn-p btn-sm" style="margin-top:10px" '
@@ -19770,7 +19770,7 @@ function _importProfileReady(){const _s=_L();
       + 'Settings → Business Profile → fill in the required fields → Save Profile.'
       + '</div>'
       + goBtn,
-      '<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>');
+      '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_close+'</button>');
     return false;
   }
   return true;
@@ -20486,7 +20486,7 @@ function mRemoveUser(uid){const _s=_L();
   if(u.id===SESSION.userId){ toast(_s.t_cannot_remove_self,'error'); return; }
   modal('\u26ab Remove User',
     '<div class="alrt alrt-r" style="margin-bottom:12px">Remove <strong>'+_esc(u.name)+'</strong> ('+_esc(u.email)+') from your account?<br>They will no longer be able to log in to ShopTrack.</div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-d" onclick="closeModal();_doRemoveUser(\''+uid+'\')">\u26ab Remove User</button>'
   );
 }
@@ -20667,7 +20667,7 @@ function mDuplicateCategory(type){const _s=_L();
   });
 
   modal('⧉ Duplicate '+(isInv?'Inventory':'Service')+' Category', html,
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>');
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>');
 }
 
 async function _execDuplicate(type, cat){const _s=_L();
@@ -21327,7 +21327,7 @@ function _arSendWA(custId){const _s=_L();
     +'<div class="fg"><label class="fl">'+_s.adm_msg_preview+'</label>'
     +'<textarea class="ft" id="ar-wa-msg" rows="8" style="font-size:12px;font-family:var(--mono)">'+_esc(msgLines)+'</textarea></div>'
     +'<div style="font-size:11px;color:var(--text2);margin-top:4px">Sending to: '+_esc(c.name)+' ('+ph+')</div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-p" onclick="_arSendWAConfirm(\''+custId+'\',\''+ph+'\')">💬 Send WhatsApp</button>'
   );
 }
@@ -21350,7 +21350,7 @@ function _arWriteOff(custId){const _s=_L();
   modal('Write Off AR — '+_esc(custName),
     '<p style="font-size:14px;color:var(--ink);margin-bottom:8px">Write off <strong>'+fmt(writeOffAmt)+'</strong> outstanding balance for <strong>'+_esc(custName)+'</strong>?</p>'
     +'<div class="alrt alrt-y">This removes the AR balance from records. The original sale/rental records are preserved. Use for bad debts or balance corrections.</div>',
-    '<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s btn-sm" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-d btn-sm" id="ar-wo-confirm">✕ Write Off</button>');
   setTimeout(function(){
     var btn=document.getElementById('ar-wo-confirm');
@@ -21375,7 +21375,7 @@ function _arWriteOffAll(){const _s=_L();
   modal(_s.vc_write_off_all,
     '<p style="font-size:14px;color:var(--ink);margin-bottom:8px">Write off <strong>'+fmt(total)+'</strong> across <strong>'+count+' customer'+(count!==1?'s':'')+'</strong>?</p>'
     +'<div class="alrt alrt-r">This cannot be undone. All customer AR balances will be zeroed. Original records are preserved.</div>',
-    '<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s btn-sm" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-d btn-sm" id="ar-woa-confirm">✕ Write Off All</button>');
   setTimeout(function(){
     var btn=document.getElementById('ar-woa-confirm');
@@ -21436,7 +21436,7 @@ function _apWriteOff(vendorId){const _s=_L();
   modal(_s.vc_clear_ap+' '+_esc(vendorName),
     '<p style="font-size:14px;color:var(--ink);margin-bottom:8px">Clear <strong>'+fmt(amt)+'</strong> AP balance for <strong>'+_esc(vendorName)+'</strong>?</p>'
     +'<div class="alrt alrt-y">This marks the balance as settled. Use after confirming payment has been made to the vendor.</div>',
-    '<button class="btn btn-s btn-sm" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s btn-sm" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-p btn-sm" id="ap-clear-confirm">✓ Clear Balance</button>');
   setTimeout(function(){
     var btn=document.getElementById('ap-clear-confirm');
@@ -24256,7 +24256,7 @@ function _fixServicePrices(){const _s=_L();
     +'<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Checked services will have their price divided by the exchange rate ('
     +CUR.code+' ÷ '+CUR.rate.toFixed(2)+' = USD base). Un-check any that look correct already.</div>'
     +'<div style="max-height:300px;overflow-y:auto">'+rows+'</div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-p" onclick="_applyPriceFix()">🔧 Fix Selected</button>'
   );
 }
@@ -24352,7 +24352,7 @@ function pgServices(){const _s=_L();const _ui=_s;
   if(!D.services.length){
     out += '<div class="card" style="text-align:center;padding:56px 24px">';
     out += '<div style="font-size:52px;margin-bottom:14px">\u2702\ufe0f</div>';
-    out += '<div style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px">${_s.svc_no_services}</div>';
+    out += '<div style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px">'+_s.svc_no_services+'</div>';
     out += '<div style="color:var(--text2);margin-bottom:20px">Add your services so clients can book appointments online</div>';
     out += '<button class="btn btn-p" onclick="mNewService()">+ Add Your First Service</button>';
     out += '</div>';
@@ -24395,7 +24395,7 @@ function pgServices(){const _s=_L();const _ui=_s;
       card += '<div style="width:100%;height:160px;overflow:hidden;flex-shrink:0;position:relative;">';
       card += '<img src="'+s.imgDataUrl+'" style="width:100%;height:100%;object-fit:cover;display:block;"/>';
       // Inactive overlay
-      if(inactive) card += '<div style="position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(0,0,0,.5);padding:4px 10px;border-radius:20px">${_s.adm_inactive}</span></div>';
+      if(inactive) card += '<div style="position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(0,0,0,.5);padding:4px 10px;border-radius:20px">'+_s.adm_inactive+'</span></div>';
       card += '</div>';
     } else {
       // Decorative coloured band
@@ -24409,8 +24409,8 @@ function pgServices(){const _s=_L();const _ui=_s;
     card += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">';
     card += '<div style="font-size:15px;font-weight:800;color:var(--ink);line-height:1.3;flex:1;min-width:0">'+_esc(s.name)+'</div>';
     var statusBadge = inactive
-      ? '<span style="flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;background:var(--r-dim);color:var(--r);padding:3px 7px;border-radius:10px">${_s.adm_inactive}</span>'
-      : '<span style="flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;background:#dcfce7;color:#166534;padding:3px 7px;border-radius:10px">${_s.adm_active}</span>';
+      ? '<span style="flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;background:var(--r-dim);color:var(--r);padding:3px 7px;border-radius:10px">'+_s.adm_inactive+'</span>'
+      : '<span style="flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;background:#dcfce7;color:#166534;padding:3px 7px;border-radius:10px">'+_s.adm_active+'</span>';
     card += statusBadge;
     card += '</div>';
 
@@ -24588,7 +24588,7 @@ function mRescheduleAppt(id){const _s=_L();
     +'</div>'
     +'<div class="fg"><label class="fl">'+_s.inv_reason+'</label><input class="fi" id="rs-reason" placeholder="e.g. Client request\u2026"/></div>'
     +'<div id="rs-conflict" style="display:none;margin-top:8px" class="alrt alrt-y"></div>',
-    '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +' <button class="btn btn-p" onclick="_saveReschedule(\''+id+'\')">&#128197; Reschedule</button>','sm');
   setTimeout(function(){_rsSync(id);},60);
 }
@@ -24871,7 +24871,7 @@ function _delSvc(id){const _s=_L();
       '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Cancel or reschedule all upcoming appointments first.</p>'+
       '<div>'+apptRows+'</div>',
       '<button class="btn btn-s" onclick="closeModal()">OK</button>'+
-      '<button class="btn btn-p btn-sm" id="go-appts-btn">${_s.appt_title}</button>');
+      '<button class="btn btn-p btn-sm" id="go-appts-btn">'+_s.appt_title+'</button>');
     setTimeout(function(){ var b=document.getElementById('go-appts-btn'); if(b) b.onclick=function(){closeModal();nav('appointments');}; },30);
     return;
   }
@@ -24880,7 +24880,7 @@ function _delSvc(id){const _s=_L();
   modal(_s.svc_del_title+' '+_esc(svc.name),
     '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(svc.name)+'</strong>? This cannot be undone.</p>'+historyNote,
     '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
-    '<button class="btn btn-d" id="confirm-del-svc-btn">${_s.ui_delete}</button>');
+    '<button class="btn btn-d" id="confirm-del-svc-btn">'+_s.ui_delete+'</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-svc-btn');
     if(btn) btn.onclick=function(){
@@ -25259,7 +25259,7 @@ function _L(){
     set_doc_upload:    fr ? '📷 Téléverser'               : '📷 Upload',
     set_doc_remove:    fr ? '🗑 Supprimer'                : '🗑 Remove',
     set_imp_title:     fr ? '📥 Importer des Données'     : '📥 Import Business Data',
-    set_imp_hint:      fr ? 'Utilisez le modèle Excel ShopTrack pour importer en masse. <strong>Seuls les fichiers .xlsx sont acceptés.</strong>' : 'Use the ShopTrack Excel template to import inventory, customers, sales, vendors and expenses in bulk. <strong>${_s.set_imp_xlsx_only}</strong>',
+    set_imp_hint:      fr ? 'Utilisez le modèle Excel ShopTrack pour importer en masse. <strong>Seuls les fichiers .xlsx sont acceptés.</strong>' : 'Use the ShopTrack Excel template to import inventory, customers, sales, vendors and expenses in bulk. <strong>'+_s.set_imp_xlsx_only+'</strong>',
     set_imp_step1:     fr ? 'Étape 1 — Télécharger le Modèle' : 'Step 1 — Download Template',
     set_imp_step1d:    fr ? 'Téléchargez le modèle Excel pré-formaté avec données exemples.' : 'Download the pre-formatted Excel template with sample data and dropdown validation on every sheet.',
     set_imp_dl:        fr ? '⬇ Télécharger le modèle .xlsx' : '⬇ Download .xlsx Template',
@@ -25907,7 +25907,7 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     inv_upload_csv:      fr ? 'Téléverser le CSV rempli'     : 'Upload Completed CSV',
     inv_name_col:        fr ? 'Nom'                          : 'Name',
     inv_product_photos:  fr ? 'Photos Produit'               : 'Product Photos',
-    inv_edit_photos_use: fr ? 'Utilisez <strong>Modifier</strong> pour ajouter des photos' : 'use <strong>${_s.inv_edit_lbl}</strong> ${_s.inv_edit_photos_use2}',
+    inv_edit_photos_use: fr ? 'Utilisez <strong>Modifier</strong> pour ajouter des photos' : 'use <strong>'+_s.inv_edit_lbl+'</strong> '+_s.inv_edit_photos_use2+'',
     inv_edit_lbl:        fr ? 'Modifier'                     : 'Edit',
 
     // ── Sales extra ────────────────────────────────────────────
@@ -28318,7 +28318,7 @@ function refreshNotifPanel(){
   }
   // Append WA quick-action footer to notification panel
   html += '<div style="border-top:1px solid var(--border);margin-top:10px;padding:10px 14px;display:flex;flex-direction:column;gap:7px">'
-    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:2px">${_s.ui_quick_actions}</div>'
+    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:2px">'+_s.ui_quick_actions+'</div>'
     + '<button class="btn btn-g btn-sm" style="justify-content:flex-start;gap:8px" onclick="nav(\'settings\');setTimeout(function(){var t=document.querySelector(\'.stab[onclick*=tab-notif]\');if(t){t.click();}},300)">'
     + '⚙️ Notification Settings</button>'
     + '</div>';
@@ -28401,7 +28401,7 @@ function _deleteAppt(id){const _s=_L();
   var mid=id;
   modal('Delete Appointment', warnHtml,
     '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
-    '<button class="btn btn-d" id="confirm-del-appt-btn">${_s.ui_delete}</button>');
+    '<button class="btn btn-d" id="confirm-del-appt-btn">'+_s.ui_delete+'</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-appt-btn');
     if(btn) btn.onclick=function(){
@@ -28434,7 +28434,7 @@ function mEditApptCompleted(id){const _s=_L();
     +'</select></div>'
     +'<div class="fg"><label class="fl">'+_s.ui_notes+'</label>'
     +'<textarea class="ft" id="eac-notes" style="min-height:60px">'+(a.notes||'')+'</textarea></div>';
-  var footer = '<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>'
+  var footer = '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +' <button class="btn btn-p" id="eac-save-btn">'+_s.ui_save+'</button>';
   modal(_s.appt_edit_title, body, footer, 'sm');
   // Wire save button after modal renders (avoids all quote-nesting)
@@ -28573,7 +28573,7 @@ function mViewAppt(id){const _s=_L();
 
   var statusHtml = '<div style="background:'+col+'18;border:1px solid '+col+'40;border-radius:var(--r8);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
     +'<span style="font-weight:700;color:'+col+';font-size:14px">'+a.st
-    +(a.walkIn?'&nbsp;<span style="font-size:10px;background:var(--o-dim);color:var(--o);padding:2px 6px;border-radius:10px">${_s.appt_walkin}</span>':'')
+    +(a.walkIn?'&nbsp;<span style="font-size:10px;background:var(--o-dim);color:var(--o);padding:2px 6px;border-radius:10px">'+_s.appt_walkin+'</span>':'')
     +'</span><span style="font-size:11px;color:var(--text2)">'+a.id+'</span></div>';
 
   var grid = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'
@@ -28599,7 +28599,7 @@ function mViewAppt(id){const _s=_L();
   var notesHtml = a.notes ? '<div style="background:var(--bg3);border-radius:var(--r8);padding:10px 12px;margin-bottom:12px;font-size:12px">\uD83D\uDCDD '+a.notes+'</div>' : '';
 
   var statusRow = canEdit
-    ? '<div class="fg-2"><div class="fg"><label class="fl">${_s.appt_update_status}</label>'
+    ? '<div class="fg-2"><div class="fg"><label class="fl">'+_s.appt_update_status+'</label>'
       +'<select class="fs" id="va-st">'
       +['Reserved','Confirmed','In Progress','Completed','No-Show','Cancelled'].map(function(s){return '<option'+(s===a.st?' selected':'')+'>'+s+'</option>';}).join('')
       +'</select></div>'
