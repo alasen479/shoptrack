@@ -19617,11 +19617,16 @@ function switchSettingsTab(el, tabId){
                    'sa-tab-profile','sa-tab-plans','sa-tab-security','sa-tab-notif'];
   allTabs.forEach(id=>{
     const el=document.getElementById(id);
-    if(id===tabId) console.log('[Settings] Target tab element:', el ? 'FOUND, innerHTML length=' + el.innerHTML.length : 'NOT FOUND');
-    if(id===tabId && el) console.log('[Settings] First 500 chars:', el.innerHTML.substring(0, 500));
-    if(id===tabId && el) console.log('[Settings] Children count:', el.children.length, 'offsetHeight:', el.offsetHeight);
     if(el) el.style.display = id===tabId?'block':'none';
   });
+  // Debug: check after display change
+  var _dbgEl = document.getElementById(tabId);
+  if(_dbgEl){
+    requestAnimationFrame(function(){
+      console.log('[Settings] Tab:', tabId, 'offsetHeight:', _dbgEl.offsetHeight, 'children:', _dbgEl.children.length, 'display:', _dbgEl.style.display);
+      if(_dbgEl.offsetHeight === 0) console.log('[Settings] ZERO HEIGHT! Parent offsetHeight:', _dbgEl.parentElement.offsetHeight, 'Parent tag:', _dbgEl.parentElement.tagName, 'Parent id:', _dbgEl.parentElement.id);
+    });
+  }
   if(tabId==='tab-contract') _initContractTab();
   if(tabId==='tab-import')   _renderImportGateBanner();
   if(tabId==='tab-subscription') _loadReferralCount();
