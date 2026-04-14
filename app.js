@@ -24114,7 +24114,7 @@ function pgAppointments(){const _s=_L();
     : '';
 
   return '<div class="ph">'
-    +'<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>'+_ui.nav_appointments+'</span></div>'
+    +'<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>'+_s.nav_appointments+'</span></div>'
     +'<div class="ph-row"><h1>'+_s.appt_title+'</h1>'
     +'<div class="btn-row">'
     +'<button class="btn btn-s btn-sm" onclick="_togApptView()">'+(_apptView==='calendar'?'📋 List':'📅 Calendar')+'</button>'
@@ -24315,12 +24315,12 @@ function pgServices(){const _s=_L();
 
   // ── Page header ───────────────────────────────────────────
   out += '<div class="ph">';
-  out += '<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>'+_ui.nav_services+'</span></div>';
-  out += '<div class="ph-row"><h1>${_s.svc_title}</h1><div class="btn-row">';
+  out += '<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>'+_s.nav_services+'</span></div>';
+  out += '<div class="ph-row"><h1>'+_s.svc_title+'</h1><div class="btn-row">';
   out += '<button class="btn btn-s btn-sm" onclick="_syncServicesToCloud()" title="Save all services to cloud so they appear on your booking page">\u2601 Sync to Cloud</button>';
   out += '<button class="btn btn-g btn-sm" onclick="_fixServicePrices()" title="Detect and fix prices that appear wrong on the booking page">🔧 Fix Prices</button>';
   out += '<button class="btn btn-g btn-sm" onclick="mDuplicateCategory(\'svc\')">⧉ Duplicate Category</button>';
-  out += '<button class="btn btn-p btn-sm" onclick="mNewService()">${_s.svc_add}</button>';
+  out += '<button class="btn btn-p btn-sm" onclick="mNewService()">'+_s.svc_add+'</button>';
   out += '</div></div>';
   out += '<p>Your service catalog \u2014 manage pricing, duration, categories, and your booking page</p>';
   if(activeCats.length>1){
