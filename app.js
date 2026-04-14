@@ -24137,14 +24137,14 @@ function pgAppointments(){const _s=_L();
     +'<div class="kpi c" style="cursor:pointer" onclick="_togApptView(\'list\',\'today\')" title="View today\'s appointments">'
       +'<div class="kpi-lbl">'+_s.appt_today+'</div>'
       +'<div class="kpi-val c">'+todayList.length+'</div>'
-      +'<div class="kpi-sub">'+(todayList.length ? todayList.filter(a=>a.st==='Completed').length+' done · '+todayList.filter(a=>a.st!=='Completed'&&a.st!=='Cancelled').length+' remaining' : 'Nothing booked')+'</div>'
+      +'<div class="kpi-sub">'+(todayList.length ? todayList.filter(a=>a.st==='Completed').length+' '+(_s.appt_done||'done')+' \u00b7 '+todayList.filter(a=>a.st!=='Completed'&&a.st!=='Cancelled').length+' '+(_s.appt_remaining||'remaining') : (_s.appt_nothing_booked||'Nothing booked'))+'</div>'
     +'</div>'
 
     // Upcoming → filters list to future non-cancelled
     +'<div class="kpi b" style="cursor:pointer" onclick="_togApptView(\'list\',\'upcoming\')" title="'+_s.appt_view_up+'">'
       +'<div class="kpi-lbl">'+_s.appt_upcoming+'</div>'
       +'<div class="kpi-val b">'+upcoming.length+'</div>'
-      +'<div class="kpi-sub">Next 30 days</div>'
+      +'<div class="kpi-sub">'+(_s.appt_next_30||'Next 30 days')+'</div>'
     +'</div>'
 
     // Pending confirmation → filters to Reserved
@@ -24155,17 +24155,17 @@ function pgAppointments(){const _s=_L();
     +'</div>'
 
     // Completed → opens revenue breakdown modal
-    +'<div class="kpi g" style="cursor:pointer" onclick="mServicesRevenue()" title="View completed appointments & revenue">'
+    +'<div class="kpi g" style="cursor:pointer" onclick="mServicesRevenue()" title="'+(_s.appt_view_completed||'View completed appointments & revenue')+'">'
       +'<div class="kpi-lbl">'+_s.ui_st_completed+'</div>'
       +'<div class="kpi-val g">'+completed.length+'</div>'
-      +'<div class="kpi-sub">'+(totalRev>0?fmt(totalRev)+' earned':'No revenue yet')+'</div>'
+      +'<div class="kpi-sub">'+(totalRev>0?fmt(totalRev)+' '+(_s.appt_earned||'earned'):(_s.appt_no_rev||'No revenue yet'))+'</div>'
     +'</div>'
 
     // Revenue KPI — avg per appointment
     +'<div class="kpi y" style="cursor:pointer" onclick="mServicesRevenue()" title="'+_s.appt_view_rev+'">'
-      +'<div class="kpi-lbl">Avg / Appt</div>'
+      +'<div class="kpi-lbl">'+(_s.appt_avg||'Avg / Appt')+'</div>'
       +'<div class="kpi-val y">'+fmtKpi(avgRev)+'</div>'
-      +'<div class="kpi-sub">'+(completed.length?completed.length+' completed':'—')+'</div>'
+      +'<div class="kpi-sub">'+(completed.length?completed.length+' '+(_s.appt_completed_count||'completed'):'\u2014')+'</div>'
     +'</div>'
 
     // No-shows → filters list
@@ -25994,6 +25994,15 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     appt_today:        fr ? "Aujourd'hui"                 : 'Today',
     appt_upcoming:     fr ? 'À Venir'                     : 'Upcoming',
     appt_confirm_tab:  fr ? 'À Confirmer'                 : 'Needs confirmation',
+    appt_done:         fr ? 'terminé(s)'                  : 'done',
+    appt_remaining:    fr ? 'restant(s)'                  : 'remaining',
+    appt_nothing_booked: fr ? 'Rien de prévu'             : 'Nothing booked',
+    appt_next_30:      fr ? 'Prochains 30 jours'          : 'Next 30 days',
+    appt_earned:       fr ? 'gagné'                       : 'earned',
+    appt_no_rev:       fr ? 'Pas encore de revenus'        : 'No revenue yet',
+    appt_avg:          fr ? 'Moy. / RDV'                   : 'Avg / Appt',
+    appt_completed_count: fr ? 'terminé(s)'               : 'completed',
+    appt_view_completed: fr ? 'Voir les RDV terminés et le CA' : 'View completed appointments & revenue',
     appt_no_show:      fr ? 'Absences'                    : 'No-Shows',
     appt_checkout:     fr ? 'Encaisser'                   : 'Checkout',
     appt_complete:     fr ? 'Terminer'                    : 'Complete',
@@ -27714,7 +27723,7 @@ async function _requestPushPermission(){
     return;
   }
   if(Notification.permission === 'denied'){
-    toast('Notifications are blocked. Go to browser settings → Site Settings → Notifications to allow shoptrack.org','error');
+    toast((BIZ.language||'en')==='fr'?'Les notifications sont bloqu\u00e9es. Allez dans Param\u00e8tres du navigateur \u2192 Param\u00e8tres du site \u2192 Notifications pour autoriser shoptrack.org':'Notifications are blocked. Go to browser settings \u2192 Site Settings \u2192 Notifications to allow shoptrack.org','error');
     return;
   }
   try{
