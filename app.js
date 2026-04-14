@@ -19618,6 +19618,8 @@ function switchSettingsTab(el, tabId){
   allTabs.forEach(id=>{
     const el=document.getElementById(id);
     if(id===tabId) console.log('[Settings] Target tab element:', el ? 'FOUND, innerHTML length=' + el.innerHTML.length : 'NOT FOUND');
+    if(id===tabId && el) console.log('[Settings] First 500 chars:', el.innerHTML.substring(0, 500));
+    if(id===tabId && el) console.log('[Settings] Children count:', el.children.length, 'offsetHeight:', el.offsetHeight);
     if(el) el.style.display = id===tabId?'block':'none';
   });
   if(tabId==='tab-contract') _initContractTab();
