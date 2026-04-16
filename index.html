@@ -3,13 +3,80 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,maximum-scale=1.0,user-scalable=no"/>
+
+<!-- SEO Meta Tags -->
+<title>ShopTrack — Business Management Platform for Small Businesses in Cameroon</title>
+<meta name="description" content="ShopTrack is a free cloud-based business management platform for SMEs in Cameroon. Manage sales, inventory, expenses, customers, appointments, rentals, invoices and accounting — all from your phone. Bilingual (English/French), works offline, with WhatsApp integration and AI tools."/>
+<meta name="keywords" content="business management Cameroon, gestion commerciale Cameroun, small business software Africa, inventory management, sales tracking, invoicing, accounting, point of sale, POS, boutique, salon, bridal, rental, ShopTrack, logiciel de gestion, facturation, comptabilité, PME Cameroun"/>
+<meta name="author" content="ShopTrack"/>
+<meta name="robots" content="index, follow"/>
+<link rel="canonical" href="https://shoptrack.org/"/>
+
+<!-- Open Graph (Facebook, WhatsApp, LinkedIn) -->
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="ShopTrack — Business Management Platform for African SMEs"/>
+<meta property="og:description" content="Manage your entire business from your phone — sales, inventory, expenses, customers, invoices, accounting, WhatsApp notifications and AI tools. Free to start. Bilingual EN/FR. Works offline."/>
+<meta property="og:url" content="https://shoptrack.org/"/>
+<meta property="og:site_name" content="ShopTrack"/>
+<meta property="og:locale" content="en_CM"/>
+<meta property="og:locale:alternate" content="fr_CM"/>
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="ShopTrack — Business Management Platform"/>
+<meta name="twitter:description" content="Free business management for small businesses in Cameroon. Sales, inventory, invoicing, accounting, WhatsApp alerts, AI tools. Bilingual. Works offline."/>
+
+<!-- Geo targeting for Cameroon -->
+<meta name="geo.region" content="CM"/>
+<meta name="geo.placename" content="Cameroon"/>
+<meta name="language" content="en,fr"/>
+<meta name="content-language" content="en,fr"/>
+
+<!-- Structured Data (JSON-LD) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ShopTrack",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web, iOS, Android",
+  "description": "Cloud-based business management platform for small and medium enterprises in Cameroon and Africa. Manage sales, inventory, expenses, customers, appointments, rentals, invoicing, and accounting.",
+  "url": "https://shoptrack.org",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "XAF",
+    "description": "Free tier with core features. Premium at 4,900 XAF/month."
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "ratingCount": "10"
+  },
+  "inLanguage": ["en", "fr"],
+  "availableLanguage": [
+    {"@type": "Language", "name": "English"},
+    {"@type": "Language", "name": "French"}
+  ],
+  "areaServed": {
+    "@type": "Country",
+    "name": "Cameroon"
+  },
+  "creator": {
+    "@type": "Organization",
+    "name": "ShopTrack",
+    "url": "https://shoptrack.org"
+  }
+}
+</script>
+
+<!-- PWA -->
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="ShopTrack"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#0a0c12"/>
 <link rel="manifest" id="pwa-manifest"/>
-<title>ShopTrack — Small Business Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 :root{
@@ -782,7 +849,7 @@ body.light .ai-out.has-content{background:#f8faff;border-color:var(--a)}
   var scripts = [
     'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
-    '/app.js?v=1776181477'
+    '/app.js?v=1776371384'
   ];
   var i = 0;
   function loadNext(){

@@ -1,0 +1,11 @@
+# ShopTrack robots.txt
+User-agent: *
+Allow: /
+Allow: /affiliates
+Allow: /booking.html
+
+# Disallow internal app routes that require login
+Disallow: /.netlify/
+
+# Sitemap
+Sitemap: https://shoptrack.org/sitemap.xml
