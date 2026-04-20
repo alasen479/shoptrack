@@ -6277,7 +6277,7 @@ function _fillContractPlaceholders(tpl, r){
 }
 
 // ── Build the printable contract HTML ────────────────────────
-function _buildContractHTML(r, sigDataUrl){
+function _buildContractHTML(r, sigDataUrl){var _s=_L();
   const title   = (document.getElementById('contract-title-input')?.value || BIZ.contractTitle || 'RENTAL AGREEMENT').toUpperCase();
   const bodyTpl = document.getElementById('contract-body-input')?.value || BIZ.contractTemplate || _CONTRACT_DEFAULT;
   const filled  = _fillContractPlaceholders(bodyTpl, r);
@@ -11692,7 +11692,7 @@ function provAutoFill(email){
   }
 }
 
-function doProvision(){
+function doProvision(){var _s=_L();
   if(!SESSION.isSuperAdmin){ toast(_s.t_sa_only,'error'); return; }
 
   const email   = (document.getElementById('prov-email')?.value  || '').toLowerCase().trim();
@@ -12827,7 +12827,7 @@ function mBillingRunReminders(){const _s=_L();
 }
 
 // Called from the Send All button — iterates window._reminderQueue safely
-function _sendReminderQueue(){
+function _sendReminderQueue(){var _s=_L();
   const queue = window._reminderQueue || [];
   if(!queue.length){ closeModal(); return; }
   closeModal();
@@ -13533,7 +13533,7 @@ async function _affDoAddManual(){
   else toast(_s.t_error_prefix+r.error,'error');
 }
 
-function _affExportCSV(){
+function _affExportCSV(){var _s=_L();
   if(!_affiliates.length){ toast(_s.t_no_aff_export,'info'); return; }
   var headers = ['Name','Email','Code','Handle','Status','Commission%','Clicks','Conversions','Total Earned XAF','Unpaid XAF','Joined'];
   var rows = _affiliates.map(a=>[
@@ -17075,7 +17075,7 @@ function _showEmailVerifyScreen(email, firstName, emailSent, userId, bizId, pwd,
   }, 200);
 }
 
-async function _resendVerifyToken(){
+async function _resendVerifyToken(){var _s=_L();
   if(!_pendingVerify){ toast(_s.t_session_expired,'error'); return; }
   const {email, userId, bizId, signupPayload} = _pendingVerify;
 
@@ -17117,7 +17117,7 @@ async function _resendVerifyToken(){
     }
   } catch(e){ toast(_s.t_resend_failed+e.message,'error'); }
 }
-async function _confirmVerifyToken(){
+async function _confirmVerifyToken(){var _s=_L();
   if(!_pendingVerify){ toast(_s.t_session_expired,'error'); return; }
   const {email, userId, bizId, pwd, signupPayload} = _pendingVerify;
 
@@ -18009,7 +18009,7 @@ function shareDocEmail(){
   window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
 }
 
-function shareDocNative(){
+function shareDocNative(){var _s=_L();
   if(!navigator.share){ toast(_s.t_sharing_unsup,'error'); return; }
   navigator.share({
     title: _currentDoc.title + ' — ' + BIZ.name,
@@ -22945,7 +22945,7 @@ function exportLedgerCSV(){
 // FULL BUSINESS DATA EXPORT -- multi-sheet Excel workbook
 // Reports page: "Export All Data (.xlsx)" button
 // ============================================================
-function exportAllDataXLSX(){
+function exportAllDataXLSX(){var _s=_L();
   if(!canEdit('export_data')){ toast(_s.t_no_perm_export,'error'); return; }
   _loadSheetJS(function(){
     toast(_s.t_building_excel,'info');
@@ -24190,7 +24190,7 @@ function pgAppointments(){const _s=_L();
 
 
 // ── Sync all in-memory services to Supabase ──────────────────
-async function _syncServicesToCloud(){
+async function _syncServicesToCloud(){var _s=_L();
   if(!SESSION.bizId){
     toast(_s.t_cannot_sync,'error'); return;
   }
@@ -28091,6 +28091,7 @@ function _bulkWAReminders(type){
 
 // ── Upgraded refreshNotifPanel with actionable items ─────────
 function refreshNotifPanel(){
+  var _s = _L();
   _updateApptBadge();
   const today = localDateStr();
 
