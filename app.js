@@ -1545,7 +1545,7 @@ function _freePlanBlocked(actionLabel, checkType){
       +'<span>✅ AI Studio assistant</span>'
       +'</div></div></div>',
       '<button class="btn btn-s" onclick="closeModal()">Maybe Later</button>'
-      +'<button class="btn btn-p" onclick="closeModal();_showSubscriptionSettings()">🚀 Upgrade — 4,900 XAF/mo</button>'
+      +'<button class="btn btn-p" onclick="closeModal();mSubPayNow()">🚀 Upgrade</button>'
     );
     return true;
   }
@@ -1602,7 +1602,7 @@ function _renderFreePlanNotice(){
        +'You just cannot add new items until you upgrade or reduce to within the Free plan limits.'
      +'</div>'
    +'</div>'
-   +'<button class="btn btn-p btn-sm" onclick="mChangePlan()" style="white-space:nowrap;flex-shrink:0">🚀 Upgrade to Premium</button>';
+   +'<button class="btn btn-p btn-sm" onclick="mSubPayNow()" style="white-space:nowrap;flex-shrink:0">🚀 Upgrade to Premium</button>';
 
   var page = document.getElementById('page');
   if(!page) return;
@@ -1644,7 +1644,7 @@ function _renderTrialCountdown(){
       +'</div>'
       +'<div style="font-size:10px;color:var(--text2);margin-top:3px">Full Premium access until '+(BIZ.trialEnd||BIZ.subExpires||'')+'</div>'
     +'</div>'
-    +'<button class="btn btn-p btn-sm" onclick="_showSubscriptionSettings()" style="white-space:nowrap;flex-shrink:0">🚀 Upgrade — 4,900 Frs/mo</button>'
+    +'<button class="btn btn-p btn-sm" onclick="mSubPayNow()" style="white-space:nowrap;flex-shrink:0">🚀 Upgrade</button>'
     +'<button onclick="this.parentNode.remove()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:0 4px;line-height:1;flex-shrink:0">×</button>';
 
   // Inject after setup score bar or at top of page content
@@ -1693,7 +1693,7 @@ function _showPremiumUpgradePrompt(page){
     +'<div style="font-size:18px;font-weight:900;color:var(--ink);margin-bottom:6px">'+info.name+' — Premium</div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6">'+info.desc+'</div>'
     +'<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r10);padding:16px;margin-bottom:20px;text-align:left">'
-      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">Included in Premium (4,900 Frs/mo)</div>'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">'+(_s.set_sub_included||'Included in Premium')+' ('+(_isUSD()?'$18':fmt(4900))+'/'+(_s.set_sub_mo||'mo')+')</div>'
       +'<div style="display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--ink)">'
         +'<span>\u2705 Rental management \u2014 deposits, contracts, late fees</span>'
         +'<span>\u2705 Appointments & multi-staff booking page</span>'
@@ -1704,12 +1704,12 @@ function _showPremiumUpgradePrompt(page){
         +'<span>\u2705 Up to 5 staff users + unlimited inventory</span>'
       +'</div>'
     +'</div>'
-    +'<div style="font-size:13px;font-weight:800;color:var(--a)">4,900 Frs / month</div>'
+    +'<div style="font-size:13px;font-weight:800;color:var(--a)">'+(_isUSD()?'$18':''+fmt(4900))+' / '+(_s.set_sub_month||'month')+'</div>'
     +'<div style="font-size:11px;color:var(--text2);margin-top:3px">Cancel anytime \u00b7 No contract \u00b7 All data retained</div>'
   +'</div>';
   modal('\uD83D\uDD12 Premium Feature', html,
     '<button class="btn btn-s" onclick="closeModal();nav(\'dashboard\')">&#8592; Back to Dashboard</button>'
-    +'<button class="btn btn-p" onclick="closeModal();mChangePlan()">\uD83D\uDE80 Upgrade to Premium \u2014 4,900 Frs/mo</button>'
+    +'<button class="btn btn-p" onclick="closeModal();mSubPayNow()">\uD83D\uDE80 Upgrade to Premium</button>'
   );
 }
 
@@ -2390,7 +2390,7 @@ function _subExpiryBanner(){
     return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:'+bg+';border:1px solid '+border+';border-radius:var(--r8);margin-bottom:14px">'
       +'<span style="font-size:20px">'+icon+'</span>'
       +'<div style="flex:1;font-size:13px;color:var(--ink)">'+msg+'</div>'
-      +'<button class="btn btn-p btn-sm" onclick="mChangePlan()">⬆ Upgrade Plan</button>'
+      +'<button class="btn btn-p btn-sm" onclick="mSubPayNow()">⬆ Upgrade Plan</button>'
       +'<button class="btn btn-s btn-sm" onclick="nav(\'settings\')">View Plans</button>'
       +'</div>';
   }
@@ -12242,13 +12242,13 @@ function _getPlanTier(){
 function _showUpsell(reason){const _s=_L();
   window._pwSelectedPlan='Premium';
   modal('\uD83D\uDE80 Upgrade to Premium',
-    '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px">\uD83D\uDE80 Premium \u2014 4,900 XAF/month</div>'
+    '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px">\uD83D\uDE80 Premium \u2014 '+(_isUSD()?'$18/month':fmt(4900)+'/month')+'</div>'
     +'<p style="font-size:13px;color:var(--text2);line-height:1.7;margin:0 0 16px">Upgrade to Premium for unlimited inventory, customers, rentals, AI Studio, WhatsApp automation and full reports.</p>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:12px 14px;font-size:12px;color:var(--text2)">'
     +'<strong style="color:var(--ink)">Includes:</strong> Unlimited everything \u00b7 5 users \u00b7 AI Studio \u00b7 Rentals \u00b7 No watermark'
     +'</div>',
     '<button class="btn btn-s" onclick="closeModal()">'+_s.prof_not_now+'</button>'
-    +'<button class="btn btn-p" onclick="closeModal();_pwProceed()">\u25b6 Upgrade \u2014 4,900 XAF/mo</button>'
+    +'<button class="btn btn-p" onclick="closeModal();_pwProceed()">\u25b6 Upgrade</button>'
   );
 }
 function mAddBizUser(){const _s=_L();
@@ -12260,7 +12260,7 @@ function mAddBizUser(){const _s=_L();
       modal('\uD83D\uDD12 Multiple Users \u2014 Premium Only',
         '<div class="alrt alrt-b" style="margin-bottom:14px">The Free plan supports 1 user (owner only). Upgrade to Premium for up to 5 staff accounts.</div>',
         '<button class="btn btn-s" onclick="closeModal()">OK</button>'
-        +'<button class="btn btn-p" onclick="closeModal();mChangePlan()">\uD83D\uDE80 Upgrade to Premium</button>'
+        +'<button class="btn btn-p" onclick="closeModal();mSubPayNow()">\uD83D\uDE80 Upgrade to Premium</button>'
       ); return; }
   }
   // Super Admins can assign users to any active business.
@@ -23365,7 +23365,7 @@ function _checkPlanExpiry(){
     var msgFree=banner.querySelector('.peb-msg');
     if(msgFree) msgFree.textContent='\uD83C\uDF31 You are on the Free plan \u2014 '+FREE_LIMITS.inv+' products, '+FREE_LIMITS.cust+' customers. Upgrade anytime.';
     var btnFree=banner.querySelector('.peb-upgrade-btn');
-    if(btnFree){ btnFree.style.display=''; btnFree.textContent='\u25b6 Upgrade to Premium'; btnFree.onclick=function(){ mChangePlan(); }; }
+    if(btnFree){ btnFree.style.display=''; btnFree.textContent='\u25b6 Upgrade to Premium'; btnFree.onclick=function(){ mSubPayNow(); }; }
     return;
   }
 }
@@ -23425,7 +23425,7 @@ function _showTrialPaywall(daysLeft, hardBlock){const _s=_L();
 function _pwSelectPlan(plan){const _s=_L();
   window._pwSelectedPlan = 'Premium';
   var btn=document.getElementById('pw-upgrade-btn');
-  if(btn) btn.textContent='\u25b6 Upgrade to Premium \u2014 4,900 XAF/mo';
+  if(btn) btn.textContent='\u25b6 Upgrade to Premium';
 }
 
 function _pwDismiss(){const _s=_L();
