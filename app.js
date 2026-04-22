@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1776770000");
+console.log("ShopTrack v2.7 - build:1776860000");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1015,7 +1015,7 @@ function toast(msg,type='info'){
   setTimeout(()=>{t.style.transition='opacity .3s';t.style.opacity='0';setTimeout(()=>t.remove(),300)},2800);
 }
 
-function _addInvCat(){
+function _addInvCat(){var _s=_L();
   var val=document.getElementById('ai-newcat-inp').value.trim();
   if(!val){toast(_s.t_cat_name,'error');return;}
   if(D.invCats.indexOf(val)===-1){
@@ -1062,7 +1062,7 @@ function _delInvCat(idx){
   _renderInvCatPills();
   toast('"'+cat+'" removed'+(inUse?' ('+inUse+' item'+(inUse>1?'s':'')+' keep their label)':''),'success');
 }
-function _addInvCatSettings(){
+function _addInvCatSettings(){var _s=_L();
   var val=(document.getElementById('settings-new-cat-inp')?.value||'').trim();
   if(!val){toast(_s.t_cat_name,'error');return;}
   if(D.invCats.indexOf(val)!==-1){toast(_s.t_cat_exists,'error');return;}
@@ -1079,7 +1079,7 @@ function _delExpCat(idx){
   _renderExpCatPills();
   toast('"'+cat+'" removed','success');
 }
-function _addExpCatSettings(){
+function _addExpCatSettings(){var _s=_L();
   var val=(document.getElementById('settings-new-expcat-inp')?.value||'').trim();
   if(!val){toast(_s.t_cat_name,'error');return;}
   if(D.expCats.indexOf(val)!==-1){toast(_s.t_cat_exists,'error');return;}
@@ -1108,7 +1108,7 @@ function _delSvcCat(idx){
   _renderSvcCatPills();
   toast('"'+cat+'" removed'+(inUse?' ('+inUse+' service'+(inUse>1?'s':'')+' keep their label)':''),'success');
 }
-function _addSvcCatSettings(){
+function _addSvcCatSettings(){var _s=_L();
   var val=(document.getElementById('settings-new-svccat-inp')?.value||'').trim();
   if(!val){toast(_s.t_cat_name,'error');return;}
   if(!D.svcCats) D.svcCats=[];
@@ -1120,7 +1120,7 @@ function _addSvcCatSettings(){
   toast('"'+val+'" service category added ✓','success');
 }
 
-function _addVendorCat(){
+function _addVendorCat(){var _s=_L();
   var val=document.getElementById('av-newcat-inp').value.trim();
   if(!val){toast(_s.t_cat_name,'error');return;}
   if(D.vendorCats.indexOf(val)===-1) D.vendorCats.push(val);
@@ -1134,7 +1134,7 @@ function _addVendorCat(){
   toast(_s.t_cat_prefix+val+'" added','success');
 }
 
-function _addExpCat(){
+function _addExpCat(){var _s=_L();
   var val=document.getElementById('ae-newcat-inp').value.trim();
   if(!val){toast(_s.t_cat_name,'error');return;}
   if(D.expCats.indexOf(val)===-1) D.expCats.push(val);
@@ -1678,7 +1678,7 @@ const PREMIUM_ONLY_PAGES = new Set([
   'booking-settings', // Booking configuration
 ]);
 
-function _showPremiumUpgradePrompt(page){
+function _showPremiumUpgradePrompt(page){var _s=_L();
   var pageLabels = {
     'rentals':          {icon:'\uD83D\uDD50', name:'Rental Management',        desc:'Track rentals, deposits, late fees, contracts and overdue returns.'},
     'appointments':     {icon:'\uD83D\uDCC5', name:'Appointments & Bookings',  desc:'Online booking page, multi-staff scheduling, appointment reminders.'},
@@ -1729,7 +1729,7 @@ function _hasPlan(){
 // Sets _navUserTriggered so error toasts show on explicit navigation
 function navTo(p){ _navUserTriggered = true; nav(p); }
 
-function nav(p){
+function nav(p){var _s=_L();
   // ══ IDENTITY WALL — cannot be bypassed ══════════════════════
   // Rule 1: SA can NEVER access business data pages
   if(SESSION.isSuperAdmin && BIZ_ONLY_PAGES.has(p)){
@@ -1947,7 +1947,7 @@ function _arBulkCollect(){const _s=_L();
   },50);
 }
 
-function _arBulkCollectSave(dt){
+function _arBulkCollectSave(dt){var _s=_L();
   var today = dt||localDateStr();
   var collected = 0;
   document.querySelectorAll('.bc-chk:checked').forEach(function(chk){
@@ -2012,7 +2012,7 @@ function afterRender(p){
 // ============================================================
 // DASHBOARD
 // ============================================================
-function _qaNav(pg,lbl){
+function _qaNav(pg,lbl){var _s=_L();
   // Navigate to page first, then open the creation modal
   switch(pg){
     case '_invoice':  mInvoiceNew(); return;
@@ -2098,7 +2098,7 @@ function mCustomizeDash(){var _s=_L();
    <button class="btn btn-s btn-sm" onclick="_dashConfigReset()">↺ Reset Defaults</button>
    <button class="btn btn-p" onclick="_dashConfigSave()">💾 Save & Refresh</button>`);
 }
-function _dashConfigSave(){
+function _dashConfigSave(){var _s=_L();
   const cfg = {
     kpis: ['rev','saleRev','rentRev','apptRev','gp','np','ar','ap','invVal'].filter(k=>document.getElementById('dc-kpi-'+k)?.checked),
     sections: ['quickActions','recentSales','recentRentals','recentAppointments','overdueRentals','topProducts','plSummary','lowStock','recentActivity'].filter(k=>document.getElementById('dc-sec-'+k)?.checked),
@@ -2109,7 +2109,7 @@ function _dashConfigSave(){
   nav('dashboard');
   toast(_s.t_dash_saved,'success');
 }
-function _dashConfigReset(){
+function _dashConfigReset(){var _s=_L();
   _saveDashConfig(_DASH_DEFAULT);
   closeModal();
   nav('dashboard');
@@ -2500,7 +2500,7 @@ function _pgSelectPlan(planId){
   if(btn) btn.disabled=false;
 }
 
-async function _pgConfirmPlan(){
+async function _pgConfirmPlan(){var _s=_L();
   var planId = (document.getElementById('pg-selected-plan')||{}).value||'';
   if(!planId){ toast(_s.t_select_plan,'error'); return; }
   // Normalize plan IDs
@@ -2559,7 +2559,7 @@ async function mSubPayNowStripe(){const _s=_L();
   );
 }
 
-async function _doStripeCheckout(plan,cycle,newExpiry){
+async function _doStripeCheckout(plan,cycle,newExpiry){var _s=_L();
   var btn=document.getElementById('stripe-pay-btn');
   if(btn){btn.disabled=true;btn.textContent='Preparing checkout\u2026';}
   try{
@@ -2736,7 +2736,7 @@ function _subDetectCarrier(raw){
   }
 }
 
-async function _doSubPayNow(currentExpiry, newExpiry, amtXAF){
+async function _doSubPayNow(currentExpiry, newExpiry, amtXAF){var _s=_L();
   const phone = (document.getElementById('spn-phone')?.value||'').trim();
   const btn   = document.getElementById('spn-pay-btn');
   if(!phone){ toast(_s.t_phone_req,'error'); return; }
@@ -3270,7 +3270,7 @@ function switchInvView(el,mode){const _s=_L();
   }
 }
 
-function _saveItemPrices(id){
+function _saveItemPrices(id){var _s=_L();
   var r2=CUR.rate;
   var itx=D.inv.find(function(i){return i.id===id;});
   if(!itx){toast(_s.t_item_notfound,'error');return;}
@@ -3294,7 +3294,7 @@ function _saveItemPrices(id){
   closeModal();nav('inventory');
 }
 
-function _adjStock(id, delta){
+function _adjStock(id, delta){var _s=_L();
   var it=D.inv.find(function(x){return x.id===id;}); if(!it) return;
   var newQty = Math.max(0, (it.qty||0) + delta);
   it.qty = newQty;
@@ -3654,7 +3654,7 @@ function _renderCostCatPills(){
   html+='</div>';
   var el=document.getElementById('cost-cats-list');if(el)el.outerHTML=html;
 }
-function _addCustomCostCatSettings(){
+function _addCustomCostCatSettings(){var _s=_L();
   var icon=((document.getElementById('settings-new-costcat-icon')||{}).value||'').trim()||'\uD83D\uDCCB';
   var name=((document.getElementById('settings-new-costcat-inp')||{}).value||'').trim();
   if(!name){toast(_s.t_cat_name,'error');return;}
@@ -3902,7 +3902,7 @@ function _previewNewItemPhotos(input){
   });
 }
 
-function _saveNewItem(){
+function _saveNewItem(){var _s=_L();
   if(_planWriteBlocked('Adding a product','inv')) return;
   if(D.inv.length===0) _track('First Product Added');
   var name = document.getElementById('ai-name').value.trim();
@@ -4059,7 +4059,7 @@ function previewItemPhotos(input, id){
   });
 }
 
-function removeItemPhoto(id, idx){
+function removeItemPhoto(id, idx){var _s=_L();
   const it = D.inv.find(i=>i.id===id); if(!it) return;
   if(!it.photoDataUrls) return;
   it.photoDataUrls.splice(idx, 1);
@@ -4141,7 +4141,7 @@ function saveEditItem(id){
   }
 }
 
-function mDuplicateItem(id){
+function mDuplicateItem(id){var _s=_L();
   if(!requireRight('edit_inventory','Duplicate Inventory Item')) return;
   const src=D.inv.find(i=>i.id===id);if(!src)return;
   // Collision-safe ID
@@ -4266,7 +4266,7 @@ function mBulkImport(type){const _s=_L();
    <button class="btn btn-p" onclick="confirmBulkImport('${type}')">⬆ Import Now</button>`,'lg');
 }
 
-function downloadImportTemplate(type, withSample){
+function downloadImportTemplate(type, withSample){var _s=_L();
   const cfg=IMPORT_CONFIGS[type];
   if(!cfg){ toast(_s.t_unknown_import,'error'); return; }
   // Build CSV with BOM so Excel opens it correctly
@@ -4309,7 +4309,7 @@ function parseCSV(text){
   return rows;
 }
 
-function previewImportCSV(input, type){
+function previewImportCSV(input, type){var _s=_L();
   const file=input.files[0]; if(!file) return;
   const cfg=IMPORT_CONFIGS[type]; if(!cfg) return;
   // Update label
@@ -4357,7 +4357,7 @@ function previewImportCSV(input, type){
   reader.readAsText(file);
 }
 
-async function confirmBulkImport(type){
+async function confirmBulkImport(type){var _s=_L();
   const pending=window._pendingImport;
   if(!pending||pending.type!==type){ toast(_s.t_preview_first,'error'); return; }
   const cfg=IMPORT_CONFIGS[type];
@@ -4669,7 +4669,7 @@ function _csCheckMinSpWarn(){const _s=_L();
 }
 
 
-function _saveSale(){
+function _saveSale(){var _s=_L();
   if(_trialWriteBlocked('Recording a sale')) return;
   if(D.sales.length===0) _track('First Sale Recorded');
   var custId=(document.getElementById('cs-cust-sel')||{}).value||(document.getElementById('cs-cust')||{}).value||(document.getElementById('cs-cust-sel')||{}).value||document.getElementById('cs-cust')?.value||_ssGetVal('cs-cust-wrap');
@@ -4967,7 +4967,7 @@ function _recalcCustBal(custId){
     _dbSaveCust(cust);
   }
 }
-function _saveRecordPayment(){
+function _saveRecordPayment(){var _s=_L();
   if(_trialWriteBlocked('Recording a payment')) return;
   const amtDisplay = parseFloat(document.getElementById('rp-amt')?.value)||0;
   if(!amtDisplay){ toast(_s.t_amount_enter,'error'); return; }
@@ -5197,7 +5197,7 @@ function _invTypeChanged(){
 }
 
 // ── Add selected catalogue item as a new line row ───────────────
-function _invAddFromCatalogue(){
+function _invAddFromCatalogue(){var _s=_L();
   const sel   = document.getElementById('inv-item-sel');
   const opt   = sel?.options[sel.selectedIndex];
   if(!opt||!opt.value){ toast(_s.t_select_item2,'info'); return; }
@@ -5258,7 +5258,7 @@ function _invUpdateTotals(){
 }
 
 // ── Save the invoice as a sale record ─────────────────────────
-function _saveInvoice(){
+function _saveInvoice(){var _s=_L();
   const cust = document.getElementById('inv-cust')?.value?.trim();
   if(!cust){ toast(_s.t_select_cust,'error'); return; }
 
@@ -5449,7 +5449,7 @@ function _photoLoadExisting(tab){const _s=_L();
   }
 }
 
-function _savePhotoUpload(){
+function _savePhotoUpload(){var _s=_L();
   // Detect active tab
   const activeTab = document.querySelector('#photo-type-tabs .stab.on');
   const tab = activeTab ? (activeTab.textContent.includes('Sale')?'sale':activeTab.textContent.includes('Rental')?'rental':'service') : 'sale';
@@ -5536,7 +5536,7 @@ function docChip(d){const _s=_L();
   </div>`;
 }
 
-function _docView(key){
+function _docView(key){var _s=_L();
   const doc = _DOC_STORE[key];
   if(!doc){ toast(_s.t_file_data_err,'error'); return; }
   const win = window.open();
@@ -5549,7 +5549,7 @@ function _docView(key){
   win.document.title = doc.name;
 }
 
-function _docDownload(key){
+function _docDownload(key){var _s=_L();
   const doc = _DOC_STORE[key];
   if(!doc){ toast(_s.t_file_data_err,'error'); return; }
   const a = document.createElement('a');
@@ -5714,7 +5714,7 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
 
 
 // Send WA overdue reminder for a rental — always looks up fresh customer phone
-function _rentalWARemind(id){
+function _rentalWARemind(id){var _s=_L();
   var r = D.rentals.find(function(x){return x.id===id;});
   if(!r){ toast(_s.t_rental_notfound,'error'); return; }
   // Look up fresh phone from D.cust (picks up any edits)
@@ -6067,7 +6067,7 @@ function deletePurchase(id){const _s=_L();
 }
 
 // ── Rental Receipt Document ───────────────────────────────────
-function genRentalReceiptDoc(id){
+function genRentalReceiptDoc(id){var _s=_L();
   var r=D.rentals.find(function(x){return x.id===id;}); if(!r){ toast(_s.t_rental_notfound,'error'); return; }
   var primary=BIZ.primaryColor||'#4361ee';
   var accent=BIZ.accentColor||'#059669';
@@ -6147,7 +6147,7 @@ function genRentalReceiptDoc(id){
   +'<div class="doc-watermark">ShopTrack</div>';
   openDoc(L.rentalReceipt+' — '+r.id, html);
 }
-function processReturn(rid){
+function processReturn(rid){var _s=_L();
   var dmg=parseFloat(document.getElementById('ret-dmg-'+rid).value)||0;
   var cond=document.getElementById('ret-cond-'+rid).value;
   var notes2=document.getElementById('ret-notes-'+rid).value;
@@ -6500,7 +6500,7 @@ function _sigIsBlank(canvas){
   return true;
 }
 
-function _sigSave(rentalId, canvasId){
+function _sigSave(rentalId, canvasId){var _s=_L();
   const canvas=document.getElementById(canvasId);
   if(!canvas){ toast(_s.t_not_found,'error'); return; }
   if(_sigIsBlank(canvas)){ toast(_s.t_sig_first,'error'); return; }
@@ -6526,7 +6526,7 @@ function _contractPrint(rentalId){
 }
 
 // ── Share contract via link ───────────────────────────────────
-function _contractShare(rentalId){
+function _contractShare(rentalId){var _s=_L();
   const r=D.rentals.find(x=>x.id===rentalId); if(!r) return;
   // Build a self-contained HTML blob the user can share
   const html=_buildContractHTML(r, r.contractSigUrl||null);
@@ -6544,7 +6544,7 @@ function _contractShare(rentalId){
 }
 
 // ── Settings: save contract template ─────────────────────────
-function saveContractTemplate(){
+function saveContractTemplate(){var _s=_L();
   const titleEl = document.getElementById('contract-title-input');
   const bodyEl  = document.getElementById('contract-body-input');
   const tog     = document.getElementById('contract-enabled-toggle');
@@ -6557,7 +6557,7 @@ function saveContractTemplate(){
 }
 
 // ── Settings: reset to default ────────────────────────────────
-function resetContractTemplate(){
+function resetContractTemplate(){var _s=_L();
   if(!confirm('Reset the contract template to the default? Your custom text will be lost.')) return;
   BIZ.contractTemplate = _CONTRACT_DEFAULT;
   BIZ.contractTitle    = 'RENTAL AGREEMENT';
@@ -6836,7 +6836,7 @@ function mRecordPurchase(){const _s=_L();
    <button class="btn btn-p" onclick="savePO()">${_s.po_create}</button>`);
 }
 
-function savePO(){
+function savePO(){var _s=_L();
   if(_trialWriteBlocked('Creating a purchase order')) return;
   if(_planWriteBlocked('Creating a purchase order','purchases')) return;
   var vendorId=(document.getElementById('po-vendor-sel')||{}).value||document.getElementById('po-vendor')?.value||(document.getElementById('po-vendor-sel')||{}).value||document.getElementById('po-vendor')?.value||_ssGetVal('po-vendor-wrap')||'';
@@ -7133,7 +7133,7 @@ function mEditCustomer(id){const _s=_L();
    <button class="btn btn-p" onclick="_saveEditCustomer('${id}')">💾 Save Changes</button>`);
 }
 
-function _saveEditCustomer(id){
+function _saveEditCustomer(id){var _s=_L();
   if(_trialWriteBlocked('Editing a customer')) return;
   var c = D.cust.find(function(x){ return x.id===id; });
   if(!c) return;
@@ -7312,7 +7312,7 @@ function mCustomerStatement(id){const _s=_L();
 }
 
 // ── WhatsApp from customer statement modal ─────────────────────
-function _custStmtWA(custId){
+function _custStmtWA(custId){var _s=_L();
   const c = D.cust.find(x=>x.id===custId); if(!c) return;
   const ph = (c.whatsapp||c.phone||c.ph||'').replace(/[^0-9]/g,'');
   if(!ph){ toast(_s.t_no_wa_cust,'error'); return; }
@@ -9711,7 +9711,7 @@ Write the flyer content as a JSON object with these exact fields (no markdown, n
   });
 }
 
-function _renderAIFlyer(copy, prod, bizName, tagline, primary, accent, phone, email, address, instagram, month){
+function _renderAIFlyer(copy, prod, bizName, tagline, primary, accent, phone, email, address, instagram, month){var _s=_L();
   const logoHtml = BIZ.logoDataUrl
     ? `<img src="${BIZ.logoDataUrl}" style="height:52px;width:auto;object-fit:contain;display:block;margin-bottom:8px" crossorigin="anonymous"/>`
     : `<div style="display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;background:rgba(255,255,255,0.25);border-radius:12px;font-size:20px;font-weight:900;color:#fff;margin-bottom:8px">${bizName.substring(0,2).toUpperCase()}</div>`;
@@ -9757,7 +9757,7 @@ function _renderAIFlyer(copy, prod, bizName, tagline, primary, accent, phone, em
   toast(_s.t_flyer_ready,'success');
 }
 
-function _aiFlyerDownloadPNG(){
+function _aiFlyerDownloadPNG(){var _s=_L();
   const flyerDiv = document.getElementById('ai-flyer-div');
   if(!flyerDiv || !flyerDiv.innerHTML.includes('headline') && !flyerDiv.querySelector('[style*="font-weight:900"]')){
     toast(_s.t_gen_flyer_first,'error'); return;
@@ -9766,7 +9766,7 @@ function _aiFlyerDownloadPNG(){
   if(btn){ btn.disabled=true; btn.textContent='⏳ Capturing…'; }
 
   // Load html2canvas from CDN if not already loaded
-  function doCapture(){
+  function doCapture(){var _s=_L();
     window.html2canvas(flyerDiv, {
       scale: 2,           // 2x for retina-quality PNG
       useCORS: true,
@@ -9804,7 +9804,7 @@ function _aiFlyerDownloadPNG(){
   }
 }
 
-function _aiFlyerPrint(){
+function _aiFlyerPrint(){var _s=_L();
   const flyerDiv = document.getElementById('ai-flyer-div');
   if(!flyerDiv || !flyerDiv.children.length){ toast(_s.t_gen_flyer_first,'error'); return; }
   const primary = BIZ.primaryColor||'#e8667a';
@@ -9816,7 +9816,7 @@ function _aiFlyerPrint(){
   }catch(e){ toast(_s.t_open_print,'error'); }
 }
 
-function _aiFlyerWhatsApp(){
+function _aiFlyerWhatsApp(){var _s=_L();
   const waNum = (BIZ.whatsapp||BIZ.phone||'').replace(/[^0-9]/g,'');
   const prod  = window._lastFlyerProd || 'our latest offer';
   const msg   = `✨ Check out our latest from *${BIZ.name||'us'}*!\n\n*${prod}* — available now.\n\n📲 DM us to order!\n${BIZ.phone?'📞 '+BIZ.phone:''}`;
@@ -9831,7 +9831,7 @@ function _aiFlyerWhatsApp(){
 }
 
 // ── DALL-E AI Product Photo ───────────────────────────────────
-function _genDALLEImage(prod, ctx, btn, btnTxt, btnIco){
+function _genDALLEImage(prod, ctx, btn, btnTxt, btnIco){var _s=_L();
   const openAiKey = BIZ.openAiKey || '';
   const wrap = document.getElementById('ai-img-wrap');
   const actions = document.getElementById('ai-img-actions');
@@ -9895,7 +9895,7 @@ function _genDALLEImage(prod, ctx, btn, btnTxt, btnIco){
     });
 }
 
-function _aiImgDownload(){
+function _aiImgDownload(){var _s=_L();
   const url = window._lastAiImgUrl;
   if(!url){ toast(_s.t_gen_image_first,'error'); return; }
   const prod = (_aiGetProd()||'product').replace(/[^a-z0-9]/gi,'_').toLowerCase();
@@ -9912,7 +9912,7 @@ function _aiImgDownload(){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-function _aiImgWhatsApp(){
+function _aiImgWhatsApp(){var _s=_L();
   const url = window._lastAiImgUrl;
   if(!url){ toast(_s.t_gen_image_first,'error'); return; }
   const prod = _aiGetProd() || 'our featured product';
@@ -9988,7 +9988,7 @@ function _aiGetProdLabel(){
 }
 
 // ── Copy with formatting preserved ──────────────────────────
-function _aiCopy(){
+function _aiCopy(){var _s=_L();
   const out = document.getElementById('aiOut');
   if(!out) return;
   const text = out.textContent;
@@ -10008,7 +10008,7 @@ function _aiFlashBtn(oldText, newText){
 }
 
 // ── Share to WhatsApp ────────────────────────────────────────
-function _aiWhatsApp(){
+function _aiWhatsApp(){var _s=_L();
   const out = document.getElementById('aiOut');
   const text = out?.textContent||'';
   if(!text || text.includes('Configure your settings')) { toast(_s.t_gen_first,'error'); return; }
@@ -10020,7 +10020,7 @@ function _aiWhatsApp(){
 }
 
 // ── Open Instagram (copy + go) ───────────────────────────────
-function _aiInstagram(){
+function _aiInstagram(){var _s=_L();
   const out = document.getElementById('aiOut');
   const text = out?.textContent||'';
   if(!text || text.includes('Configure your settings')) { toast(_s.t_gen_first,'error'); return; }
@@ -10031,7 +10031,7 @@ function _aiInstagram(){
 }
 
 // ── Save to history ──────────────────────────────────────────
-function _aiSaveToHistory(){
+function _aiSaveToHistory(){var _s=_L();
   const out = document.getElementById('aiOut');
   const text = out?.textContent||'';
   if(!text || text.includes('Configure your settings')) { toast(_s.t_no_save,'error'); return; }
@@ -10099,7 +10099,7 @@ function _aiRenderHistory(){const _s=_L();
   `).join('');
 }
 
-function _aiLoadHistItem(i){
+function _aiLoadHistItem(i){var _s=_L();
   const h = _aiHistory[i];
   if(!h) return;
   const out = document.getElementById('aiOut');
@@ -10116,7 +10116,7 @@ function _aiDeleteHistItem(i){
   _aiPersistHistory();
 }
 
-async function _aiClearHistory(){
+async function _aiClearHistory(){var _s=_L();
   if(!confirm('Clear all saved generations?')) return;
   _aiHistory = [];
   if(_sb && SESSION.bizId && SESSION.bizId!=='BIZ-001' && SESSION.bizId!=='BIZ-107'){
@@ -10284,7 +10284,7 @@ function _aiCall(payload){
 }
 
 // ── Bulk Content Calendar Generator ──────────────────────────
-async function _genAIBulk(btn, btnTxt, btnIco){
+async function _genAIBulk(btn, btnTxt, btnIco){var _s=_L();
   const sels = Array.from(document.querySelectorAll('.ai-bulk-prod-sel')).map(s=>s.value).filter(Boolean);
   if(!sels.length){ toast(_s.t_select_product,'error'); return; }
   const bulkType = document.getElementById('ai-bulk-type-sel')?.value || 'Instagram Caption';
@@ -10333,7 +10333,7 @@ async function _genAIBulk(btn, btnTxt, btnIco){
   toast(`${results.length} pieces of content generated ✓`,'success');
 }
 
-function _aiBulkDownload(){
+function _aiBulkDownload(){var _s=_L();
   const content = window._lastBulkContent;
   if(!content){ toast(_s.t_gen_first,'error'); return; }
   const blob = new Blob([content], {type:'text/plain'});
@@ -10365,7 +10365,7 @@ function _aiCustDraftPreview(){
   document.getElementById('ai-cust-draft-output').style.display='none';
 }
 
-async function _genAICustDraft(btn, btnTxt, btnIco){
+async function _genAICustDraft(btn, btnTxt, btnIco){var _s=_L();
   const sel = document.getElementById('ai-cust-draft-sel');
   const opt = sel?.options[sel?.selectedIndex];
   if(!opt||!opt.value){ toast(_s.t_select_cust2,'error'); return; }
@@ -10411,7 +10411,7 @@ async function _genAICustDraft(btn, btnTxt, btnIco){
   }
 }
 
-function _aiCustDraftCopy(){
+function _aiCustDraftCopy(){var _s=_L();
   const text = window._lastCustDraftText||'';
   if(!text){ toast(_s.t_gen_draft_first,'error'); return; }
   navigator.clipboard?.writeText(text).then(()=>toast(_s.t_copied,'success')).catch(()=>{
@@ -10419,7 +10419,7 @@ function _aiCustDraftCopy(){
   });
 }
 
-function _aiCustDraftWhatsApp(){
+function _aiCustDraftWhatsApp(){var _s=_L();
   const text  = window._lastCustDraftText||'';
   const phone = (window._lastCustDraftPhone||'').replace(/[^0-9]/g,'');
   if(!text){ toast(_s.t_gen_draft_first,'error'); return; }
@@ -10586,7 +10586,7 @@ Keep it honest and direct. Small business owners need clarity, not corporate spe
   });
 }
 
-function genAI(){
+function genAI(){var _s=_L();
   const type  = _aiType || 'Instagram Caption';
   const prod  = _aiGetProd();
   const ctx   = document.getElementById('ctCtx')?.value||'';
@@ -11436,7 +11436,7 @@ function _mbSetExpiryFromToday(days){
   _mbUpdateExpiryPreview();
 }
 
-async function _mbSave(bizId){
+async function _mbSave(bizId){var _s=_L();
   var b = D.adminBiz.find(x=>x.id===bizId); if(!b) return;
 
   var name    = document.getElementById('mb-name')?.value?.trim()   || b.name;
@@ -11588,7 +11588,7 @@ function _updateTrialPreview(){
   }
   if(confirmBtn) confirmBtn.disabled=false;
 }
-async function _confirmTrialExtend(bizId){
+async function _confirmTrialExtend(bizId){var _s=_L();
   var days = window._trialExtDays || parseInt(document.getElementById('trial-custom-days')?.value)||0;
   var newDate = window._trialExtNewDate;
   if(!newDate||!days){ toast(_s.t_no_days,'error'); return; }
@@ -11798,7 +11798,7 @@ function doProvision(){var _s=_L();
 }
 
 
-async function _purgeUnverifiedBiz(bizId, bizName){
+async function _purgeUnverifiedBiz(bizId, bizName){var _s=_L();
   if(!confirm('Delete unverified signup "'+bizName+'" ('+bizId+')? This cannot be undone.')) return;
   try {
     if(_sb){
@@ -11821,7 +11821,7 @@ async function _purgeUnverifiedBiz(bizId, bizName){
   }
 }
 
-async function _purgeAllUnverified(){
+async function _purgeAllUnverified(){var _s=_L();
   const list = D.adminBizUnverified||[];
   if(!list.length){ toast(_s.t_no_unverified,'info'); return; }
   if(!confirm('Delete ALL '+list.length+' unverified signup(s)? This cannot be undone.')) return;
@@ -12298,7 +12298,7 @@ function mAddBizUser(){const _s=_L();
   '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
   +' <button class="btn btn-p" onclick="_doAddBizUser()">'+_s.usr_add_title+'</button>');
 }
-function _doAddBizUser(){
+function _doAddBizUser(){var _s=_L();
   var nm  = (document.getElementById('abu-name')?.value||'').trim();
   var em  = (document.getElementById('abu-email')?.value||'').trim().toLowerCase();
   var biz = document.getElementById('abu-biz')?.value||SESSION.bizId||'';
@@ -12363,7 +12363,7 @@ function mEditBizUser(uid){const _s=_L();
     +' <button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +' <button class="btn btn-p" onclick="_doEditBizUser(\''+uid+'\')">💾 Save</button>');
 }
-function _doEditBizUser(uid){
+function _doEditBizUser(uid){var _s=_L();
   var u2 = BIZ_USERS.find(function(x){return x.id===uid;}); if(!u2) return;
   var newName  = (document.getElementById('eu-name')?.value||'').trim()  || u2.name;
   var newEmail = (document.getElementById('eu-email')?.value||'').trim() || u2.email;
@@ -12616,7 +12616,7 @@ function _billingWAMsg(biz, daysLeft){
 
 // ── WhatsApp: real API send via Netlify function ─────────────
 // Falls back to wa.me link if the function fails or is unconfigured.
-async function _sendWA(phone, message, opts){
+async function _sendWA(phone, message, opts){var _s=_L();
   const digits = String(phone||'').replace(/\D/g,'');
   if(!digits || digits.length < 7){
     toast(_s.t_no_wa_valid,'error'); return { success:false };
@@ -12832,7 +12832,7 @@ function _sendReminderQueue(){var _s=_L();
   if(!queue.length){ closeModal(); return; }
   closeModal();
   var i = 0;
-  function next(){
+  function next(){var _s=_L();
     if(i >= queue.length){
       toast(_s.t_reminders_for+queue.length+' business'+(queue.length>1?'es':''),'success');
       return;
@@ -12846,7 +12846,7 @@ function _sendReminderQueue(){var _s=_L();
 }
 
 // ── mBillingChargeAll — charge all overdue businesses via CamPay ──
-async function mBillingChargeAll(){
+async function mBillingChargeAll(){var _s=_L();
   const due = D.adminBiz.filter(function(b){
     const d = _billingDaysLeft(b);
     return d !== null && d <= 0 && b.st === 'Active' && _billingAmtXAF(b) > 0 && (b.phone||b.whatsapp);
@@ -13098,7 +13098,7 @@ function _affPayPartial(id){const _s=_L();
   }, 80);
 }
 
-async function _affDoPayPartial(id, totalUnpaid){
+async function _affDoPayPartial(id, totalUnpaid){var _s=_L();
   var amt = parseFloat((document.getElementById('aff-pay-amt')||{}).value||'');
   var method = (document.getElementById('aff-pay-method')||{}).value||'Mobile Money';
   var ref = ((document.getElementById('aff-pay-ref')||{}).value||'').trim();
@@ -13498,7 +13498,7 @@ async function _doAffDelete(id){const _s=_L();
 }
 
 
-function _affCopyLink(link){
+function _affCopyLink(link){var _s=_L();
   navigator.clipboard.writeText(link).then(function(){ toast(_s.t_link_copied,'success'); }).catch(function(){ toast(link,'info'); });
 }
 
@@ -13514,7 +13514,7 @@ function _affAddManual(){const _s=_L();
   );
 }
 
-async function _affDoAddManual(){
+async function _affDoAddManual(){var _s=_L();
   var name   = (document.getElementById('aff-mn-name')?.value||'').trim();
   var email  = (document.getElementById('aff-mn-email')?.value||'').trim().toLowerCase();
   var code   = (document.getElementById('aff-mn-code')?.value||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -14585,10 +14585,14 @@ async function _dbLoadBizProfile(bizId){
     BIZ.bookingNote     = data.booking_note||'';
     BIZ.bookingsEnabled = data.bookings_enabled!==false;
     BIZ.country         = data.country||'Cameroon';
-    BIZ.language        = data.language || _loginLanguage || 'en';
-    // If language came from login toggle (DB had no preference), mark for apply after nav
-    if(!data.language && _loginLanguage && _loginLanguage !== 'en'){
+    // Login language toggle ALWAYS overrides DB — user explicitly chose it
+    if(_loginLanguage && _loginLanguage !== (data.language||'en')){
+      BIZ.language = _loginLanguage;
       window._pendingLangApply = _loginLanguage;
+      // Persist the user's choice to DB so it sticks
+      if(_sb) _sb.from('businesses').update({language:_loginLanguage}).eq('id',SESSION.bizId).then(function(){}).catch(function(){});
+    } else {
+      BIZ.language = data.language || _loginLanguage || 'en';
     }
     try{BIZ.costCats=data.cost_cats?(typeof data.cost_cats==='string'?JSON.parse(data.cost_cats):data.cost_cats)||[]:[];}catch(_e){BIZ.costCats=[];}
     // Subscription fields — needed for dashboard banner and Pay Now flow
@@ -14616,7 +14620,7 @@ async function _dbLoadBizProfile(bizId){
 
 // ── Save BIZ profile to Supabase ─────────────────────────────
 // ── Safe upsert: retries without 'docs'/'dob' if PGRST204 (column not in schema)
-async function _safeUpsert(table, payload, ctx){
+async function _safeUpsert(table, payload, ctx){var _s=_L();
   if(!_sb||!SESSION.bizId) return {ok:false};
 
   // ── Offline: queue the write for later sync ───────────────
@@ -14659,7 +14663,7 @@ async function _safeUpsert(table, payload, ctx){
 }
 
 // Smart upsert: INSERT first, on duplicate key UPDATE
-async function _sbUpsertWithFallback(table, payload, ctx){
+async function _sbUpsertWithFallback(table, payload, ctx){var _s=_L();
   // Composite PK is (id, biz_id) — specify both for correct upsert matching
   var {data, error} = await _sb.from(table).upsert(payload, {onConflict:'id,biz_id'}).select();
 
@@ -15903,12 +15907,12 @@ function doLogin(){const _s=_L();
       // Test LLC (BIZ-107): load rich in-memory demo data, then overlay Supabase data
       if(cred.bizId === 'BIZ-107'){
         _loadDemoDataForTestLLC();
-        _showDataLoading('Loading your data…');
+        _showDataLoading(_loginLanguage==='fr'?'Chargement de vos données…':'Loading your data…');
         await _dbLoadBizProfile('BIZ-107');
         await _dbLoadBizData('BIZ-107');
         _hideDataLoading();
       } else {
-        _showDataLoading('Loading your business data…');
+        _showDataLoading(_loginLanguage==='fr'?'Chargement des données de votre entreprise…':'Loading your business data…');
         await _dbLoadBizProfile(cred.bizId);
         await _dbLoadBizDataCached(cred.bizId);
         _hideDataLoading();
@@ -15958,11 +15962,12 @@ function doLogin(){const _s=_L();
       setTimeout(() => loginEl.style.display = 'none', 360);
     }
     nav(cred.isSuperAdmin ? 'admin-biz' : 'dashboard');
-    // Apply login-toggle language to chrome (sidebar, mobile nav) if DB had no saved preference
-    if(window._pendingLangApply){
-      var _pla = window._pendingLangApply;
+    // Apply language to all chrome (sidebar, mobile nav, page content)
+    // Always apply if not English — covers both login toggle and DB preference
+    var _langToApply = BIZ.language || window._pendingLangApply;
+    if(_langToApply && _langToApply !== 'en'){
       window._pendingLangApply = null;
-      setTimeout(function(){ _applyLanguage(_pla); }, 50);
+      setTimeout(function(){ _applyLanguage(_langToApply, true); }, 50);
     }
     setTimeout(_checkPlanExpiry, 1000);
 
@@ -16203,7 +16208,7 @@ function mChangePassword(){const _s=_L();
    <button class="btn btn-p" onclick="_doChangePassword()">Update Password</button>`);
 }
 
-async function _doChangePassword(){
+async function _doChangePassword(){var _s=_L();
   const cur = document.getElementById('cp-cur')?.value || '';
   const np  = document.getElementById('cp-new')?.value || '';
   const cf  = document.getElementById('cp-conf')?.value || '';
@@ -16312,7 +16317,7 @@ function _inlineCancelNewCust(prefix){
 }
 
 // Save the new customer and inject into the select
-function _inlineSaveNewCust(prefix){
+function _inlineSaveNewCust(prefix){var _s=_L();
   const name  = (document.getElementById(prefix+'-nc-name')?.value||'').trim();
   const phone = (document.getElementById(prefix+'-nc-phone')?.value||'').trim();
   if(!name){ toast(_s.t_cust_req,'error'); document.getElementById(prefix+'-nc-name')?.focus(); return; }
@@ -16420,7 +16425,7 @@ function _inlineCancelNewVendor(prefix){
   if(panel) panel.style.display='none';
 }
 
-function _inlineSaveNewVendor(prefix){
+function _inlineSaveNewVendor(prefix){var _s=_L();
   const name    = (document.getElementById(prefix+'-nv-name')?.value||'').trim();
   const phone   = (document.getElementById(prefix+'-nv-phone')?.value||'').trim();
   const email   = (document.getElementById(prefix+'-nv-email')?.value||'').trim();
@@ -16904,7 +16909,7 @@ function _suCountryChanged(){
   }
 }
 
-async function _submitSignup(){
+async function _submitSignup(){var _s=_L();
   const bizName    = document.getElementById('su-biz')?.value?.trim();
   const ownerName  = document.getElementById('su-name')?.value?.trim();
   const email      = document.getElementById('su-email')?.value?.trim().toLowerCase();
@@ -17020,7 +17025,7 @@ async function _submitSignup(){
 // Secure closure: stores pending verify state without exposing password in DOM
 let _pendingVerify = null;
 
-function _showEmailVerifyScreen(email, firstName, emailSent, userId, bizId, pwd, emailErrMsg, signupPayload){
+function _showEmailVerifyScreen(email, firstName, emailSent, userId, bizId, pwd, emailErrMsg, signupPayload){var _s=_L();
   // Store state in a secure closure variable — never in the DOM
   // lang: French for Francophone countries, English for all others
   const _frCountries = ['CM','CI','SN','FR','ML','BJ','TG','CD','RW'];
@@ -17281,11 +17286,11 @@ async function _confirmVerifyToken(){var _s=_L();
 
         // Navigate to dashboard
         nav('dashboard');
-        // Apply login-toggle language to chrome if no DB preference was saved
-        if(window._pendingLangApply){
-          var _pla2 = window._pendingLangApply;
+        // Apply language to all chrome — covers both login toggle and DB preference
+        var _langApply2 = BIZ.language || window._pendingLangApply;
+        if(_langApply2 && _langApply2 !== 'en'){
           window._pendingLangApply = null;
-          setTimeout(function(){ _applyLanguage(_pla2); }, 50);
+          setTimeout(function(){ _applyLanguage(_langApply2, true); }, 50);
         }
         toast(_s.t_email_verified,'success');
         // Re-render sidebar and show setup popup
@@ -17427,7 +17432,7 @@ function _checkOnboarding(){
 
 
 
-function _markWATestDone(){
+function _markWATestDone(){var _s=_L();
   var key='st_wa_tested_'+(SESSION.bizId||'');
   try{localStorage.setItem(key,'1');}catch(e){}
   if(curPage==='dashboard') nav('dashboard');
@@ -17596,7 +17601,7 @@ function bootApp(){
                 sessionStorage.setItem('st_session',JSON.stringify(fixed));
               }catch(_se){}
               // Now load data with correct bizId
-              _showDataLoading('Loading your data…');
+              _showDataLoading(_loginLanguage==='fr'?'Chargement de vos données…':'Loading your data…');
               Promise.all([_dbLoadBizProfile(SESSION.bizId), _dbLoadBizDataCached(SESSION.bizId)])
                 .then(function(){ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); refreshLiveKpis(); _flushPendingLang(); })
                 .catch(function(){ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); _flushPendingLang(); });
@@ -17642,13 +17647,13 @@ function bootApp(){
         BIZ.tiktok=''; BIZ.twitter=''; BIZ.logoDataUrl=null;
         if(SESSION.bizId === 'BIZ-107'){
           _loadDemoDataForTestLLC();
-          _showDataLoading('Restoring your data…');
+          _showDataLoading(_loginLanguage==='fr'?'Restauration de vos données…':'Restoring your data…');
           Promise.all([_dbLoadBizProfile('BIZ-107'), _dbLoadBizData('BIZ-107')])
             .then(()=>{ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); _flushPendingLang(); })
             .catch(()=>{ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); _flushPendingLang(); });
         } else {
           // Show loading indicator during restore
-          _showDataLoading('Restoring your data…');
+          _showDataLoading(_loginLanguage==='fr'?'Restauration de vos données…':'Restoring your data…');
           Promise.all([_dbLoadBizProfile(SESSION.bizId), _dbLoadBizDataCached(SESSION.bizId)])
             .then(()=>{ _hideDataLoading(); updateSidebarForRole(); nav('dashboard'); refreshLiveKpis(); _flushPendingLang(); })
             .catch(err=>{ _hideDataLoading(); updateSidebarForRole(); console.error('Data restore error:',err); nav('dashboard'); _flushPendingLang(); });
@@ -17782,7 +17787,7 @@ try {
     setTimeout(function(){ _offlineBanner.style.transform = 'translateY(0)'; }, 100);
   }
 
-  function hideOfflineBanner(){
+  function hideOfflineBanner(){var _s=_L();
     if(_offlineBanner) _offlineBanner.style.transform = 'translateY(100%)';
   }
 
@@ -17931,7 +17936,7 @@ function _clearDocImage(type){
 }
 
 
-function openDoc(title, htmlContent){
+function openDoc(title, htmlContent){var _s=_L();
   _currentDoc = { title, html: htmlContent };
   const overlay = document.getElementById('doc-overlay');
   const toolbarTitle = document.getElementById('doc-toolbar-title');
@@ -17962,7 +17967,7 @@ function closeDoc(){
   const dc = document.getElementById('doc-content');
   if(dc) dc.innerHTML = '';
 }
-function printDoc(){
+function printDoc(){var _s=_L();
   if(!_currentDoc || !_currentDoc.html){
     toast(_s.t_no_print,'error'); return;
   }
@@ -19396,7 +19401,7 @@ ${renderPlansTab()}
 }
 
 // ── Save Super Admin profile ──────────────────────────────────────────────────
-function saveSAProfile(){
+function saveSAProfile(){var _s=_L();
   SA_PROFILE.name     = document.getElementById('sa-name')?.value?.trim()     || SA_PROFILE.name;
   SA_PROFILE.title    = document.getElementById('sa-title')?.value?.trim()    || SA_PROFILE.title;
   SA_PROFILE.bio      = document.getElementById('sa-bio')?.value?.trim()      || '';
@@ -19702,7 +19707,7 @@ function mResetUserPwd(uid){const _s=_L();
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_doResetUserPwd('${uid}')">🔑 Reset Password</button>`);
 }
-function _doResetUserPwd(uid){
+function _doResetUserPwd(uid){var _s=_L();
   const np = document.getElementById('rp-new')?.value || '';
   const cf = document.getElementById('rp-conf')?.value || '';
   if(!np || np.length<8){ toast(_s.t_pass_min8_2,'error'); return; }
@@ -19996,7 +20001,7 @@ function downloadImportTemplate(){
     toast(_s.t_template_dl,'success');
   });
 }
-function handleImportUpload(input){
+function handleImportUpload(input){var _s=_L();
   if(!input.files || !input.files[0]) return;
   if(!_importProfileReady()){
     // Reset the file input so the gate fires again next attempt
@@ -20319,7 +20324,7 @@ function handleImportUpload(input){
   });
 }
 
-function handleLogoUpload(input){
+function handleLogoUpload(input){var _s=_L();
   if(!input.files || !input.files[0]) return;
   const reader = new FileReader();
   reader.onload = e => {
@@ -20564,7 +20569,7 @@ function mEditSale(id){const _s=_L();
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveEditSale('${id}')">\uD83D\uDCBE Save Changes</button>`);
 }
-function saveEditSale(id){
+function saveEditSale(id){var _s=_L();
   const s=D.sales.find(x=>x.id===id);if(!s)return;
   const r=CUR.rate;
   const prevPaid=(s.paid||0);
@@ -20607,7 +20612,7 @@ function _esAutoStatus(){
   var p=parseFloat(document.getElementById('es-paid')?.value)||0;
   var el=document.getElementById('es-st');if(el) el.value=p>=t?'Paid':p>0?'Partial':'Unpaid';
 }
-function mDuplicateSale(id){
+function mDuplicateSale(id){var _s=_L();
   if(!requireRight('edit_sales','Duplicate Sale')) return;
   const src=D.sales.find(x=>x.id===id);if(!src)return;
   var _maxNum = D.sales.reduce(function(m,s){
@@ -20754,7 +20759,7 @@ function mEditPurchase(id){const _s=_L();
    <button class="btn btn-p" onclick="saveEditPurchase('${id}')">💾 Save</button>`);
 }
 
-function saveEditPurchase(id){
+function saveEditPurchase(id){var _s=_L();
   const p=D.purchases.find(x=>x.id===id);if(!p)return;
   const rr=CUR.rate;
   const oldSt  = p.st;
@@ -20867,7 +20872,7 @@ function mEditRental(id){const _s=_L();
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveEditRental('${id}')">💾 Save</button>`);
 }
-function saveEditRental(id){
+function saveEditRental(id){var _s=_L();
   var _erPrevPaid=D.rentals.find(function(x){return x.id===id;})?.paid||0;
   const r=D.rentals.find(x=>x.id===id);if(!r)return;
   const custSel=document.getElementById('er-cust');
@@ -20915,7 +20920,7 @@ function _updateReturnSettlement(rid){
   }
 }
 
-function mDuplicateRental(id){
+function mDuplicateRental(id){var _s=_L();
   if(!requireRight('edit_rentals','Duplicate Rental')) return;
   const src=D.rentals.find(x=>x.id===id);if(!src)return;
   const maxNum=D.rentals.reduce(function(m,r){
@@ -22792,7 +22797,7 @@ async function mEditExp(id){const _s=_L();
   }, 80);
 }
 
-function saveExpEdit(id){
+function saveExpEdit(id){var _s=_L();
   if(_trialWriteBlocked('Editing an expense')) return;
   const e=D.exp.find(x=>x.id===id);if(!e)return;
   const _er=CUR.rate||1;
@@ -23549,7 +23554,7 @@ document.addEventListener('keydown', function(e){
 
 // ── Save indicator (subtle flash after DB write) ─────────────────────────
 let _saveTimer;
-function _syncDataFromCloud(){
+function _syncDataFromCloud(){var _s=_L();
   if(!SESSION.bizId||SESSION.isSuperAdmin||!_sb){ toast(_s.t_not_connected,'info'); return; }
   var syncBtn = document.getElementById('topbar-sync-btn');
   if(syncBtn){ syncBtn.textContent='↻'; syncBtn.style.animation='spin .8s linear infinite'; }
@@ -23969,7 +23974,7 @@ function _naCust(){
 }
 
 // ── Inline new customer inside appointment modal ─────────────
-function _apptCheckout(id){
+function _apptCheckout(id){var _s=_L();
   const a=D.appointments.find(x=>x.id===id); if(!a){ toast(_s.t_not_found,'error'); return; }
   var _mxSN=D.sales.reduce(function(m,s){var n=parseInt((s.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
   const sid='S-'+String(_mxSN+1).padStart(4,'0');
@@ -24004,7 +24009,7 @@ function _apptCheckout(id){
   }, 300);
 }
 
-function _apptWA(id){
+function _apptWA(id){var _s=_L();
   const a=D.appointments.find(x=>x.id===id); if(!a) return;
   const ph=(a.custPhone||'').replace(/[^0-9]/g,'');
   if(!ph){ toast(_s.t_no_phone2,'error'); return; }
@@ -24013,7 +24018,7 @@ function _apptWA(id){
 }
 
 // ── SERVICES PAGE ────────────────────────────────────────────
-function _updAppt(id){
+function _updAppt(id){var _s=_L();
   const a=D.appointments.find(x=>x.id===id); if(!a) return;
   a.st=document.getElementById('va-st')?.value||a.st;
   a.notes=document.getElementById('va-n')?.value||'';
@@ -24035,7 +24040,7 @@ function _apptAddNewCust(){
   document.getElementById('na-ph').value='';
   setTimeout(()=>document.getElementById('na-nc-name')?.focus(), 80);
 }
-function _apptSaveNewCust(){
+function _apptSaveNewCust(){var _s=_L();
   const name=(document.getElementById('na-nc-name')?.value||'').trim();
   const phone=(document.getElementById('na-nc-phone')?.value||'').trim();
   if(!name){ toast(_s.t_cust_req,'error'); document.getElementById('na-nc-name')?.focus(); return; }
@@ -24604,7 +24609,7 @@ function _rsSync(id){
   var el=document.getElementById('rs-conflict');
   if(el){if(conflicts.length){el.style.display='block';el.textContent='\u26A0 Conflict: '+conflicts.map(function(c){return c.custName+' at '+_timeLabel(c.startTime);}).join(', ');}else el.style.display='none';}
 }
-function _saveReschedule(id){
+function _saveReschedule(id){var _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a) return;
   var oldDate=a.date, oldTime=a.startTime;
   a.date=(document.getElementById('rs-date')||{}).value||a.date;
@@ -24766,7 +24771,7 @@ async function mEditSvc(id){const _s=_L();
   }, 80);
 }
 // Preview selected service photo
-function _svcImgPreview(input){
+function _svcImgPreview(input){var _s=_L();
   var file = input.files[0]; if(!file) return;
   if(file.size > 2*1024*1024){ toast(_s.t_photo_large,'error'); input.value=''; return; }
   var reader = new FileReader();
@@ -24811,7 +24816,7 @@ function _svSyncTotal(){
   }
 }
 
-function _getSvcData(){
+function _getSvcData(){var _s=_L();
   const nm=(document.getElementById('sv-nm')?.value||'').trim();
   if(!nm){ toast(_s.t_name_req,'error'); return null; }
   const priceType = document.getElementById('sv-pt')?.value || 'flat';
@@ -24894,7 +24899,7 @@ function _delSvc(id){const _s=_L();
 
 
 // ── Country change handler — auto-sets currency + tax in Financial tab ────────
-function _bizCountryChanged(country){
+function _bizCountryChanged(country){var _s=_L();
   // Update tax defaults for new country
   var taxDef = COUNTRY_TAX_DEFAULTS[country];
   if(taxDef){
@@ -26693,7 +26698,7 @@ function _docLbl(enLabel, frLabel){
 // Called: on login, and when language setting changes.
 // Patches DOM text for sidebar/drawer/nav (static HTML).
 // Page bodies re-render through nav() which calls pg*() which uses _L().
-function _applyLanguage(lang){
+function _applyLanguage(lang, silent){
   BIZ.language = lang;
   try{ localStorage.setItem('st_lang_'+SESSION.bizId, lang); }catch(e){}
 
@@ -26786,10 +26791,12 @@ function _applyLanguage(lang){
   // ── Re-render current page so pg*() picks up the new language ─
   if(typeof curPage !== 'undefined' && curPage) nav(curPage);
 
-  if(lang==='fr'){
-    toast(L.t_lang_fr,'success');
-  } else {
-    toast(L.t_lang_en,'info');
+  if(!silent){
+    if(lang==='fr'){
+      toast(L.t_lang_fr,'success');
+    } else {
+      toast(L.t_lang_en,'info');
+    }
   }
 }
 function _onCurSettingsChange(code){
@@ -27153,7 +27160,7 @@ function _pdfStyles(accent){
     </style>`;
 }
 
-function _pdfOpen(title, body){
+function _pdfOpen(title, body){var _s=_L();
   var biz = BIZ.name || 'ShopTrack';
   var now = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
   var logoHtml = BIZ.logoDataUrl
@@ -27507,7 +27514,7 @@ function _waOwner(msg) {
 }
 
 // Check if owner WA is configured; if not, show a setup nudge
-function _waOwnerCheck() {
+function _waOwnerCheck() {var _s=_L();
   var raw = (BIZ.whatsapp || '').replace(/[^0-9]/g, '');
   if (!raw || raw.length < 7) {
     toast(_s.t_wa_add_num, 'info');
@@ -27715,7 +27722,7 @@ function _pushNotif(title, body, opts){
 }
 
 // ── Request push permission ───────────────────────────────────
-async function _requestPushPermission(){
+async function _requestPushPermission(){var _s=_L();
   if(typeof Notification === 'undefined'){
     toast(_s.t_push_unsup,'error');
     return;
@@ -27772,7 +27779,7 @@ function _resetNotifPrefs(){
   }
 }
 
-function _saveNotifPrefs(){
+function _saveNotifPrefs(){var _s=_L();
   // Persist to per-business localStorage key (avoids cross-session bleed)
   const _lsKey = 'shoptrack_notif_prefs_' + (SESSION.bizId||'default');
   try{ localStorage.setItem(_lsKey, JSON.stringify(NOTIF_PREFS)); }catch(e){}
@@ -28336,7 +28343,7 @@ function refreshNotifPanel(){
   if(dot) dot.style.background = count > 0 ? 'var(--r)' : 'var(--g)';
 }
 
-function _saveAppt(){
+function _saveAppt(){var _s=_L();
   if(_isFreePlan()){ _showPremiumUpgradePrompt('appointments'); return; }
   if(_planWriteBlocked('Booking an appointment')) return;
   const date=document.getElementById('na-d')?.value;
@@ -28449,7 +28456,7 @@ function mEditApptCompleted(id){const _s=_L();
 }
 
 
-function _saveApptEdit(id){
+function _saveApptEdit(id){var _s=_L();
   var a = D.appointments.find(function(x){return x.id===id;});
   if(!a){ toast(_s.t_not_found,'error'); return; }
   var rate    = CUR.rate||1;
@@ -28479,7 +28486,7 @@ function _saveApptEdit(id){
   nav('appointments');
 }
 
-function genApptInvoice(id){
+function genApptInvoice(id){var _s=_L();
   var a = D.appointments.find(function(x){return x.id===id;});
   if(!a){ toast(_s.t_appt_notfound,'error'); return; }
   var primary  = BIZ.primaryColor||'#4361EE';
