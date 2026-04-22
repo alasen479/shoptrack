@@ -2047,7 +2047,7 @@ function _getDashConfig(){
 function _saveDashConfig(cfg){
   try{ localStorage.setItem('st_dash_config', JSON.stringify(cfg)); }catch(e){}
 }
-function mCustomizeDash(){
+function mCustomizeDash(){var _s=_L();
   const DC = _getDashConfig();
   const kpiOptions = [
     ['rev','Total Revenue'],['saleRev','Sales Revenue'],['rentRev','Rental Revenue'],
@@ -2595,7 +2595,7 @@ function mSubPayNow(){const _s=_L();
 
   // Calculate new expiry: extend from current expiry date (not from today)
   // e.g. paying on March 20 when expiry is March 31 → new expiry = April 30
-  function calcNewExpiry(currentExpiry){
+  function calcNewExpiry(currentExpiry){var _s=_L();
     const base = currentExpiry && currentExpiry >= localDateStr() ? currentExpiry : localDateStr();
     const d2   = new Date(base+'T00:00:00');
     if((BIZ.billingCycle||'monthly') === 'yearly'){
@@ -2638,7 +2638,7 @@ function mSubPayNow(){const _s=_L();
 // The current plan runs to its full expiry date.
 // The new plan takes effect from that expiry date onward.
 // The new plan's first payment is due on the current expiry date.
-function mChangePlan(){
+function mChangePlan(){var _s=_L();
   const currentPlan   = BIZ.plan || 'Free';
   const currentExpiry = BIZ.subExpires || BIZ.trialEnd || '';
   const isTrial       = currentPlan.toLowerCase().includes('trial');
@@ -9005,7 +9005,7 @@ function rptAR(){const _s=_L();
     const oldest = unpaid[0].dt;
     return Math.floor((new Date(today)-new Date(oldest))/(1000*60*60*24));
   }
-  function ageBucket(days){
+  function ageBucket(days){var _s=_L();
     if(days<=0)  return {label:'Current',    cls:'bx-g'};
     if(days<=30) return {label:'1–30 days',  cls:'bx-y'};
     if(days<=60) return {label:'31–60 days', cls:'bx-o'};
@@ -9059,7 +9059,7 @@ function rptAP(){const _s=_L();
     if(!openPOs.length) return 0;
     return Math.floor((new Date(today)-new Date(openPOs[0].dt))/(1000*60*60*24));
   }
-  function ageBucket(days){
+  function ageBucket(days){var _s=_L();
     if(days<=30) return {label:'Current (≤30d)', cls:'bx-g'};
     if(days<=60) return {label:'31–60 days',     cls:'bx-y'};
     if(days<=90) return {label:'61–90 days',     cls:'bx-o'};
@@ -16774,7 +16774,7 @@ function _suTypeSelect(val){
   _suTypeClose();
 }
 
-function showSignup(){
+function showSignup(){var _s=_L();
   var loginEl = document.getElementById('login-screen');
   var appEl   = document.getElementById('app');
   if(appEl) appEl.style.display='none';
@@ -17804,17 +17804,20 @@ try {
 
 // ── SW Update Banner ─────────────────────────────────────────
 function _swShowUpdateBanner(){
+  var fr = (typeof BIZ!=='undefined' && BIZ.language==='fr');
   var b = document.createElement('div');
+  b.id = 'sw-update-banner';
   b.style.cssText = [
     'position:fixed;bottom:0;left:0;right:0;z-index:99999',
-    'background:#1e293b;border-top:2px solid #4f46e5',
-    'padding:10px 16px;display:flex;align-items:center;gap:10px',
-    'font-family:var(--font,sans-serif);font-size:13px;color:#f1f5f9',
+    'background:linear-gradient(135deg,#4169f5,#7c3aed);border-top:none',
+    'padding:12px 16px;display:flex;align-items:center;gap:10px',
+    'font-family:var(--font,sans-serif);font-size:13px;color:#fff',
+    'box-shadow:0 -4px 20px rgba(0,0,0,.2);animation:slideUp .3s ease',
   ].join(';');
-  b.innerHTML = '<span style="font-size:16px">⬆️</span>'
-    + '<span style="flex:1"><strong>Update available</strong> — A new version of ShopTrack is ready.</span>'
-    + '<button onclick="_swApplyUpdate()" style="background:#4f46e5;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:700">Update Now</button>'
-    + '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:18px;padding:0 4px">&times;</button>';
+  b.innerHTML = '<span style="font-size:18px">\u2B06\uFE0F</span>'
+    + '<span style="flex:1"><strong>'+(fr?'Mise \u00e0 jour disponible':'Update available')+'</strong> \u2014 '+(fr?'Une nouvelle version de ShopTrack est pr\u00eate.':'A new version of ShopTrack is ready.')+'</span>'
+    + '<button onclick="_swApplyUpdate()" style="background:#fff;color:#4169f5;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:700;white-space:nowrap">'+(fr?'Mettre \u00e0 jour':'Update Now')+'</button>'
+    + '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;padding:0 4px">&times;</button>';
   document.body.appendChild(b);
 }
 
@@ -20330,7 +20333,7 @@ function handleLogoUpload(input){
   reader.readAsDataURL(input.files[0]);
 }
 
-function saveBizProfile(){
+function saveBizProfile(){var _s=_L();
   BIZ.name      = document.getElementById('biz-name')?.value      || BIZ.name;
   BIZ.owner     = document.getElementById('biz-owner')?.value     || BIZ.owner;
   BIZ.type      = document.getElementById('biz-type')?.value      || BIZ.type;
@@ -21098,7 +21101,7 @@ function mARDetail(){const _s=_L();
   }
   // ── Aging buckets ─────────────────────────────────────────────────
   const today = localDateStr();
-  function _arAgeDays(cust){
+  function _arAgeDays(cust){var _s=_L();
     // Find oldest unpaid sale for this customer
     const unpaid = D.sales.filter(s=>(s.custId===cust.id||s.cust===cust.name)&&s.st!=='Paid');
     if(!unpaid.length) return 0;
@@ -21160,7 +21163,7 @@ function mARDetail(){const _s=_L();
    <button class="btn btn-p btn-sm" onclick="closeModal();nav('customers')">View All Customers →</button>`,'lg');
 }
 
-function _arExportPDF(){
+function _arExportPDF(){var _s=_L();
   const debtors = D.cust.filter(c=>c.bal>0).sort((a,b)=>b.bal-a.bal);
   if(!debtors.length){ toast(_s.t_no_ar_export,'info'); return; }
   const total   = debtors.reduce((a,c)=>a+c.bal,0);
@@ -22365,7 +22368,7 @@ function _renderRentalCalendar(){
   });
 
   // ── Status colours ────────────────────────────────────────
-  function rentColour(r, isSt, isEnd){
+  function rentColour(r, isSt, isEnd){var _s=_L();
     if(r.st==='Overdue')     return {bg:'rgba(255,95,122,.25)',border:'#ff5f7a',text:'#ff5f7a',dot:'#ff5f7a'};
     if(r.st==='Returned')    return {bg:'rgba(100,110,150,.18)',border:'#4d5480',text:'var(--text3)',dot:'#4d5480'};
     if(isSt)                 return {bg:'rgba(45,212,160,.22)',border:'#2dd4a0',text:'#2dd4a0',dot:'#2dd4a0'};
@@ -23782,7 +23785,7 @@ function _togApptView(mode, filter){
   nav('appointments');
   if(filter) setTimeout(()=>_apptFilter(filter),120);
 }
-function _apptCalHTML(){
+function _apptCalHTML(){var _s=_L();
   const Y=_apptCalY, M=_apptCalM, today=localDateStr();
   const tY=+today.slice(0,4), tMo=+today.slice(5,7)-1, tD=+today.slice(8);
   const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -28004,7 +28007,7 @@ function _sendWAApptReminder(appt){
 
 // ── Bulk WA reminder helper ───────────────────────────────────
 // Sends reminders to all customers with a specific condition
-function _bulkWAReminders(type){
+function _bulkWAReminders(type){var _s=_L();
   const today = localDateStr();
   let items = [];
   let getMsgFn;
