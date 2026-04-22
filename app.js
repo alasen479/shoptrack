@@ -5696,9 +5696,9 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
       <td>${mono(fmt(r.dep),'y')}</td>
       <td>${mono(r.lf>0?fmt(r.lf):'—',r.lf>0?'r':'text3')}</td>
       <td><div class="cond ${cc(r.cb)}" style="font-size:10px"><div class="cdot"></div>${r.cb}${r.ca?` → ${r.ca}`:''}</div></td>
-        <button class="btn btn-p btn-xs" onclick="mRecordPayment('${r.id}')" title="Record Payment">&#x1F4B0;</button>
       <td>${r.docs&&r.docs.length?`<span style="display:inline-flex;align-items:center;gap:3px;background:var(--a-dim);color:var(--a);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer" onclick="mRentalDetail('${r.id}')">📎 ${r.docs.length}</span>`:`<button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')" style="opacity:.6">+ Doc</button>`}</td>
       <td><div class="btn-row">
+        ${r.bal>0?`<button class="btn btn-p btn-xs" onclick="mRecordPayment('${r.id}')" title="${_s.rent_btn_payment}">💰</button>`:''}
         ${r.st==='Overdue'?`<button class="btn btn-g btn-xs" onclick="_rentalWARemind('${r.id}')" title="${_s.rent_send_wa}">💬</button>`:''}        ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-xs" onclick="mReturn('${r.id}')">↩ Return</button>`:''}
         ${BIZ.contractEnabled?`<button class="btn btn-c btn-xs" onclick="mRentalContract('${r.id}')" title="${_s.rent_btn_contract}">${r.contractSigned?'📋✓':'📋'}</button>`:''}
         <button class="btn btn-g btn-xs" onclick="genRentalReceiptDoc('${r.id}')" title="${_s.rent_btn_receipt}">🧾</button>
