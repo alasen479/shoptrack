@@ -14740,18 +14740,43 @@ async function _sbUpsertWithFallback(table, payload, ctx){var _s=_L();
     return {ok:true, data};
   }
 
-  // PGRST204: column missing — strip optional columns and retry
+  // PGRST204: column missing — dynamically detect and strip, retry up to 10 times
   if(error.code==='PGRST204' || (error.message||'').includes('column')){
-    console.warn('['+ctx+'] column missing:', error.message, '— retrying stripped');
     var safe = Object.assign({}, payload);
-    ['dob','birthday','docs','contract_sig_url','contract_signed_date',
-     'contract_signed','photo_data_urls','line_items','cost_lines',
-     '_storedProfit','profit','terms','freight','taxes','other',
-     'dmg_deduction','refund','return_notes','return_date',
-     'img_color','min_sp','min_stock','deposit','rented'].forEach(function(k){ delete safe[k]; });
-    var r2 = await _sb.from(table).upsert(safe, {onConflict:'id,biz_id'}).select();
-    if(!r2.error){ return {ok:true, data:r2.data}; }
-    error = r2.error;
+    var maxRetries = 10;
+    for(var _retry=0; _retry<maxRetries; _retry++){
+      // Extract the missing column name from error message
+      // Format: "Could not find the 'xxx' column of 'table' in the schema cache"
+      var colMatch = (error.message||'').match(/the '(\w+)' column/);
+      if(colMatch && colMatch[1]){
+        var badCol = colMatch[1];
+        console.warn('['+ctx+'] Stripping missing column: '+badCol+' (retry '+(_retry+1)+')');
+        delete safe[badCol];
+      } else {
+        // Can't detect column — strip all known optional columns as fallback
+        console.warn('['+ctx+'] Column error but could not parse name — stripping all optional');
+        ['dob','birthday','docs','contract_sig_url','contract_signed_date',
+         'contract_signed','photo_data_urls','line_items','cost_lines',
+         '_storedProfit','profit','terms','freight','taxes','other',
+         'dmg_deduction','refund','return_notes','return_date',
+         'img_color','min_sp','min_stock','deposit','rented','notes',
+         'condition_before','condition_after','late_fee','inv_id',
+         'customer_id','item_id','vendor_id','delivery_date','lines',
+         'duties','subtotal','rp','sp','cost','color','size','description',
+         'sku','brand','img','img_data_url','whatsapp','city','address',
+         'tier','vip','last_visit','visits','orders','spent','balance',
+         'payee','type','method','country','contact','qty','fee',
+         'start_date','due_date','items'].forEach(function(k){ delete safe[k]; });
+      }
+      var r2 = await _sb.from(table).upsert(safe, {onConflict:'id,biz_id'}).select();
+      if(!r2.error){ 
+        console.log('['+ctx+'] saved OK after stripping (retry '+(_retry+1)+')');
+        return {ok:true, data:r2.data}; 
+      }
+      error = r2.error;
+      // If error is no longer about a missing column, break
+      if(error.code!=='PGRST204' && !(error.message||'').includes('column')) break;
+    }
   }
 
   // 42P10: constraint not found — try without onConflict (let DB use default PK)
