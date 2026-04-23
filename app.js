@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1776860000");
+console.log("ShopTrack v2.7 - build:1776904000");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -17799,8 +17799,7 @@ try {
   window.addEventListener('online', function(){
     hideOfflineBanner();
     console.log('[ShopTrack] Back online');
-    // Show a brief "reconnected" toast if toast function is available
-    if(typeof toast === 'function') toast(_s.t_back_online2, 'success');
+    if(typeof toast === 'function'){ var _s=_L(); toast(_s.t_back_online2, 'success'); }
   });
 
   // Show immediately if already offline on load
@@ -23273,9 +23272,11 @@ function globalSearch(q){const _s=_L();
 
 // ── Offline/Online detection ─────────────────────────────────────────────
 window.addEventListener('offline', function(){
+  var _s=_L();
   toast(_s.t_offline_warn,'error');
 });
 window.addEventListener('online', function(){
+  var _s=_L();
   toast(_s.t_back_online,'success');
   if(SESSION.bizId && SESSION.bizId !== 'BIZ-001' && SESSION.bizId !== 'BIZ-107'){
     _dbLoadBizDataCached(SESSION.bizId);
