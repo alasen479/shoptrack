@@ -3765,6 +3765,16 @@ function _cbRecalc(prefix){
     });
     var perUnit = totalQty > 0 ? total / totalQty : total;
     costField.value = Math.round(perUnit * 100) / 100;
+    // Auto-populate Qty on Hand for Add Item form
+    if(prefix === 'ci' && totalQty > 0){
+      var qtyField = document.getElementById('ai-qty');
+      if(qtyField){
+        qtyField.value = Math.round(totalQty);
+        qtyField.style.transition = 'background .3s';
+        qtyField.style.background = 'var(--g-dim)';
+        setTimeout(function(){ qtyField.style.background = ''; }, 600);
+      }
+    }
     // Flash highlight to show it was updated
     costField.style.transition = 'background .3s';
     costField.style.background = 'var(--g-dim)';
