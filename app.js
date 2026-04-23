@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1776910000");
+console.log("ShopTrack v2.7 - build:1776945000");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -3500,7 +3500,8 @@ var _COST_CATS=_COST_CATS_DEFAULT;
 function _costBreakdownHTML(prefix, existingLines){const _s=_L();
   var lines = existingLines && existingLines.length ? existingLines : [];
   var hasLines = lines.length > 0;
-  var totalFromLines = lines.reduce(function(s,l){ return s + ((parseFloat(l.qty)||1)*(parseFloat(l.unitCost)||0)); }, 0);
+  // unitCost is stored in base USD — multiply by CUR.rate to get display currency
+  var totalFromLines = lines.reduce(function(s,l){ return s + ((parseFloat(l.qty)||1)*(parseFloat(l.unitCost)||0)*CUR.rate); }, 0);
 
   var cats=_getCostCats(); var catOpts=cats.map(function(c){
     return '<option value="'+c.id+'">'+c.icon+' '+c.label+'</option>';
@@ -3755,9 +3756,15 @@ function _cbRecalc(prefix){
       : '<span style="font-size:12px;color:var(--text3)">0</span>';
   }
 
-  // Auto-fill the cost price field
+  // Auto-fill the cost price field with PER-UNIT cost
+  // Total from breakdown = total acquisition cost; divide by total qty to get unit cost
   if(costField && total > 0){
-    costField.value = Math.round(total * 100) / 100;
+    var totalQty = 0;
+    container.querySelectorAll('.cb-row').forEach(function(row){
+      totalQty += parseFloat(row.querySelector('.cb-qty')?.value) || 1;
+    });
+    var perUnit = totalQty > 0 ? total / totalQty : total;
+    costField.value = Math.round(perUnit * 100) / 100;
     // Flash highlight to show it was updated
     costField.style.transition = 'background .3s';
     costField.style.background = 'var(--g-dim)';
