@@ -14421,28 +14421,54 @@ async function _dbLoadBizDataCached(bizId){
   _idbLoadInProgress = true;
   try{
     // Snapshot cached counts BEFORE overwriting with Supabase data
-    var _cachedInvCount = hadCache ? (D.inv||[]).length : 0;
-    var _cachedSalesCount = hadCache ? (D.sales||[]).length : 0;
-    var _cachedCustCount = hadCache ? (D.cust||[]).length : 0;
+    var _cached = hadCache ? {
+      inv: (D.inv||[]).length,
+      sales: (D.sales||[]).length,
+      cust: (D.cust||[]).length,
+      rentals: (D.rentals||[]).length,
+      exp: (D.exp||[]).length,
+      vendors: (D.vendors||[]).length,
+      purchases: (D.purchases||[]).length,
+      services: (D.services||[]).length,
+      appointments: (D.appointments||[]).length
+    } : {};
 
     await _dbLoadBizData(bizId);
 
     // DATA LOSS PROTECTION: if cache had items but Supabase returned empty,
-    // the items likely never saved to Supabase (save error). Don't overwrite
-    // the IDB cache — instead, re-push cached items to Supabase.
-    var _freshInvCount = (D.inv||[]).length;
-    if(_cachedInvCount > 0 && _freshInvCount === 0){
-      console.warn('[IDB] DATA LOSS DETECTED: cache had '+_cachedInvCount+' inventory items, Supabase returned 0. Restoring from cache.');
-      // Restore inventory from IDB cache
-      var _restoredInv = await _idbLoad(bizId, 'inv');
-      if(_restoredInv && _restoredInv.length){
-        D.inv = _restoredInv;
-        // Re-save each item to Supabase
-        for(var _ri=0; _ri<D.inv.length; _ri++){
-          try{ await _safeUpsert('inventory', _invToDB(D.inv[_ri], bizId), 'recovery'); }catch(_re){}
+    // the items likely never saved to Supabase (save error). Restore from cache.
+    if(hadCache){
+      var _dlpTables = [
+        {key:'inv',       arr:function(){return D.inv;},       set:function(d){D.inv=d;},       toDB:_invToDB,       table:'inventory',   label:'inventory'},
+        {key:'sales',     arr:function(){return D.sales;},     set:function(d){D.sales=d;},     toDB:_saleToDB,      table:'sales',       label:'sales'},
+        {key:'cust',      arr:function(){return D.cust;},      set:function(d){D.cust=d;},      toDB:_custToDB,      table:'customers',   label:'customers'},
+        {key:'rentals',   arr:function(){return D.rentals;},   set:function(d){D.rentals=d;},   toDB:_rentalToDB,    table:'rentals',     label:'rentals'},
+        {key:'exp',       arr:function(){return D.exp;},       set:function(d){D.exp=d;},       toDB:_expToDB,       table:'expenses',    label:'expenses'},
+        {key:'vendors',   arr:function(){return D.vendors;},   set:function(d){D.vendors=d;},   toDB:_vendorToDB,    table:'vendors',     label:'vendors'},
+        {key:'purchases', arr:function(){return D.purchases;}, set:function(d){D.purchases=d;}, toDB:_purchaseToDB,  table:'purchases',   label:'purchases'},
+      ];
+      var _recoveredTotal = 0;
+      for(var _t=0; _t<_dlpTables.length; _t++){
+        var _tbl = _dlpTables[_t];
+        var _cachedCount = _cached[_tbl.key] || 0;
+        var _freshCount = (_tbl.arr()||[]).length;
+        if(_cachedCount > 0 && _freshCount === 0){
+          console.warn('[DLP] '+_tbl.label+': cache had '+_cachedCount+' items, Supabase returned 0. Restoring.');
+          var _restored = await _idbLoad(bizId, _tbl.key);
+          if(_restored && _restored.length){
+            _tbl.set(_restored);
+            for(var _ri=0; _ri<_restored.length; _ri++){
+              try{ await _safeUpsert(_tbl.table, _tbl.toDB(_restored[_ri], bizId), 'dlp-'+_tbl.key); }catch(_re){}
+            }
+            _recoveredTotal += _restored.length;
+            console.log('[DLP] Recovered '+_restored.length+' '+_tbl.label+' items');
+          }
         }
-        console.log('[IDB] Recovered '+D.inv.length+' inventory items to Supabase');
-        toast((BIZ.language==='fr'?'✅ '+D.inv.length+' produits restaurés depuis le cache local':'✅ '+D.inv.length+' products restored from local cache'),'success');
+      }
+      if(_recoveredTotal > 0){
+        toast((BIZ.language==='fr'?'✅ '+_recoveredTotal+' éléments restaurés depuis le cache local':'✅ '+_recoveredTotal+' items restored from local cache'),'success');
+        try{ refreshLiveKpis(); }catch(_e){}
+        try{ if(typeof curPage!=='undefined'&&curPage) nav(curPage); }catch(_e){}
       }
     }
 
