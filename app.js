@@ -14746,7 +14746,9 @@ async function _sbUpsertWithFallback(table, payload, ctx){var _s=_L();
     var safe = Object.assign({}, payload);
     ['dob','birthday','docs','contract_sig_url','contract_signed_date',
      'contract_signed','photo_data_urls','line_items','cost_lines',
-     '_storedProfit','profit','terms','freight','taxes','other'].forEach(function(k){ delete safe[k]; });
+     '_storedProfit','profit','terms','freight','taxes','other',
+     'dmg_deduction','refund','return_notes','return_date',
+     'img_color','min_sp','min_stock','deposit','rented'].forEach(function(k){ delete safe[k]; });
     var r2 = await _sb.from(table).upsert(safe, {onConflict:'id,biz_id'}).select();
     if(!r2.error){ return {ok:true, data:r2.data}; }
     error = r2.error;
