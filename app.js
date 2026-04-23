@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1776945000");
+console.log("ShopTrack v2.7 - build:1776951000");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -14420,7 +14420,32 @@ async function _dbLoadBizDataCached(bizId){
   if(_idbLoadInProgress) return;
   _idbLoadInProgress = true;
   try{
+    // Snapshot cached counts BEFORE overwriting with Supabase data
+    var _cachedInvCount = hadCache ? (D.inv||[]).length : 0;
+    var _cachedSalesCount = hadCache ? (D.sales||[]).length : 0;
+    var _cachedCustCount = hadCache ? (D.cust||[]).length : 0;
+
     await _dbLoadBizData(bizId);
+
+    // DATA LOSS PROTECTION: if cache had items but Supabase returned empty,
+    // the items likely never saved to Supabase (save error). Don't overwrite
+    // the IDB cache — instead, re-push cached items to Supabase.
+    var _freshInvCount = (D.inv||[]).length;
+    if(_cachedInvCount > 0 && _freshInvCount === 0){
+      console.warn('[IDB] DATA LOSS DETECTED: cache had '+_cachedInvCount+' inventory items, Supabase returned 0. Restoring from cache.');
+      // Restore inventory from IDB cache
+      var _restoredInv = await _idbLoad(bizId, 'inv');
+      if(_restoredInv && _restoredInv.length){
+        D.inv = _restoredInv;
+        // Re-save each item to Supabase
+        for(var _ri=0; _ri<D.inv.length; _ri++){
+          try{ await _safeUpsert('inventory', _invToDB(D.inv[_ri], bizId), 'recovery'); }catch(_re){}
+        }
+        console.log('[IDB] Recovered '+D.inv.length+' inventory items to Supabase');
+        toast((BIZ.language==='fr'?'✅ '+D.inv.length+' produits restaurés depuis le cache local':'✅ '+D.inv.length+' products restored from local cache'),'success');
+      }
+    }
+
     // Step 4: Write fresh data back to IDB for next offline visit
     await _idbWriteAll(bizId);
     _idbHideCacheBanner();
