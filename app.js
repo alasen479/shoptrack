@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1776904000");
+console.log("ShopTrack v2.7 - build:1776910000");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -14677,7 +14677,8 @@ async function _sbUpsertWithFallback(table, payload, ctx){var _s=_L();
     console.warn('['+ctx+'] column missing:', error.message, '— retrying stripped');
     var safe = Object.assign({}, payload);
     ['dob','birthday','docs','contract_sig_url','contract_signed_date',
-     'contract_signed','photo_data_urls','line_items'].forEach(function(k){ delete safe[k]; });
+     'contract_signed','photo_data_urls','line_items','cost_lines',
+     '_storedProfit','profit','terms','freight','taxes','other'].forEach(function(k){ delete safe[k]; });
     var r2 = await _sb.from(table).upsert(safe, {onConflict:'id,biz_id'}).select();
     if(!r2.error){ return {ok:true, data:r2.data}; }
     error = r2.error;
@@ -27827,17 +27828,19 @@ function _restoreNotifPrefsFromDB(notifPrefsJson){
 // ── Fire a push notification for a specific event ────────────
 function _notifEvent(type, payload){
   if(!NOTIF_PREFS[type]) return;
+  var _s=_L();
   const biz = BIZ.name || 'ShopTrack';
+  const fr = (BIZ.language||'en')==='fr';
   const msgs = {
-    newSale:        {title:`💳 New Sale — ${biz}`, body:`${payload?.cust||'Customer'} · ${payload?.amt||''}`, tag:'sale', page:'sales'},
-    rentalDue:      {title:`🕐 Rental Due Today — ${biz}`, body:`${payload?.cust||''} — ${payload?.item||''}`, tag:'rental-due', page:'rentals'},
-    rentalOverdue:  {title:`⚠ Overdue Rental — ${biz}`, body:`${payload?.cust||''} — ${payload?.item||''} is overdue`, tag:'overdue', page:'rentals', sticky:true},
-    newAppointment: {title:`📅 New Appointment — ${biz}`, body:`${payload?.cust||''} booked ${payload?.svc||''} on ${payload?.date||''}`, tag:'appt', page:'appointments'},
-    apptReminder:   {title:`🔔 Appointment in 1 hour — ${biz}`, body:`${payload?.cust||''} · ${payload?.svc||''} at ${payload?.time||''}`, tag:'appt-remind', page:'appointments', sticky:true},
-    lowStock:       {title:`📦 Low Stock Alert — ${biz}`, body:`${payload?.name||'Item'} has only ${payload?.qty||0} units left`, tag:'stock', page:'inventory'},
-    arOutstanding:  {title:`💰 Unpaid Invoice — ${biz}`, body:`${payload?.cust||''} owes ${payload?.amt||''} (${payload?.days||0} days)`, tag:'ar', page:'sales'},
-    apPaymentDue:   {title:`🏭 Vendor Payment Due — ${biz}`, body:`${payload?.vendor||''} balance: ${payload?.amt||''}`, tag:'ap', page:'vendors'},
-    newExpense:     {title:`💸 Expense Recorded — ${biz}`, body:`${payload?.cat||''} · ${payload?.amt||''}`, tag:'expense', page:'expenses'},
+    newSale:        {title:(fr?'💳 Nouvelle Vente':'💳 New Sale')+' — '+biz, body:`${payload?.cust||fr?'Client':'Customer'} · ${payload?.amt||''}`, tag:'sale', page:'sales'},
+    rentalDue:      {title:(fr?'🕐 Location due aujourd\'hui':'🕐 Rental Due Today')+' — '+biz, body:`${payload?.cust||''} — ${payload?.item||''}`, tag:'rental-due', page:'rentals'},
+    rentalOverdue:  {title:(fr?'⚠ Location en retard':'⚠ Overdue Rental')+' — '+biz, body:`${payload?.cust||''} — ${payload?.item||''} ${fr?'est en retard':'is overdue'}`, tag:'overdue', page:'rentals', sticky:true},
+    newAppointment: {title:(fr?'📅 Nouveau RDV':'📅 New Appointment')+' — '+biz, body:`${payload?.cust||''} ${fr?'a réservé':'booked'} ${payload?.svc||''} ${fr?'le':'on'} ${payload?.date||''}`, tag:'appt', page:'appointments'},
+    apptReminder:   {title:(fr?'🔔 RDV dans 1 heure':'🔔 Appointment in 1 hour')+' — '+biz, body:`${payload?.cust||''} · ${payload?.svc||''} ${fr?'à':'at'} ${payload?.time||''}`, tag:'appt-remind', page:'appointments', sticky:true},
+    lowStock:       {title:(fr?'📦 Stock bas':'📦 Low Stock Alert')+' — '+biz, body:`${payload?.name||fr?'Article':'Item'} ${fr?'n\'a plus que':'has only'} ${payload?.qty||0} ${fr?'unités':'units left'}`, tag:'stock', page:'inventory'},
+    arOutstanding:  {title:(fr?'💰 Facture impayée':'💰 Unpaid Invoice')+' — '+biz, body:`${payload?.cust||''} ${fr?'doit':'owes'} ${payload?.amt||''} (${payload?.days||0} ${fr?'jours':'days'})`, tag:'ar', page:'sales'},
+    apPaymentDue:   {title:(fr?'🏭 Paiement fournisseur dû':'🏭 Vendor Payment Due')+' — '+biz, body:`${payload?.vendor||''} ${fr?'solde':'balance'}: ${payload?.amt||''}`, tag:'ap', page:'vendors'},
+    newExpense:     {title:(fr?'💸 Dépense enregistrée':'💸 Expense Recorded')+' — '+biz, body:`${payload?.cat||''} · ${payload?.amt||''}`, tag:'expense', page:'expenses'},
   };
   const cfg = msgs[type];
   if(cfg) _pushNotif(cfg.title, cfg.body, {tag:cfg.tag, page:cfg.page, sticky:cfg.sticky||false});
