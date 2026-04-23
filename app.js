@@ -14448,27 +14448,41 @@ async function _dbLoadBizDataCached(bizId){
         {key:'purchases', arr:function(){return D.purchases;}, set:function(d){D.purchases=d;}, toDB:_purchaseToDB,  table:'purchases',   label:'purchases'},
       ];
       var _recoveredTotal = 0;
+      var _dlpBgTasks = []; // background sync tasks
       for(var _t=0; _t<_dlpTables.length; _t++){
         var _tbl = _dlpTables[_t];
         var _cachedCount = _cached[_tbl.key] || 0;
         var _freshCount = (_tbl.arr()||[]).length;
         if(_cachedCount > 0 && _freshCount === 0){
-          console.warn('[DLP] '+_tbl.label+': cache had '+_cachedCount+' items, Supabase returned 0. Restoring.');
+          console.warn('[DLP] '+_tbl.label+': cache had '+_cachedCount+' items, Supabase returned 0. Restoring from cache.');
           var _restored = await _idbLoad(bizId, _tbl.key);
           if(_restored && _restored.length){
             _tbl.set(_restored);
-            for(var _ri=0; _ri<_restored.length; _ri++){
-              try{ await _safeUpsert(_tbl.table, _tbl.toDB(_restored[_ri], bizId), 'dlp-'+_tbl.key); }catch(_re){}
-            }
             _recoveredTotal += _restored.length;
-            console.log('[DLP] Recovered '+_restored.length+' '+_tbl.label+' items');
+            // Queue background sync (don't block UI)
+            _dlpBgTasks.push({items:_restored, toDB:_tbl.toDB, table:_tbl.table, key:_tbl.key});
           }
         }
       }
       if(_recoveredTotal > 0){
-        toast((BIZ.language==='fr'?'✅ '+_recoveredTotal+' éléments restaurés depuis le cache local':'✅ '+_recoveredTotal+' items restored from local cache'),'success');
+        toast((BIZ.language==='fr'?'✅ '+_recoveredTotal+' éléments restaurés':'✅ '+_recoveredTotal+' items restored from cache'),'success');
         try{ refreshLiveKpis(); }catch(_e){}
         try{ if(typeof curPage!=='undefined'&&curPage) nav(curPage); }catch(_e){}
+        // Background sync to Supabase — non-blocking, with delays to avoid timeouts
+        setTimeout(function(){
+          (async function(){
+            for(var _bg=0; _bg<_dlpBgTasks.length; _bg++){
+              var task = _dlpBgTasks[_bg];
+              console.log('[DLP] Background sync: '+task.key+' ('+task.items.length+' items)');
+              for(var _ri=0; _ri<task.items.length; _ri++){
+                try{ await _safeUpsert(task.table, task.toDB(task.items[_ri], bizId), 'dlp-'+task.key); }catch(_re){}
+                // Small delay between saves to prevent Supabase statement timeout
+                if(_ri % 5 === 4) await new Promise(function(r){setTimeout(r,500);});
+              }
+            }
+            console.log('[DLP] Background sync complete');
+          })();
+        }, 2000);
       }
     }
 
