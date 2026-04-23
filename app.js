@@ -3353,9 +3353,9 @@ function mItem(id){const _s=_L();
     <div><div class="fl">${_s.inv_size_lbl}</div><div>${it.sz||'—'}</div></div>
       <div><div class="fl">${_s.inv_qty_lbl}</div>
         <div style="display:flex;align-items:center;gap:6px">
-          <button onclick="_adjStock('\${it.id}',-1)" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">-</button>
-          <span id="inv-qty-\${it.id}" style="font-weight:700;color:var(--ink);min-width:28px;text-align:center">\${it.qty}</span>
-          <button onclick="_adjStock('\${it.id}',1)" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">+</button>
+          <button onclick="_adjStock('${it.id}',-1)" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">-</button>
+          <span id="inv-qty-${it.id}" style="font-weight:700;color:var(--ink);min-width:28px;text-align:center">${it.qty}</span>
+          <button onclick="_adjStock('${it.id}',1)" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">+</button>
           <span style="font-size:11px;color:var(--text2);margin-left:2px">(click to adjust)</span>
         </div></div>
     <div><div class="fl">${_s.inv_available}</div><div style="font-weight:600;color:var(--g)">${it.qty-it.rented}</div></div>
