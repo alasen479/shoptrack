@@ -6422,7 +6422,7 @@ function mRentalContract(id){const _s=_L();
     <div style="background:var(--g-dim);border:1px solid rgba(45,212,160,.3);border-radius:var(--r8);padding:12px 16px;margin-bottom:14px">
       <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:8px">✓ Contract signed on ${r.contractSignedDate}</div>
       <img loading="lazy" src="${r.contractSigUrl}" style="max-width:220px;max-height:70px;background:#fff;border-radius:4px;padding:4px;display:block">
-      <button class="btn btn-s btn-sm" style="margin-top:10px" onclick="if(confirm('Clear the existing signature and reset to unsigned?')){D.rentals.find(x=>x.id==='${id}').contractSigned=false;D.rentals.find(x=>x.id==='${id}').contractSigUrl=null;D.rentals.find(x=>x.id==='${id}').contractSignedDate=null;closeModal();mRentalContract('${id}');toast(_s.t_sig_cleared,'success')}">↺ Clear &amp; Re-sign</button>
+      <button class="btn btn-s btn-sm" style="margin-top:10px" onclick="if(confirm('${_L().rent_clear_sig_confirm||'Clear the existing signature and reset to unsigned?'}')){D.rentals.find(x=>x.id==='${id}').contractSigned=false;D.rentals.find(x=>x.id==='${id}').contractSigUrl=null;D.rentals.find(x=>x.id==='${id}').contractSignedDate=null;closeModal();mRentalContract('${id}');toast(_L().t_sig_cleared,'success')}">↺ Clear &amp; Re-sign</button>
     </div>`:`
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Ask the customer to sign below using their finger or mouse. Works on any touchscreen device.</div>
     <div style="position:relative;background:#fff;border-radius:var(--r8);border:2px solid var(--border2);overflow:hidden;margin-bottom:10px">
@@ -7951,7 +7951,7 @@ function mViewVendor(id){const _s=_L();
     </div>
     <div class="btn-row" style="justify-content:center;gap:10px">
       <button class="btn btn-g btn-sm" onclick="genVendorStatementPDF('${v.id}')">⬇ Download PDF</button>
-      <button class="btn btn-g btn-sm" onclick="(function(){var vc=D.vendors.find(function(x){return x.id==='${v.id}';});if(!vc)return;var ph=(vc.whatsapp||vc.phone||'').replace(/[^0-9]/g,'');if(ph){window.open('https://wa.me/'+ph,'_blank');}else{toast(_s.t_no_wa_vendor,'error');}})()">💬 WhatsApp</button>
+      <button class="btn btn-g btn-sm" onclick="(function(){var vc=D.vendors.find(function(x){return x.id==='${v.id}';});if(!vc)return;var ph=(vc.whatsapp||vc.phone||'').replace(/[^0-9]/g,'');if(ph){window.open('https://wa.me/'+ph,'_blank');}else{toast(_L().t_no_wa_vendor,'error');}})()">💬 WhatsApp</button>
       ${v.bal>0?`<button class="btn btn-p btn-sm" onclick="closeModal();mRecordVendorPayment('${v.id}')">💳 Record Payment</button>`:''}
     </div>
   </div>
@@ -8769,7 +8769,7 @@ function rptOverdue(){const _s=_L();
   <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due</th><th>Fee</th><th>${_s.rpt_late_fee}</th></tr></thead><tbody>
   ${od.map(r=>`<tr><td>${mono(r.id)}</td><td><strong style="color:var(--r)">${r.cust}</strong></td><td style="font-size:12px">${r.item}</td><td style="color:var(--r);font-weight:600">${r.due}</td><td>${mono(fmt(r.fee))}</td><td>${mono(fmt(r.lf),'r')}</td></tr>`).join('')}
   </tbody></table></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptOverduePDF()">⬇ PDF</button><button class="btn btn-r btn-sm" onclick="toast(_s.t_reminders_sent,'success');closeModal()">📲 Send All Reminders</button>`);
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptOverduePDF()">⬇ PDF</button><button class="btn btn-r btn-sm" onclick="toast(_L().t_reminders_sent,'success');closeModal()">📲 Send All Reminders</button>`);
 }
 
 function rptInvVal(){const _s=_L();
@@ -11513,7 +11513,7 @@ function _mbResetLogin(bizId){const _s=_L();
       <span style="color:var(--text2)">${_s.adm_new_pass}</span>
       <div style="display:flex;align-items:center;gap:8px">
         <strong style="font-family:var(--mono);color:var(--g);background:rgba(45,212,160,.1);padding:3px 10px;border-radius:5px">${newPass}</strong>
-        <button onclick="navigator.clipboard.writeText('${newPass}').then(()=>toast(_s.t_copied2,'success'))" style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px;color:var(--text);font-family:inherit">📋</button>
+        <button onclick="navigator.clipboard.writeText('${newPass}').then(()=>toast(_L().t_copied2,'success'))" style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px;color:var(--text);font-family:inherit">📋</button>
       </div>
     </div>
   </div>`,
@@ -11677,7 +11677,7 @@ function mProvision(){const _s=_L();
         <span style="font-size:12px;color:var(--text)">${_s.adm_temp_pass}</span>
         <div style="display:flex;align-items:center;gap:8px">
           <span id="prov-pass-display" style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--g);background:rgba(45,212,160,.1);padding:3px 10px;border-radius:5px">${tempPass}</span>
-          <button onclick="navigator.clipboard.writeText(document.getElementById('prov-pass-display').textContent).then(()=>toast(_s.t_creds_copied,'success'))" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text2)" title="${_s.adm_copy_pass}">📋</button>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('prov-pass-display').textContent).then(()=>toast(_L().t_creds_copied,'success'))" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text2)" title="${_s.adm_copy_pass}">📋</button>
           <button onclick="document.getElementById('prov-pass-display').textContent=_genTempPassword()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--a);font-family:inherit" title="Regenerate">↻ New</button>
         </div>
       </div>
@@ -11797,7 +11797,7 @@ function doProvision(){var _s=_L();
         <span style="color:var(--text2)">Temp Password</span>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-family:var(--mono);font-weight:700;color:var(--g);background:rgba(45,212,160,.1);padding:3px 10px;border-radius:5px">${pass}</span>
-          <button onclick="navigator.clipboard.writeText('Email: ${email}\\nPassword: ${pass}').then(()=>toast(_s.t_creds_copied,'success'))" style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px;color:var(--text);font-family:inherit">📋 Copy all</button>
+          <button onclick="navigator.clipboard.writeText('Email: ${email}\\nPassword: ${pass}').then(()=>toast(_L().t_creds_copied,'success'))" style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px;color:var(--text);font-family:inherit">📋 Copy all</button>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Plan</span>${bx(plan,'bx-b')}</div>
@@ -17085,7 +17085,7 @@ function _showEmailVerifyScreen(email, firstName, emailSent, userId, bizId, pwd,
        </div>
        <div style="background:var(--bg3);border:2px dashed var(--border2);border-radius:10px;padding:14px;text-align:center;margin-bottom:6px">
          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:6px">Your Verification Code</div>
-         <div id="sv-fallback-code" style="font-size:36px;font-weight:900;letter-spacing:10px;font-family:monospace;color:var(--a);cursor:pointer" title="Click to copy" onclick="navigator.clipboard?.writeText(this.textContent.trim());toast(_s.t_code_copied,'success')">${signupPayload?.token||''}</div>
+         <div id="sv-fallback-code" style="font-size:36px;font-weight:900;letter-spacing:10px;font-family:monospace;color:var(--a);cursor:pointer" title="Click to copy" onclick="navigator.clipboard?.writeText(this.textContent.trim());toast(_L().t_code_copied,'success')">${signupPayload?.token||''}</div>
          <div style="font-size:10px;color:var(--text2);margin-top:4px">Click the code to copy it &mdash; then paste it in the box below</div>
        </div>`
     }
@@ -18811,8 +18811,8 @@ function pgSettings(){
       <div class="fg" style="margin-top:14px">
         <label class="fl">${_s.set_theme}</label>
         <div style="display:flex;gap:8px;margin-top:6px">
-          <button class="btn btn-sm ${BIZ.theme!=='light'?'btn-p':'btn-s'}" id="theme-dark-btn" onclick="_applyTheme('dark');BIZ.theme='dark';document.getElementById('theme-dark-btn').className='btn btn-sm btn-p';document.getElementById('theme-light-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast(_s.t_theme_dark,'success')">${_s.set_theme_dark}</button>
-          <button class="btn btn-sm ${BIZ.theme==='light'?'btn-p':'btn-s'}" id="theme-light-btn" onclick="_applyTheme('light');BIZ.theme='light';document.getElementById('theme-light-btn').className='btn btn-sm btn-p';document.getElementById('theme-dark-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast(_s.t_theme_light,'success')">${_s.set_theme_light}</button>
+          <button class="btn btn-sm ${BIZ.theme!=='light'?'btn-p':'btn-s'}" id="theme-dark-btn" onclick="_applyTheme('dark');BIZ.theme='dark';document.getElementById('theme-dark-btn').className='btn btn-sm btn-p';document.getElementById('theme-light-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast(_L().t_theme_dark,'success')">${_s.set_theme_dark}</button>
+          <button class="btn btn-sm ${BIZ.theme==='light'?'btn-p':'btn-s'}" id="theme-light-btn" onclick="_applyTheme('light');BIZ.theme='light';document.getElementById('theme-light-btn').className='btn btn-sm btn-p';document.getElementById('theme-dark-btn').className='btn btn-sm btn-s';_dbSaveBizProfile(SESSION.bizId);toast(_L().t_theme_light,'success')">${_s.set_theme_light}</button>
         </div>
       </div>
     </div>
@@ -19098,7 +19098,7 @@ ${tabDocsHtml}
     <div style="background:var(--bg3);border-radius:var(--r8);padding:14px 16px;margin-bottom:16px;font-size:12px;color:var(--text)">
       <strong style="color:var(--ink);display:block;margin-bottom:6px">📌 Available placeholders — these are replaced automatically when generating a contract:</strong>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
-        ${['{BUSINESS_NAME}','{CUSTOMER_NAME}','{CUSTOMER_PHONE}','{CUSTOMER_ID}','{DATE}','{ITEM_NAME}','{START_DATE}','{DUE_DATE}','{RENTAL_FEE}','{DEPOSIT}','{CONDITION_BEFORE}','{RENTAL_ID}'].map(p=>`<code style="background:var(--a-dim);color:var(--a);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer" onclick="navigator.clipboard?.writeText('${p}').then(()=>toast(_s.t_copied2,'success'))" title="${_s.set_click_copy}">${p}</code>`).join('')}
+        ${['{BUSINESS_NAME}','{CUSTOMER_NAME}','{CUSTOMER_PHONE}','{CUSTOMER_ID}','{DATE}','{ITEM_NAME}','{START_DATE}','{DUE_DATE}','{RENTAL_FEE}','{DEPOSIT}','{CONDITION_BEFORE}','{RENTAL_ID}'].map(p=>`<code style="background:var(--a-dim);color:var(--a);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer" onclick="navigator.clipboard?.writeText('${p}').then(()=>toast(_L().t_copied2,'success'))" title="${_s.set_click_copy}">${p}</code>`).join('')}
       </div>
     </div>
 
@@ -19125,7 +19125,7 @@ ${tabDocsHtml}
 <div class="card">
   <div class="card-hd">
     <div class="card-ttl">${_s.set_cat_title}</div>
-    <button class="btn btn-p btn-sm" onclick="_dbSaveCategories(SESSION.bizId);toast(_s.t_cats_saved,'success');addAudit('Categories saved','Manual save from Settings')">${_s.set_cat_save}</button>
+    <button class="btn btn-p btn-sm" onclick="_dbSaveCategories(SESSION.bizId);toast(_L().t_cats_saved,'success');addAudit('Categories saved','Manual save from Settings')">${_s.set_cat_save}</button>
   </div>
   <div style="font-size:12px;color:var(--text2);margin-bottom:16px">${_s.set_cat_hint}</div>
   <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">${_s.set_cat_inv}</div>
@@ -19428,7 +19428,7 @@ ${renderPlansTab()}
         <div style="font-size:11px;color:var(--text2);margin-top:2px">${desc}</div>
       </div>
       <label style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;margin-left:12px">
-        <input type="checkbox" ${on?'checked':''} style="opacity:0;width:0;height:0" onchange="toast(_s.t_pref_saved,'success')"/>
+        <input type="checkbox" ${on?'checked':''} style="opacity:0;width:0;height:0" onchange="toast(_L().t_pref_saved,'success')"/>
         <span style="position:absolute;cursor:pointer;inset:0;background:${on?'var(--a)':'var(--bg4)'};border-radius:20px;transition:.2s" onclick="this.style.background=this.previousElementSibling.checked?'var(--bg4)':'var(--a)'"></span>
         <span style="position:absolute;content:'';height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;transform:${on?'translateX(16px)':'translateX(0)'}"></span>
       </label>
@@ -19762,7 +19762,7 @@ function _doResetUserPwd(uid){var _s=_L();
   <div style="padding:12px;background:var(--bg3);border-radius:var(--r8);font-size:13px;display:flex;flex-direction:column;gap:8px">
     <div><span style="color:var(--text2)">Login Email: </span><strong style="font-family:var(--mono)">${_esc(email||u.email)}</strong></div>
     <div><span style="color:var(--text2)">New Password: </span><strong style="font-family:var(--mono);color:var(--g)">${_esc(np)}</strong>
-      <button class="btn btn-s btn-xs" style="margin-left:8px" onclick="navigator.clipboard?.writeText('${_esc(np)}').then(function(){toast(_s.t_copied2,'success')})">📋 Copy</button>
+      <button class="btn btn-s btn-xs" style="margin-left:8px" onclick="navigator.clipboard?.writeText('${_esc(np)}').then(function(){toast(_L().t_copied2,'success')})">📋 Copy</button>
     </div>
   </div>
   <div style="margin-top:10px;font-size:11px;color:var(--text2)">Share these credentials securely. The user should change their password on next login.</div>`,
@@ -24333,7 +24333,7 @@ function pgBookingSettings(){const _s=_L();
     <div class="card-hd"><div class="card-ttl">🔗 Your Booking Link</div></div>
     <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r8);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px">
       <span style="font-family:var(--mono);font-size:12px;color:var(--a);word-break:break-all">${link}</span>
-      <button class="btn btn-p btn-sm" style="flex-shrink:0" onclick="navigator.clipboard?.writeText('${link}').then(()=>toast(_s.t_link_copied2,'success'))">📋 Copy</button>
+      <button class="btn btn-p btn-sm" style="flex-shrink:0" onclick="navigator.clipboard?.writeText('${link}').then(()=>toast(_L().t_link_copied2,'success'))">📋 Copy</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-g btn-sm" onclick="const m=encodeURIComponent('Book an appointment with us! 📅\\n\\n${link}\\n\\nChoose your service and time — we confirm right away!');window.open('https://wa.me/?text='+m,'_blank')">💬 Share on WhatsApp</button>
@@ -24353,7 +24353,7 @@ function pgBookingSettings(){const _s=_L();
       </div>
       <input type="checkbox" id="bk-enabled" ${BIZ.bookingsEnabled!==false?'checked':''} style="width:18px;height:18px;accent-color:var(--a);cursor:pointer"/>
     </div>
-    <button class="btn btn-p" style="margin-top:12px;width:100%" onclick="BIZ.bookingNote=document.getElementById('bk-note').value;BIZ.bookingsEnabled=document.getElementById('bk-enabled').checked;_dbSaveBizProfile(SESSION.bizId);toast(_s.t_settings_saved,'success')">💾 Save Settings</button>
+    <button class="btn btn-p" style="margin-top:12px;width:100%" onclick="BIZ.bookingNote=document.getElementById('bk-note').value;BIZ.bookingsEnabled=document.getElementById('bk-enabled').checked;_dbSaveBizProfile(SESSION.bizId);toast(_L().t_settings_saved,'success')">💾 Save Settings</button>
   </div>
 </div>
 <div class="card" style="margin-top:0">
