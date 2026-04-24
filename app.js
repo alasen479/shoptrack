@@ -3875,13 +3875,6 @@ async function mAddItem(_returnSelectId){const _s=_L();
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_saveNewItem()">${_s.inv_add_item}</button>`);
   window._retSelAI=_returnSelectId||null;
-  // Explicitly init category dropdown (belt-and-suspenders — _initModalSearchSelects may race)
-  setTimeout(function(){
-    var inv = D.invCats.length ? D.invCats : ['General','Clothing & Fashion','Electronics','Food & Beverages','Beauty & Health','Home & Furniture','Equipment & Tools','Raw Materials','Packaging','Accessories','Other'];
-    var cur = document.getElementById('ai-cat')?.value || inv[0] || 'General';
-    if(document.getElementById('ai-cat-wrap'))
-      _mkSearchSelect('ai-cat-wrap', inv.map(function(c){return{val:c,label:c};}), cur, function(v){var h=document.getElementById('ai-cat');if(h)h.value=v;}, 'Category…');
-  }, 60);
 }
 function _previewNewItemPhotos(input){
   const files = Array.from(input.files);
@@ -16643,6 +16636,13 @@ function _suTypeClose(){
 function _mkSearchSelect(id, opts, currentVal, onSelect, placeholder){
   var wrap = document.getElementById(id);
   if(!wrap) return;
+  // Skip re-init if dropdown already exists with same options (prevents glitch from competing inits)
+  if(wrap._ssBuilt && wrap._ssOpts && wrap._ssOpts.length === opts.length){
+    // Update callback in case it changed
+    wrap._ssOnSelect = onSelect;
+    return;
+  }
+  wrap._ssBuilt = true;
   var currentLabel = '';
   opts.forEach(function(o){ if(String(o.val)===String(currentVal)) currentLabel=o.label; });
   wrap.style.position = 'relative';
