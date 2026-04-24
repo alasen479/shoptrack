@@ -13623,26 +13623,35 @@ async function _dbLoadBizData(bizId){
     // Map DB rows → app format
     // For BIZ-107: only override if Supabase has data (preserves demo data when empty)
     const _is107 = bizId === 'BIZ-107';
-    if(!_is107 || (inv.data||[]).length)       D.inv       = (inv.data||[]).map(_dbToInv);
+    
+    // Log any query errors - don't silently replace data with empty arrays
+    if(inv.error) console.error('[DB] inventory query error:', inv.error.message);
+    if(cust.error) console.error('[DB] customers query error:', cust.error.message);
+    if(sales.error) console.error('[DB] sales query error:', sales.error.message);
+    if(rentals.error) console.error('[DB] rentals query error:', rentals.error.message);
+    if(exp.error) console.error('[DB] expenses query error:', exp.error.message);
+    if(vendors.error) console.error('[DB] vendors query error:', vendors.error.message);
+    if(purchases.error) console.error('[DB] purchases query error:', purchases.error.message);
+    
+    // Only update D.xxx if query succeeded (no error) — never overwrite with empty on failure
+    if(!inv.error && (!_is107 || (inv.data||[]).length))       D.inv       = (inv.data||[]).map(_dbToInv);
     else {
       // Overlay: apply saved photos/edits onto demo items from Supabase
       // (Supabase may have individual items saved — merge by id)
     }
-    var _dbCusts = (cust.data||[]).map(_dbToCust);
-    if(!_is107 || _dbCusts.length){
-      // DB is authoritative on full load — do NOT merge local-only records.
-      // The _localOnly merge was causing deleted customers to reappear:
-      // stale localStorage cache put them in D.cust, then they were preserved
-      // as "local-only" even though they were correctly deleted from Supabase.
-      D.cust = _dbCusts;
+    if(!cust.error){
+      var _dbCusts = (cust.data||[]).map(_dbToCust);
+      if(!_is107 || _dbCusts.length){
+        D.cust = _dbCusts;
+      }
     }
       _cacheCust(); // update cache with fresh DB data
-    if(!_is107 || (sales.data||[]).length)     D.sales     = (sales.data||[]).map(_dbToSale);
-    if(!_is107 || (rentals.data||[]).length)   D.rentals   = (rentals.data||[]).map(_dbToRental);
-    if(!_is107 || (exp.data||[]).length)       D.exp       = (exp.data||[]).map(_dbToExp);
-    if(!_is107 || (vendors.data||[]).length)   D.vendors   = (vendors.data||[]).map(_dbToVendor);
-    if(!_is107 || (purchases.data||[]).length) D.purchases = (purchases.data||[]).map(_dbToPurchase);
-    if(!_is107 || (audit.data||[]).length)     D.audit     = (audit.data||[]).map(_dbToAudit);
+    if(!sales.error && (!_is107 || (sales.data||[]).length))     D.sales     = (sales.data||[]).map(_dbToSale);
+    if(!rentals.error && (!_is107 || (rentals.data||[]).length))   D.rentals   = (rentals.data||[]).map(_dbToRental);
+    if(!exp.error && (!_is107 || (exp.data||[]).length))       D.exp       = (exp.data||[]).map(_dbToExp);
+    if(!vendors.error && (!_is107 || (vendors.data||[]).length))   D.vendors   = (vendors.data||[]).map(_dbToVendor);
+    if(!purchases.error && (!_is107 || (purchases.data||[]).length)) D.purchases = (purchases.data||[]).map(_dbToPurchase);
+    if(!audit.error && (!_is107 || (audit.data||[]).length))     D.audit     = (audit.data||[]).map(_dbToAudit);
     // Services and appointments — always load from Supabase for real businesses
     if(!_is107 || (svcs.data||[]).length){
       if(svcs.error) console.error('Services load error:', svcs.error.message);
@@ -16645,7 +16654,7 @@ function _mkSearchSelect(id, opts, currentVal, onSelect, placeholder){
     +'value="'+_esc(currentLabel)+'" '
     +'style="padding-right:28px;cursor:pointer;box-sizing:border-box;width:100%" '
     +'onfocus="_ssOpen(\''+id+'\')" '
-    +'onblur="setTimeout(function(){_ssClose(\''+id+'\')},220)" '
+    +'onblur="setTimeout(function(){_ssClose(\''+id+'\')},350)" '
     +'oninput="_ssFilter(\''+id+'\')" />'
     // Chevron icon
     +'<span onclick="_ssToggle(\''+id+'\')" '
@@ -16748,6 +16757,7 @@ function _ssRenderList(id, q){
   items.innerHTML = filtered.map(function(o){
     var isSelected = String(o.val) === String(curVal);
     return '<div onmousedown="event.preventDefault();_ssSelect(\''+id+'\',\''+_esc(o.val)+'\',\''+_esc(o.label)+'\')" '
+      +'ontouchend="event.preventDefault();_ssSelect(\''+id+'\',\''+_esc(o.val)+'\',\''+_esc(o.label)+'\')" '
       +'style="padding:9px 12px;cursor:pointer;font-size:13px;color:var(--ink);'
       +(isSelected?'background:var(--a-dim);font-weight:600;':'')+'" '
       +'onmouseover="this.style.background=\'var(--bg4)\'" '
