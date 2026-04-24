@@ -13600,16 +13600,16 @@ async function _dbLoadBizData(bizId){
   if(!_sb || !bizId) return;
   try {
     const [inv, cust, sales, rentals, exp, vendors, purchases, audit, cats, svcs, appts] = await Promise.all([
-      _sb.from('inventory').select('*').eq('biz_id', bizId),
-      _sb.from('customers').select('*').eq('biz_id', bizId),
-      _sb.from('sales').select('*').eq('biz_id', bizId).order('created_at', {ascending:false}),
-      _sb.from('rentals').select('*').eq('biz_id', bizId).order('created_at', {ascending:false}),
-      _sb.from('expenses').select('*').eq('biz_id', bizId).order('created_at', {ascending:false}),
-      _sb.from('vendors').select('*').eq('biz_id', bizId),
-      _sb.from('purchases').select('*').eq('biz_id', bizId).order('created_at', {ascending:false}),
+      _sb.from('inventory').select('*').eq('biz_id', bizId).limit(2000),
+      _sb.from('customers').select('*').eq('biz_id', bizId).limit(2000),
+      _sb.from('sales').select('*').eq('biz_id', bizId).order('created_at', {ascending:false}).limit(2000),
+      _sb.from('rentals').select('*').eq('biz_id', bizId).order('created_at', {ascending:false}).limit(2000),
+      _sb.from('expenses').select('*').eq('biz_id', bizId).order('created_at', {ascending:false}).limit(2000),
+      _sb.from('vendors').select('*').eq('biz_id', bizId).limit(500),
+      _sb.from('purchases').select('*').eq('biz_id', bizId).order('created_at', {ascending:false}).limit(2000),
       _sb.from('audit_log').select('*').eq('biz_id', bizId).order('created_at', {ascending:false}).limit(500),
       _sb.from('categories').select('*').eq('biz_id', bizId),
-      _sb.from('services').select('*').eq('biz_id', bizId).order('name'),
+      _sb.from('services').select('*').eq('biz_id', bizId).order('name').limit(500),
       _sb.from('appointments').select('*').eq('biz_id', bizId).order('date', {ascending:false}).limit(500),
     ]);
 
@@ -13618,7 +13618,22 @@ async function _dbLoadBizData(bizId){
     const _is107 = bizId === 'BIZ-107';
     
     // Log any query errors - don't silently replace data with empty arrays
-    if(inv.error) console.error('[DB] inventory query error:', inv.error.message);
+    // Retry timed-out queries individually (smaller result sets are faster)
+    var _invResult = inv;
+    if(inv.error && (inv.error.message||'').includes('timeout')){
+      console.warn('[DB] Retrying inventory query without photos...');
+      _invResult = await _sb.from('inventory').select('id,biz_id,sku,name,cat,brand,status,condition,sp,cost,rp,deposit,min_sp,min_stock,qty,color,size,description,rented,img,img_color').eq('biz_id', bizId).limit(2000);
+      if(_invResult.error) console.error('[DB] inventory retry also failed:', _invResult.error.message);
+      else console.log('[DB] inventory retry OK:', (_invResult.data||[]).length, 'items');
+    }
+    var _svcResult = svcs;
+    if(svcs.error && (svcs.error.message||'').includes('timeout')){
+      console.warn('[DB] Retrying services query...');
+      _svcResult = await _sb.from('services').select('id,biz_id,name,duration_mins,price,price_type,category,color,staff_ids,active,description').eq('biz_id', bizId).order('name').limit(500);
+      if(_svcResult.error) console.error('[DB] services retry also failed:', _svcResult.error.message);
+    }
+
+    if(_invResult.error) console.error('[DB] inventory query error:', _invResult.error.message);
     if(cust.error) console.error('[DB] customers query error:', cust.error.message);
     if(sales.error) console.error('[DB] sales query error:', sales.error.message);
     if(rentals.error) console.error('[DB] rentals query error:', rentals.error.message);
@@ -13627,7 +13642,7 @@ async function _dbLoadBizData(bizId){
     if(purchases.error) console.error('[DB] purchases query error:', purchases.error.message);
     
     // Only update D.xxx if query succeeded (no error) — never overwrite with empty on failure
-    if(!inv.error && (!_is107 || (inv.data||[]).length))       D.inv       = (inv.data||[]).map(_dbToInv);
+    if(!_invResult.error && (!_is107 || (_invResult.data||[]).length))       D.inv       = (_invResult.data||[]).map(_dbToInv);
     else {
       // Overlay: apply saved photos/edits onto demo items from Supabase
       // (Supabase may have individual items saved — merge by id)
@@ -13646,9 +13661,9 @@ async function _dbLoadBizData(bizId){
     if(!purchases.error && (!_is107 || (purchases.data||[]).length)) D.purchases = (purchases.data||[]).map(_dbToPurchase);
     if(!audit.error && (!_is107 || (audit.data||[]).length))     D.audit     = (audit.data||[]).map(_dbToAudit);
     // Services and appointments — always load from Supabase for real businesses
-    if(!_is107 || (svcs.data||[]).length){
-      if(svcs.error) console.error('Services load error:', svcs.error.message);
-      else D.services = (svcs.data||[]).map(function(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null}; });
+    if(!_is107 || (_svcResult.data||[]).length){
+      if(_svcResult.error) console.error('Services load error:', _svcResult.error.message);
+      else D.services = (_svcResult.data||[]).map(function(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null}; });
     }
     if(!_is107 || (appts.data||[]).length){
       if(appts.error) console.error('Appointments load error:', appts.error.message);
