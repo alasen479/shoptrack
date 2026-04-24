@@ -14786,7 +14786,7 @@ async function _sbUpsertWithFallback(table, payload, ctx){var _s=_L();
       }
       var r2 = await _sb.from(table).upsert(safe, {onConflict:'id,biz_id'}).select();
       if(!r2.error){ 
-        console.log('['+ctx+'] saved OK after stripping (retry '+(_retry+1)+')');
+        console.log('['+ctx+'] saved OK after stripping (retry '+(_retry+1)+') | columns:', Object.keys(safe).join(','));
         return {ok:true, data:r2.data}; 
       }
       error = r2.error;
@@ -15123,6 +15123,7 @@ async function _dbSaveInv(item, qtyDelta){
   // Always update IDB cache immediately
   var _iIdx = D.inv.findIndex(function(x){return x.id===item.id;});
   if(_iIdx>=0) D.inv[_iIdx]=item;
+  else D.inv.push(item);
   _idbSave(SESSION.bizId,'inv',D.inv).catch(function(){});
 
   if(!_sb||!navigator.onLine){
@@ -15130,7 +15131,10 @@ async function _dbSaveInv(item, qtyDelta){
     await _queueEnqueue(SESSION.bizId, 'inventory', _ip, qtyDelta);
     var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
   }
-  await _safeUpsert('inventory', _invToDB(item, SESSION.bizId), 'saveInv');
+  var result = await _safeUpsert('inventory', _invToDB(item, SESSION.bizId), 'saveInv');
+  if(result && !result.ok){
+    console.error('[saveInv] FAILED for '+item.id+' ('+item.name+'):', result.error);
+  }
 }
 async function _dbDelInv(id){
   if(!SESSION.bizId) return;
