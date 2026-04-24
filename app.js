@@ -16656,11 +16656,14 @@ function _mkSearchSelect(id, opts, currentVal, onSelect, placeholder){
   var wrap = document.getElementById(id);
   if(!wrap) return;
   // Use native <select> for reliability on all devices (mobile + desktop)
-  // Skip rebuild if select already exists with same option count AND same current value
+  // Skip rebuild if select already exists — just update callback
   var existingSel = wrap.querySelector('select');
-  if(existingSel && existingSel.options.length === opts.length + 1){
-    // Just update the callback
+  if(existingSel && existingSel.options.length > 0){
     wrap._ssOnSelect = onSelect;
+    // Update selected value if it changed
+    if(currentVal && existingSel.value !== String(currentVal)){
+      existingSel.value = String(currentVal);
+    }
     return;
   }
   wrap._ssOnSelect = onSelect;
