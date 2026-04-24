@@ -16655,145 +16655,43 @@ function _suTypeClose(){
 function _mkSearchSelect(id, opts, currentVal, onSelect, placeholder){
   var wrap = document.getElementById(id);
   if(!wrap) return;
-  // Skip re-init if dropdown already exists with same options (prevents glitch from competing inits)
-  if(wrap._ssBuilt && wrap._ssOpts && wrap._ssOpts.length === opts.length){
-    // Update callback in case it changed
+  // Use native <select> for reliability on all devices (mobile + desktop)
+  // Skip rebuild if select already exists with same option count AND same current value
+  var existingSel = wrap.querySelector('select');
+  if(existingSel && existingSel.options.length === opts.length + 1){
+    // Just update the callback
     wrap._ssOnSelect = onSelect;
     return;
   }
-  wrap._ssBuilt = true;
-  var currentLabel = '';
-  opts.forEach(function(o){ if(String(o.val)===String(currentVal)) currentLabel=o.label; });
-  wrap.style.position = 'relative';
-  // Build: visible search input + hidden value field + dropdown list
-  wrap.innerHTML =
-    // Search input — shows selected label; clears on focus to allow typing
-    '<input class="fi" id="'+id+'-inp" autocomplete="off" '
-    +'placeholder="'+(placeholder||'Search or select…')+'" '
-    +'value="'+_esc(currentLabel)+'" '
-    +'style="padding-right:28px;cursor:pointer;box-sizing:border-box;width:100%" '
-    +'onfocus="_ssOpen(\''+id+'\')" '
-    +'onblur="setTimeout(function(){_ssClose(\''+id+'\')},350)" '
-    +'oninput="_ssFilter(\''+id+'\')" />'
-    // Chevron icon
-    +'<span onclick="_ssToggle(\''+id+'\')" '
-    +'style="position:absolute;right:10px;top:50%;transform:translateY(-50%);'
-    +'color:var(--text2);cursor:pointer;font-size:11px;user-select:none">▾</span>'
-    // Hidden value field (source of truth for form save)
-    +'<input type="hidden" id="'+id+'-val" value="'+_esc(currentVal)+'" />'
-    // Dropdown list panel — fixed width, search bar at top
-    +'<div id="'+id+'-list" style="display:none;position:absolute;top:calc(100% + 3px);left:0;right:0;'
-    +'background:var(--bg3);border:1.5px solid var(--a);border-radius:var(--r8);'
-    +'z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.35);overflow:hidden">'
-      // Sticky search bar inside the list panel
-      +'<div style="padding:7px 8px;border-bottom:1px solid var(--border2);background:var(--bg3);position:sticky;top:0">'
-        +'<input id="'+id+'-search" autocomplete="off" '
-        +'placeholder="🔍 Search…" '
-        +'style="width:100%;background:var(--bg2);border:1px solid var(--border2);color:var(--ink);'
-        +'border-radius:var(--r6);padding:6px 10px;font-size:12px;font-family:inherit;'
-        +'outline:none;box-sizing:border-box" '
-        +'oninput="_ssSearchFilter(\''+id+'\')" />'
-      +'</div>'
-      // Scrollable items container
-      +'<div id="'+id+'-items" style="max-height:180px;overflow-y:auto"></div>'
-    +'</div>';
-  wrap._ssOpts     = opts;
   wrap._ssOnSelect = onSelect;
-  wrap._ssCurVal   = currentVal;
-  wrap._ssCurLbl   = currentLabel;
-  _ssRenderList(id, '');
-}
-function _ssOpen(id){
-  var inp = document.getElementById(id+'-inp');
-  var wrap = document.getElementById(id);
-  // Save current label so we can restore on blur-without-select
-  if(wrap) wrap._ssCurLbl = inp ? inp.value : '';
-  // Clear the input so the search field shows empty and full list appears
-  if(inp) inp.value = '';
-  var list = document.getElementById(id+'-list');
-  if(list){ list.style.display='block'; }
-  // Clear the search box inside the dropdown
-  var srch = document.getElementById(id+'-search');
-  if(srch){ srch.value=''; srch.focus(); }
-  _ssRenderList(id, '');
-}
-function _ssToggle(id){
-  var list = document.getElementById(id+'-list');
-  if(!list) return;
-  if(list.style.display==='none'||!list.style.display){
-    _ssOpen(id);
-  } else {
-    _ssClose(id);
-  }
-}
-function _ssClose(id){
-  var list = document.getElementById(id+'-list');
-  if(list) list.style.display='none';
-  // Restore the display input to show the currently selected label
-  var wrap = document.getElementById(id);
-  var inp  = document.getElementById(id+'-inp');
-  var hiddenEl = document.getElementById(id+'-val');
-  if(inp && hiddenEl){
-    // Find label for current value
-    var lbl = '';
-    if(wrap && wrap._ssOpts){
-      wrap._ssOpts.forEach(function(o){ if(String(o.val)===String(hiddenEl.value)) lbl=o.label; });
-    }
-    // Only restore if user didn't type a new selection (inp is empty after open)
-    inp.value = lbl || (wrap && wrap._ssCurLbl ? wrap._ssCurLbl : '');
-  }
-}
-function _ssSearchFilter(id){
-  // Called by the search box INSIDE the dropdown panel
-  var srch = document.getElementById(id+'-search');
-  var q = srch ? srch.value.toLowerCase() : '';
-  _ssRenderList(id, q);
-}
-function _ssFilter(id){
-  // Called by the main visible input (oninput) — filter as user types
-  var inp = document.getElementById(id+'-inp');
-  var q = inp ? inp.value.toLowerCase() : '';
-  // Also sync the dropdown search box
-  var srch = document.getElementById(id+'-search');
-  if(srch) srch.value = inp ? inp.value : '';
-  var list = document.getElementById(id+'-list');
-  if(list) list.style.display='block';
-  _ssRenderList(id, q);
-}
-function _ssRenderList(id, q){
-  var wrap = document.getElementById(id);
-  if(!wrap||!wrap._ssOpts) return;
-  var items = document.getElementById(id+'-items');
-  if(!items) return;
-  var filtered = wrap._ssOpts.filter(function(o){
-    return !q || o.label.toLowerCase().includes(q) || (o.val+'').toLowerCase().includes(q);
+  var html = '<select class="fs" style="width:100%;padding:10px 13px;font-size:13px;cursor:pointer">';
+  if(placeholder) html += '<option value="">'+_esc(placeholder)+'</option>';
+  opts.forEach(function(o){
+    var sel = String(o.val) === String(currentVal) ? ' selected' : '';
+    html += '<option value="'+_esc(o.val)+'"'+sel+'>'+_esc(o.label)+'</option>';
   });
-  var curVal = (document.getElementById(id+'-val')||{}).value || '';
-  if(!filtered.length){
-    items.innerHTML='<div style="padding:10px 12px;color:var(--text2);font-size:12px;text-align:center">No results</div>';
-    return;
-  }
-  items.innerHTML = filtered.map(function(o){
-    var isSelected = String(o.val) === String(curVal);
-    return '<div onmousedown="event.preventDefault();_ssSelect(\''+id+'\',\''+_esc(o.val)+'\',\''+_esc(o.label)+'\')" '
-      +'ontouchend="event.preventDefault();_ssSelect(\''+id+'\',\''+_esc(o.val)+'\',\''+_esc(o.label)+'\')" '
-      +'style="padding:9px 12px;cursor:pointer;font-size:13px;color:var(--ink);'
-      +(isSelected?'background:var(--a-dim);font-weight:600;':'')+'" '
-      +'onmouseover="this.style.background=\'var(--bg4)\'" '
-      +'onmouseout="this.style.background=\''+(isSelected?'var(--a-dim)':'')+'\'">'+_esc(o.label)+'</div>';
-  }).join('');
+  html += '</select>';
+  // Hidden value field for compatibility with _ssGetVal
+  html += '<input type="hidden" id="'+id+'-val" value="'+_esc(currentVal||'')+'" />';
+  wrap.innerHTML = html;
+  var sel = wrap.querySelector('select');
+  sel.onchange = function(){
+    var val = this.value;
+    var label = this.options[this.selectedIndex]?.text || val;
+    var h = document.getElementById(id+'-val');
+    if(h) h.value = val;
+    if(wrap._ssOnSelect) wrap._ssOnSelect(val, label);
+  };
+  // Also set the hidden field to current value
+  var h = document.getElementById(id+'-val');
+  if(h) h.value = currentVal || '';
 }
-function _ssSelect(id, val, label){
-  var hiddenEl = document.getElementById(id+'-val');
-  var inpEl    = document.getElementById(id+'-inp');
-  var wrap     = document.getElementById(id);
-  if(hiddenEl) hiddenEl.value = val;
-  if(inpEl){ inpEl.value = label; }
-  if(wrap){ wrap._ssCurVal=val; wrap._ssCurLbl=label; }
-  _ssClose(id);
-  if(wrap && wrap._ssOnSelect) wrap._ssOnSelect(val, label);
-}
+// Keep _ssGetVal for backward compatibility
 function _ssGetVal(id){
+  var wrap = document.getElementById(id);
+  if(!wrap) return '';
+  var sel = wrap.querySelector('select');
+  if(sel) return sel.value;
   var el = document.getElementById(id+'-val');
   return el ? el.value : '';
 }
