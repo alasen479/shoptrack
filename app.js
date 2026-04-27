@@ -2711,7 +2711,7 @@ function mChangePlan(){var _s=_L();
            toast(_L().t_free_switched,'success');
            nav('settings');
          });
-       } else { BIZ.plan='free'; toast(_s.t_free_switched,'success'); }
+       } else { BIZ.plan='free'; toast(_L().t_free_switched,'success'); }
      } else {
        // Upgrade to Premium -- route to payment (Stripe for USD, CamPay for XAF)
        setTimeout(function(){ mSubPayNow(); }, 200);
@@ -7538,7 +7538,7 @@ function mCollectBalance(custId){const _s=_L();
      refreshLiveKpis();
      addAudit('Customer payment collected','${custId} — ${_esc(c.name)} — '+fmt(amtBase));
      closeModal();
-     toast(_s.t_sale_prefix +fmt(amtBase)+' recorded for ${_esc(c.name)} ✓','success');
+     toast(_L().t_sale_prefix +fmt(amtBase)+' recorded for ${_esc(c.name)} ✓','success');
      nav('customers');
    })()">💰 Record Collection</button>`);
 }
@@ -7617,7 +7617,7 @@ function mRecordVendorPayment(vendorId){const _s=_L();
      D.exp.unshift(expRec); _dbSaveExp(expRec);
      refreshLiveKpis();
      addAudit('Vendor AP payment recorded', '${vendorId} — ${_esc(v.name)} — '+fmt(amtBase));
-     closeModal(); toast(_s.t_sale_prefix +fmt(amtBase)+' recorded ✓','success'); nav('vendors');
+     closeModal(); toast(_L().t_sale_prefix +fmt(amtBase)+' recorded ✓','success'); nav('vendors');
    })()">💳 Record Payment</button>`);
 }
 
@@ -8213,7 +8213,7 @@ async function mAddExp(){const _s=_L();
     refreshLiveKpis();
     addAudit('Expense recorded', id+' — '+payee+' — '+fmt(amtBase));
     closeModal();
-    toast(_s.t_expense_rec,'success');
+    toast(_L().t_expense_rec,'success');
     nav('expenses');
    })()">💾 Record Expense</button>`);
 }
@@ -28376,7 +28376,7 @@ function refreshNotifPanel(){
   }
   // Append WA quick-action footer to notification panel
   html += '<div style="border-top:1px solid var(--border);margin-top:10px;padding:10px 14px;display:flex;flex-direction:column;gap:7px">'
-    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:2px">'+_s.ui_quick_actions+'</div>'
+    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:2px">'+_L().ui_quick_actions+'</div>'
     + '<button class="btn btn-g btn-sm" style="justify-content:flex-start;gap:8px" onclick="nav(\'settings\');setTimeout(function(){var t=document.querySelector(\'.stab[onclick*=tab-notif]\');if(t){t.click();}},300)">'
     + '⚙️ Notification Settings</button>'
     + '</div>';
@@ -28394,7 +28394,7 @@ function _saveAppt(){var _s=_L();
   if(_isFreePlan()){ _showPremiumUpgradePrompt('appointments'); return; }
   if(_planWriteBlocked('Booking an appointment')) return;
   const date=document.getElementById('na-d')?.value;
-  if(!date){ toast(_s.t_fill_fields,'error'); return; }
+  if(!date){ toast(_L().t_fill_fields,'error'); return; }
   const svcId=_ssGetVal('na-s-wrap')||(document.getElementById('na-s')||{}).value||'';
   const svc=D.services.find(s=>s.id===svcId);
   const st=document.getElementById('na-t')?.value||'09:00';
@@ -28415,7 +28415,7 @@ function _saveAppt(){var _s=_L();
   const ncForm=document.getElementById('na-new-cust-form');
   if(ncForm && ncForm.style.display!=='none'){
     const ncName=document.getElementById('na-nc-name')?.value?.trim();
-    if(ncName){ toast(_s.t_pls_save_first,'error'); return; }
+    if(ncName){ toast(_L().t_pls_save_first,'error'); return; }
   }
   // ── Double-booking conflict check ─────────────────────────────────
   if(st && et){
@@ -28449,7 +28449,7 @@ function _saveAppt(){var _s=_L();
 
 function _deleteAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;});
-  if(!a){ toast(_s.t_not_found,'error'); return; }
+  if(!a){ toast(_L().t_not_found,'error'); return; }
   var linkedSale=a.saleId?D.sales.find(function(s){return s.id===a.saleId;}):null;
   var isActive=a.st!=='Completed'&&a.st!=='Cancelled';
   var warnHtml='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(a.id)+'</strong> — '+_esc(a.custName)+' / '+_esc(a.serviceName)+' on '+a.date+'?</p>';
@@ -28458,43 +28458,43 @@ function _deleteAppt(id){const _s=_L();
   if(a.totalAmt>0&&!linkedSale) warnHtml+='<p style="font-size:12px;color:var(--text3)">Revenue of '+fmt(a.totalAmt)+' will be removed from KPIs.</p>';
   var mid=id;
   modal('Delete Appointment', warnHtml,
-    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'+
-    '<button class="btn btn-d" id="confirm-del-appt-btn">'+_s.ui_delete+'</button>');
+    '<button class="btn btn-s" onclick="closeModal()">'+_L().ui_cancel+'</button>'+
+    '<button class="btn btn-d" id="confirm-del-appt-btn">'+_L().ui_delete+'</button>');
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-appt-btn');
     if(btn) btn.onclick=function(){
       D.appointments=(D.appointments||[]).filter(function(x){return x.id!==mid;});
       _dbDelAppt(mid); refreshLiveKpis();
       addAudit('Appointment deleted',mid);
-      closeModal(); toast(_s.t_appt_deleted,'success'); nav('appointments');
+      closeModal(); toast(_L().t_appt_deleted,'success'); nav('appointments');
     };
   },30);
 }
 
 function mEditApptCompleted(id){const _s=_L();
   var a = D.appointments.find(function(x){return x.id===id;});
-  if(!a){ toast(_s.t_not_found,'error'); return; }
+  if(!a){ toast(_L().t_not_found,'error'); return; }
   var rate = CUR.rate||1;
   var sym  = CUR.symbol;
   var body = '<div class="fg-2">'
-    +'<div class="fg"><label class="fl">'+_s.ui_date+'</label>'
+    +'<div class="fg"><label class="fl">'+_L().ui_date+'</label>'
     +'<input class="fi" type="date" id="eac-date" value="'+a.date+'"/></div>'
     +'<div class="fg"><label class="fl">Amount ('+sym+')</label>'
     +'<input class="fi" type="number" id="eac-amt" value="'+Math.round((a.totalAmt||0)*rate)+'" step="any"/></div>'
     +'</div>'
-    +'<div class="fg"><label class="fl">'+_s.ui_pay_method+'</label>'
+    +'<div class="fg"><label class="fl">'+_L().ui_pay_method+'</label>'
     +'<select class="fs" id="eac-method">'
-    +'<option'+(a.payMethod==='Cash'?' selected':'')+'>'+_s.ui_cash+'</option>'
-    +'<option'+(a.payMethod==='Mobile Money (MTN)'?' selected':'')+'>'+_s.ui_mobile_mtn+'</option>'
-    +'<option'+(a.payMethod==='Orange Money'?' selected':'')+'>'+_s.ui_orange+'</option>'
-    +'<option'+(a.payMethod==='Bank Transfer'?' selected':'')+'>'+_s.ui_bank_transfer+'</option>'
+    +'<option'+(a.payMethod==='Cash'?' selected':'')+'>'+_L().ui_cash+'</option>'
+    +'<option'+(a.payMethod==='Mobile Money (MTN)'?' selected':'')+'>'+_L().ui_mobile_mtn+'</option>'
+    +'<option'+(a.payMethod==='Orange Money'?' selected':'')+'>'+_L().ui_orange+'</option>'
+    +'<option'+(a.payMethod==='Bank Transfer'?' selected':'')+'>'+_L().ui_bank_transfer+'</option>'
     +'<option'+(a.payMethod==='Card'?' selected':'')+'>Card</option>'
     +'</select></div>'
-    +'<div class="fg"><label class="fl">'+_s.ui_notes+'</label>'
+    +'<div class="fg"><label class="fl">'+_L().ui_notes+'</label>'
     +'<textarea class="ft" id="eac-notes" style="min-height:60px">'+(a.notes||'')+'</textarea></div>';
-  var footer = '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
-    +' <button class="btn btn-p" id="eac-save-btn">'+_s.ui_save+'</button>';
-  modal(_s.appt_edit_title, body, footer, 'sm');
+  var footer = '<button class="btn btn-s" onclick="closeModal()">'+_L().ui_cancel+'</button>'
+    +' <button class="btn btn-p" id="eac-save-btn">'+_L().ui_save+'</button>';
+  modal(_L().appt_edit_title, body, footer, 'sm');
   // Wire save button after modal renders (avoids all quote-nesting)
   setTimeout(function(){
     var btn = document.getElementById('eac-save-btn');
@@ -28505,7 +28505,7 @@ function mEditApptCompleted(id){const _s=_L();
 
 function _saveApptEdit(id){var _s=_L();
   var a = D.appointments.find(function(x){return x.id===id;});
-  if(!a){ toast(_s.t_not_found,'error'); return; }
+  if(!a){ toast(_L().t_not_found,'error'); return; }
   var rate    = CUR.rate||1;
   var newAmt  = (parseFloat((document.getElementById('eac-amt')||{}).value)||0)/rate;
   var newDate = (document.getElementById('eac-date')||{}).value||a.date;
@@ -28529,13 +28529,13 @@ function _saveApptEdit(id){var _s=_L();
   refreshLiveKpis();
   addAudit('Appointment edited', id+' '+fmt(newAmt));
   closeModal();
-  toast(_s.t_appt_updated,'success');
+  toast(_L().t_appt_updated,'success');
   nav('appointments');
 }
 
 function genApptInvoice(id){var _s=_L();
   var a = D.appointments.find(function(x){return x.id===id;});
-  if(!a){ toast(_s.t_appt_notfound,'error'); return; }
+  if(!a){ toast(_L().t_appt_notfound,'error'); return; }
   var primary  = BIZ.primaryColor||'#4361EE';
   var accent   = BIZ.accentColor||'#059669';
   var rate     = CUR.rate||1;
@@ -28622,7 +28622,7 @@ function genApptInvoice(id){var _s=_L();
 
 function mViewAppt(id){const _s=_L();
   var a = D.appointments.find(function(x){return x.id===id;});
-  if(!a){ toast(_s.t_appt_notfound,'error'); return; }
+  if(!a){ toast(_L().t_appt_notfound,'error'); return; }
   var svc        = D.services.find(function(s){return s.id===a.serviceId;});
   var canEdit    = a.st!=='Completed' && a.st!=='Cancelled';
   var canEditAmt = a.st==='Completed';
@@ -28631,7 +28631,7 @@ function mViewAppt(id){const _s=_L();
 
   var statusHtml = '<div style="background:'+col+'18;border:1px solid '+col+'40;border-radius:var(--r8);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
     +'<span style="font-weight:700;color:'+col+';font-size:14px">'+a.st
-    +(a.walkIn?'&nbsp;<span style="font-size:10px;background:var(--o-dim);color:var(--o);padding:2px 6px;border-radius:10px">'+_s.appt_walkin+'</span>':'')
+    +(a.walkIn?'&nbsp;<span style="font-size:10px;background:var(--o-dim);color:var(--o);padding:2px 6px;border-radius:10px">'+_L().appt_walkin+'</span>':'')
     +'</span><span style="font-size:11px;color:var(--text2)">'+a.id+'</span></div>';
 
   var grid = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'
@@ -28640,24 +28640,24 @@ function mViewAppt(id){const _s=_L();
       +'<div style="font-weight:700;color:var(--ink)">'+a.date+'</div>'
       +'<div style="font-size:11px;color:var(--text2)">'+_timeLabel(a.startTime)+(a.endTime?' \u2013 '+_timeLabel(a.endTime):'')+'</div></div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px">'
-      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_s.ui_customer+'</div>'
+      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_L().ui_customer+'</div>'
       +'<div style="font-weight:700;color:var(--ink)">'+a.custName+'</div>'
       +(a.custPhone?'<div style="font-size:11px;color:var(--a)">'+a.custPhone+'</div>':'')+'</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px">'
-      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_s.svc_col_name+'</div>'
+      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_L().svc_col_name+'</div>'
       +'<div style="font-weight:700;color:var(--ink)">'+a.serviceName+'</div>'
       +(svc?'<div style="font-size:11px;color:var(--text2)">'+svc.duration+' min</div>':'')+'</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px">'
-      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_s.ui_amount+'</div>'
+      +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_L().ui_amount+'</div>'
       +'<div style="font-weight:700;color:var(--ink)">'+(a.totalAmt>0?fmt(a.totalAmt):'\u2014')+'</div>'
-      +(a.saleId?'<div style="font-size:11px;color:var(--g)">\u2713 Sale '+a.saleId+'</div>':canCheckout?'<div style="font-size:11px;color:var(--y)">'+_s.appt_pending_co+'</div>':'')+'</div>'
-    +(a.staffName?'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_s.appt_staff+'</div><div style="font-weight:700;color:var(--ink)">'+a.staffName+'</div></div>':'')
+      +(a.saleId?'<div style="font-size:11px;color:var(--g)">\u2713 Sale '+a.saleId+'</div>':canCheckout?'<div style="font-size:11px;color:var(--y)">'+_L().appt_pending_co+'</div>':'')+'</div>'
+    +(a.staffName?'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_L().appt_staff+'</div><div style="font-weight:700;color:var(--ink)">'+a.staffName+'</div></div>':'')
     +'</div>';
 
   var notesHtml = a.notes ? '<div style="background:var(--bg3);border-radius:var(--r8);padding:10px 12px;margin-bottom:12px;font-size:12px">\uD83D\uDCDD '+a.notes+'</div>' : '';
 
   var statusRow = canEdit
-    ? '<div class="fg-2"><div class="fg"><label class="fl">'+_s.appt_update_status+'</label>'
+    ? '<div class="fg-2"><div class="fg"><label class="fl">'+_L().appt_update_status+'</label>'
       +'<select class="fs" id="va-st">'
       +['Reserved','Confirmed','In Progress','Completed','No-Show','Cancelled'].map(function(s){return '<option'+(s===a.st?' selected':'')+'>'+s+'</option>';}).join('')
       +'</select></div>'
@@ -28672,7 +28672,7 @@ function mViewAppt(id){const _s=_L();
   var editAmtBtn = canEditAmt ? '<button class="btn btn-s btn-sm" onclick="closeModal();mEditApptCompleted(\''+id+'\')">✏ Edit Amount</button>' : '';
   var invoiceBtn = (a.st==='Completed'&&(a.totalAmt||0)>0) ? '<button class="btn btn-g btn-sm" onclick="genApptInvoice(\''+id+'\')">🧾 Invoice</button>' : '';
   var deleteBtn  = '<button class="btn btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="_deleteAppt(\''+id+'\')">🗑 Delete</button>';
-  var saveBtn     = canEdit ? '<button class="btn btn-p btn-sm" onclick="_updAppt(\''+id+'\')">💾 Save</button>' : '<button class="btn btn-s btn-sm" onclick="closeModal()">'+_s.ui_close+'</button>';
+  var saveBtn     = canEdit ? '<button class="btn btn-p btn-sm" onclick="_updAppt(\''+id+'\')">💾 Save</button>' : '<button class="btn btn-s btn-sm" onclick="closeModal()">'+_L().ui_close+'</button>';
 
   var footer = '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:6px;flex-wrap:wrap">'
     +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+waBtn+reschedBtn+cancelBtn+checkoutBtn+deleteBtn+'</div>'
@@ -28713,7 +28713,7 @@ function mNewAppt(date){const _s=_L();
       <div class="fg"><label class="fl">Phone *</label><input class="fi" id="na-nc-phone" type="tel" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     </div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">'+_s.ui_email+'</label><input class="fi" id="na-nc-email" type="email" placeholder="email"+'@'+"example.com"/></div>
+      <div class="fg"><label class="fl">'+_L().ui_email+'</label><input class="fi" id="na-nc-email" type="email" placeholder="email"+'@'+"example.com"/></div>
       <div class="fg"><label class="fl">${_s.ui_city}</label><input class="fi" id="na-nc-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:2px">
