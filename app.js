@@ -22406,7 +22406,7 @@ function _expFilter(){
 
 // Apply default "Month" filter on page render — called after pgExp builds DOM
 function _expFilterInit(){
-  _expCurrentRange = PERIOD_RANGES['month'];
+  _expCurrentRange = PERIOD_RANGES['ytd'];
   _expFilter();
 }
 
