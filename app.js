@@ -22811,6 +22811,15 @@ async function mEditExp(id){const _s=_L();
     .map(t=>`<option${t===e.type?' selected':''}>${t}</option>`).join('');
   const methodOpts = ['Cash','Bank Transfer','Credit Card','Mobile Money (MTN)','Orange Money','Direct Debit']
     .map(m=>`<option${m===e.method?' selected':''}>${m}</option>`).join('');
+  const editDocUid = 'edit-exp-docs-'+Date.now();
+  // Render existing docs
+  const existingDocs = (e.docs||[]).map(function(d,idx){
+    if(d && d.startsWith && d.startsWith('data:image')){
+      return '<div style="position:relative;display:inline-block"><img src="'+d+'" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"/><button type="button" onclick="this.parentElement.remove()" style="position:absolute;top:-6px;right:-6px;background:var(--r);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button></div>';
+    }
+    return '<div style="display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px"><span>📎</span><span>Doc '+(idx+1)+'</span><button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:12px">✕</button></div>';
+  }).join('');
+
   modal(`✏️ Edit Expense — ${e.id}`,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" type="date" id="edit-exp-dt" value="${e.dt}"/></div>
@@ -22825,7 +22834,17 @@ async function mEditExp(id){const _s=_L();
     <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="edit-exp-type">${typeOpts}</select></div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="edit-exp-method">${methodOpts}</select></div>
   </div>
-  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="edit-exp-notes" placeholder="Additional notes…" style="min-height:52px">${_esc(e.notes||'')}</textarea></div>`,
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="edit-exp-notes" placeholder="Additional notes…" style="min-height:52px">${_esc(e.notes||'')}</textarea></div>
+  <div class="fg">
+    <label class="fl">${BIZ.language==='fr'?'Reçus et Documents':'Receipts & Documents'}</label>
+    <div id="${editDocUid}-list" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px">${existingDocs}</div>
+    <div style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:12px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${editDocUid}-input').click()">
+      <span style="font-size:20px">📎</span>
+      <div><div style="font-size:12px;font-weight:600;color:var(--ink)">${BIZ.language==='fr'?'Ajouter des reçus ou documents':'Attach receipts, invoices, or documents'}</div>
+        <div style="font-size:10px;color:var(--text2)">JPG, PNG, PDF · ${BIZ.language==='fr'?'Plusieurs fichiers autorisés':'Multiple files allowed'}</div></div>
+      <input id="${editDocUid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${editDocUid}-list')"/>
+    </div>
+  </div>`,
   `<button class="btn btn-d btn-sm" onclick="confirmDo('Delete this expense?',function(){D.exp=D.exp.filter(function(x){return x.id!==id;});_dbDelExp(id);
     refreshLiveKpis();addAudit('Expense deleted',id);closeModal();toast(_s.t_expense_deleted,'success');nav('expenses');})">🗑 Delete</button>
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
@@ -22860,6 +22879,13 @@ function saveExpEdit(id){var _s=_L();
   e.type  = newType  || e.type;
   e.method= newMethod|| e.method;
   e.notes = newNotes;
+  // Collect docs from the upload area
+  var docList = document.querySelector('[id^="edit-exp-docs-"][id$="-list"]');
+  if(docList){
+    var docs = [];
+    docList.querySelectorAll('img').forEach(function(img){ if(img.src) docs.push(img.src); });
+    e.docs = docs;
+  }
   _dbSaveExp(e); // ← was missing — edits now persist to Supabase
   refreshLiveKpis();
   closeModal();
