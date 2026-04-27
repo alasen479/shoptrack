@@ -2697,18 +2697,18 @@ function mChangePlan(){var _s=_L();
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" id="cp-confirm-btn" disabled onclick="(function(){
      var sel = document.getElementById('cp-selected').value;
-     if(!sel){ toast(_s.t_select_plan,'error'); return; }
+     if(!sel){ toast(_L().t_select_plan,'error'); return; }
      if(sel === '${_esc(currentPlan)}'){
-       toast(_s.t_settings_saved,'info'); return;
+       toast(_L().t_settings_saved,'info'); return;
      }
      closeModal();
      if(sel==='Free'){
        // Downgrade to Free -- no payment needed
        if(_sb){
          _sb.from('businesses').update({plan:'free'}).eq('id',SESSION.bizId).then(function(r){
-           if(r.error){ toast(_s.t_could_not_upd + ': '+r.error.message,'error'); return; }
+           if(r.error){ toast(_L().t_could_not_upd + ': '+r.error.message,'error'); return; }
            BIZ.plan='free';
-           toast(_s.t_free_switched,'success');
+           toast(_L().t_free_switched,'success');
            nav('settings');
          });
        } else { BIZ.plan='free'; toast(_s.t_free_switched,'success'); }
@@ -3869,7 +3869,7 @@ async function mAddItem(_returnSelectId){const _s=_L();
         <div style="font-size:10px;color:var(--text2);margin-top:1px">JPG, PNG · Multiple allowed</div>
       </div>
       <input id="ai-photos-input" type="file" accept="image/*" multiple style="display:none" onchange="_previewNewItemPhotos(this)"/>
-    </label>
+    </div>
     <div id="ai-photo-status" style="margin-top:6px;font-size:11px;color:var(--g);display:none"></div>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
@@ -4035,7 +4035,7 @@ async function mEditItem(id){const _s=_L();
         <div style="font-size:10px;color:var(--text2);margin-top:1px">JPG, PNG · Multiple allowed · Replaces existing photos</div>
       </div>
       <input id="ei-photos-${id}" type="file" accept="image/*" multiple style="display:none" onchange="previewItemPhotos(this,'${id}')"/>
-    </label>
+    </div>
     <div id="ei-photo-newpreviews-${id}" style="display:none;margin-top:8px;font-size:11px;color:var(--g)"></div>
   </div>`,
   `<button class="btn btn-d btn-sm" onclick="closeModal();_mItemDelete('${id}')">🗑 Delete</button>
@@ -4264,7 +4264,7 @@ function mBulkImport(type){const _s=_L();
         <div style="font-size:11px;color:var(--text2);margin-top:2px">.csv only · Max 5MB · Excel users: <strong>File → Save As → CSV</strong> first</div>
       </div>
       <input id="bulkImportFile_${type}" type="file" accept=".csv,text/csv" style="display:none" onchange="previewImportCSV(this,'${type}')"/>
-    </label>
+    </div>
   </div>
   <div id="import-preview-${type}" style="display:none;margin-top:14px">
     <div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px">Preview (first 5 rows)</div>
@@ -5401,7 +5401,7 @@ function mPhotoUpload(preselectedId, preselectedType){const _s=_L();
       <div style="font-weight:600;color:var(--ink);margin-bottom:3px">${_s.photo_click}</div>
       <div style="font-size:11px;color:var(--text2)">JPG, PNG, WEBP · Multiple allowed · Replaces existing photos</div>
       <input id="photoFileInput" type="file" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(this)"/>
-    </label>
+    </div>
   </div>
   <div id="photoPreviewGrid" class="pgrid" style="margin-top:8px"></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
@@ -6220,12 +6220,12 @@ function mRentalDetail(id){const _s=_L();
     <div id="${uid}-list" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
       ${r.docs&&r.docs.length?r.docs.map(d=>docChip(d)).join(''):`<div style="font-size:12px;color:var(--text2);padding:6px 0">No documents attached yet. Add rental agreement, condition photos, or receipts.</div>`}
     </div>
-    <label style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${uid}-input').click()">
+    <div style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${uid}-input').click()">
       <span style="font-size:18px">📎</span>
       <div><div style="font-size:12px;font-weight:600;color:var(--ink)">Attach rental agreement, condition photos, or receipts</div>
         <div style="font-size:10px;color:var(--text2)">JPG, PNG, PDF · Multiple files · Max 10MB each</div></div>
       <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
-    </label>
+    </div>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-sm" onclick="closeModal();mReturn('${id}')">↩ Process Return</button>`:''}
@@ -6923,7 +6923,7 @@ function mViewPurchaseDocs(id){const _s=_L();
   <div id="${uid}-list" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
     ${p.docs&&p.docs.length?p.docs.map(d=>docChip(d)).join(''):`<div style="font-size:12px;color:var(--text2);padding:6px 0">${_s.po_no_docs}</div>`}
   </div>
-  <label style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${uid}-input').click()">
+  <div style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${uid}-input').click()">
     <span style="font-size:18px">➕</span>
     <div style="font-size:12px;font-weight:600;color:var(--ink)">Attach vendor invoice, delivery note, or customs docs</div>
     <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
@@ -7514,7 +7514,7 @@ function mCollectBalance(custId){const _s=_L();
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="(function(){
      var amt=parseFloat(document.getElementById('col-amt').value)||0;
-     if(!amt||amt<=0){toast(_s.t_amount_valid,'error');return;}
+     if(!amt||amt<=0){toast(_L().t_amount_valid,'error');return;}
      var amtBase=amt/CUR.rate;
      var cobj=D.cust.find(x=>x.id==='${custId}');
      if(!cobj)return;
@@ -7598,7 +7598,7 @@ function mRecordVendorPayment(vendorId){const _s=_L();
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="(function(){
      var amt=parseFloat(document.getElementById('vp-amt').value)||0;
-     if(!amt||amt<=0){toast(_s.t_amount_valid,'error');return;}
+     if(!amt||amt<=0){toast(_L().t_amount_valid,'error');return;}
      var amtBase=amt/CUR.rate;
      var vobj=D.vendors.find(function(x){return x.id==='${vendorId}';});
      if(!vobj)return;
@@ -8181,20 +8181,20 @@ async function mAddExp(){const _s=_L();
   <div class="fg">
     <label class="fl">Receipts &amp; Documents</label>
     <div id="${uid}-list" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px"></div>
-    <label style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:12px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${uid}-input').click()">
+    <div style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:12px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${uid}-input').click()">
       <span style="font-size:20px">📎</span>
       <div><div style="font-size:12px;font-weight:600;color:var(--ink)">Attach receipts, invoices, or documents</div>
         <div style="font-size:10px;color:var(--text2)">JPG, PNG, PDF · Multiple files allowed</div></div>
       <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
-    </label>
+    </div>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="(function(){
     if(_trialWriteBlocked('Recording an expense')) return;
     var payee=document.getElementById('ae-payee').value.trim();
     var amt=parseFloat(document.getElementById('ae-amt').value)||0;
-    if(!payee){toast(_s.t_payee_req,'error');return;}
-    if(!amt||amt<=0){toast(_s.t_amount_valid,'error');return;}
+    if(!payee){toast(_L().t_payee_req,'error');return;}
+    if(!amt||amt<=0){toast(_L().t_amount_valid,'error');return;}
     var amtBase=amt/CUR.rate;
     var maxN=D.exp.reduce(function(m,e){var n=parseInt((e.id||'').replace(/\\D/g,''),10)||0;return n>m?n:m;},0);
     var id='EX-'+String(maxN+1).padStart(3,'0');
@@ -8258,7 +8258,7 @@ function mViewExp(id){const _s=_L();
   <div id="${uid}-list" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
     ${e.docs&&e.docs.length?e.docs.map(d=>docChip(d)).join(''):`<div style="font-size:12px;color:var(--text2);padding:8px 0">${_s.po_no_docs}</div>`}
   </div>
-  <label style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${uid}-input').click()">
+  <div style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${uid}-input').click()">
     <span style="font-size:18px">➕</span>
     <div style="font-size:12px;font-weight:600;color:var(--ink)">${_s.exp_add_docs}</div>
     <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
@@ -11527,7 +11527,7 @@ function _mbResetLogin(bizId){const _s=_L();
      if(AUTH_STORE[em]) AUTH_STORE[em].password='${newPass}';
      if(_sb) _sb.from('platform_users').update({password_hash:'${newPass}'}).eq('biz_id','${bizId}').eq('level','owner');
      addAudit('Owner password reset','${bizId} — ${_esc(b.name)}');
-     closeModal();toast(_s.t_pass_reset + _esc(b.name) + ' ✓','success');
+     closeModal();toast(_L().t_pass_reset + _esc(b.name) + ' ✓','success');
    })()">🔑 Reset Password</button>`);
 }
 
@@ -18747,10 +18747,10 @@ function pgSettings(){
       <div style="display:flex;align-items:center;gap:16px">
         <div id="logo-preview" style="width:72px;height:72px;border-radius:12px;background:linear-gradient(135deg,var(--a),var(--g));display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#fff;font-family:var(--display);flex-shrink:0;overflow:hidden">${logoHtml}</div>
         <div>
-          <label style="display:inline-flex;align-items:center;gap:6px;background:var(--bg4);border:1px solid var(--border2);color:var(--text);padding:7px 14px;border-radius:var(--r6);cursor:pointer;font-size:12px;font-weight:600" onclick="document.getElementById('logoInput').click()">
+          <div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg4);border:1px solid var(--border2);color:var(--text);padding:7px 14px;border-radius:var(--r6);cursor:pointer;font-size:12px;font-weight:600" onclick="document.getElementById('logoInput').click()">
             ${_s.set_upload_logo}
             <input id="logoInput" type="file" accept="image/*" style="display:none" onchange="handleLogoUpload(this)"/>
-          </label>
+          </div>
           <div style="font-size:10px;color:var(--text2);margin-top:5px">${_s.set_logo_hint}</div>
         </div>
       </div>
@@ -18918,12 +18918,12 @@ function pgSettings(){
         var c=document.getElementById('biz-sec-cur').value,
             n=document.getElementById('biz-sec-new').value,
             f=document.getElementById('biz-sec-conf').value;
-        if(!c||!n||!f){toast(_s.t_fill_fields,'error');return;}
-        if(n!==f){toast(_s.t_pass_no_match,'error');return;}
-        if(n.length<8){toast(_s.t_pass_min8,'error');return;}
+        if(!c||!n||!f){toast(_L().t_fill_fields,'error');return;}
+        if(n!==f){toast(_L().t_pass_no_match,'error');return;}
+        if(n.length<8){toast(_L().t_pass_min8,'error');return;}
         var em=Object.keys(AUTH_STORE).find(function(k){return AUTH_STORE[k].userId===SESSION.userId;});
         if(em)AUTH_STORE[em].password=n;
-        toast(_s.t_pass_changed,'success');
+        toast(_L().t_pass_changed,'success');
         ['biz-sec-cur','biz-sec-new','biz-sec-conf'].forEach(function(id){document.getElementById(id).value='';});
       })()">${_s.set_sec_update}</button>
     </div>
@@ -19210,7 +19210,7 @@ ${tabDocsHtml}
       <label id="import-file-label" style="display:inline-flex;align-items:center;gap:8px;background:var(--a-dim);border:1px solid var(--a);color:var(--a);padding:8px 16px;border-radius:var(--r6);cursor:pointer;font-size:12px;font-weight:600">
         &#128194; <span id="import-file-name">${_s.set_imp_choose}</span>
         <input id="import-file-input" type="file" accept=".xlsx,.xls" style="display:none" onchange="handleImportUpload(this)"/>
-      </label>
+      </div>
     </div>
   </div>
   <!-- Progress bar -->
@@ -24739,7 +24739,7 @@ async function mNewService(){const _s=_L();
       <label style="flex:1;border:2px dashed var(--border2);border-radius:var(--r8);padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'">
         <span style="font-size:18px">📎</span><span>Upload photo (JPG, PNG · max 2MB)</span>
         <input id="sv-img-inp" type="file" accept="image/*" style="display:none" onchange="_svcImgPreview(this)"/>
-      </label>
+      </div>
       <button type="button" class="btn btn-s btn-xs" onclick="document.getElementById('sv-img-inp').value='';document.getElementById('sv-img-preview').innerHTML='📷';window._svcImgData=null">✕</button>
     </div>
   </div>`,
@@ -24800,7 +24800,7 @@ async function mEditSvc(id){const _s=_L();
       <label style="flex:1;border:2px dashed var(--border2);border-radius:var(--r8);padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'">
         <span style="font-size:18px">📎</span><span>${s.imgDataUrl?'Change photo':'Upload photo (JPG, PNG · max 2MB)'}</span>
         <input id="sv-img-inp" type="file" accept="image/*" style="display:none" onchange="_svcImgPreview(this)"/>
-      </label>
+      </div>
       <button type="button" class="btn btn-s btn-xs" onclick="document.getElementById('sv-img-inp').value='';document.getElementById('sv-img-preview').innerHTML='📷';window._svcImgData=null">✕</button>
     </div>
   </div>`,
@@ -28141,7 +28141,7 @@ function _bulkWAReminders(type){var _s=_L();
      <button class="btn btn-p" onclick="(function(){
        ${recipients.map((r,i)=>`setTimeout(()=>window.open('https://wa.me/${r.ph}?text=${r.msg}','_blank'),${i*1200})`).join(';')};
        closeModal();
-       toast(_s.t_opening_wa + recipients.length + ' WhatsApp messages…','success');
+       toast(_L().t_opening_wa + recipients.length + ' WhatsApp messages…','success');
      }())">💬 Open All (${recipients.length})</button>`
   , 'sm');
 }
