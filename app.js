@@ -4423,7 +4423,7 @@ async function confirmBulkImport(type){var _s=_L();
 // ============================================================
 function pgSales(){const _s=_L();const _ui=_s;
   // Compute month KPIs so tiles match the default "Month" period tab
-  const monthRange = PERIOD_RANGES['month'];
+  const monthRange = PERIOD_RANGES['ytd'];
   const visSales = D.sales.filter(s => inRange(s.dt, monthRange));
   const kRev  = visSales.reduce((a,s)=>a+(s.total||s.amt||0),0);
   const kCash = visSales.reduce((a,s)=>a+(s.paid||0),0);
@@ -4449,7 +4449,7 @@ ${D.sales.length===0?'<div style="background:var(--bg2);border:1px dashed var(--
   <select class="sel" id="sales-status-filter" onchange="filterSalesTable()"><option value="">${_ui.flt_all_status}</option><option>${_s.sal_st_paid}</option><option>${_s.sal_st_unpaid}</option><option>${_s.sal_st_partial}</option></select>
   <select class="sel" id="sales-customer-filter" onchange="filterSalesTable()"><option value="">${_s.sal_flt_custs}</option>${[...new Set(D.sales.map(s=>s.cust))].sort().map(c=>`<option>${c}</option>`).join('')}</select>
   <select class="sel" id="sales-product-filter" onchange="filterSalesTable()"><option value="">${_s.sal_flt_prods}</option>${[...new Set(D.inv.map(i=>i.name))].sort().map(n=>`<option>${_esc(n)}</option>`).join('')}</select>
-  <div class="dtabs"><button class="dtab" onclick="setSalesPeriod(this,'today')">${_ui.per_today}</button><button class="dtab" onclick="setSalesPeriod(this,'week')">${_ui.per_week}</button><button class="dtab" onclick="setSalesPeriod(this,'lastweek')">${_ui.per_lastweek}</button><button class="dtab on" id="sales-period-month" onclick="setSalesPeriod(this,'month')">${_ui.per_month}</button><button class="dtab" onclick="setSalesPeriod(this,'lastmonth')">${_ui.per_lastmonth}</button><button class="dtab" onclick="setSalesPeriod(this,'quarter')">${_ui.per_quarter}</button><button class="dtab" onclick="setSalesPeriod(this,'ytd')">${_ui.per_ytd}</button></div>
+  <div class="dtabs"><button class="dtab" onclick="setSalesPeriod(this,'today')">${_ui.per_today}</button><button class="dtab" onclick="setSalesPeriod(this,'week')">${_ui.per_week}</button><button class="dtab" onclick="setSalesPeriod(this,'lastweek')">${_ui.per_lastweek}</button><button class="dtab" id="sales-period-month" onclick="setSalesPeriod(this,'month')">${_ui.per_month}</button><button class="dtab" onclick="setSalesPeriod(this,'lastmonth')">${_ui.per_lastmonth}</button><button class="dtab" onclick="setSalesPeriod(this,'quarter')">${_ui.per_quarter}</button><button class="dtab on" onclick="setSalesPeriod(this,'ytd')">${_ui.per_ytd}</button></div>
 </div>
 <div class="card">
   <div class="tbl-wrap"><table id="sales-table">
@@ -5704,7 +5704,7 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
 <div class="fbar">
   <input class="fi-s" id="rent-search" placeholder="${_ui.flt_search_rent}" style="width:200px" oninput="filterRentalsSearch()"/>
   <select class="sel" id="rent-status-sel" onchange="filterRentals(null,this.value)"><option value="">${_ui.flt_all_status}</option><option>${_s.rent_kpi_overdue}</option><option>${_s.ui_st_cancelled}</option><option>${_s.rent_st_out}</option><option>${_s.rent_st_reserved}</option><option>${_s.rent_st_returned}</option></select>
-  <div class="dtabs"><button class="dtab" onclick="setRentalsPeriod(this,'today')">${_ui.per_today}</button><button class="dtab" onclick="setRentalsPeriod(this,'week')">${_ui.per_week}</button><button class="dtab" onclick="setRentalsPeriod(this,'lastweek')">${_ui.per_lastweek}</button><button class="dtab on" onclick="setRentalsPeriod(this,'month')">${_ui.per_month}</button><button class="dtab" onclick="setRentalsPeriod(this,'lastmonth')">${_ui.per_lastmonth}</button><button class="dtab" onclick="setRentalsPeriod(this,'quarter')">${_ui.per_quarter}</button><button class="dtab" onclick="setRentalsPeriod(this,'ytd')">${_ui.per_ytd}</button></div>
+  <div class="dtabs"><button class="dtab" onclick="setRentalsPeriod(this,'today')">${_ui.per_today}</button><button class="dtab" onclick="setRentalsPeriod(this,'week')">${_ui.per_week}</button><button class="dtab" onclick="setRentalsPeriod(this,'lastweek')">${_ui.per_lastweek}</button><button class="dtab" onclick="setRentalsPeriod(this,'month')">${_ui.per_month}</button><button class="dtab" onclick="setRentalsPeriod(this,'lastmonth')">${_ui.per_lastmonth}</button><button class="dtab" onclick="setRentalsPeriod(this,'quarter')">${_ui.per_quarter}</button><button class="dtab on" onclick="setRentalsPeriod(this,'ytd')">${_ui.per_ytd}</button></div>
 </div>
 <div class="card">
   <div class="tbl-wrap"><table>
@@ -6651,7 +6651,7 @@ function rdTab(el, showId){const _s=_L();
 // ============================================================
 function pgPurchases(){const _s=_L();const _ui=_s;
   // Default to month — keep KPIs in sync with visible rows on load
-  const monthRange = PERIOD_RANGES['month'];
+  const monthRange = PERIOD_RANGES['ytd'];
   const vis   = D.purchases.filter(p => inRange(p.dt, monthRange));
   const totalSpent = vis.reduce((a,p)=>a+(p.total||0), 0);
   const apOut      = D.vendors.filter(v=>v.bal>0).reduce((a,v)=>a+v.bal, 0);
@@ -6750,10 +6750,10 @@ function pgPurchases(){const _s=_L();const _ui=_s;
         <button class="dtab" onclick="setPurchasesPeriod(this,'today')">${_ui.per_today}</button>
         <button class="dtab" onclick="setPurchasesPeriod(this,'week')">${_ui.per_week}</button>
         <button class="dtab" onclick="setPurchasesPeriod(this,'lastweek')">${_ui.per_lastweek}</button>
-        <button class="dtab on" onclick="setPurchasesPeriod(this,'month')">${_ui.per_month}</button>
+        <button class="dtab" onclick="setPurchasesPeriod(this,'month')">${_ui.per_month}</button>
         <button class="dtab" onclick="setPurchasesPeriod(this,'lastmonth')">${_ui.per_lastmonth}</button>
         <button class="dtab" onclick="setPurchasesPeriod(this,'quarter')">${_ui.per_quarter}</button>
-        <button class="dtab" onclick="setPurchasesPeriod(this,'ytd')">${_ui.per_ytd}</button>
+        <button class="dtab on" onclick="setPurchasesPeriod(this,'ytd')">${_ui.per_ytd}</button>
       </div>
     </div>
     <div class="card" style="padding:0">
@@ -8019,8 +8019,8 @@ function shareVendorStatement(vid){const _s=_L();
 
 function pgExp(){const _s=_L();const _ui=_s;
   // Default to "month" — compute period KPIs immediately so tiles are in sync
-  const monthRange = PERIOD_RANGES['month'];
-  const vis   = D.exp.filter(e => inRange(e.dt, monthRange));
+  const ytdRange = PERIOD_RANGES['ytd'];
+  const vis   = D.exp.filter(e => inRange(e.dt, ytdRange));
   const total = vis.reduce((a,e)=>a+e.amt, 0);
   const rec   = vis.filter(e=>e.type==='Recurring').reduce((a,e)=>a+e.amt, 0);
   const one   = vis.filter(e=>e.type!=='Recurring').reduce((a,e)=>a+e.amt, 0);
@@ -8103,10 +8103,10 @@ function pgExp(){const _s=_L();const _ui=_s;
         <button class="dtab" onclick="setExpPeriod(this,'today')">${_ui.per_today}</button>
         <button class="dtab" onclick="setExpPeriod(this,'week')">${_ui.per_week}</button>
         <button class="dtab" onclick="setExpPeriod(this,'lastweek')">${_ui.per_lastweek}</button>
-        <button class="dtab on" onclick="setExpPeriod(this,'month')">${_ui.per_month}</button>
+        <button class="dtab" onclick="setExpPeriod(this,'month')">${_ui.per_month}</button>
         <button class="dtab" onclick="setExpPeriod(this,'lastmonth')">${_ui.per_lastmonth}</button>
         <button class="dtab" onclick="setExpPeriod(this,'quarter')">${_ui.per_quarter}</button>
-        <button class="dtab" onclick="setExpPeriod(this,'ytd')">${_ui.per_ytd}</button>
+        <button class="dtab on" onclick="setExpPeriod(this,'ytd')">${_ui.per_ytd}</button>
       </div>
     </div>
     <div class="card" style="padding:0">
@@ -8345,10 +8345,10 @@ function pgAccounting(){const _s=_L();const _ui=_s;
   <div class="bc">${_esc(BIZ.name||'ShopTrack')} / <span>${_ui.nav_accounting}</span></div>
   <div class="ph-row"><h1>${_ui.nav_accounting} &amp; Finance</h1>
     <div class="dtabs">
-      <button class="dtab on" onclick="setAcctPeriod(this,'month')">${_ui.per_month}</button>
+      <button class="dtab" onclick="setAcctPeriod(this,'month')">${_ui.per_month}</button>
       <button class="dtab" onclick="setAcctPeriod(this,'lastmonth')">${_ui.per_lastmonth}</button>
       <button class="dtab" onclick="setAcctPeriod(this,'quarter')">${_ui.per_quarter}</button>
-      <button class="dtab" onclick="setAcctPeriod(this,'ytd')">${_ui.per_ytd}</button>
+      <button class="dtab on" onclick="setAcctPeriod(this,'ytd')">${_ui.per_ytd}</button>
     </div>
   </div>
   <p>${_ui.ph_accounting}</p>
@@ -8589,7 +8589,7 @@ function pgReports(){const _s=_L();const _ui=_L();
   <div class="bc">ShopTrack / <span>${_ui.nav_reports}</span></div>
   <div class="ph-row"><h1>${_ui.nav_reports}</h1>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <div class="dtabs"><button class="dtab on" onclick="setReportPeriod(this,'month')">${_s.rpt_month}</button><button class="dtab" onclick="setReportPeriod(this,'quarter')">${_s.rpt_quarter}</button><button class="dtab" onclick="setReportPeriod(this,'ytd')">YTD</button><button class="dtab" onclick="setReportPeriod(this,'custom')">${_s.rpt_custom2}</button></div>
+      <div class="dtabs"><button class="dtab" onclick="setReportPeriod(this,'month')">${_s.rpt_month}</button><button class="dtab" onclick="setReportPeriod(this,'quarter')">${_s.rpt_quarter}</button><button class="dtab on" onclick="setReportPeriod(this,'ytd')">YTD</button><button class="dtab" onclick="setReportPeriod(this,'custom')">${_s.rpt_custom2}</button></div>
       <button class="btn btn-p btn-sm" onclick="exportAllDataXLSX()" title="${_s.rpt_export_excel}">&#128190; Export All Data (.xlsx)</button>
     </div>
   </div>
@@ -22103,7 +22103,7 @@ function _salesFilter(){
 }
 
 function _salesFilterInit(){
-  _salesCurrentRange = PERIOD_RANGES['month'];
+  _salesCurrentRange = PERIOD_RANGES['ytd'];
   _salesFilter();
 }
 
@@ -22189,7 +22189,7 @@ function _rentalsFilter(){
 }
 
 function _rentalsFilterInit(){
-  _rentalsCurrentRange = PERIOD_RANGES['month'];
+  _rentalsCurrentRange = PERIOD_RANGES['ytd'];
   _rentalsCurrentStatus = '';
   _rentalsFilter();
 }
@@ -22292,7 +22292,7 @@ function _poFilter(){
 }
 
 function _poFilterInit(){
-  _poCurrentRange = PERIOD_RANGES['month'];
+  _poCurrentRange = PERIOD_RANGES['ytd'];
   _poFilter();
 }
 
