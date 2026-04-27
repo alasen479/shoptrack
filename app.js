@@ -1138,10 +1138,8 @@ function _addExpCat(){var _s=_L();
   var val=document.getElementById('ae-newcat-inp').value.trim();
   if(!val){toast(_s.t_cat_name,'error');return;}
   if(D.expCats.indexOf(val)===-1) D.expCats.push(val);
-  // Update hidden input
   var hidden=document.getElementById('ae-cat');
   if(hidden) hidden.value=val;
-  // Refresh searchable select with new category selected
   if(document.getElementById('ae-cat-wrap')){
     _mkSearchSelect('ae-cat-wrap', D.expCats.map(function(c){return{val:c,label:c};}), val,
       function(v){ var h=document.getElementById('ae-cat'); if(h) h.value=v; }, 'Expense category…');
@@ -1149,6 +1147,50 @@ function _addExpCat(){var _s=_L();
   document.getElementById('ae-newcat-inp').value='';
   var row=document.getElementById('ae-newcat-row'); if(row) row.style.display='none';
   toast(_s.t_cat_prefix2+val+'" added','success');
+}
+
+// ── Expense line items helpers ──────────────────────────────────
+function _aeAddLine(){
+  var container=document.getElementById('ae-lines');
+  if(!container) return;
+  var fr=BIZ.language==='fr';
+  var row=document.createElement('div');
+  row.className='ae-line';
+  row.style.cssText='padding:6px 10px;display:grid;grid-template-columns:2fr 90px 70px 90px 90px 28px;gap:6px;align-items:center;border-bottom:1px solid var(--border)';
+  row.innerHTML='<input class="fi ae-line-desc" placeholder="'+(fr?'Description':'Description')+'" style="font-size:12px;padding:6px 8px"/>'
+    +'<select class="fs ae-line-mode" style="font-size:11px;padding:4px" onchange="_aeRecalc()">'
+    +'<option value="flat">'+(fr?'Forfait':'Flat')+'</option><option value="qty">Qty × Rate</option></select>'
+    +'<input class="fi ae-line-qty" type="number" value="1" min="1" style="font-size:12px;padding:6px;text-align:center" oninput="_aeRecalc()"/>'
+    +'<input class="fi ae-line-rate" type="number" placeholder="0" step="any" style="font-size:12px;padding:6px" oninput="_aeRecalc()"/>'
+    +'<div class="ae-line-total" style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--ink);text-align:right;padding-right:4px">0</div>'
+    +'<button type="button" onclick="if(document.querySelectorAll(\'.ae-line\').length>1){this.closest(\'.ae-line\').remove();_aeRecalc();}" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0">✕</button>';
+  container.appendChild(row);
+  row.querySelector('.ae-line-desc').focus();
+}
+
+function _aeRecalc(){
+  var grand=0;
+  document.querySelectorAll('.ae-line').forEach(function(row){
+    var mode=row.querySelector('.ae-line-mode')?.value||'flat';
+    var qty=parseFloat(row.querySelector('.ae-line-qty')?.value)||1;
+    var rate=parseFloat(row.querySelector('.ae-line-rate')?.value)||0;
+    var qtyInput=row.querySelector('.ae-line-qty');
+    // Hide qty field for flat mode, show for qty mode
+    if(qtyInput){
+      qtyInput.style.opacity=mode==='flat'?'0.3':'1';
+      qtyInput.disabled=mode==='flat';
+      if(mode==='flat') qtyInput.value='1';
+    }
+    var lineTotal=mode==='qty'?qty*rate:rate;
+    var totalEl=row.querySelector('.ae-line-total');
+    if(totalEl) totalEl.textContent=lineTotal.toLocaleString();
+    grand+=lineTotal;
+  });
+  var grandEl=document.getElementById('ae-grand-total');
+  if(grandEl) grandEl.textContent=grand.toLocaleString()+' '+(CUR.symbol||'Frs');
+  // Sync hidden amount field
+  var amtEl=document.getElementById('ae-amt');
+  if(amtEl) amtEl.value=grand;
 }
 
 
@@ -8176,7 +8218,7 @@ async function mAddExp(){const _s=_L();
       </div>
     </div>
     <div class="fg"><label class="fl">${_s.exp_payee_ph}</label><input class="fi" id="ae-payee" placeholder="Who was paid?"/></div>
-    <div class="fg"><label class="fl">Amount * <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="ae-amt" placeholder="0" step="any" min="0"/></div>
+    <div class="fg" style="display:none"><input class="fi" type="number" id="ae-amt" value="0"/></div>
     <div class="fg"><label class="fl">${_s.ui_type}</label>
       <select class="fs" id="ae-type">
         <option>${_s.exp_type_recur}</option><option>${_s.exp_type_op}</option><option>${_s.exp_type_once}</option><option>${_s.exp_type_asset}</option>
@@ -8187,6 +8229,39 @@ async function mAddExp(){const _s=_L();
         <option>${_s.ui_cash}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option>
         <option>${_s.ui_orange}</option><option>${_s.ui_credit_card}</option><option>${_s.ui_direct_debit}</option>
       </select>
+    </div>
+  </div>
+
+  <!-- LINE ITEMS -->
+  <div style="margin:14px 0 10px;border:1px solid var(--border);border-radius:var(--r8);overflow:hidden">
+    <div style="background:var(--bg3);padding:8px 12px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:12px;font-weight:700;color:var(--ink)">📋 ${BIZ.language==='fr'?'Détails de la dépense':'Expense Line Items'}</div>
+      <button type="button" class="btn btn-g btn-xs" onclick="_aeAddLine()">+ ${BIZ.language==='fr'?'Ajouter':'Add Line'}</button>
+    </div>
+    <div style="padding:6px 10px;font-size:10px;color:var(--text2);display:grid;grid-template-columns:2fr 90px 70px 90px 90px 28px;gap:6px;border-bottom:1px solid var(--border)">
+      <span>${BIZ.language==='fr'?'Description':'Description'}</span>
+      <span>${BIZ.language==='fr'?'Mode':'Mode'}</span>
+      <span>${BIZ.language==='fr'?'Qté':'Qty'}</span>
+      <span>${BIZ.language==='fr'?'Taux/Prix':'Rate/Price'}</span>
+      <span>${BIZ.language==='fr'?'Total':'Total'} (${CUR.symbol})</span>
+      <span></span>
+    </div>
+    <div id="ae-lines">
+      <div class="ae-line" style="padding:6px 10px;display:grid;grid-template-columns:2fr 90px 70px 90px 90px 28px;gap:6px;align-items:center;border-bottom:1px solid var(--border)">
+        <input class="fi ae-line-desc" placeholder="${BIZ.language==='fr'?'Ex: Hébergement mensuel':'e.g. Monthly hosting'}" style="font-size:12px;padding:6px 8px"/>
+        <select class="fs ae-line-mode" style="font-size:11px;padding:4px" onchange="_aeRecalc()">
+          <option value="flat">${BIZ.language==='fr'?'Forfait':'Flat'}</option>
+          <option value="qty">Qty × Rate</option>
+        </select>
+        <input class="fi ae-line-qty" type="number" value="1" min="1" style="font-size:12px;padding:6px;text-align:center" oninput="_aeRecalc()"/>
+        <input class="fi ae-line-rate" type="number" placeholder="0" step="any" style="font-size:12px;padding:6px" oninput="_aeRecalc()"/>
+        <div class="ae-line-total" style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--ink);text-align:right;padding-right:4px">0</div>
+        <button type="button" onclick="if(document.querySelectorAll('.ae-line').length>1){this.closest('.ae-line').remove();_aeRecalc();}" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0">✕</button>
+      </div>
+    </div>
+    <div style="padding:10px 12px;background:var(--bg3);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;font-weight:700;color:var(--ink)">${BIZ.language==='fr'?'Total dépense':'Total Expense'}</span>
+      <span id="ae-grand-total" style="font-family:var(--mono);font-size:16px;font-weight:900;color:var(--r)">0 ${CUR.symbol}</span>
     </div>
   </div>
   <div class="fg"><label class="fl">${_s.exp_notes_ph}</label>
@@ -8206,10 +8281,24 @@ async function mAddExp(){const _s=_L();
    <button class="btn btn-p" onclick="(function(){
     if(_trialWriteBlocked('Recording an expense')) return;
     var payee=document.getElementById('ae-payee').value.trim();
-    var amt=parseFloat(document.getElementById('ae-amt').value)||0;
     if(!payee){toast(_L().t_payee_req,'error');return;}
-    if(!amt||amt<=0){toast(_L().t_amount_valid,'error');return;}
-    var amtBase=amt/CUR.rate;
+    // Collect line items
+    var lineItems=[];
+    var totalAmt=0;
+    document.querySelectorAll('.ae-line').forEach(function(row){
+      var desc=row.querySelector('.ae-line-desc')?.value||'';
+      var mode=row.querySelector('.ae-line-mode')?.value||'flat';
+      var qty=parseFloat(row.querySelector('.ae-line-qty')?.value)||1;
+      var rate=parseFloat(row.querySelector('.ae-line-rate')?.value)||0;
+      var lineTotal=mode==='qty'?qty*rate:rate;
+      if(rate>0){
+        lineItems.push({desc:desc,mode:mode,qty:qty,rate:rate,total:lineTotal});
+        totalAmt+=lineTotal;
+      }
+    });
+    if(totalAmt<=0){toast(_L().t_amount_valid,'error');return;}
+    var amtBase=totalAmt/CUR.rate;
+    document.getElementById('ae-amt').value=totalAmt;
     var maxN=D.exp.reduce(function(m,e){var n=parseInt((e.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0);
     var id='EX-'+String(maxN+1).padStart(3,'0');
     var newExp={
@@ -8220,7 +8309,7 @@ async function mAddExp(){const _s=_L();
       type:document.getElementById('ae-type').value,
       method:document.getElementById('ae-method').value,
       notes:document.getElementById('ae-notes').value,
-      st:'Paid', docs:[]
+      st:'Paid', docs:[], lineItems:lineItems
     };
     // Collect attached docs from the upload area
     var _docListEl = null;
@@ -8292,6 +8381,26 @@ function mViewExp(id){const _s=_L();
     <div><div class="fl">${_s.ui_type}</div>${bx(e.type,'bx-n')}</div>
     <div><div class="fl">${_s.ui_method}</div><div style="font-size:12px;color:var(--text)">${e.method}</div></div>
   </div>
+  ${e.lineItems&&e.lineItems.length?`
+  <div style="margin-bottom:14px;border:1px solid var(--border);border-radius:var(--r8);overflow:hidden">
+    <div style="background:var(--bg3);padding:8px 12px;font-size:12px;font-weight:700;color:var(--ink)">📋 ${BIZ.language==='fr'?'Détails':'Line Items'}</div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <thead><tr style="background:var(--bg3)">
+        <th style="text-align:left;padding:6px 10px;color:var(--text2)">${BIZ.language==='fr'?'Description':'Description'}</th>
+        <th style="text-align:center;padding:6px 10px;color:var(--text2)">${BIZ.language==='fr'?'Mode':'Mode'}</th>
+        <th style="text-align:center;padding:6px 10px;color:var(--text2)">${BIZ.language==='fr'?'Qté':'Qty'}</th>
+        <th style="text-align:right;padding:6px 10px;color:var(--text2)">${BIZ.language==='fr'?'Taux':'Rate'}</th>
+        <th style="text-align:right;padding:6px 10px;color:var(--text2)">Total</th>
+      </tr></thead>
+      <tbody>${e.lineItems.map(li=>`<tr style="border-top:1px solid var(--border)">
+        <td style="padding:6px 10px;color:var(--ink)">${_esc(li.desc||'—')}</td>
+        <td style="padding:6px 10px;text-align:center;color:var(--text2)">${li.mode==='qty'?'Qty×Rate':(BIZ.language==='fr'?'Forfait':'Flat')}</td>
+        <td style="padding:6px 10px;text-align:center;color:var(--text2)">${li.mode==='qty'?li.qty:'—'}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:var(--mono);color:var(--text)">${fmt(li.rate/CUR.rate)}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-weight:600;color:var(--ink)">${fmt(li.total/CUR.rate)}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>`:''}
   ${e.notes?`<div class="fg" style="margin-bottom:14px"><div class="fl">${_s.ui_notes}</div><div style="font-size:13px;color:var(--text2);line-height:1.5">${e.notes}</div></div>`:''}
   <div class="fl" style="margin-bottom:8px">${_s.po_docs_attach}</div>
   <div id="${uid}-list" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
