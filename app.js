@@ -8228,6 +8228,7 @@ async function mAddExp(){const _s=_L();
       <select class="fs" id="ae-method">
         <option>${_s.ui_cash}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option>
         <option>${_s.ui_orange}</option><option>${_s.ui_credit_card}</option><option>${_s.ui_direct_debit}</option>
+        <option>${_s.ui_sweat_equity}</option><option>${_s.ui_barter}</option>
       </select>
     </div>
   </div>
@@ -20963,7 +20964,7 @@ function mEditPurchase(id){const _s=_L();
   const vOpts = D.vendors.map(v2=>`<option value="${_esc(v2.name)}"${v2.name===p.vendor?' selected':''}>${_esc(v2.name)}</option>`).join('');
   const stOpts = ['Pending','Partial','Paid','Received','Unpaid']
     .map(s=>`<option${s===p.st?' selected':''}>${s}</option>`).join('');
-  const methodOpts = ['Bank Transfer','Cash','Mobile Money (MTN)','Orange Money','Credit Card','Direct Debit']
+  const methodOpts = ['Bank Transfer','Cash','Mobile Money (MTN)','Orange Money','Credit Card','Direct Debit','Sweat Equity','Barter / In-Kind']
     .map(m=>`<option${m===p.method?' selected':''}>${m}</option>`).join('');
 
   modal(`✏️ Edit PO — ${p.id}`,`
@@ -23000,7 +23001,7 @@ async function mEditExp(id){const _s=_L();
   // Use dynamic D.expCats so custom categories are always available
   const typeOpts = ['Recurring','Operating','One-time','Asset Purchase']
     .map(t=>`<option${t===e.type?' selected':''}>${t}</option>`).join('');
-  const methodOpts = ['Cash','Bank Transfer','Credit Card','Mobile Money (MTN)','Orange Money','Direct Debit']
+  const methodOpts = ['Cash','Bank Transfer','Credit Card','Mobile Money (MTN)','Orange Money','Direct Debit','Sweat Equity','Barter / In-Kind']
     .map(m=>`<option${m===e.method?' selected':''}>${m}</option>`).join('');
   const editDocUid = 'edit-exp-docs-'+Date.now();
   // Register existing docs in _DOC_STORE and render with docChip
@@ -25822,6 +25823,8 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     ui_orange:         fr ? 'Orange Money'                : 'Orange Money',
     ui_credit_card:    fr ? 'Carte de Crédit'             : 'Credit Card',
     ui_direct_debit:   fr ? 'Prélèvement automatique'    : 'Direct Debit',
+    ui_sweat_equity:   fr ? 'Apport en nature (travail)'  : 'Sweat Equity',
+    ui_barter:         fr ? 'Échange / Troc'              : 'Barter / In-Kind',
     ui_st_paid:        fr ? 'Payé'                        : 'Paid',
     ui_st_unpaid:      fr ? 'Impayé'                      : 'Unpaid',
     ui_st_partial:     fr ? 'Partiel'                     : 'Partial',
