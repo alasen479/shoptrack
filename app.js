@@ -8209,9 +8209,10 @@ async function mAddExp(){const _s=_L();
       st:'Paid', docs:[]
     };
     // Collect attached docs from the upload area
-    var _docList = document.querySelector('[id^="exp-docs-"][id$="-list"]');
-    if(_docList){
-      _docList.querySelectorAll('img').forEach(function(img){ if(img.src && img.src.startsWith('data:')) newExp.docs.push({name:'receipt',size:'',type:'image',dataUrl:img.src,_key:'doc-'+Date.now()}); });
+    var _docListEl = null;
+    document.querySelectorAll('div[id]').forEach(function(el){ if(el.id.indexOf('exp-docs-')===0 && el.id.indexOf('-list')>0) _docListEl=el; });
+    if(_docListEl){
+      _docListEl.querySelectorAll('img').forEach(function(img){ if(img.src && img.src.indexOf('data:')===0) newExp.docs.push({name:'receipt',size:'',type:'image',dataUrl:img.src,_key:'doc-'+Date.now()}); });
     }
     D.exp.unshift(newExp);
     _dbSaveExp(newExp);
