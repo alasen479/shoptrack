@@ -7619,7 +7619,7 @@ function mRecordVendorPayment(vendorId){const _s=_L();
      vobj.bal=Math.max(0,(vobj.bal||0)-amtBase);
      _dbSaveVendor(vobj);
      // Also record as an expense for P&L accuracy
-     var maxN=D.exp.reduce(function(m,e){var n=parseInt((e.id||'').replace(/\\D/g,''),10)||0;return n>m?n:m;},0);
+     var maxN=D.exp.reduce(function(m,e){var n=parseInt((e.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0);
      var expId='EX-'+String(maxN+1).padStart(3,'0');
      var expRec={
        id:expId, dt:document.getElementById('vp-dt').value,
@@ -8210,7 +8210,7 @@ async function mAddExp(){const _s=_L();
     if(!payee){toast(_L().t_payee_req,'error');return;}
     if(!amt||amt<=0){toast(_L().t_amount_valid,'error');return;}
     var amtBase=amt/CUR.rate;
-    var maxN=D.exp.reduce(function(m,e){var n=parseInt((e.id||'').replace(/\\D/g,''),10)||0;return n>m?n:m;},0);
+    var maxN=D.exp.reduce(function(m,e){var n=parseInt((e.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0);
     var id='EX-'+String(maxN+1).padStart(3,'0');
     var newExp={
       id:id,
