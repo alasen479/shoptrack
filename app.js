@@ -6941,7 +6941,7 @@ function mViewPurchaseDocs(id){const _s=_L();
     <span style="font-size:18px">➕</span>
     <div style="font-size:12px;font-weight:600;color:var(--ink)">Attach vendor invoice, delivery note, or customs docs</div>
     <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
-  </label>`,
+  </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-g btn-sm" onclick="mViewPurchase('${id}')">${_s.po_view}</button>
    <button class="btn btn-p btn-sm" onclick="genPODoc('${id}')">🖨 Print PO</button>`);
@@ -8121,7 +8121,7 @@ function pgExp(){const _s=_L();const _ui=_s;
         <div style="font-size:32px;margin-bottom:10px">💸</div>
         <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:6px">${_s.exp_empty2}</div>
         <div style="font-size:12px;margin-bottom:14px">${_s.ui_no_data_filter}</div>
-        <button class="btn btn-p btn-sm" onclick="mAddExp()">+ Record First Expense</button>
+        <button class="btn btn-p btn-sm" onclick="mAddExp()">${_ui.btn_record_exp||'+ Record First Expense'}</button>
       </div>
       <div id="exp-footer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)">
         <span id="exp-footer-count"></span>
@@ -15237,7 +15237,12 @@ async function _dbDelInv(id){
   }
 }
 async function _dbSaveCust(cu){
-  if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
+  if(!SESSION.bizId||SESSION.isSuperAdmin) return;
+  // Update IDB cache immediately
+  var _cIdx = D.cust.findIndex(function(x){return x.id===cu.id;});
+  if(_cIdx>=0) D.cust[_cIdx]=cu; else D.cust.push(cu);
+  _idbSave(SESSION.bizId,'cust',D.cust).catch(function(){});
+  if(!_sb||!navigator.onLine) return;
   const payload = _custToDB(cu, SESSION.bizId);
   const res = await _safeUpsert('customers', payload, 'saveCust');
   if(res.ok && res.data && res.data[0]){
@@ -15299,7 +15304,11 @@ async function _dbDelCust(id){
   }
 }
 async function _dbSaveSale(s){
-  if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
+  if(!SESSION.bizId||SESSION.isSuperAdmin) return;
+  var _idx = D.sales.findIndex(function(x){return x.id===s.id;});
+  if(_idx>=0) D.sales[_idx]=s; else D.sales.unshift(s);
+  _idbSave(SESSION.bizId,'sales',D.sales).catch(function(){});
+  if(!_sb||!navigator.onLine) return;
   await _safeUpsert('sales', _saleToDB(s, SESSION.bizId), 'saveSale');
 }
 async function _dbDelSale(id){
@@ -15329,7 +15338,11 @@ async function _dbDelSale(id){
   }
 }
 async function _dbSaveRental(r){
-  if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
+  if(!SESSION.bizId||SESSION.isSuperAdmin) return;
+  var _idx = D.rentals.findIndex(function(x){return x.id===r.id;});
+  if(_idx>=0) D.rentals[_idx]=r; else D.rentals.unshift(r);
+  _idbSave(SESSION.bizId,'rentals',D.rentals).catch(function(){});
+  if(!_sb||!navigator.onLine) return;
   await _safeUpsert('rentals', _rentalToDB(r, SESSION.bizId), 'saveRental');
 }
 async function _dbDelRental(id){
@@ -15395,7 +15408,11 @@ async function _dbDelExp(id){
   }
 }
 async function _dbSaveVendor(v){
-  if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
+  if(!SESSION.bizId||SESSION.isSuperAdmin) return;
+  var _idx = D.vendors.findIndex(function(x){return x.id===v.id;});
+  if(_idx>=0) D.vendors[_idx]=v; else D.vendors.push(v);
+  _idbSave(SESSION.bizId,'vendors',D.vendors).catch(function(){});
+  if(!_sb||!navigator.onLine) return;
   await _safeUpsert('vendors', _vendorToDB(v, SESSION.bizId), 'saveVendor');
 }
 async function _dbDelVendor(id){
@@ -15425,7 +15442,11 @@ async function _dbDelVendor(id){
   }
 }
 async function _dbSavePurchase(p){
-  if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
+  if(!SESSION.bizId||SESSION.isSuperAdmin) return;
+  var _idx = D.purchases.findIndex(function(x){return x.id===p.id;});
+  if(_idx>=0) D.purchases[_idx]=p; else D.purchases.unshift(p);
+  _idbSave(SESSION.bizId,'purchases',D.purchases).catch(function(){});
+  if(!_sb||!navigator.onLine) return;
   await _safeUpsert('purchases', _purchaseToDB(p, SESSION.bizId), 'savePurchase');
 }
 async function _dbDelPurchase(id){
@@ -28485,7 +28506,7 @@ function refreshNotifPanel(){
   // Append WA quick-action footer to notification panel
   html += '<div style="border-top:1px solid var(--border);margin-top:10px;padding:10px 14px;display:flex;flex-direction:column;gap:7px">'
     + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:2px">'+_L().ui_quick_actions+'</div>'
-    + '<button class="btn btn-g btn-sm" style="justify-content:flex-start;gap:8px" onclick="nav(\'settings\');setTimeout(function(){var t=document.querySelector(\'.stab[onclick*=tab-notif]\');if(t){t.click();}},300)">'
+    + '<button class="btn btn-g btn-sm" style="justify-content:flex-start;gap:8px" onclick="nav(\'settings\');setTimeout(function(){var tabs=document.querySelectorAll(\'.stab\');for(var ti=0;ti<tabs.length;ti++){if(tabs[ti].textContent.indexOf(\'Notif\')>=0||tabs[ti].textContent.indexOf(\'notif\')>=0){tabs[ti].click();break;}}},300)">'
     + '⚙️ Notification Settings</button>'
     + '</div>';
 
