@@ -8208,6 +8208,11 @@ async function mAddExp(){const _s=_L();
       notes:document.getElementById('ae-notes').value,
       st:'Paid', docs:[]
     };
+    // Collect attached docs from the upload area
+    var _docList = document.querySelector('[id^="exp-docs-"][id$="-list"]');
+    if(_docList){
+      _docList.querySelectorAll('img').forEach(function(img){ if(img.src && img.src.startsWith('data:')) newExp.docs.push({name:'receipt',size:'',type:'image',dataUrl:img.src,_key:'doc-'+Date.now()}); });
+    }
     D.exp.unshift(newExp);
     _dbSaveExp(newExp);
     refreshLiveKpis();
@@ -8262,7 +8267,7 @@ function mViewExp(id){const _s=_L();
     <span style="font-size:18px">➕</span>
     <div style="font-size:12px;font-weight:600;color:var(--ink)">${_s.exp_add_docs}</div>
     <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
-  </label>`,
+  </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-g btn-sm" onclick="mEditExp('${id}')">✏ Edit</button>
    <button class="btn btn-p btn-sm" onclick="mDuplicateExp('${id}')">⧉ Duplicate</button>`);
@@ -15048,11 +15053,17 @@ function _rentalToDB(r, bizId){ return {
   contract_signed_date:r.contractSignedDate||null,
   docs:r.docs||[]
 }; }
-function _expToDB(e, bizId){ return {
+function _expToDB(e, bizId){
+  // Strip large dataUrl from docs before saving to Supabase (too large for DB)
+  // Keep only metadata (name, size, type, _key)
+  var safeDocs = (e.docs||[]).map(function(d){
+    return {name:d.name||'', size:d.size||'', type:d.type||'', _key:d._key||''};
+  });
+  return {
   id:e.id, biz_id:bizId, date:e.dt, category:e.cat,
   payee:e.payee||'', amount:e.amt||0, type:e.type||'One-time',
   method:e.method||'Cash', notes:e.notes||'',
-  status:e.st||'Paid', docs:e.docs||[]
+  status:e.st||'Paid'
 }; }
 function _vendorToDB(v, bizId){ return {
   id:v.id, biz_id:bizId, name:v.name, contact:v.contact||'',
@@ -15304,7 +15315,13 @@ async function _dbDelRental(id){
   }
 }
 async function _dbSaveExp(e){
-  if(!_sb||!SESSION.bizId||SESSION.isSuperAdmin) return;
+  if(!SESSION.bizId||SESSION.isSuperAdmin) return;
+  // Update IDB cache (preserves docs with dataUrl)
+  var _eIdx = D.exp.findIndex(function(x){return x.id===e.id;});
+  if(_eIdx>=0) D.exp[_eIdx]=e;
+  _idbSave(SESSION.bizId,'exp',D.exp).catch(function(){});
+  // Save to Supabase (without docs — too large for DB)
+  if(!_sb||!navigator.onLine) return;
   await _safeUpsert('expenses', _expToDB(e, SESSION.bizId), 'saveExp');
 }
 async function _dbDelExp(id){
