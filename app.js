@@ -21615,7 +21615,7 @@ function addAudit(action, detail){
   _dbSaveAudit(entry);
 }
 
-let _dashPeriod = 'month';
+let _dashPeriod = 'ytd';
 let _acctPeriod = 'month';
 
 function refreshLiveKpis(){
