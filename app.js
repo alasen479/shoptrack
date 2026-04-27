@@ -8018,7 +8018,6 @@ function shareVendorStatement(vid){const _s=_L();
 
 
 function pgExp(){const _s=_L();const _ui=_s;
-  console.log('[pgExp] Rendering expenses, D.exp.length='+D.exp.length, D.exp.map(function(e){return e.id;}).join(','));
   // Default to "month" — compute period KPIs immediately so tiles are in sync
   const monthRange = PERIOD_RANGES['month'];
   const vis   = D.exp.filter(e => inRange(e.dt, monthRange));
@@ -8228,7 +8227,6 @@ async function mAddExp(){const _s=_L();
     document.querySelectorAll('div[id]').forEach(function(el){ if(el.id.indexOf('exp-docs-')===0 && el.id.indexOf('-list')>0) _docListEl=el; });
     newExp.docs = _collectDocsFromList(_docListEl);
     D.exp.unshift(newExp);
-    console.log('[EXP] Added '+newExp.id+' to D.exp, total now: '+D.exp.length);
     _dbSaveExp(newExp);
     refreshLiveKpis();
     addAudit('Expense recorded', id+' — '+payee+' — '+fmt(amtBase));
@@ -13665,8 +13663,17 @@ async function _dbLoadBizData(bizId){
     if(vendors.error) console.error('[DB] vendors query error:', vendors.error.message);
     if(purchases.error) console.error('[DB] purchases query error:', purchases.error.message);
     
+    // MERGE strategy: Supabase data is authoritative, but preserve local-only items
+    // that haven't been sync'd to Supabase yet (async save still in flight)
+    function _mergeData(localArr, freshArr){
+      if(!localArr||!localArr.length) return freshArr;
+      var freshIds = {};
+      freshArr.forEach(function(item){ freshIds[item.id] = true; });
+      var localOnly = localArr.filter(function(item){ return !freshIds[item.id]; });
+      return localOnly.concat(freshArr);
+    }
     // Only update D.xxx if query succeeded (no error) — never overwrite with empty on failure
-    if(!_invResult.error && (!_is107 || (_invResult.data||[]).length))       D.inv       = (_invResult.data||[]).map(_dbToInv);
+    if(!_invResult.error && (!_is107 || (_invResult.data||[]).length))       D.inv       = _mergeData(D.inv, (_invResult.data||[]).map(_dbToInv));
     else {
       // Overlay: apply saved photos/edits onto demo items from Supabase
       // (Supabase may have individual items saved — merge by id)
@@ -13674,15 +13681,15 @@ async function _dbLoadBizData(bizId){
     if(!cust.error){
       var _dbCusts = (cust.data||[]).map(_dbToCust);
       if(!_is107 || _dbCusts.length){
-        D.cust = _dbCusts;
+        D.cust = _mergeData(D.cust, _dbCusts);
       }
     }
       _cacheCust(); // update cache with fresh DB data
-    if(!sales.error && (!_is107 || (sales.data||[]).length))     D.sales     = (sales.data||[]).map(_dbToSale);
-    if(!rentals.error && (!_is107 || (rentals.data||[]).length))   D.rentals   = (rentals.data||[]).map(_dbToRental);
-    if(!exp.error && (!_is107 || (exp.data||[]).length))       D.exp       = (exp.data||[]).map(_dbToExp);
-    if(!vendors.error && (!_is107 || (vendors.data||[]).length))   D.vendors   = (vendors.data||[]).map(_dbToVendor);
-    if(!purchases.error && (!_is107 || (purchases.data||[]).length)) D.purchases = (purchases.data||[]).map(_dbToPurchase);
+    if(!sales.error && (!_is107 || (sales.data||[]).length))     D.sales     = _mergeData(D.sales, (sales.data||[]).map(_dbToSale));
+    if(!rentals.error && (!_is107 || (rentals.data||[]).length))   D.rentals   = _mergeData(D.rentals, (rentals.data||[]).map(_dbToRental));
+    if(!exp.error && (!_is107 || (exp.data||[]).length))       D.exp       = _mergeData(D.exp, (exp.data||[]).map(_dbToExp));
+    if(!vendors.error && (!_is107 || (vendors.data||[]).length))   D.vendors   = _mergeData(D.vendors, (vendors.data||[]).map(_dbToVendor));
+    if(!purchases.error && (!_is107 || (purchases.data||[]).length)) D.purchases = _mergeData(D.purchases, (purchases.data||[]).map(_dbToPurchase));
     if(!audit.error && (!_is107 || (audit.data||[]).length))     D.audit     = (audit.data||[]).map(_dbToAudit);
     // Services and appointments — always load from Supabase for real businesses
     if(!_is107 || (_svcResult.data||[]).length){
