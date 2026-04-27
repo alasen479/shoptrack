@@ -4438,10 +4438,10 @@ function pgSales(){const _s=_L();const _ui=_s;
   <p>${_ui.ph_sales}</p>
 </div>
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr))">
-  <div class="kpi b"><div class="kpi-lbl">${_s.sal_kpi_rev}</div><div id="sales-kpi-rev" class="kpi-val b">${fmtKpi(kRev)}</div><div class="kpi-sub">${_s.sal_kpi_month}</div></div>
-  <div class="kpi g"><div class="kpi-lbl">${_s.sal_kpi_cash}</div><div id="sales-kpi-cash" class="kpi-val g">${fmtKpi(kCash)}</div><div class="kpi-sub">${_s.sal_kpi_month}</div></div>
-  <div class="kpi r"><div class="kpi-lbl">${_s.sal_kpi_ar}</div><div id="sales-kpi-ar" class="kpi-val r">${fmtKpi(kAR)}</div><div class="kpi-sub">${_s.sal_kpi_month}</div></div>
-  <div class="kpi p"><div class="kpi-lbl">${_s.sal_kpi_gp}</div><div id="sales-kpi-gp" class="kpi-val p">${fmtKpi(kGP)}</div><div class="kpi-sub">${_s.sal_kpi_month}</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.sal_kpi_rev}</div><div id="sales-kpi-rev" class="kpi-val b">${fmtKpi(kRev)}</div><div class="kpi-sub">${_s.ui_ytd}</div></div>
+  <div class="kpi g"><div class="kpi-lbl">${_s.sal_kpi_cash}</div><div id="sales-kpi-cash" class="kpi-val g">${fmtKpi(kCash)}</div><div class="kpi-sub">${_s.ui_ytd}</div></div>
+  <div class="kpi r"><div class="kpi-lbl">${_s.sal_kpi_ar}</div><div id="sales-kpi-ar" class="kpi-val r">${fmtKpi(kAR)}</div><div class="kpi-sub">${_s.ui_ytd}</div></div>
+  <div class="kpi p"><div class="kpi-lbl">${_s.sal_kpi_gp}</div><div id="sales-kpi-gp" class="kpi-val p">${fmtKpi(kGP)}</div><div class="kpi-sub">${_s.ui_ytd}</div></div>
 </div>
 ${D.sales.length===0?'<div style="background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r8);padding:28px 24px;text-align:center;margin-bottom:12px"><div style="font-size:28px;margin-bottom:10px">\uD83D\uDCB3</div><div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px">'+_s.sal_empty_title+'</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">'+_s.sal_empty_sub+'</div><button class="btn btn-p" onclick="mCreateSale()">'+_s.sal_empty_btn+'</button></div>':''}
 <div class="fbar">
@@ -6723,7 +6723,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
 </div>
 
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr));margin-bottom:14px">
-  <div class="kpi b"><div class="kpi-lbl">${_s.vend_spent}</div><div id="po-kpi-total" class="kpi-val b">${fmtKpi(totalSpent)}</div><div class="kpi-sub">${_s.ui_this_month}</div></div>
+  <div class="kpi b"><div class="kpi-lbl">${_s.vend_spent}</div><div id="po-kpi-total" class="kpi-val b">${fmtKpi(totalSpent)}</div><div class="kpi-sub">${_s.ui_ytd}</div></div>
   <div class="kpi r"><div class="kpi-lbl">${_s.vend_ap}</div><div id="po-kpi-ap" class="kpi-val r">${fmtKpi(apOut)}</div><div class="kpi-sub">${_s.vend_owed}</div></div>
   <div class="kpi y"><div class="kpi-lbl">${_s.ui_st_pending}</div><div id="po-kpi-pending" class="kpi-val y">${pending}</div><div class="kpi-sub">${_s.po_delivery_note}</div></div>
   <div class="kpi g"><div class="kpi-lbl">${_s.po_received}</div><div id="po-kpi-paid" class="kpi-val g">${paid}</div><div class="kpi-sub">${_s.ui_st_completed}</div></div>
@@ -8078,11 +8078,11 @@ function pgExp(){const _s=_L();const _ui=_s;
   <p>${_ui.ph_expenses}</p>
 </div>
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr));margin-bottom:14px">
-  <div class="kpi r"><div class="kpi-lbl">${_s.exp_kpi_total}</div><div id="exp-kpi-total" class="kpi-val r">${fmtKpi(total)}</div><div class="kpi-sub">${_s.ui_this_month}</div></div>
+  <div class="kpi r"><div class="kpi-lbl">${_s.exp_kpi_total}</div><div id="exp-kpi-total" class="kpi-val r">${fmtKpi(total)}</div><div class="kpi-sub">${_s.ui_ytd}</div></div>
   <div class="kpi y"><div class="kpi-lbl">${_s.exp_type_recur}</div><div id="exp-kpi-rec" class="kpi-val y">${fmtKpi(rec)}</div><div class="kpi-sub">${_s.exp_type_fixed}</div></div>
   <div class="kpi b"><div class="kpi-lbl">${_s.exp_type_once}</div><div id="exp-kpi-one" class="kpi-val b">${fmtKpi(one)}</div><div class="kpi-sub">${_s.exp_type_var}</div></div>
   ${topCat ? `<div class="kpi r"><div class="kpi-lbl">${_s.exp_kpi_top_cat}</div><div class="kpi-val" style="font-size:14px;color:var(--r)">${_esc(topCat[0])}</div><div class="kpi-sub">${fmt(topCat[1])}</div></div>` : ''}
-  <div class="kpi"><div class="kpi-lbl">${_s.exp_kpi_entries}</div><div id="exp-kpi-count" class="kpi-val">${vis.length}</div><div class="kpi-sub">${_s.ui_this_month}</div></div>
+  <div class="kpi"><div class="kpi-lbl">${_s.exp_kpi_entries}</div><div id="exp-kpi-count" class="kpi-val">${vis.length}</div><div class="kpi-sub">${_s.ui_ytd}</div></div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 240px;gap:14px;align-items:start">
   <div>
@@ -22301,7 +22301,7 @@ function filterPurchasesTable(){ _poFilter(); }
 
 
 // ── Expense period state ──────────────────────────────────────
-let _expCurrentRange = null; // null = show all, set by setExpPeriod
+let _expCurrentRange = null; // initialized to ytd on first pgExp render
 
 function setExpPeriod(el, period){
   el.closest('.dtabs').querySelectorAll('.dtab').forEach(b=>b.classList.remove('on'));
@@ -25670,6 +25670,7 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     ui_city:           fr ? 'Ville'                       : 'City',
     ui_contact:        fr ? 'Contact'                     : 'Contact',
     ui_this_month:     fr ? 'Ce mois'                     : 'This month',
+    ui_ytd:            fr ? 'Année en cours'               : 'Year to date',
     ui_all_cats:       fr ? 'Toutes les Catégories'       : 'All Categories',
     ui_all_types:      fr ? 'Tous les Types'              : 'All Types',
     ui_view_all:       fr ? 'Voir tout'                   : 'View All',
