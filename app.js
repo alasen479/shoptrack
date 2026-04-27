@@ -8275,6 +8275,12 @@ function _doDeleteExp(id){const _s=_L();
 function mViewExp(id){const _s=_L();
   const e=D.exp.find(x=>x.id===id); if(!e) return;
   const uid='view-exp-'+id;
+  // Register existing docs in _DOC_STORE so view/download buttons work
+  (e.docs||[]).forEach(function(d){
+    if(d && d.dataUrl && d._key){
+      _DOC_STORE[d._key] = {dataUrl:d.dataUrl, name:d.name||'doc', type:d.type||''};
+    }
+  });
   modal(`💸 Expense — ${e.id}`,`
   <div class="fg-2" style="margin-bottom:14px">
     <div><div class="fl">${_s.ui_date}</div><div style="font-size:13px;color:var(--ink)">${e.dt}</div></div>
@@ -8294,9 +8300,10 @@ function mViewExp(id){const _s=_L();
     <div style="font-size:12px;font-weight:600;color:var(--ink)">${_s.exp_add_docs}</div>
     <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
-   <button class="btn btn-g btn-sm" onclick="mEditExp('${id}')">✏ Edit</button>
-   <button class="btn btn-p btn-sm" onclick="mDuplicateExp('${id}')">⧉ Duplicate</button>`);
+  `<button class="btn btn-d btn-sm" onclick="mDeleteExp('${id}')">🗑 ${_s.ui_delete}</button>
+   <button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
+   <button class="btn btn-g btn-sm" onclick="mEditExp('${id}')">✏ ${_s.ui_edit||'Edit'}</button>
+   <button class="btn btn-p btn-sm" onclick="mDuplicateExp('${id}')">⧉ ${_s.ui_duplicate}</button>`);
 }
 
 
