@@ -8241,8 +8241,10 @@ async function mAddExp(){const _s=_L();
     nav('expenses');
     if(window._expForceFilter){
       setTimeout(function(){
-        var btn = document.querySelector('.pf[data-p=\"'+window._expForceFilter+'\"]');
-        if(btn) btn.click();
+        var btns = document.querySelectorAll('.dtab');
+        for(var _fi=0;_fi<btns.length;_fi++){
+          if(btns[_fi].textContent.indexOf('YTD')>=0) btns[_fi].click();
+        }
         window._expForceFilter = null;
       }, 100);
     }
