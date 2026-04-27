@@ -8018,6 +8018,7 @@ function shareVendorStatement(vid){const _s=_L();
 
 
 function pgExp(){const _s=_L();const _ui=_s;
+  console.log('[pgExp] Rendering expenses, D.exp.length='+D.exp.length, D.exp.map(function(e){return e.id;}).join(','));
   // Default to "month" — compute period KPIs immediately so tiles are in sync
   const monthRange = PERIOD_RANGES['month'];
   const vis   = D.exp.filter(e => inRange(e.dt, monthRange));
@@ -8227,6 +8228,7 @@ async function mAddExp(){const _s=_L();
     document.querySelectorAll('div[id]').forEach(function(el){ if(el.id.indexOf('exp-docs-')===0 && el.id.indexOf('-list')>0) _docListEl=el; });
     newExp.docs = _collectDocsFromList(_docListEl);
     D.exp.unshift(newExp);
+    console.log('[EXP] Added '+newExp.id+' to D.exp, total now: '+D.exp.length);
     _dbSaveExp(newExp);
     refreshLiveKpis();
     addAudit('Expense recorded', id+' — '+payee+' — '+fmt(amtBase));
