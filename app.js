@@ -8208,11 +8208,21 @@ async function mAddExp(){const _s=_L();
       notes:document.getElementById('ae-notes').value,
       st:'Paid', docs:[]
     };
-    // Collect attached docs from the upload area
+    // Collect attached docs from the upload area via _DOC_STORE keys in chip buttons
     var _docListEl = null;
     document.querySelectorAll('div[id]').forEach(function(el){ if(el.id.indexOf('exp-docs-')===0 && el.id.indexOf('-list')>0) _docListEl=el; });
     if(_docListEl){
-      _docListEl.querySelectorAll('img').forEach(function(img){ if(img.src && img.src.indexOf('data:')===0) newExp.docs.push({name:'receipt',size:'',type:'image',dataUrl:img.src,_key:'doc-'+Date.now()}); });
+      var _btns = _docListEl.querySelectorAll('button');
+      for(var _bi=0;_bi<_btns.length;_bi++){
+        var _oc = _btns[_bi].getAttribute('onclick')||'';
+        if(_oc.indexOf('_docView')>=0){
+          var _km = _oc.match(/_docView\('([^']+)'\)/);
+          if(_km && _km[1] && _DOC_STORE[_km[1]]){
+            var _dd = _DOC_STORE[_km[1]];
+            newExp.docs.push({name:_dd.name||'receipt',size:'',type:_dd.type||'',dataUrl:_dd.dataUrl,_key:_km[1]});
+          }
+        }
+      }
     }
     D.exp.unshift(newExp);
     _dbSaveExp(newExp);
@@ -22830,12 +22840,21 @@ async function mEditExp(id){const _s=_L();
   const methodOpts = ['Cash','Bank Transfer','Credit Card','Mobile Money (MTN)','Orange Money','Direct Debit']
     .map(m=>`<option${m===e.method?' selected':''}>${m}</option>`).join('');
   const editDocUid = 'edit-exp-docs-'+Date.now();
-  // Render existing docs
-  const existingDocs = (e.docs||[]).map(function(d,idx){
-    if(d && d.startsWith && d.startsWith('data:image')){
-      return '<div style="position:relative;display:inline-block"><img src="'+d+'" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"/><button type="button" onclick="this.parentElement.remove()" style="position:absolute;top:-6px;right:-6px;background:var(--r);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button></div>';
+  // Register existing docs in _DOC_STORE and render with docChip
+  const existingDocs = (e.docs||[]).map(function(d){
+    if(typeof d === 'string' && d.startsWith('data:')) {
+      // Legacy format: bare dataUrl string
+      var key = 'doc-'+Date.now()+'-'+Math.random().toString(36).slice(2,5);
+      _DOC_STORE[key] = {dataUrl:d, name:'receipt', type:'image'};
+      return docChip({name:'receipt', size:'', type:'image', dataUrl:d, _key:key});
     }
-    return '<div style="display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px"><span>📎</span><span>Doc '+(idx+1)+'</span><button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:12px">✕</button></div>';
+    if(d && d.dataUrl){
+      // Object format with dataUrl
+      var key2 = d._key || 'doc-'+Date.now()+'-'+Math.random().toString(36).slice(2,5);
+      _DOC_STORE[key2] = {dataUrl:d.dataUrl, name:d.name||'doc', type:d.type||''};
+      return docChip({name:d.name||'doc', size:d.size||'', type:d.type||'', dataUrl:d.dataUrl, _key:key2});
+    }
+    return '';
   }).join('');
 
   modal(`✏️ Edit Expense — ${e.id}`,`
@@ -22897,11 +22916,35 @@ function saveExpEdit(id){var _s=_L();
   e.type  = newType  || e.type;
   e.method= newMethod|| e.method;
   e.notes = newNotes;
-  // Collect docs from the upload area
-  var docList = document.querySelector('[id^="edit-exp-docs-"][id$="-list"]');
+  // Collect docs from the upload area via _DOC_STORE keys
+  var docList = null;
+  document.querySelectorAll('div[id]').forEach(function(el){ if(el.id.indexOf('edit-exp-docs-')===0 && el.id.indexOf('-list')>0) docList=el; });
   if(docList){
     var docs = [];
-    docList.querySelectorAll('img').forEach(function(img){ if(img.src) docs.push(img.src); });
+    var btns = docList.querySelectorAll('button');
+    for(var bi=0;bi<btns.length;bi++){
+      var oc = btns[bi].getAttribute('onclick')||'';
+      if(oc.indexOf('_docView')>=0){
+        var km = oc.match(/_docView\('([^']+)'\)/);
+        if(km && km[1] && _DOC_STORE[km[1]]){
+          var dd = _DOC_STORE[km[1]];
+          docs.push({name:dd.name||'doc',size:'',type:dd.type||'',dataUrl:dd.dataUrl,_key:km[1]});
+        }
+      }
+    }
+    // Also keep existing docs that weren't removed
+    if(e.docs && e.docs.length){
+      e.docs.forEach(function(d){
+        if(d._key && !docs.find(function(x){return x._key===d._key;})){
+          // Check if it was removed from DOM
+          var stillInDom = false;
+          for(var ci=0;ci<btns.length;ci++){
+            if((btns[ci].getAttribute('onclick')||'').indexOf(d._key)>=0){ stillInDom=true; break; }
+          }
+          if(stillInDom) docs.push(d);
+        }
+      });
+    }
     e.docs = docs;
   }
   _dbSaveExp(e); // ← was missing — edits now persist to Supabase
