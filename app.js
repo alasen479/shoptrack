@@ -23032,9 +23032,45 @@ async function mEditExp(id){const _s=_L();
       </div>
     </div>
     <div class="fg"><label class="fl">Payee *</label><input class="fi" id="edit-exp-payee" value="${_esc(e.payee)}"/></div>
-    <div class="fg"><label class="fl">Amount * <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="edit-exp-amt" value="${Math.round(e.amt*(CUR.rate||1)*100)/100}" step="any"/></div>
+    <div class="fg" style="display:none"><input class="fi" type="number" id="edit-exp-amt" value="${Math.round(e.amt*(CUR.rate||1)*100)/100}" step="any"/></div>
     <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="edit-exp-type">${typeOpts}</select></div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="edit-exp-method">${methodOpts}</select></div>
+  </div>
+
+  <!-- LINE ITEMS -->
+  <div style="margin:14px 0 10px;border:1px solid var(--border);border-radius:var(--r8);overflow:hidden">
+    <div style="background:var(--bg3);padding:8px 12px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:12px;font-weight:700;color:var(--ink)">📋 ${BIZ.language==='fr'?'Détails de la dépense':'Expense Line Items'}</div>
+      <button type="button" class="btn btn-g btn-xs" onclick="_aeAddLine()">+ ${BIZ.language==='fr'?'Ajouter':'Add Line'}</button>
+    </div>
+    <div style="padding:6px 10px;font-size:10px;color:var(--text2);display:grid;grid-template-columns:2fr 90px 70px 90px 90px 28px;gap:6px;border-bottom:1px solid var(--border)">
+      <span>${BIZ.language==='fr'?'Description':'Description'}</span>
+      <span>${BIZ.language==='fr'?'Mode':'Mode'}</span>
+      <span>${BIZ.language==='fr'?'Qté':'Qty'}</span>
+      <span>${BIZ.language==='fr'?'Taux/Prix':'Rate/Price'}</span>
+      <span>Total (${CUR.symbol})</span>
+      <span></span>
+    </div>
+    <div id="ae-lines">
+      ${(e.lineItems&&e.lineItems.length?e.lineItems:[{desc:e.payee||'',mode:'flat',qty:1,rate:Math.round(e.amt*(CUR.rate||1)*100)/100,total:Math.round(e.amt*(CUR.rate||1)*100)/100}]).map(function(li){
+        var rateDisplay = li.rate||0;
+        var totalDisplay = li.mode==='qty'?(li.qty||1)*rateDisplay:rateDisplay;
+        return '<div class="ae-line" style="padding:6px 10px;display:grid;grid-template-columns:2fr 90px 70px 90px 90px 28px;gap:6px;align-items:center;border-bottom:1px solid var(--border)">'
+          +'<input class="fi ae-line-desc" value="'+_esc(li.desc||'')+'" style="font-size:12px;padding:6px 8px"/>'
+          +'<select class="fs ae-line-mode" style="font-size:11px;padding:4px" onchange="_aeRecalc()">'
+          +'<option value="flat"'+(li.mode!=='qty'?' selected':'')+'>'+((BIZ.language==='fr')?'Forfait':'Flat')+'</option>'
+          +'<option value="qty"'+(li.mode==='qty'?' selected':'')+'>Qty × Rate</option></select>'
+          +'<input class="fi ae-line-qty" type="number" value="'+(li.qty||1)+'" min="1" style="font-size:12px;padding:6px;text-align:center'+(li.mode!=='qty'?';opacity:0.3':'')+'"'+(li.mode!=='qty'?' disabled':'')+' oninput="_aeRecalc()"/>'
+          +'<input class="fi ae-line-rate" type="number" value="'+rateDisplay+'" step="any" style="font-size:12px;padding:6px" oninput="_aeRecalc()"/>'
+          +'<div class="ae-line-total" style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--ink);text-align:right;padding-right:4px">'+totalDisplay.toLocaleString()+'</div>'
+          +'<button type="button" onclick="if(document.querySelectorAll(\'.ae-line\').length>1){this.closest(\'.ae-line\').remove();_aeRecalc();}" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0">✕</button>'
+          +'</div>';
+      }).join('')}
+    </div>
+    <div style="padding:10px 12px;background:var(--bg3);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;font-weight:700;color:var(--ink)">${BIZ.language==='fr'?'Total dépense':'Total Expense'}</span>
+      <span id="ae-grand-total" style="font-family:var(--mono);font-size:16px;font-weight:900;color:var(--r)">${Math.round(e.amt*(CUR.rate||1)*100)/100} ${CUR.symbol}</span>
+    </div>
   </div>
   <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="edit-exp-notes" placeholder="Additional notes…" style="min-height:52px">${_esc(e.notes||'')}</textarea></div>
   <div class="fg">
@@ -23074,19 +23110,33 @@ function saveExpEdit(id){var _s=_L();
   const newDt    = document.getElementById('edit-exp-dt')?.value;
   const newCat   = document.getElementById('edit-exp-cat')?.value;
   const newPayee = document.getElementById('edit-exp-payee')?.value?.trim();
-  const newAmt   = parseFloat(document.getElementById('edit-exp-amt')?.value);
   const newType  = document.getElementById('edit-exp-type')?.value;
   const newMethod= document.getElementById('edit-exp-method')?.value;
   const newNotes = document.getElementById('edit-exp-notes')?.value??'';
   if(!newPayee){ toast(_s.t_payee_req,'error'); return; }
-  if(isNaN(newAmt)||newAmt<=0){ toast(_s.t_amount_valid,'error'); return; }
+  // Collect line items
+  var lineItems=[];
+  var totalAmt=0;
+  document.querySelectorAll('.ae-line').forEach(function(row){
+    var desc=row.querySelector('.ae-line-desc')?.value||'';
+    var mode=row.querySelector('.ae-line-mode')?.value||'flat';
+    var qty=parseFloat(row.querySelector('.ae-line-qty')?.value)||1;
+    var rate=parseFloat(row.querySelector('.ae-line-rate')?.value)||0;
+    var lineTotal=mode==='qty'?qty*rate:rate;
+    if(rate>0){
+      lineItems.push({desc:desc,mode:mode,qty:qty,rate:rate,total:lineTotal});
+      totalAmt+=lineTotal;
+    }
+  });
+  if(totalAmt<=0){ toast(_s.t_amount_valid,'error'); return; }
   e.dt    = newDt    || e.dt;
   e.cat   = newCat   || e.cat;
   e.payee = newPayee;
-  e.amt   = newAmt / _er;
+  e.amt   = totalAmt / _er;
   e.type  = newType  || e.type;
   e.method= newMethod|| e.method;
   e.notes = newNotes;
+  e.lineItems = lineItems;
   // Collect docs from the upload area
   var editDocList = null;
   document.querySelectorAll('div[id]').forEach(function(el){ if(el.id.indexOf('edit-exp-docs-')===0 && el.id.indexOf('-list')>0) editDocList=el; });
