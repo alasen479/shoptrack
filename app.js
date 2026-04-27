@@ -8232,7 +8232,20 @@ async function mAddExp(){const _s=_L();
     addAudit('Expense recorded', id+' — '+payee+' — '+fmt(amtBase));
     closeModal();
     toast(_L().t_expense_rec,'success');
+    // If expense date is outside current month, switch to YTD so it's visible
+    var _expDt = document.getElementById('ae-dt')?.value||'';
+    var _curMonth = localDateStr().slice(0,7);
+    if(_expDt && _expDt.slice(0,7) !== _curMonth){
+      window._expForceFilter = 'ytd';
+    }
     nav('expenses');
+    if(window._expForceFilter){
+      setTimeout(function(){
+        var btn = document.querySelector('.pf[data-p=\"'+window._expForceFilter+'\"]');
+        if(btn) btn.click();
+        window._expForceFilter = null;
+      }, 100);
+    }
    })()">💾 Record Expense</button>`);
 }
   // Init expense category dropdown explicitly after modal renders
