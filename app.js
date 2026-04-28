@@ -17125,7 +17125,7 @@ function showSignup(){var _s=_L();
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Your Name *</label>'
-          +'<input id="su-name" placeholder="'+_s.vend_full_name+'" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
+          +'<input id="su-name" placeholder="'+_s.vend_full_name+'" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:13px 14px;border-radius:8px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
         +'</div>'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Phone / WhatsApp *</label>'
