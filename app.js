@@ -8601,22 +8601,16 @@ function pgAccounting(){const _s=_L();const _ui=_s;
 
 function initAccounting(){
   setTimeout(function(){
-    // Always kick off with the current _acctPeriod so chart matches the P&L rows
-    const tab = document.querySelector('.dtabs .dtab.on');
-    if(tab) setAcctPeriod(tab, _acctPeriod || 'ytd');
-    else {
-      const range = PERIOD_RANGES[_acctPeriod] || PERIOD_RANGES.ytd;
-      const k = computeKPIs(range);
-      const r = CUR.rate;
-      mkChart('plChart',{type:'bar',data:{
-        labels:['Revenue','COGS','Gross Profit','Overhead','Net Profit'],
-        datasets:[{data:[k.rev,k.cogs,k.gp,k.oh,Math.max(0,k.np)].map(v=>Math.round(v*r)),
-          backgroundColor:['rgba(91,127,255,.7)','rgba(255,95,122,.7)','rgba(45,212,160,.7)','rgba(245,200,66,.7)','rgba(159,122,234,.7)'],borderRadius:5}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-          scales:{x:{ticks:{color:document.body.classList.contains('light')?'#374151':'#c8cee8',font:{size:11}},grid:{display:false}},
-            y:{ticks:{color:document.body.classList.contains('light')?'#374151':'#c8cee8',font:{size:11},callback:v=>fmtRaw(v)},grid:{color:document.body.classList.contains('light')?'rgba(0,0,0,.07)':'rgba(255,255,255,.06)'}}}}});
+    // Force recompute with YTD period
+    var tab = document.querySelector('.dtabs .dtab.on');
+    if(!tab){
+      // Find the YTD button
+      document.querySelectorAll('.dtabs .dtab').forEach(function(b){
+        if(b.textContent.indexOf('YTD')>=0) tab=b;
+      });
     }
-  }, 0);
+    if(tab) setAcctPeriod(tab, _acctPeriod || 'ytd');
+  }, 50);
 }
 
 // ============================================================
@@ -9390,8 +9384,7 @@ function rptRepairs(){const _s=_L();
 }
 
 function initReports(){
-  // Use the current month as default — same function as period selector
-  _applyReportPeriod('month', PERIOD_RANGES.month);
+  _applyReportPeriod('ytd', PERIOD_RANGES.ytd);
 }
 
 // ============================================================
