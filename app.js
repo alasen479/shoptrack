@@ -17125,7 +17125,7 @@ function showSignup(){var _s=_L();
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Your Name *</label>'
-          +'<input id="su-name" placeholder="'+_s.vend_full_name+'" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:13px 14px;border-radius:8px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
+          +'<input id="su-name" placeholder="'+_s.vend_full_name+'" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:14px 16px;border-radius:8px;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
         +'</div>'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Phone / WhatsApp *</label>'
@@ -17591,12 +17591,9 @@ async function _confirmVerifyToken(){var _s=_L();
 
 
 function _getSetupState(){
-  var _waTestKey='st_wa_tested_'+(SESSION.bizId||'');
-  var waTestDone=false;try{waTestDone=!!localStorage.getItem(_waTestKey);}catch(e){}
   var done={
     profile:!!(BIZ.name&&BIZ.phone&&BIZ.address),
-    wa:!!(BIZ.whatsapp||BIZ.phone),
-    waTest:waTestDone,
+    wa:!!(BIZ.whatsapp),
     inv:D.inv.length>0,
     sale:D.sales.length>0,
     cust:D.cust.length>0,
@@ -17620,12 +17617,12 @@ function _goToProfileForWA(){
 
 function _setupSteps(){
   var st=_getSetupState();
-  var waExtraBtn=!(st.done.wa&&st.done.waTest)
+  var waExtraBtn=!(st.done.wa)
     ?'<button class="btn btn-xs" onclick="closeModal();_goToNotifTab()" style="background:rgba(37,211,102,.15);color:#25d366;border:1px solid rgba(37,211,102,.3);font-size:11px;padding:4px 9px;border-radius:6px;cursor:pointer;white-space:nowrap">Notifications \u2192</button>'
     :'';
   return [
     {icon:'\uD83C\uDFEA',key:'profile', label:'Complete your business profile', desc:'Add your name, address, logo and business details',                              done:st.done.profile,            action:"closeModal();_goToProfileForWA()"},
-    {icon:'\uD83D\uDCF1',key:'wa',      label:'Add your WhatsApp number',        desc:'Required for sale alerts, stock warnings and rental notifications',             done:st.done.wa&&st.done.waTest, action:"closeModal();_goToProfileForWA()", extraBtn:waExtraBtn},
+    {icon:'\uD83D\uDCF1',key:'wa',      label:'Add your WhatsApp number',        desc:'Required for sale alerts, stock warnings and rental notifications',             done:st.done.wa, action:"closeModal();_goToProfileForWA()", extraBtn:waExtraBtn},
     {icon:'\uD83D\uDCE6',key:'inv',     label:'Add your first product',          desc:'Add at least one item to your inventory',                                      done:st.done.inv,                action:"closeModal();nav('inventory')"},
     {icon:'\uD83D\uDCB3',key:'sale',    label:'Record your first sale',          desc:'Create a sale and send a receipt',                                             done:st.done.sale,               action:"closeModal();mCreateSale()"},
     {icon:'\uD83D\uDC65',key:'cust',    label:'Add your first customer',         desc:'Build your customer database',                                                 done:st.done.cust,               action:"closeModal();mAddCustomer()"},
