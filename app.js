@@ -8694,7 +8694,7 @@ function pgReports(){const _s=_L();const _ui=_L();
       {n:'Expense by Category',fn:"rptExpCat()"},
       {n:'Repairs & Maintenance',fn:"rptRepairs()"},
       {n:'Audit Trail Report',fn:"nav('auditlog')"},
-      {n:'Staff Activity Log',fn:"toast(_L().t_staff_report,'success')"}
+      {n:'Staff Activity Log',fn:"rptStaffLog()"}
     ]},
   ];
   return `
@@ -9381,6 +9381,50 @@ function rptRepairs(){const _s=_L();
   ${rep.map(e=>`<tr><td>${e.dt}</td><td>${e.payee}</td><td>${mono(fmt(e.amt),'r')}</td><td>${e.method}</td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRepairsPDF()">⬇ PDF</button>`);
+}
+
+function rptStaffLog(){const _s=_L();
+  const fr=BIZ.language==='fr';
+  const _rng=PERIOD_RANGES[_acctPeriod]||PERIOD_RANGES.ytd;
+  const entries=(D.audit||[]).filter(a=>inRange(a.dt||a.date,_rng));
+  // Group by user
+  const byUser={};
+  entries.forEach(function(a){
+    var user=a.user||a.by||BIZ.owner||'Owner';
+    if(!byUser[user]) byUser[user]={count:0,actions:{}};
+    byUser[user].count++;
+    var action=a.action||a.type||'Action';
+    byUser[user].actions[action]=(byUser[user].actions[action]||0)+1;
+  });
+  const userSummary=Object.entries(byUser).sort(function(a,b){return b[1].count-a[1].count;}).map(function(u){
+    var topActions=Object.entries(u[1].actions).sort(function(a,b){return b[1]-a[1];}).slice(0,5).map(function(a){return a[0]+' ('+a[1]+')';}).join(', ');
+    return '<tr><td style="font-weight:600;color:var(--ink)">'+_esc(u[0])+'</td><td style="text-align:center">'+u[1].count+'</td><td style="font-size:11px;color:var(--text2)">'+topActions+'</td></tr>';
+  }).join('');
+  // Recent activity list (last 50)
+  const recent=entries.slice(0,50).map(function(a){
+    return '<tr>'
+      +'<td style="white-space:nowrap;color:var(--text2);font-size:11px">'+(a.dt||a.date||'')+'</td>'
+      +'<td style="font-weight:500;color:var(--ink)">'+(a.user||a.by||BIZ.owner||'Owner')+'</td>'
+      +'<td>'+(a.action||a.type||'')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(a.detail||a.desc||'')+'</td>'
+      +'</tr>';
+  }).join('');
+  modal('👥 '+(fr?'Journal d\'activité du personnel':'Staff Activity Log'),`
+  <div style="margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px">${fr?'Résumé par utilisateur':'Summary by User'} <span style="font-size:11px;color:var(--text2)">(${_rng.label||''})</span></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>${fr?'Utilisateur':'User'}</th><th style="text-align:center">${fr?'Actions':'Actions'}</th><th>${fr?'Activités principales':'Top Activities'}</th></tr></thead>
+      <tbody>${userSummary||'<tr><td colspan="3" style="text-align:center;color:var(--text2);padding:16px">'+(fr?'Aucune activité':'No activity found')+'</td></tr>'}</tbody>
+    </table></div>
+  </div>
+  <div>
+    <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px">${fr?'Activité récente':'Recent Activity'} <span style="font-size:11px;color:var(--text2)">(${fr?'50 dernières entrées':'last 50 entries'})</span></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>${_s.ui_date}</th><th>${fr?'Utilisateur':'User'}</th><th>Action</th><th>${fr?'Détails':'Details'}</th></tr></thead>
+      <tbody>${recent||'<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:16px">'+(fr?'Aucune entrée':'No entries')+'</td></tr>'}</tbody>
+    </table></div>
+  </div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>`,'lg');
 }
 
 function initReports(){
