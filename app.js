@@ -8424,7 +8424,7 @@ function mViewExp(id){const _s=_L();
 // ============================================================
 function pgAccounting(){const _s=_L();const _ui=_s;
   // Always compute with current _acctPeriod so tiles are correct on load
-  const range = PERIOD_RANGES[_acctPeriod] || PERIOD_RANGES.month;
+  const range = PERIOD_RANGES[_acctPeriod] || PERIOD_RANGES.ytd;
   const k = computeKPIs(range);
 
   // Build ledger lines helper (reused by setAcctPeriod too)
@@ -8603,9 +8603,9 @@ function initAccounting(){
   setTimeout(function(){
     // Always kick off with the current _acctPeriod so chart matches the P&L rows
     const tab = document.querySelector('.dtabs .dtab.on');
-    if(tab) setAcctPeriod(tab, _acctPeriod || 'month');
+    if(tab) setAcctPeriod(tab, _acctPeriod || 'ytd');
     else {
-      const range = PERIOD_RANGES[_acctPeriod] || PERIOD_RANGES.month;
+      const range = PERIOD_RANGES[_acctPeriod] || PERIOD_RANGES.ytd;
       const k = computeKPIs(range);
       const r = CUR.rate;
       mkChart('plChart',{type:'bar',data:{
@@ -8624,7 +8624,7 @@ function initAccounting(){
 // ============================================================
 function pgReports(){const _s=_L();const _ui=_L();
   // Use same period as Accounting page for consistency
-  const _rptRange = PERIOD_RANGES[_acctPeriod] || PERIOD_RANGES.month;
+  const _rptRange = PERIOD_RANGES[_acctPeriod] || PERIOD_RANGES.ytd;
   const lk = computeKPIs(_rptRange);
   const totalRev=lk.rev;
   const rRev=lk.rentRev; // rental revenue pre-computed (period-filtered)
@@ -21756,7 +21756,7 @@ function addAudit(action, detail){
 }
 
 let _dashPeriod = 'ytd';
-let _acctPeriod = 'month';
+let _acctPeriod = 'ytd';
 
 function refreshLiveKpis(){
   const range=PERIOD_RANGES[_dashPeriod]||PERIOD_RANGES.month;
