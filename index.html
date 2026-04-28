@@ -849,7 +849,7 @@ body.light .ai-out.has-content{background:#f8faff;border-color:var(--a)}
   var scripts = [
     'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
-    '/app.js?v=1777337192'
+    '/app.js?v=1777341600'
   ];
   var i = 0;
   function loadNext(){
@@ -893,6 +893,7 @@ window.addEventListener('unhandledrejection', function(e){
   <div style="width:100%;max-width:440px;padding:24px;box-sizing:border-box;margin:auto">
 
     <!-- Language toggle + brand header -->
+    <script>if(typeof _loginLang==='undefined'){window._loginLang=function(l){try{localStorage.setItem('st_login_lang',l)}catch(e){}var f=l==='fr';var en=document.getElementById('ln-lang-en');var fr2=document.getElementById('ln-lang-fr');if(en){en.style.background=f?'transparent':'rgba(91,127,255,.9)';en.style.color=f?'#94a3b8':'#fff'}if(fr2){fr2.style.background=f?'rgba(91,127,255,.9)':'transparent';fr2.style.color=f?'#fff':'#94a3b8'}}}</script>
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
       <div style="display:flex;background:rgba(255,255,255,.08);border-radius:20px;padding:3px;gap:2px">
         <button id="ln-lang-en" onclick="_loginLang('en')" style="background:rgba(91,127,255,.9);color:#fff;border:none;border-radius:16px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">🇬🇧 EN</button>
