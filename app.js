@@ -8694,7 +8694,7 @@ function pgReports(){const _s=_L();const _ui=_L();
       {n:'Expense by Category',fn:"rptExpCat()"},
       {n:'Repairs & Maintenance',fn:"rptRepairs()"},
       {n:'Audit Trail Report',fn:"nav('auditlog')"},
-      {n:'Staff Activity Log',fn:"toast(_s.t_staff_report,'success')"}
+      {n:'Staff Activity Log',fn:"toast(_L().t_staff_report,'success')"}
     ]},
   ];
   return `
@@ -12147,7 +12147,7 @@ function mRequestProfileAccess(userId){const _s=_L();
     `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
      <button class="btn btn-d btn-sm" onclick="
        ACCESS_REQUESTS.splice(ACCESS_REQUESTS.findIndex(r=>r.id==='${existing.id}'),1);
-       closeModal(); toast(_s.t_req_cancelled,'success'); nav('admin-users');
+       closeModal(); toast(_L().t_req_cancelled,'success'); nav('admin-users');
      ">${_s.adm_cancel_req}</button>`);
     return;
   }
@@ -12604,7 +12604,7 @@ function mUserRights(uid){const _s=_L();
   </div>`,
   `<button class="btn btn-d btn-sm" onclick="
     const u2=BIZ_USERS.find(x=>x.id==='${uid}');
-    u2.rights=null;closeModal();toast(_s.t_rights_reset,'success')
+    u2.rights=null;closeModal();toast(_L().t_rights_reset,'success')
   ">↺ Reset to Level Defaults</button>
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveUserRights('${uid}')">💾 Save Rights</button>`,'lg');
@@ -23077,7 +23077,7 @@ async function mEditExp(id){const _s=_L();
     </div>
   </div>`,
   `<button class="btn btn-d btn-sm" onclick="confirmDo('Delete this expense?',function(){D.exp=D.exp.filter(function(x){return x.id!==id;});_dbDelExp(id);
-    refreshLiveKpis();addAudit('Expense deleted',id);closeModal();toast(_s.t_expense_deleted,'success');nav('expenses');})">🗑 Delete</button>
+    refreshLiveKpis();addAudit('Expense deleted',id);closeModal();toast(_L().t_expense_deleted,'success');nav('expenses');})">🗑 Delete</button>
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveExpEdit('${id}')">💾 Save Changes</button>`);
   // Init category searchable select with live D.expCats
