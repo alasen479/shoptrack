@@ -12834,26 +12834,11 @@ async function _sendWA(phone, message, opts){var _s=_L();
   if(!digits || digits.length < 7){
     toast(_s.t_no_wa_valid,'error'); return { success:false };
   }
-  // Try real API first
-  try {
-    const resp = await fetch('/.netlify/functions/whatsapp-notify', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ to: digits, message, ...(opts||{}) })
-    });
-    const data = await resp.json();
-    if(data.success){
-      toast(_s.t_wa_msg_sent,'success');
-      return { success:true, messageId: data.messageId };
-    }
-    // API returned an error — show it and fall back to wa.me
-    console.warn('[WA] API send failed:', data.error);
-    toast(_s.t_wa_api+( data.error||'failed')+'\nOpening WhatsApp instead…','warn');
-  } catch(e){
-    console.warn('[WA] fetch error:', e.message);
-  }
-  // Fallback: open wa.me link
+  // Open wa.me link IMMEDIATELY (before any async) to avoid popup blocker
+  // Browsers only allow window.open from direct user gesture context
   _openWA(digits, message);
-  return { success:false, fallback:true };
+  toast(_s.t_wa_msg_sent,'success');
+  return { success:true, fallback:true };
 }
 
 // Legacy helper kept for non-API contexts (share links, flyer sharing etc.)
