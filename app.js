@@ -3411,7 +3411,7 @@ function mItem(id){const _s=_L();
     <div class="kpi g" style="padding:13px"><div class="kpi-lbl">${_s.inv_sp_lbl}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--g)">${it.sp?fmt(it.sp):'N/A'}</div></div>
     <div class="kpi c" style="padding:13px"><div class="kpi-lbl">${_s.inv_rental_day}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--c)">${it.rp?fmt(it.rp):'N/A'}</div></div>
     <div class="kpi" style="padding:13px"><div class="kpi-lbl">${_s.inv_cost_lbl}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono)">${fmt(it.cost)}</div></div>
-    <div class="kpi p" style="padding:13px"><div class="kpi-lbl">'+_s.inv_gross_margin+'</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--p)">${it.sp?Math.round((it.sp-it.cost)/it.sp*100)+'%':'—'}</div></div>
+    <div class="kpi p" style="padding:13px"><div class="kpi-lbl">${_s.inv_gross_margin}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--p)">${it.sp?Math.round((it.sp-it.cost)/it.sp*100)+'%':'—'}</div></div>
     <div class="kpi b" style="padding:13px"><div class="kpi-lbl">${_s.inv_stock_val}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--a)">${fmt((it.cost||0)*(it.qty||0))}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${it.qty} units × ${fmt(it.cost)} cost</div></div>
     ${it.sp&&it.qty?`<div class="kpi g" style="padding:13px"><div class="kpi-lbl">${_s.inv_retail_val}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(it.sp*it.qty)}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${it.qty} units × ${fmt(it.sp)} sell price</div></div>`:''}
   </div>
@@ -7125,7 +7125,7 @@ function mAddCustomer(_returnSelectId){const _s=_L();
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="ac-name" placeholder="e.g. Jessica Williams"/></div>
     <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="ac-type"><option>${_s.cust_type_reg}</option><option>VIP</option><option>New</option></select></div>
-    <div class="fg"><label class="fl">'+_s.ui_email+'</label><input class="fi" type="email" id="ac-email" placeholder="email"+'@'+"example.com"/></div>
+    <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" type="email" id="ac-email" placeholder="email@example.com"/></div>
     <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="ac-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="ac-whatsapp" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     <div class="fg"><label class="fl">${_s.ui_city}</label><input class="fi" id="ac-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
@@ -7842,7 +7842,7 @@ async function mAddVendor(_returnSelectId){const _s=_L();
     </div>
     <div class="fg"><label class="fl">${_s.ui_country}</label><input class="fi" id="av-country" placeholder="${_ph('countryPh')}" data-locale="country"/></div>
     <div class="fg"><label class="fl">${_s.vend_contact_ph}</label><input class="fi" id="av-contact" placeholder="${_s.vend_full_name}"/></div>
-    <div class="fg"><label class="fl">'+_s.vend_email_ph+'</label><input class="fi" type="email" id="av-email" placeholder="orders"+'@'+"vendor.com"/></div>
+    <div class="fg"><label class="fl">${_s.vend_email_ph}</label><input class="fi" type="email" id="av-email" placeholder="orders@vendor.com"/></div>
     <div class="fg"><label class="fl">${_s.vend_phone}</label><input class="fi" id="av-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     <div class="fg"><label class="fl">${_s.ui_pay_terms}</label><select class="fs" id="av-terms"><option>${_s.vend_immediate}</option><option>Net 15</option><option>${_s.sal_terms_net30}</option><option>${_s.po_on_delivery}</option></select></div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="av-method"><option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option><option>${_s.po_other}</option></select></div>
@@ -19561,7 +19561,7 @@ function pgSettingsSA(){const _s=_L();
     <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:4px">
       <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px">${_s.sa_contact}</div>
       <div class="fg-2">
-        <div class="fg"><label class="fl">'+_s.sa_email+'</label><input class="fi" id="sa-email" type="email" value="${p.email}" placeholder="admin"+'@'+"shoptrack.work"/></div>
+        <div class="fg"><label class="fl">${_s.sa_email}</label><input class="fi" id="sa-email" type="email" value="${p.email}" placeholder="admin@shoptrack.work"/></div>
         <div class="fg"><label class="fl">${_s.sa_phone}</label><input class="fi" id="sa-phone" type="tel" value="${p.phone}" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
         <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="sa-whatsapp" type="tel" value="${p.whatsapp}" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
         <div class="fg"><label class="fl">${_s.sa_website}</label><input class="fi" id="sa-website" value="${p.website}" placeholder="www.shoptrack.org"/></div>
