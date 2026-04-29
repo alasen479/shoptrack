@@ -12834,11 +12834,32 @@ async function _sendWA(phone, message, opts){var _s=_L();
   if(!digits || digits.length < 7){
     toast(_s.t_no_wa_valid,'error'); return { success:false };
   }
-  // Open wa.me link IMMEDIATELY (before any async) to avoid popup blocker
-  // Browsers only allow window.open from direct user gesture context
+  // Try Twilio API via Netlify function first
+  try {
+    var body = { to: digits };
+    if(opts && opts.template){
+      body.template = opts.template;
+      body.variables = opts.variables || {};
+    } else {
+      body.message = message;
+    }
+    var resp = await fetch('/.netlify/functions/whatsapp-notify', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    var data = await resp.json();
+    if(data.success){
+      toast(_s.t_wa_msg_sent,'success');
+      return { success:true, messageId:data.messageId };
+    }
+    console.warn('[WA] API failed:', data.error, '— falling back to wa.me');
+  } catch(e){
+    console.warn('[WA] fetch error:', e.message, '— falling back to wa.me');
+  }
+  // Fallback: open wa.me link (requires manual send)
   _openWA(digits, message);
-  toast(_s.t_wa_msg_sent,'success');
-  return { success:true, fallback:true };
+  toast((BIZ.language==='fr'?'⚠ API indisponible — WhatsApp ouvert, envoyez manuellement':'⚠ API unavailable — WhatsApp opened, send manually'),'warn');
+  return { success:false, fallback:true };
 }
 
 // Legacy helper kept for non-API contexts (share links, flyer sharing etc.)
@@ -12943,7 +12964,7 @@ function mBillingRemind(bizId, daysOverride){const _s=_L();
    <button class="btn btn-p" onclick="(async function(){
      var ph=document.getElementById('br-phone').value;
      var ms=document.getElementById('br-msg').value;
-     var r=await _sendWA(ph,ms);
+     var r=await _sendWA(ph,ms,{template:'payment_reminder',variables:{'1':'${_esc((b.owner||'').split(' ')[0]||'there')}','2':'${_esc(b.plan||'Premium')}','3':'${dLeft<=0?'expired '+Math.abs(dLeft)+' day'+(Math.abs(dLeft)>1?'s':'')+' ago on '+(b.subExpires||b.trialEnd||''):'expires in '+dLeft+' day'+(dLeft>1?'s':'')+' on '+(b.subExpires||b.trialEnd||'')}','4':'${_billingAmtXAF(b).toLocaleString()}'}});
      addAudit('WhatsApp reminder '+(r.success?'sent':'fallback'),'reminder sent');
      if(!r.fallback) closeModal();
    })()">💬 Send WhatsApp</button>`);
