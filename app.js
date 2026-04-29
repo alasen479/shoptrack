@@ -12768,7 +12768,13 @@ const BILLING_PLANS = {
 
 function _billingAmtXAF(biz){
   const p = BILLING_PLANS[biz.plan||'Free'] || BILLING_PLANS['Free'];
-  return (biz.billingCycle||'monthly') === 'yearly' ? p.yearly : p.monthly;
+  var amt = (biz.billingCycle||'monthly') === 'yearly' ? p.yearly : p.monthly;
+  // If trial/free plan with 0 price, show Premium price (what they'd pay to continue)
+  if(amt === 0 && biz.plan && biz.plan.toLowerCase().indexOf('free') < 0){
+    var prem = BILLING_PLANS['Premium'];
+    amt = (biz.billingCycle||'monthly') === 'yearly' ? prem.yearly : prem.monthly;
+  }
+  return amt;
 }
 
 function _billingDaysLeft(biz){
