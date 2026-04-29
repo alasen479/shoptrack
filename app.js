@@ -12953,7 +12953,7 @@ function mBillingRemind(bizId, daysOverride){const _s=_L();
      var ph=document.getElementById('br-phone').value;
      var ms=document.getElementById('br-msg').value;
      var r=await _sendWA(ph,ms);
-     addAudit('WhatsApp reminder '+(r.success?'sent':'fallback'),'${bizId} — ${_esc(b.name)}');
+     addAudit('WhatsApp reminder '+(r.success?'sent':'fallback'),'reminder sent');
      if(!r.fallback) closeModal();
    })()">💬 Send WhatsApp</button>`);
 }
