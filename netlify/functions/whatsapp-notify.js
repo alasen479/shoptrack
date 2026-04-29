@@ -2,7 +2,7 @@
 // Credentials from Netlify environment variables
 const TWILIO_SID  = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_FROM = process.env.TWILIO_WA_FROM || 'whatsapp:+13045033113';
+const TWILIO_FROM = 'whatsapp:' + (process.env.TWILIO_WA_NUMBER || process.env.TWILIO_WA_FROM || '+13045033113');
 
 // Template SIDs
 const TEMPLATES = {
