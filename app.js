@@ -12769,10 +12769,16 @@ const BILLING_PLANS = {
 function _billingAmtXAF(biz){
   const p = BILLING_PLANS[biz.plan||'Free'] || BILLING_PLANS['Free'];
   var amt = (biz.billingCycle||'monthly') === 'yearly' ? p.yearly : p.monthly;
-  // If trial/free plan with 0 price, show Premium price (what they'd pay to continue)
-  if(amt === 0 && biz.plan && biz.plan.toLowerCase().indexOf('free') < 0){
-    var prem = BILLING_PLANS['Premium'];
-    amt = (biz.billingCycle||'monthly') === 'yearly' ? prem.yearly : prem.monthly;
+  // If plan has 0 price and it's a trial (not pure Free), show Premium price
+  // because that's what they need to pay to continue
+  if(amt === 0){
+    var planLow = (biz.plan||'free').toLowerCase();
+    var isTrial = planLow.indexOf('trial') >= 0;
+    var isPurelyFree = planLow === 'free';
+    if(isTrial || !isPurelyFree){
+      var prem = BILLING_PLANS['Premium'];
+      amt = (biz.billingCycle||'monthly') === 'yearly' ? prem.yearly : prem.monthly;
+    }
   }
   return amt;
 }
@@ -26959,7 +26965,7 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     t_open_wa2:         fr ? "Ouverture de WhatsApp — l'image doit être jointe manuellement" : 'Opening WhatsApp — note: image must be attached manually',
     t_open_img:         fr ? "Ouverture de l'image — appuyez longuement pour enregistrer" : 'Opening image — long-press or right-click to save',
     t_wa_sent:          fr ? '✅ Alerte WhatsApp envoyée !'         : '✅ WhatsApp alert sent!',
-    t_wa_msg_sent:      fr ? '✅ Message WhatsApp envoyé !'         : '✅ WhatsApp message sent!',
+    t_wa_msg_sent:      fr ? '✅ WhatsApp ouvert — envoyez le message manuellement' : '✅ WhatsApp opened — send the message manually',
     t_wa_tip:           fr ? "Conseil : Enregistrez d'abord en PNG, puis joignez l'image sur WhatsApp" : 'Tip: Save as PNG first, then attach the image in WhatsApp',
     t_wa_add_num:       fr ? 'Ajoutez votre numéro WhatsApp dans Paramètres → Profil Entreprise' : 'Add your WhatsApp number in Settings -> Business Profile to receive owner alerts',
     t_wa_tip2:          fr ? 'Conseil : ajoutez votre numéro WhatsApp dans Paramètres → Profil Entreprise' : 'Tip: add your WhatsApp number in Settings » Business Profile to receive these alerts',
@@ -27063,7 +27069,7 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     t_no_prefix:        fr ? 'Aucun '                               : 'No ',
     t_opening_wa:       fr ? 'Ouverture de '                        : 'Opening ',
     t_stripe_failed2:   fr ? 'Échec paiement Stripe : '             : 'Stripe checkout failed: ',
-    t_wa_sent2:         fr ? '✅ Alerte WhatsApp envoyée !'         : '✅ WhatsApp alert sent!',
+    t_wa_sent2:         fr ? '✅ WhatsApp ouvert — envoyez manuellement' : '✅ WhatsApp opened — send manually',
     t_pls_save_first:   fr ? 'Cliquez sur "Enregistrer & Sélectionner" pour ajouter le nouveau client' : 'Please click "Save & Select" to add the new customer first',
     t_tip_wa_settings:  fr ? 'Conseil : ajoutez votre numéro WhatsApp dans Paramètres → Profil Entreprise' : 'Tip: add your WhatsApp number in Settings » Business Profile to receive these alerts',
     t_no_ba:            fr ? 'Aucun solde impayé'                  : 'No unpaid balance',
