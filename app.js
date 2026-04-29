@@ -4598,17 +4598,17 @@ async function mCreateSale(){const _s=_L();
       <input class="fi" type="number" id="cs-amt" placeholder="0" step="any" oninput="_csRecalcTotal();_csCheckMinSpWarn()"/>
       <div id="cs-minsp-warn" style="display:none;font-size:11px;color:var(--r);margin-top:4px;padding:4px 8px;background:rgba(255,95,122,.08);border-radius:var(--r6);border-left:3px solid var(--r)"></div>
     </div>
-    <div class="fg"><label class="fl">Freight / Delivery <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+    <div class="fg"><label class="fl">${_s.ui_freight} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="cs-freight" placeholder="0" step="any" oninput="_csRecalcTotal()"/>
     </div>
-    <div class="fg"><label class="fl">Taxes <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+    <div class="fg"><label class="fl">${_s.ui_taxes} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="cs-taxes" placeholder="0" step="any" oninput="_csRecalcTotal()"/>
     </div>
-    <div class="fg"><label class="fl">Other Costs <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+    <div class="fg"><label class="fl">${_s.ui_other_costs} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="cs-other" placeholder="0" step="any" oninput="_csRecalcTotal()"/>
     </div>
     <div class="fg">
-      <label class="fl" style="color:var(--g);font-weight:700">Total Selling Price <span style="font-size:10px;color:var(--text2);font-weight:400">(${sym})</span></label>
+      <label class="fl" style="color:var(--g);font-weight:700">${BIZ.language==='fr'?'Prix de vente total':'Total Selling Price'} <span style="font-size:10px;color:var(--text2);font-weight:400">(${sym})</span></label>
       <input class="fi" type="number" id="cs-total" placeholder="0" readonly style="background:var(--a-dim);color:var(--g);font-weight:700;cursor:default"/>
     </div>
     <div class="fg"><label class="fl">Amount Paid Now <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
@@ -6878,20 +6878,20 @@ function mRecordPurchase(){const _s=_L();
   </div>
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.po_desc_lbl}</label><input class="fi" id="po-items" placeholder="e.g. Bridal Wigs ×6 — auto-filled"/></div>
-    <div class="fg"><label class="fl">Freight <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+    <div class="fg"><label class="fl">${_s.ui_freight} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="po-freight" placeholder="0" step="any" oninput="_poRecalcTotal()"/>
     </div>
-    <div class="fg"><label class="fl">Import Duties <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+    <div class="fg"><label class="fl">${BIZ.language==='fr'?'Droits de douane':'Import Duties'} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="po-duties" placeholder="0" step="any" oninput="_poRecalcTotal()"/>
     </div>
-    <div class="fg"><label class="fl">Taxes <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+    <div class="fg"><label class="fl">${_s.ui_taxes} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="po-taxes" placeholder="0" step="any" oninput="_poRecalcTotal()"/>
     </div>
-    <div class="fg"><label class="fl">Other Costs <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+    <div class="fg"><label class="fl">${_s.ui_other_costs} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="po-other" placeholder="0" step="any" oninput="_poRecalcTotal()"/>
     </div>
     <div class="fg">
-      <label class="fl" style="color:var(--g);font-weight:700">Total Cost <span style="font-size:10px;color:var(--text2);font-weight:400">(${sym}) — becomes inventory value</span></label>
+      <label class="fl" style="color:var(--g);font-weight:700">${BIZ.language==='fr'?'Coût total':'Total Cost'} <span style="font-size:10px;color:var(--text2);font-weight:400">(${sym}) — ${BIZ.language==='fr'?'valeur d\'inventaire':'becomes inventory value'}</span></label>
       <input class="fi" type="number" id="po-total" placeholder="0" readonly style="background:var(--a-dim);color:var(--g);font-weight:700;cursor:default"/>
     </div>
     <div class="fg"><label class="fl">${_s.po_pay_status}</label>
@@ -6981,7 +6981,7 @@ function mViewPurchaseDocs(id){const _s=_L();
   </div>
   <div style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('${uid}-input').click()">
     <span style="font-size:18px">➕</span>
-    <div style="font-size:12px;font-weight:600;color:var(--ink)">Attach vendor invoice, delivery note, or customs docs</div>
+    <div style="font-size:12px;font-weight:600;color:var(--ink)">${_s.ui_attach_docs}</div>
     <input id="${uid}-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'${uid}-list')"/>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
@@ -8217,7 +8217,7 @@ async function mAddExp(){const _s=_L();
         <button type="button" class="btn btn-s btn-xs" style="height:34px;padding:0 10px" onclick="document.getElementById('ae-newcat-row').style.display='none'">✕</button>
       </div>
     </div>
-    <div class="fg"><label class="fl">${_s.exp_payee_ph}</label><input class="fi" id="ae-payee" placeholder="Who was paid?"/></div>
+    <div class="fg"><label class="fl">${_s.exp_payee_ph}</label><input class="fi" id="ae-payee" placeholder="${BIZ.language==='fr'?'Qui a été payé ?':'Who was paid?'}"/></div>
     <div class="fg" style="display:none"><input class="fi" type="number" id="ae-amt" value="0"/></div>
     <div class="fg"><label class="fl">${_s.ui_type}</label>
       <select class="fs" id="ae-type">
@@ -23065,7 +23065,7 @@ async function mEditExp(id){const _s=_L();
         <input type="hidden" id="edit-exp-cat" value="${_esc(e.cat||D.expCats[0]||'')}"/>
       </div>
     </div>
-    <div class="fg"><label class="fl">Payee *</label><input class="fi" id="edit-exp-payee" value="${_esc(e.payee)}"/></div>
+    <div class="fg"><label class="fl">${_s.exp_payee_ph}</label><input class="fi" id="edit-exp-payee" value="${_esc(e.payee)}"/></div>
     <div class="fg" style="display:none"><input class="fi" type="number" id="edit-exp-amt" value="${Math.round(e.amt*(CUR.rate||1)*100)/100}" step="any"/></div>
     <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="edit-exp-type">${typeOpts}</select></div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="edit-exp-method">${methodOpts}</select></div>
@@ -26114,6 +26114,12 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     po_empty:          fr ? 'Aucun bon de commande ce mois' : 'No purchases this month.',
     po_empty2:         fr ? 'Aucun bon de commande trouvé' : 'No purchase orders found',
     po_delivery:       fr ? 'Livraison prévue'            : 'Expected Delivery',
+    ui_freight:        fr ? 'Fret / Livraison'             : 'Freight / Delivery',
+    ui_taxes:          fr ? 'Taxes'                        : 'Taxes',
+    ui_other_costs:    fr ? 'Autres frais'                 : 'Other Costs',
+    ui_subtotal:       fr ? 'Sous-total'                   : 'Subtotal',
+    ui_grand_total:    fr ? 'Total général'                : 'Grand Total',
+    ui_attach_docs:    fr ? 'Joindre des factures, bons de livraison ou documents' : 'Attach vendor invoice, delivery note, or customs docs',
     po_delivery_note:  fr ? 'En attente de livraison'     : 'Awaiting delivery',
     po_ref:            fr ? 'Réf. BC'                     : 'PO Reference',
     po_landed:         fr ? 'Total Coût Rendu'            : 'Total Landed',
