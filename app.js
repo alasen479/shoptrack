@@ -11342,6 +11342,7 @@ function pgAdminBiz(){const _s=_L();
     <div class="btn-row">
       <button class="btn btn-s btn-sm" onclick="mBillingRunReminders()">💬 Reminders</button>
       <button class="btn btn-s btn-sm" onclick="mBillingChargeAll()">📱 Charge Due</button>
+      <button class="btn btn-s btn-sm" onclick="_exportBizListCSV()">⬇ Export CSV</button>
       <button class="btn btn-p btn-sm" onclick="mProvision()">+ Onboard New</button>
     </div>
   </div>
@@ -11361,6 +11362,12 @@ function pgAdminBiz(){const _s=_L();
 
 ${alertBars}
 ${unvSection}
+
+<!-- ── INVESTOR REPORTS ──────────────────────────── -->
+<div class="card" style="margin-bottom:13px">
+  <div class="card-hd"><div class="card-ttl">📈 Investor Reports</div><span style="font-size:11px;color:var(--text2)">Key metrics for fundraising &amp; growth</span></div>
+  <div id="sa-investor-reports" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:14px"></div>
+</div>
 
 <!-- ── Main Table ────────────────────────────────────────────── -->
 <div class="card">
@@ -12808,7 +12815,7 @@ function pgAdminAnalytics(){const _s=_L();
 </div>
 
 <div class="card" style="margin-top:13px">
-  <div class="card-hd"><div class="card-ttl">${_s.adm_biz_registry}</div><span style="font-size:11px;color:var(--text2)">Platform metadata only — no business data</span></div>
+  <div class="card-hd"><div class="card-ttl">${_s.adm_biz_registry}</div><span style="font-size:11px;color:var(--text2)">Platform metadata only — no business data</span><button class="btn btn-s btn-xs" style="margin-left:auto" onclick="_exportBizListCSV()">⬇ Export CSV</button></div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>Business ID</th><th>${_s.adm_biz_name}</th><th>${_s.adm_owner}</th><th>Plan</th><th>${_s.ui_status}</th><th>${_s.adm_users}</th><th>${_s.adm_onboarded}</th></tr></thead>
     <tbody>${D.adminBiz.map(b=>`<tr>
@@ -12823,11 +12830,7 @@ function pgAdminAnalytics(){const _s=_L();
     </tbody>
   </table></div>
 </div>
-
-<div class="card" style="margin-top:13px">
-  <div class="card-hd"><div class="card-ttl">📈 Investor Reports</div><span style="font-size:11px;color:var(--text2)">Key metrics for fundraising &amp; growth</span></div>
-  <div id="sa-investor-reports" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:14px"></div>
-</div>`;
+`;
 }
 
 // ╔══════════════════════════════════════════════════════════════╗
@@ -13194,6 +13197,20 @@ async function mBillingChargeAll(){var _s=_L();
     },
     'Charge All', 'btn-p'
   );
+}
+
+function _exportBizListCSV(){
+  var headers = ['Business ID','Name','Owner','Email','Phone','WhatsApp','City','Country','Plan','Status','Billing Cycle','Expiry','Created'];
+  var rows = D.adminBiz.map(function(b){
+    return [b.id,b.name,b.owner||'',b.email||'',b.phone||'',b.whatsapp||'',b.city||'',b.country||'',b.plan||'',b.st||'',b.billingCycle||'',b.subExpires||b.trialEnd||'',b.created||''].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');
+  });
+  var csv = headers.join(',')+'\n'+rows.join('\n');
+  var blob = new Blob([csv],{type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'ShopTrack_Businesses_'+localDateStr()+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+  toast('✅ Business list exported','success');
 }
 
 function initAdminAnalytics(){
