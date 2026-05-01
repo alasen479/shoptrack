@@ -20959,12 +20959,43 @@ function mEditSale(id){const _s=_L();
   if(!requireRight('edit_sales','Edit Sales')) return;
   const s=D.sales.find(x=>x.id===id);if(!s)return;
   const r=CUR.rate;
+  const _saleLineItems = s.lineItems || [];
+  const _hasLines = _saleLineItems.length > 0;
+  const _lineItemsHTML = _hasLines ? _saleLineItems.map(function(li,idx){
+    return '<div style="display:grid;grid-template-columns:2fr 60px 80px 80px 28px;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">'
+      +'<input class="fi es-li-name" value="'+_esc(li.name||li.desc||'')+'" style="font-size:12px;padding:6px 8px"/>'
+      +'<input class="fi es-li-qty" type="number" value="'+(li.qty||1)+'" min="1" style="font-size:12px;padding:6px;text-align:center" oninput="_esRecalcLines()"/>'
+      +'<input class="fi es-li-price" type="number" value="'+Math.round((li.price||li.sp||0)*r)+'" style="font-size:12px;padding:6px" oninput="_esRecalcLines()"/>'
+      +'<div style="font-family:var(--mono);font-size:12px;font-weight:600;text-align:right;color:var(--ink)" class="es-li-total">'+Math.round((li.qty||1)*(li.price||li.sp||0)*r).toLocaleString()+'</div>'
+      +'<button type="button" onclick="this.closest(\'div[style]\').remove();_esRecalcLines()" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px">✕</button>'
+      +'</div>';
+  }).join('') : '<div style="padding:8px;font-size:12px;color:var(--text2)">No line items — edit totals directly below</div>';
+
   modal(`\u270f\ufe0f Edit Sale \u2014 ${s.id}`,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" type="date" id="es-dt" value="${s.dt}"/></div>
     <div class="fg"><label class="fl">${_s.ui_customer}</label>
       <select class="fs" id="es-cust">${D.cust.map(c=>`<option value="${c.id}"${(c.id===s.custId||c.name===s.cust)?' selected':''}>${_esc(c.name)}</option>`).join('')}</select>
     </div>
+  </div>
+
+  <!-- LINE ITEMS -->
+  <div style="margin:10px 0;border:1px solid var(--border);border-radius:var(--r8);overflow:hidden">
+    <div style="background:var(--bg3);padding:8px 12px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:12px;font-weight:700;color:var(--ink)">📋 ${BIZ.language==='fr'?'Articles vendus':'Sale Items'}</div>
+      <button type="button" class="btn btn-g btn-xs" onclick="_esAddLine()">+ ${BIZ.language==='fr'?'Ajouter':'Add Item'}</button>
+    </div>
+    <div style="padding:4px 10px;font-size:10px;color:var(--text2);display:grid;grid-template-columns:2fr 60px 80px 80px 28px;gap:6px;border-bottom:1px solid var(--border)">
+      <span>${BIZ.language==='fr'?'Article':'Item'}</span><span>Qty</span><span>${BIZ.language==='fr'?'Prix':'Price'} (${CUR.symbol})</span><span>Total</span><span></span>
+    </div>
+    <div id="es-lines">${_lineItemsHTML}</div>
+    <div style="padding:8px 12px;background:var(--bg3);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;font-weight:700">${BIZ.language==='fr'?'Sous-total articles':'Items Subtotal'}</span>
+      <span id="es-lines-total" style="font-family:var(--mono);font-size:14px;font-weight:800;color:var(--g)">${Math.round((s.total||s.amt||0)*r).toLocaleString()} ${CUR.symbol}</span>
+    </div>
+  </div>
+
+  <div class="fg-2">
     <div class="fg"><label class="fl">Total Amount (${CUR.symbol})</label>
       <input class="fi" type="number" id="es-total" value="${Math.round((s.total||s.amt||0)*r)}" oninput="_esAutoStatus()"/>
     </div>
@@ -21019,6 +21050,15 @@ function saveEditSale(id){var _s=_L();
   const frV=parseFloat(document.getElementById('es-freight')?.value);  if(!isNaN(frV)) s.freight=frV/r;
   const txV=parseFloat(document.getElementById('es-taxes')?.value);    if(!isNaN(txV)) s.taxes=txV/r;
   const itemsV=document.getElementById('es-items')?.value;  if(itemsV!==undefined) s.items=itemsV;
+  // Collect line items from edit modal
+  var editLines=[];
+  document.querySelectorAll('#es-lines > div').forEach(function(row){
+    var name=row.querySelector('.es-li-name')?.value||'';
+    var qty=parseFloat(row.querySelector('.es-li-qty')?.value)||1;
+    var price=parseFloat(row.querySelector('.es-li-price')?.value)||0;
+    if(name||price>0) editLines.push({name:name,qty:qty,price:price/r,sp:price/r});
+  });
+  if(editLines.length) s.lineItems=editLines;
   const notesV=document.getElementById('es-notes')?.value;  if(notesV!==undefined) s.notes=notesV;
   const stV=document.getElementById('es-st')?.value;
   s.st=stV||(s.paid>=(s.total||s.amt||0)?'Paid':s.paid>0?'Partial':'Unpaid');
@@ -21044,7 +21084,36 @@ function saveEditSale(id){var _s=_L();
 function _esAutoStatus(){
   var t=parseFloat(document.getElementById('es-total')?.value)||0;
   var p=parseFloat(document.getElementById('es-paid')?.value)||0;
-  var el=document.getElementById('es-st');if(el) el.value=p>=t?'Paid':p>0?'Partial':'Unpaid';
+  var el=document.getElementById('es-st');if(el) el.value=p>=t&&t>0?'Paid':p>0?'Partial':'Unpaid';
+}
+function _esAddLine(){
+  var container=document.getElementById('es-lines');
+  if(!container) return;
+  var row=document.createElement('div');
+  row.style.cssText='display:grid;grid-template-columns:2fr 60px 80px 80px 28px;gap:6px;align-items:center;padding:5px 10px;border-bottom:1px solid var(--border)';
+  row.innerHTML='<input class="fi es-li-name" placeholder="Item name" style="font-size:12px;padding:6px 8px"/>'
+    +'<input class="fi es-li-qty" type="number" value="1" min="1" style="font-size:12px;padding:6px;text-align:center" oninput="_esRecalcLines()"/>'
+    +'<input class="fi es-li-price" type="number" placeholder="0" style="font-size:12px;padding:6px" oninput="_esRecalcLines()"/>'
+    +'<div style="font-family:var(--mono);font-size:12px;font-weight:600;text-align:right;color:var(--ink)" class="es-li-total">0</div>'
+    +'<button type="button" onclick="this.parentElement.remove();_esRecalcLines()" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px">✕</button>';
+  container.appendChild(row);
+  row.querySelector('.es-li-name').focus();
+}
+function _esRecalcLines(){
+  var grand=0;
+  document.querySelectorAll('#es-lines > div').forEach(function(row){
+    var qty=parseFloat(row.querySelector('.es-li-qty')?.value)||1;
+    var price=parseFloat(row.querySelector('.es-li-price')?.value)||0;
+    var lineTotal=qty*price;
+    var totalEl=row.querySelector('.es-li-total');
+    if(totalEl) totalEl.textContent=Math.round(lineTotal).toLocaleString();
+    grand+=lineTotal;
+  });
+  var grandEl=document.getElementById('es-lines-total');
+  if(grandEl) grandEl.textContent=Math.round(grand).toLocaleString()+' '+(CUR.symbol||'Frs');
+  var totalField=document.getElementById('es-total');
+  if(totalField) totalField.value=Math.round(grand);
+  _esAutoStatus();
 }
 function mDuplicateSale(id){var _s=_L();
   if(!requireRight('edit_sales','Duplicate Sale')) return;
