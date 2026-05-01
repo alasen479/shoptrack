@@ -11529,6 +11529,7 @@ function mManageBiz(bizId){const _s=_L();
   const currentExpiry = b.subExpires || b.trialEnd || '';
   const billingAmt    = _billingAmtXAF(b);
   const isFree        = billingAmt === 0;
+  const isTrial       = b.plan && (b.plan.toLowerCase().includes('trial'));
 
   modal('⚙ Manage — '+_esc(b.name),`
 
