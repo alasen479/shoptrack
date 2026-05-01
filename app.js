@@ -11271,6 +11271,27 @@ function pgAdminBiz(){const _s=_L();
     // Row highlight
     const rowBg = bSt.urgent ? 'background:rgba(239,68,68,.04)' : b.st==='Pending' ? 'background:rgba(245,200,66,.04)' : '';
 
+    // City display
+    const cityDisplay = b.city || b.address || b.country || '—';
+
+    // Health score: composite engagement metric
+    // Factors: setup completion, data volume, recency
+    const _bSetup = [b.name&&b.phone&&b.address, b.whatsapp, (b.invCount||0)>0, (b.salesCount||0)>0, (b.custCount||0)>0, (b.expCount||0)>0];
+    const _bSetupDone = _bSetup.filter(Boolean).length;
+    const _bDataVol = (b.invCount||0) + (b.salesCount||0) + (b.custCount||0);
+    // Last activity: check created_at or lastLogin
+    const _bLastAct = b.lastLogin || b.updated_at || b.created_at || '';
+    const _bDaysSince = _bLastAct ? Math.max(0, Math.round((Date.now() - new Date(_bLastAct).getTime()) / 86400000)) : 999;
+    // Score: 0-100
+    const _bScore = Math.min(100, Math.round(
+      (_bSetupDone / 6) * 30 +                        // Setup: 0-30
+      Math.min(_bDataVol, 20) / 20 * 30 +              // Data volume: 0-30 (caps at 20 items)
+      (_bDaysSince <= 1 ? 40 : _bDaysSince <= 7 ? 30 : _bDaysSince <= 14 ? 20 : _bDaysSince <= 30 ? 10 : 0) // Recency: 0-40
+    ));
+    const _bHealthColor = _bScore >= 70 ? 'var(--g)' : _bScore >= 40 ? 'var(--y)' : 'var(--r)';
+    const _bHealthLabel = _bScore >= 70 ? '🟢' : _bScore >= 40 ? '🟡' : '🔴';
+    const _bStatusLabel = _bDaysSince <= 1 ? 'Active today' : _bDaysSince <= 7 ? 'Active this week' : _bDaysSince <= 14 ? 'Active 2 weeks' : _bDaysSince <= 30 ? 'Dormant' : _bDaysSince < 999 ? 'Inactive' : 'Unknown';
+
     return `<tr class="sa-biz-tr" style="${rowBg};cursor:pointer" onclick="mManageBiz('${b.id}')">
       <td>
         <div style="font-weight:600;color:var(--ink);font-size:13px">${_esc(b.name)}</div>
@@ -11280,6 +11301,15 @@ function pgAdminBiz(){const _s=_L();
       <td>${planDisplay}</td>
       <td>${amtDisplay}</td>
       <td>${expiryDisplay}</td>
+      <td style="font-size:11px;color:var(--text2)">${_esc(cityDisplay)}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:5px">
+          <div style="width:36px;height:6px;background:var(--border2);border-radius:3px;overflow:hidden"><div style="width:${_bScore}%;height:100%;background:${_bHealthColor};border-radius:3px"></div></div>
+          <span style="font-size:10px;color:${_bHealthColor};font-weight:600">${_bScore}%</span>
+        </div>
+        <div style="font-size:9px;color:var(--text2)">${_bHealthLabel} ${_bStatusLabel}</div>
+        <div style="font-size:9px;color:var(--text2)">${_bSetupDone}/6 setup · ${_bDataVol} items</div>
+      </td>
       <td style="font-size:11px;color:${phone?'var(--c)':'var(--r)'}">
         ${phone?_esc(phone):'⚠ No phone'}
       </td>
@@ -11297,7 +11327,7 @@ function pgAdminBiz(){const _s=_L();
   return `
 <style>
 @media(max-width:680px){
-  .sa-biz-tr td:nth-child(4),.sa-biz-tr td:nth-child(6){ display:none; }
+  .sa-biz-tr td:nth-child(4),.sa-biz-tr td:nth-child(6),.sa-biz-tr td:nth-child(7){ display:none; }
 }
 </style>
 <div class="adm-banner">
@@ -11365,7 +11395,9 @@ ${unvSection}
         <th>Plan</th>
         <th>Amount/mo</th>
         <th>${_s.adm_expiry}</th>
-        <th<th>${_s.ui_phone}</th>
+        <th>City</th>
+        <th>Health</th>
+        <th>${_s.ui_phone}</th>
         <th>${_s.ui_actions}</th>
       </tr></thead>
       <tbody id="sa-biz-tbody">${rows}</tbody>
@@ -14828,12 +14860,20 @@ async function _dbLoadAdminBiz(){
         type:b.type, st:b.status, plan:b.plan, trialEnd:b.trial_end,
         users:b.users||1, rev:b.rev||0, created:b.created,
         country:b.country||'',
+        city:b.city||'', address:b.address||'',
         phone:b.phone||'', whatsapp:b.whatsapp||'',
         subExpires:b.sub_expires||null,
         billingCycle:b.billing_cycle||'monthly',
         subChargeStatus:b.sub_charge_status||null,
         tokenExpiry: u?.verify_token_expiry || null,
-        emailVerified: u?.email_verified ?? true
+        emailVerified: u?.email_verified ?? true,
+        lastLogin: u?.last_login || b.updated_at || b.created || null,
+        updated_at: b.updated_at || b.created || null,
+        created_at: b.created || null,
+        invCount: b.inv_count || 0,
+        salesCount: b.sales_count || 0,
+        custCount: b.cust_count || 0,
+        expCount: b.exp_count || 0,
       };
       if(isUnverified){
         D.adminBizUnverified.push(mapped);
