@@ -11313,7 +11313,7 @@ function pgAdminBiz(){const _s=_L();
           <span style="font-size:10px;color:${_bHealthColor};font-weight:600">${_bScore}%</span>
         </div>
         <div style="font-size:9px;color:var(--text2)">${_bHealthLabel} ${_bStatusLabel}</div>
-        <div style="font-size:9px;color:var(--text2)">${_bSetupDone}/6 setup · ${_bDataVol} items</div>
+        <div style="font-size:9px;color:var(--text2)">${_bSetupDone}/6 setup</div>
       </td>
       <td style="font-size:11px;color:${phone?'var(--c)':'var(--r)'}">
         ${phone?_esc(phone):'⚠ No phone'}
