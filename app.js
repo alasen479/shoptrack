@@ -15111,7 +15111,7 @@ async function _dbSaveBizProfile(bizId){
       contract_template:BIZ.contractTemplate,
       payment_terms:BIZ.paymentTerms||'Net 7', bank_details:BIZ.bankDetails||'',
       payment_methods:BIZ.paymentMethods||'', theme:BIZ.theme||'dark',
-      ai_api_key:BIZ.aiKey||'', country:BIZ.country||'Cameroon',
+      ai_api_key:BIZ.aiKey||'', country:BIZ.country||'Cameroon', city:BIZ.city||'',
       language:BIZ.language||'en', currency:CUR.code||'XAF',
       notif_prefs: JSON.stringify(NOTIF_PREFS),
     };
@@ -15141,6 +15141,7 @@ async function _dbSaveBizProfile(bizId){
       theme:BIZ.theme||'dark',
       ai_api_key:BIZ.aiKey||'',
       country:BIZ.country||'Cameroon',
+      city:BIZ.city||'',
       language:BIZ.language||'en',
       currency:CUR.code||'XAF',
     }).eq('id',bizId); }catch(_te){}
@@ -17159,7 +17160,7 @@ function showSignup(){var _s=_L();
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Business Name *</label>'
-          +'<input id="su-biz" placeholder="e.g. Jane\'s Boutique" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
+          +'<input id="su-biz" placeholder="e.g. Jane\'s Boutique" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:14px 16px;border-radius:8px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
         +'</div>'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Business Type *</label>'
@@ -17180,11 +17181,11 @@ function showSignup(){var _s=_L();
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Country *</label>'
-          +'<select id="su-country" onchange="_suCountryChanged()" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box">'+countryOpts+'</select>'
+          +'<select id="su-country" onchange="_suCountryChanged()" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:14px 16px;border-radius:8px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box">'+countryOpts+'</select>'
         +'<div id="su-currency-hint" style="font-size:10px;color:#94a3b8;margin-top:3px;min-height:14px"></div></div>'
         +'<div>'
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Language *</label>'
-          +'<select id="su-lang" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'">'
+          +'<select id="su-lang" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:14px 16px;border-radius:8px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'">'
             +'<option value="en">🇬🇧 English</option>'
             +'<option value="fr">🇫🇷 Français</option>'
           +'</select>'
@@ -17199,13 +17200,13 @@ function showSignup(){var _s=_L();
           +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Phone / WhatsApp *</label>'
           +'<div style="display:flex;gap:5px">'
             +'<div id="su-dial-badge" style="flex-shrink:0;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 8px;font-size:12px;font-weight:700;color:#818cf8;white-space:nowrap">🇨🇲 +237</div>'
-            +'<input id="su-phone" type="tel" placeholder="6XX XXX XXX" style="flex:1;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
+            +'<input id="su-phone" type="tel" placeholder="6XX XXX XXX" style="flex:1;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:14px 16px;border-radius:8px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
           +'</div>'
         +'</div>'
       +'</div>'
       +'<div style="margin-bottom:9px">'
         +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Email Address *</label>'
-        +'<input id="su-email" type="email" placeholder="you@yourbusiness.com" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
+        +'<input id="su-email" type="email" placeholder="you@yourbusiness.com" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:14px 16px;border-radius:8px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
       +'</div>'
       +'<div style="margin-bottom:14px">'
         +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Password *</label>'
@@ -19074,6 +19075,10 @@ function pgSettings(){
       <div class="fg"><label class="fl">${_s.set_whatsapp}</label><div style="display:flex;gap:8px;align-items:center"><input class="fi" id="biz-whatsapp" value="${BIZ.whatsapp||''}" style="flex:1"/><button type="button" onclick="_goToNotifTab()" style="flex-shrink:0;background:rgba(37,211,102,.12);border:1.5px solid rgba(37,211,102,.35);color:#25d366;border-radius:var(--r6);padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">${_s.set_wa_notif_btn}</button></div></div>
       <div class="fg"><label class="fl">${_s.set_website}</label><input class="fi" id="biz-website" value="${BIZ.website||''}"/></div>
     </div>
+    <div class="fg-2">
+      <div class="fg"><label class="fl">${BIZ.language==='fr'?'Ville':'City'}</label><input class="fi" id="biz-city" value="${BIZ.city||''}" placeholder="${BIZ.language==='fr'?'Ex: Douala, Yaoundé':'e.g. Douala, Yaoundé'}"/></div>
+      <div class="fg"><label class="fl">${_s.set_country||'Country'}</label><input class="fi" id="biz-country" value="${BIZ.country||''}" placeholder="${BIZ.language==='fr'?'Ex: Cameroun':'e.g. Cameroon'}"/></div>
+    </div>
     <div class="fg"><label class="fl">${_s.set_address}</label><textarea class="ft" id="biz-address" style="min-height:55px">${BIZ.address}</textarea></div>
     <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
       <div class="fl" style="margin-bottom:10px;color:var(--ink);font-size:13px;font-weight:600">${_s.set_social}</div>
@@ -20684,6 +20689,8 @@ function saveBizProfile(){var _s=_L();
   BIZ.phone     = document.getElementById('biz-phone')?.value     || BIZ.phone;
   BIZ.whatsapp  = document.getElementById('biz-whatsapp')?.value  || BIZ.whatsapp;
   BIZ.address   = document.getElementById('biz-address')?.value   || BIZ.address;
+  BIZ.city      = document.getElementById('biz-city')?.value      || BIZ.city || '';
+  BIZ.country   = document.getElementById('biz-country')?.value   || BIZ.country || '';
   BIZ.website   = document.getElementById('biz-website')?.value   || BIZ.website;
   BIZ.instagram = document.getElementById('biz-instagram')?.value || BIZ.instagram;
   BIZ.facebook  = document.getElementById('biz-facebook')?.value  || BIZ.facebook;
