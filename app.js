@@ -4739,6 +4739,9 @@ function _saveSale(){var _s=_L();
   var amtFrs = lineItems.reduce(function(a,r){return a+r.qty*r.price;},0);
   var totalFrs=parseFloat(document.getElementById('cs-total').value)||amtFrs;
   if(!amtFrs){toast(_s.t_add_item_price,'error');return;}
+  // Require at least one line item with a product/service selected
+  var hasItem = lineItems.some(function(r){ return r.invId || r.svcId || r.name; });
+  if(!hasItem){toast(BIZ.language==='fr'?'Veuillez sélectionner au moins un article':'Please select at least one item','error');return;}
   // ── Minimum price enforcement ──────────────────────────────
   var _minBlock=false, _minOwnerWarn=[];
   lineItems.forEach(function(li){
