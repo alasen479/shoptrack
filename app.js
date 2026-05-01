@@ -12843,16 +12843,18 @@ async function _sendWA(phone, message, opts){var _s=_L();
     } else {
       body.message = message;
     }
+    console.log('[WA] Sending via API:', JSON.stringify(body).slice(0,200));
     var resp = await fetch('/.netlify/functions/whatsapp-notify', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(body)
     });
     var data = await resp.json();
+    console.log('[WA] API response:', JSON.stringify(data));
     if(data.success){
-      toast(_s.t_wa_msg_sent,'success');
+      toast((BIZ.language==='fr'?'✅ Message WhatsApp envoyé automatiquement !':'✅ WhatsApp message sent automatically!'),'success');
       return { success:true, messageId:data.messageId };
     }
-    console.warn('[WA] API failed:', data.error, '— falling back to wa.me');
+    console.warn('[WA] API failed:', data.error, data.code, '— falling back to wa.me');
   } catch(e){
     console.warn('[WA] fetch error:', e.message, '— falling back to wa.me');
   }
