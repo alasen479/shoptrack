@@ -513,13 +513,6 @@ function _loadAdminBiz(){
     base = _DEMO_DATA.adminBiz.slice().concat(existing);
   }
 
-  // Always ensure Test LLC (BIZ-107) is present as the platform test account
-  // (only add it if not already in the list from DB)
-  const testLLC = {id:'BIZ-107',name:'Test LLC',owner:'Alex Lasen',email:'alasen479@gmail.com',type:'General Retail',st:'Active',plan:'Professional',users:1,rev:0,created:'2026-03-23'};
-  if(!base.find(b => b.id === 'BIZ-107')){
-    base.push(testLLC);
-  }
-
   // Apply deletion tombstones — filter out anything marked deleted this session
   // or in a prior session (stored in localStorage)
   D.adminBiz = base.filter(b => !deleted.has(b.id));
