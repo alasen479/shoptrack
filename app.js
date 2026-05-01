@@ -11278,7 +11278,7 @@ function pgAdminBiz(){const _s=_L();
     const _bSetupItems = [_bHasProfile, _bHasWA, _bHasEmail, _bHasCity, _bHasCountry, _bIsPaying];
     const _bSetupDone = _bSetupItems.filter(Boolean).length;
     // Last activity from updated_at or created date
-    const _bLastAct = b.lastLogin || b.updated_at || b.created_at || '';
+    const _bLastAct = [b.lastLogin,b.updated_at,b.subExpires,b.trialEnd,b.created_at].filter(Boolean).sort().reverse()[0] || '';
     const _bDaysSince = _bLastAct ? Math.max(0, Math.round((Date.now() - new Date(_bLastAct).getTime()) / 86400000)) : 999;
     // Score: 0-100
     const _bScore = Math.min(100, Math.round(
@@ -11645,10 +11645,11 @@ function mManageBiz(bizId){const _s=_L();
       </div>
       <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
         <div style="font-size:20px;font-weight:800;color:var(--ink)">${(function(){
-          var la=b.lastLogin||b.updated_at||b.created_at||'';
+          var dates=[b.lastLogin,b.updated_at,b.subExpires,b.trialEnd,b.created_at].filter(Boolean).sort().reverse();
+          var la=dates[0]||'';
           if(!la) return '—';
           var d=Math.max(0,Math.round((Date.now()-new Date(la).getTime())/86400000));
-          return d<=1?'Today':d+'d ago';
+          return d===0?'Today':d===1?'Yesterday':d+'d ago';
         })()}</div>
         <div style="font-size:10px;color:var(--text2)">Last Active</div>
       </div>
@@ -11763,7 +11764,17 @@ async function _mbSave(bizId){var _s=_L();
       trial_end:     plan.toLowerCase().includes('trial') ? (expiry||null) : null,
     };
     const {error} = await _sb.from('businesses').update(upd).eq('id', bizId);
-    if(error){ toast(_s.t_save_failed+error.message,'error'); return; }
+    if(error){
+      // If column missing, strip it and retry
+      if(error.code==='PGRST204' || (error.message||'').includes('column')){
+        var colMatch = (error.message||'').match(/the '(\w+)' column/);
+        if(colMatch && colMatch[1]){
+          delete upd[colMatch[1]];
+          var r2 = await _sb.from('businesses').update(upd).eq('id', bizId);
+          if(r2.error){ toast(_s.t_save_failed+r2.error.message,'error'); return; }
+        } else { toast(_s.t_save_failed+error.message,'error'); return; }
+      } else { toast(_s.t_save_failed+error.message,'error'); return; }
+    }
   }
 
   addAudit('Business updated', bizId+' — '+name+' | Plan:'+plan+' | Status:'+status+' | Expiry:'+(expiry||'none'));
