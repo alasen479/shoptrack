@@ -11363,12 +11363,6 @@ function pgAdminBiz(){const _s=_L();
 ${alertBars}
 ${unvSection}
 
-<!-- ── INVESTOR REPORTS ──────────────────────────── -->
-<div class="card" style="margin-bottom:13px">
-  <div class="card-hd"><div class="card-ttl">📈 Investor Reports</div><span style="font-size:11px;color:var(--text2)">Key metrics for fundraising &amp; growth</span></div>
-  <div id="sa-investor-reports" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:14px"></div>
-</div>
-
 <!-- ── Main Table ────────────────────────────────────────────── -->
 <div class="card">
   <div class="fbar" style="margin-bottom:13px">
@@ -12801,6 +12795,12 @@ function pgAdminAnalytics(){const _s=_L();
   <div class="kpi r"><div class="kpi-lbl">${_s.adm_inactive}</div><div class="kpi-val r">${inactive}</div></div>
   <div class="kpi p"><div class="kpi-lbl">${_s.adm_pending_setup}</div><div class="kpi-val p">${pending}</div></div>
   <div class="kpi c"><div class="kpi-lbl">${_s.adm_reg_users}</div><div class="kpi-val c">${totalUsers}</div></div>
+</div>
+
+<!-- ── INVESTOR REPORTS ──────────────────────────── -->
+<div class="card" style="margin-top:13px;margin-bottom:13px">
+  <div class="card-hd"><div class="card-ttl">📈 Investor Reports</div><span style="font-size:11px;color:var(--text2)">Key metrics for fundraising &amp; growth</span></div>
+  <div id="sa-investor-reports" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:14px"></div>
 </div>
 
 <div class="g2" style="margin-top:13px">
