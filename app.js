@@ -12822,6 +12822,11 @@ function pgAdminAnalytics(){const _s=_L();
     </tr>`).join('')}
     </tbody>
   </table></div>
+</div>
+
+<div class="card" style="margin-top:13px">
+  <div class="card-hd"><div class="card-ttl">📈 Investor Reports</div><span style="font-size:11px;color:var(--text2)">Key metrics for fundraising &amp; growth</span></div>
+  <div id="sa-investor-reports" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:14px"></div>
 </div>`;
 }
 
