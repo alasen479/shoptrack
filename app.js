@@ -11272,7 +11272,7 @@ function pgAdminBiz(){const _s=_L();
     const rowBg = bSt.urgent ? 'background:rgba(239,68,68,.04)' : b.st==='Pending' ? 'background:rgba(245,200,66,.04)' : '';
 
     // City display
-    const cityDisplay = b.city || b.address || b.country || '—';
+    const cityDisplay = [b.city, b.country].filter(Boolean).join(', ') || '—';
 
     // Health score: composite engagement metric
     // Setup factors based on available admin data
@@ -11551,6 +11551,9 @@ function mManageBiz(bizId){const _s=_L();
       <div class="fg"><label class="fl">${_s.ui_country}</label>
         <input class="fi" id="mb-country" value="${_esc(b.country||'')}"/>
       </div>
+      <div class="fg"><label class="fl">City</label>
+        <input class="fi" id="mb-city" value="${_esc(b.city||'')}"/>
+      </div>
       <div class="fg"><label class="fl">${_s.adm_biz_type}</label>
         <input class="fi" id="mb-type" value="${_esc(b.type||'')}"/>
       </div>
@@ -11725,6 +11728,7 @@ async function _mbSave(bizId){var _s=_L();
   var email   = document.getElementById('mb-email')?.value?.trim()  || b.email;
   var phone   = document.getElementById('mb-phone')?.value?.trim()  || '';
   var country = document.getElementById('mb-country')?.value?.trim()|| b.country||'';
+  var city    = document.getElementById('mb-city')?.value?.trim()   || b.city||'';
   var type    = document.getElementById('mb-type')?.value?.trim()   || b.type||'';
   var status  = document.getElementById('mb-status')?.value         || b.st;
   var plan    = document.getElementById('mb-plan')?.value           || b.plan;
@@ -11742,6 +11746,7 @@ async function _mbSave(bizId){var _s=_L();
   b.phone   = phone;
   b.whatsapp= phone;
   b.country = country;
+  b.city    = city;
   b.type    = type;
   b.st      = status;
   b.plan    = plan;
@@ -11756,7 +11761,7 @@ async function _mbSave(bizId){var _s=_L();
   if(_sb){
     const upd = {
       name, owner: owner, email, phone, whatsapp: phone,
-      country, type: type||'General Retail',
+      country, city: city, type: type||'General Retail',
       status, plan,
       billing_cycle: cycle,
       sub_expires:   expiry || null,
@@ -19134,10 +19139,9 @@ function pgSettings(){
       <div class="fg"><label class="fl">${_s.set_website}</label><input class="fi" id="biz-website" value="${BIZ.website||''}"/></div>
     </div>
     <div class="fg-2">
-      <div class="fg"><label class="fl">${BIZ.language==='fr'?'Ville':'City'}</label><input class="fi" id="biz-city" value="${BIZ.city||''}" placeholder="${BIZ.language==='fr'?'Ex: Douala, Yaoundé':'e.g. Douala, Yaoundé'}"/></div>
-      <div class="fg"><label class="fl">${_s.set_country||'Country'}</label><input class="fi" id="biz-country" value="${BIZ.country||''}" placeholder="${BIZ.language==='fr'?'Ex: Cameroun':'e.g. Cameroon'}"/></div>
+      <div class="fg"><label class="fl">${BIZ.language==='fr'?'Ville *':'City *'}</label><input class="fi" id="biz-city" value="${BIZ.city||''}" placeholder="${BIZ.language==='fr'?'Ex: Douala, Yaoundé':'e.g. Douala, Yaoundé'}" required/></div>
+      <div class="fg"><label class="fl">${_s.set_address}</label><textarea class="ft" id="biz-address" style="min-height:55px">${BIZ.address}</textarea></div>
     </div>
-    <div class="fg"><label class="fl">${_s.set_address}</label><textarea class="ft" id="biz-address" style="min-height:55px">${BIZ.address}</textarea></div>
     <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
       <div class="fl" style="margin-bottom:10px;color:var(--ink);font-size:13px;font-weight:600">${_s.set_social}</div>
       <div class="fg-2">
@@ -20747,8 +20751,9 @@ function saveBizProfile(){var _s=_L();
   BIZ.phone     = document.getElementById('biz-phone')?.value     || BIZ.phone;
   BIZ.whatsapp  = document.getElementById('biz-whatsapp')?.value  || BIZ.whatsapp;
   BIZ.address   = document.getElementById('biz-address')?.value   || BIZ.address;
-  BIZ.city      = document.getElementById('biz-city')?.value      || BIZ.city || '';
-  BIZ.country   = document.getElementById('biz-country')?.value   || BIZ.country || '';
+  BIZ.city      = document.getElementById('biz-city')?.value?.trim() || BIZ.city || '';
+  BIZ.country   = document.getElementById('biz-country')?.value  || BIZ.country || '';
+  if(!BIZ.city){ toast(_L().t_fill_fields||'Please fill in all required fields','error'); return; }
   BIZ.website   = document.getElementById('biz-website')?.value   || BIZ.website;
   BIZ.instagram = document.getElementById('biz-instagram')?.value || BIZ.instagram;
   BIZ.facebook  = document.getElementById('biz-facebook')?.value  || BIZ.facebook;
