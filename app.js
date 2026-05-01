@@ -12952,6 +12952,14 @@ function mBillingRemind(bizId, daysOverride){const _s=_L();
   const phone = b.phone||b.whatsapp;
   const dLeft = daysOverride !== undefined ? daysOverride : (_billingDaysLeft(b)||0);
   const msg   = _billingWAMsg(b, dLeft);
+  // Pre-build template variables for the onclick (avoids quote/escape issues in inline JS)
+  var _tvName = ((b.owner||'').split(' ')[0]||'there').replace(/[^a-zA-Z0-9À-ÿ ]/g,'');
+  var _tvPlan = (b.plan||'Premium').replace(/[^a-zA-Z0-9() ]/g,'');
+  var _tvExp = dLeft<=0?'expired '+Math.abs(dLeft)+' day'+(Math.abs(dLeft)>1?'s':'')+' ago on '+(b.subExpires||b.trialEnd||''):'expires in '+dLeft+' day'+(dLeft>1?'s':'')+' on '+(b.subExpires||b.trialEnd||'');
+  var _tvAmt = String(_billingAmtXAF(b));
+  // Store on window so the onclick can access them
+  window._waTemplateVars = {'1':_tvName,'2':_tvPlan,'3':_tvExp,'4':_tvAmt};
+  
   modal('💬 WhatsApp Reminder — '+_esc(b.name),`
   <div class="fg"><label class="fl">${_s.vend_phone}</label>
     <input class="fi" id="br-phone" value="${_esc(phone||'')}" placeholder="237XXXXXXXXX"/>
@@ -12966,7 +12974,7 @@ function mBillingRemind(bizId, daysOverride){const _s=_L();
    <button class="btn btn-p" onclick="(async function(){
      var ph=document.getElementById('br-phone').value;
      var ms=document.getElementById('br-msg').value;
-     var r=await _sendWA(ph,ms,{template:'payment_reminder',variables:{'1':'${_esc((b.owner||'').split(' ')[0]||'there')}','2':'${_esc(b.plan||'Premium')}','3':'${dLeft<=0?'expired '+Math.abs(dLeft)+' day'+(Math.abs(dLeft)>1?'s':'')+' ago on '+(b.subExpires||b.trialEnd||''):'expires in '+dLeft+' day'+(dLeft>1?'s':'')+' on '+(b.subExpires||b.trialEnd||'')}','4':'${_billingAmtXAF(b).toLocaleString()}'}});
+     var r=await _sendWA(ph,ms,{template:'payment_reminder',variables:window._waTemplateVars||{}});
      addAudit('WhatsApp reminder '+(r.success?'sent':'fallback'),'reminder sent');
      if(!r.fallback) closeModal();
    })()">💬 Send WhatsApp</button>`);
