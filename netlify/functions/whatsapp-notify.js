@@ -6,7 +6,7 @@ const TWILIO_FROM = 'whatsapp:' + (process.env.TWILIO_WA_NUMBER || process.env.T
 
 // Template SIDs
 const TEMPLATES = {
-  payment_reminder: 'HX8b07b304ade92c8d278001a2ed7f5998d',
+  payment_reminder: 'HX8b7b304ade92c8d278001a2ed7f5998d',
   sale_alert:       'HXe8714706a1f6c0d3553c01158ebfcff8',
 };
 
