@@ -11275,22 +11275,27 @@ function pgAdminBiz(){const _s=_L();
     const cityDisplay = b.city || b.address || b.country || '—';
 
     // Health score: composite engagement metric
-    // Factors: setup completion, data volume, recency
-    const _bSetup = [b.name&&b.phone&&b.address, b.whatsapp, (b.invCount||0)>0, (b.salesCount||0)>0, (b.custCount||0)>0, (b.expCount||0)>0];
-    const _bSetupDone = _bSetup.filter(Boolean).length;
-    const _bDataVol = (b.invCount||0) + (b.salesCount||0) + (b.custCount||0);
-    // Last activity: check created_at or lastLogin
+    // Setup factors based on available admin data
+    const _bHasProfile = !!(b.name && b.phone);
+    const _bHasWA = !!(b.whatsapp);
+    const _bHasEmail = !!(b.email);
+    const _bHasCity = !!(b.city || b.address);
+    const _bHasCountry = !!(b.country);
+    const _bIsPaying = amt > 0 && !isTrial;
+    const _bSetupItems = [_bHasProfile, _bHasWA, _bHasEmail, _bHasCity, _bHasCountry, _bIsPaying];
+    const _bSetupDone = _bSetupItems.filter(Boolean).length;
+    // Last activity from updated_at or created date
     const _bLastAct = b.lastLogin || b.updated_at || b.created_at || '';
     const _bDaysSince = _bLastAct ? Math.max(0, Math.round((Date.now() - new Date(_bLastAct).getTime()) / 86400000)) : 999;
     // Score: 0-100
     const _bScore = Math.min(100, Math.round(
-      (_bSetupDone / 6) * 30 +                        // Setup: 0-30
-      Math.min(_bDataVol, 20) / 20 * 30 +              // Data volume: 0-30 (caps at 20 items)
-      (_bDaysSince <= 1 ? 40 : _bDaysSince <= 7 ? 30 : _bDaysSince <= 14 ? 20 : _bDaysSince <= 30 ? 10 : 0) // Recency: 0-40
+      (_bSetupDone / 6) * 40 +
+      (_bDaysSince <= 1 ? 40 : _bDaysSince <= 7 ? 30 : _bDaysSince <= 14 ? 20 : _bDaysSince <= 30 ? 10 : 0) +
+      (_bIsPaying ? 20 : isTrial ? 10 : 0)
     ));
     const _bHealthColor = _bScore >= 70 ? 'var(--g)' : _bScore >= 40 ? 'var(--y)' : 'var(--r)';
     const _bHealthLabel = _bScore >= 70 ? '🟢' : _bScore >= 40 ? '🟡' : '🔴';
-    const _bStatusLabel = _bDaysSince <= 1 ? 'Active today' : _bDaysSince <= 7 ? 'Active this week' : _bDaysSince <= 14 ? 'Active 2 weeks' : _bDaysSince <= 30 ? 'Dormant' : _bDaysSince < 999 ? 'Inactive' : 'Unknown';
+    const _bStatusLabel = _bDaysSince <= 1 ? 'Active today' : _bDaysSince <= 7 ? 'Active this week' : _bDaysSince <= 14 ? '2 weeks ago' : _bDaysSince <= 30 ? 'Dormant' : _bDaysSince < 999 ? 'Inactive '+_bDaysSince+'d' : 'Unknown';
 
     return `<tr class="sa-biz-tr" style="${rowBg};cursor:pointer" onclick="mManageBiz('${b.id}')">
       <td>
@@ -11623,6 +11628,49 @@ function mManageBiz(bizId){const _s=_L();
       <button type="button" class="btn btn-d btn-sm" onclick="closeModal();adminBizAction('${bizId}','cancel')">🗑 Delete Business</button>
     </div>
     ${b.st==='Pending' ? `<div class="alrt alrt-b" style="margin-top:10px;font-size:12px">This business is pending activation. Change status to <strong>${_s.adm_active}</strong> above and save to grant access.</div>` : ''}
+  </div>
+
+  <!-- ── ENGAGEMENT & HEALTH ──────────────────────── -->
+  <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:10px">📊 Business Engagement</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:12px">
+      <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--ink)">${(function(){
+          var items=[!!(b.name&&b.phone),!!b.whatsapp,!!b.email,!!(b.city||b.address),!!b.country,!!(billingAmt>0&&!isTrial)];
+          return items.filter(Boolean).length;
+        })()}/6</div>
+        <div style="font-size:10px;color:var(--text2)">Setup Done</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--ink)">${b.city||b.country||'—'}</div>
+        <div style="font-size:10px;color:var(--text2)">Location</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--ink)">${(function(){
+          var la=b.lastLogin||b.updated_at||b.created_at||'';
+          if(!la) return '—';
+          var d=Math.max(0,Math.round((Date.now()-new Date(la).getTime())/86400000));
+          return d<=1?'Today':d+'d ago';
+        })()}</div>
+        <div style="font-size:10px;color:var(--text2)">Last Active</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--ink)">${(function(){
+          var c=b.created||b.created_at||'';
+          if(!c) return '—';
+          var d=Math.max(0,Math.round((Date.now()-new Date(c).getTime())/86400000));
+          return d+'d';
+        })()}</div>
+        <div style="font-size:10px;color:var(--text2)">Account Age</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text2);line-height:1.6">
+      <div>✓ Profile: ${b.name&&b.phone?'<span style="color:var(--g)">Complete</span>':'<span style="color:var(--r)">Incomplete</span>'}</div>
+      <div>✓ WhatsApp: ${b.whatsapp?'<span style="color:var(--g)">'+_esc(b.whatsapp)+'</span>':'<span style="color:var(--r)">Not set</span>'}</div>
+      <div>✓ Email: ${b.email?'<span style="color:var(--g)">'+_esc(b.email)+'</span>':'<span style="color:var(--r)">Not set</span>'}</div>
+      <div>✓ Location: ${(b.city||b.address)?'<span style="color:var(--g)">'+_esc(b.city||b.address)+', '+_esc(b.country||'')+'</span>':'<span style="color:var(--r)">Not set</span>'}</div>
+      <div>✓ Payment: ${billingAmt>0&&!isTrial?'<span style="color:var(--g)">Paying — '+billingAmt.toLocaleString()+' XAF/mo</span>':isTrial?'<span style="color:var(--y)">Trial</span>':'<span style="color:var(--text2)">Free</span>'}</div>
+    </div>
   </div>`,
 
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
@@ -13158,6 +13206,18 @@ function initAdminAnalytics(){
     labels:plans,
     datasets:[{data:planCounts,backgroundColor:['rgba(91,127,255,.75)','rgba(56,189,248,.75)','rgba(232,102,122,.75)'],borderWidth:0}]
   },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:document.body.classList.contains('light')?'#374151':'#c8cee8',font:{size:11}}}}}});
+
+  // Populate investor reports
+  var irEl = document.getElementById('sa-investor-reports');
+  if(irEl){
+    var bz=D.adminBiz,pay=bz.filter(function(b){return _billingAmtXAF(b)>0&&!(b.plan||'').toLowerCase().includes('trial');}),tri=bz.filter(function(b){return(b.plan||'').toLowerCase().includes('trial');}),mrr=pay.reduce(function(s,b){return s+_billingAmtXAF(b);},0),arr=mrr*12,churn=bz.filter(function(b){return b.st==='Suspended'||b.st==='Inactive';}).length,conv=pay.length>0&&(pay.length+tri.length)>0?Math.round(pay.length/(pay.length+tri.length)*100):0,gm={};
+    bz.forEach(function(b){var c=b.city||b.country||'Unknown';gm[c]=(gm[c]||0)+1;});
+    var tg=Object.entries(gm).sort(function(a,b){return b[1]-a[1];}).slice(0,5);
+    irEl.innerHTML='<div style="background:var(--bg3);border-radius:8px;padding:14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:8px">💰 Revenue</div><div style="font-size:22px;font-weight:800;color:var(--g)">'+mrr.toLocaleString()+' <span style="font-size:12px">XAF/mo</span></div><div style="font-size:11px;color:var(--text2)">MRR · ~$'+Math.round(mrr/620)+' USD</div><div style="font-size:18px;font-weight:700;color:var(--ink);margin-top:6px">'+arr.toLocaleString()+' <span style="font-size:11px">XAF/yr</span></div><div style="font-size:11px;color:var(--text2)">ARR · ~$'+Math.round(arr/620)+' USD</div></div>'
+    +'<div style="background:var(--bg3);border-radius:8px;padding:14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:8px">📊 Unit Economics</div><div style="font-size:14px;color:var(--ink);line-height:2"><div>Paying: <strong style="color:var(--g)">'+pay.length+'</strong></div><div>Trials: <strong style="color:var(--y)">'+tri.length+'</strong></div><div>Conversion: <strong style="color:var(--a)">'+conv+'%</strong></div><div>Churned: <strong style="color:var(--r)">'+churn+'</strong></div></div></div>'
+    +'<div style="background:var(--bg3);border-radius:8px;padding:14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:8px">🌍 Geographic</div>'+tg.map(function(g){return'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink);padding:3px 0"><span>'+g[0]+'</span><strong>'+g[1]+'</strong></div>';}).join('')+'<div style="font-size:11px;color:var(--text2);margin-top:6px">'+Object.keys(gm).length+' locations</div></div>'
+    +'<div style="background:var(--bg3);border-radius:8px;padding:14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:8px">📋 Platform</div><div style="font-size:14px;color:var(--ink);line-height:2"><div>Total: <strong>'+bz.length+'</strong></div><div>Active: <strong style="color:var(--g)">'+bz.filter(function(b){return b.st==="Active";}).length+'</strong></div><div>ARPU: <strong>'+(pay.length?Math.round(mrr/pay.length):0).toLocaleString()+' XAF</strong></div></div></div>';
+  }
 }
 
 
@@ -17191,19 +17251,17 @@ function showSignup(){var _s=_L();
           +'</select>'
         +'</div>'
       +'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">'
-        +'<div>'
-          +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Your Name *</label>'
-          +'<input id="su-name" placeholder="'+_s.vend_full_name+'" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:14px 16px;border-radius:8px;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
-        +'</div>'
-        +'<div>'
-          +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Phone / WhatsApp *</label>'
+      +'<div style="margin-bottom:9px">'
+        +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+(_s.set_owner_ph||'Your Full Name')+' *</label>'
+        +'<input id="su-name" placeholder="'+_s.vend_full_name+'" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:15px 16px;border-radius:8px;font-size:17px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
+      +'</div>'
+      +'<div style="margin-bottom:9px">'
+        +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Phone / WhatsApp *</label>'
           +'<div style="display:flex;gap:5px">'
             +'<div id="su-dial-badge" style="flex-shrink:0;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 8px;font-size:12px;font-weight:700;color:#818cf8;white-space:nowrap">🇨🇲 +237</div>'
             +'<input id="su-phone" type="tel" placeholder="6XX XXX XXX" style="flex:1;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:14px 16px;border-radius:8px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
           +'</div>'
         +'</div>'
-      +'</div>'
       +'<div style="margin-bottom:9px">'
         +'<label style="display:block;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Email Address *</label>'
         +'<input id="su-email" type="email" placeholder="you@yourbusiness.com" style="width:100%;background:#0f1120;border:1.5px solid rgba(255,255,255,.12);color:#e2e8f0;padding:14px 16px;border-radius:8px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box" onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'rgba(255,255,255,.12)\'"/>'
