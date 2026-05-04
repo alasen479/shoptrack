@@ -13692,11 +13692,32 @@ async function _affManage(action, id, record){
     });
     var rb=await res.json().catch(function(){return{};});
     if(res.ok||res.status===200||res.status===201) return {ok:true};
-    return {ok:false,error:rb.error||('HTTP '+res.status)};
-  }catch(e){return {ok:false,error:e.message};}
+    // Netlify function failed — try direct Supabase update as fallback
+    console.warn('[AFF] Netlify function failed ('+res.status+'), trying Supabase direct');
+  }catch(e){
+    console.warn('[AFF] Netlify fetch error:', e.message, '— trying Supabase direct');
+  }
+  // Fallback: update Supabase directly
+  if(_sb){
+    try{
+      var upd = {};
+      if(action==='approve') upd.status='approved';
+      else if(action==='suspend') upd.status='suspended';
+      else if(action==='delete') upd.status='deleted';
+      if(record) Object.assign(upd, record);
+      if(Object.keys(upd).length){
+        var {error}=await _sb.from('affiliates').update(upd).eq('id',id);
+        if(!error) return {ok:true};
+        return {ok:false, error:error.message};
+      }
+    }catch(e2){ return {ok:false, error:e2.message}; }
+  }
+  return {ok:false, error:'No connection available'};
 }
 
 async function _affApprove(id){const _s=_L();
+  // Disable button to prevent multiple clicks
+  var btn = event?.target; if(btn){ btn.disabled=true; btn.textContent='Approving...'; }
   // Re-fetch from DB first to get freshest affiliate_code (avoids stale in-memory state after set-code)
   if(_sb){
     try{
@@ -13725,7 +13746,7 @@ async function _affApprove(id){const _s=_L();
     if(!isReactivate && a.email){
       _affSendApprovalEmail(a);
     }
-  } else toast(_s.t_error_prefix+r.error,'error');
+  } else { toast(_s.t_error_prefix+r.error,'error'); if(btn){btn.disabled=false;btn.textContent='✔ Approve';} }
 }
 
 async function _affSendApprovalEmail(a){const _s=_L();
