@@ -12,6 +12,7 @@ function _esc(str){
     .replace(/"/g,'&quot;')
     .replace(/'/g,'&#039;');
 }
+function _hideLanding(){var lp=document.getElementById("landing-page");if(lp)lp.style.display="none";}
 // Safe text setter — use for user-generated content in innerHTML
 function _safe(str){ return _esc(str); }
 if(typeof Chart==='undefined'){
@@ -16546,6 +16547,7 @@ function doLogin(){const _s=_L();
     if(loginEl){
       loginEl.style.transition = 'opacity .35s';
       loginEl.style.opacity = '0';
+      _hideLanding();
       setTimeout(() => loginEl.style.display = 'none', 360);
     }
     nav(cred.isSuperAdmin ? 'admin-biz' : 'dashboard');
@@ -17558,7 +17560,7 @@ function _showEmailVerifyScreen(email, firstName, emailSent, userId, bizId, pwd,
     <span style="color:var(--a);cursor:pointer;text-decoration:underline"
       onclick="_resendVerifyToken()">Resend code</span>
   </div>`,
-  `<button class="btn btn-s" onclick="closeModal();_pendingVerify=null;document.getElementById('login-screen').style.display='flex'">\u2190 Back to Login</button>
+  `<button class="btn btn-s" onclick="closeModal();_pendingVerify=null;document.getElementById('login-screen').style.display='flex';_hideLanding()">\u2190 Back to Login</button>
    <button class="btn btn-p" id="sv-confirm-btn" style="flex:1"
      onclick="_confirmVerifyToken()">\u2705 Verify &amp; Login</button>`,
   'sm');
@@ -17723,6 +17725,7 @@ async function _confirmVerifyToken(){var _s=_L();
         // Hide login screen immediately
         const loginEl = document.getElementById('login-screen');
         if(loginEl){ loginEl.style.display='none'; loginEl.style.opacity='0'; }
+        _hideLanding();
 
         // Clear any previous session (e.g. SA was logged in during signup testing)
         try{ localStorage.removeItem('st_session'); sessionStorage.removeItem('st_session'); }catch(_){}
