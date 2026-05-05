@@ -11248,7 +11248,7 @@ function pgAdminBiz(){const _s=_L();
     // Expiry display
     const expiryDisplay = expiry
       ? `<div style="font-family:var(--mono);font-size:11px">${expiry}</div>
-         <div style="font-size:10px;color:${bSt.urgent?'var(--r)':dLeft!==null&&dLeft<=7?'var(--y)':'var(--text2)'}">${bSt.label}</div>`
+         <div style="font-size:10px;color:${(bSt.urgent&&!isFreePl)?'var(--r)':dLeft!==null&&dLeft<=7&&!isFreePl?'var(--y)':'var(--text2)'}">${isFreePl?'':bSt.label}</div>`
       : `<span style="color:var(--text2);font-size:11px">—</span>`;
 
     // Plan display
@@ -11267,7 +11267,7 @@ function pgAdminBiz(){const _s=_L();
         : '<span style="font-family:var(--mono);font-size:11px;color:var(--g)">'+amt.toLocaleString()+' Frs</span>';
 
     // Row highlight
-    const rowBg = bSt.urgent ? 'background:rgba(239,68,68,.04)' : b.st==='Pending' ? 'background:rgba(245,200,66,.04)' : '';
+    const rowBg = (bSt.urgent && !isFreePl) ? 'background:rgba(239,68,68,.04)' : b.st==='Pending' ? 'background:rgba(245,200,66,.04)' : '';
 
     // City display
     const cityDisplay = [b.city, b.country].filter(Boolean).join(', ') || '—';
