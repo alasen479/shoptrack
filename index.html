@@ -849,7 +849,7 @@ body.light .ai-out.has-content{background:#f8faff;border-color:var(--a)}
   var scripts = [
     'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
-    '/app.js?v=1778006960'
+    '/app.js?v=1778007106'
   ];
   var i = 0;
   function loadNext(){
@@ -919,7 +919,7 @@ window.addEventListener('unhandledrejection', function(e){
     Sales, inventory, expenses, customers, invoicing, accounting, WhatsApp alerts and AI tools — all in one platform. Free to start. Works offline. Bilingual English &amp; French.
   </p>
   <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-    <button onclick="document.getElementById('landing-page').style.display='none';document.getElementById('login-screen').style.display='flex';setTimeout(function(){document.getElementById('ln-signup-toggle')?.click()},200)" style="background:linear-gradient(135deg,#5b7fff,#8b5cf6);color:#fff;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(91,127,255,.35)">🚀 Start Free Trial</button>
+    <button onclick="document.getElementById('landing-page').style.display='none';document.getElementById('login-screen').style.display='flex';setTimeout(function(){if(typeof showSignup==='function')showSignup()},300)" style="background:linear-gradient(135deg,#5b7fff,#8b5cf6);color:#fff;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(91,127,255,.35)">🚀 Start Free Trial</button>
     <a href="#features" style="display:inline-flex;align-items:center;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;padding:14px 24px;font-size:15px;font-weight:600;text-decoration:none;font-family:inherit">See Features ↓</a>
   </div>
   <p style="font-size:12px;color:#94a3b8;margin-top:16px">No credit card required · 30-day free trial · Setup in 8 minutes</p>
@@ -1029,7 +1029,7 @@ window.addEventListener('unhandledrejection', function(e){
 <section style="text-align:center;padding:60px 24px 80px">
   <h2 style="font-size:clamp(22px,4vw,30px);font-weight:800;color:#0f172a;margin:0 0 16px">Ready to Take Control of Your Business?</h2>
   <p style="font-size:15px;color:#64748b;margin:0 0 24px">Join hundreds of businesses across Africa already using ShopTrack.</p>
-  <button onclick="document.getElementById('landing-page').style.display='none';document.getElementById('login-screen').style.display='flex';setTimeout(function(){document.getElementById('ln-signup-toggle')?.click()},200)" style="background:linear-gradient(135deg,#5b7fff,#8b5cf6);color:#fff;border:none;border-radius:10px;padding:16px 40px;font-size:17px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(91,127,255,.35)">🚀 Start Your Free Trial</button>
+  <button onclick="document.getElementById('landing-page').style.display='none';document.getElementById('login-screen').style.display='flex';setTimeout(function(){if(typeof showSignup==='function')showSignup()},300)" style="background:linear-gradient(135deg,#5b7fff,#8b5cf6);color:#fff;border:none;border-radius:10px;padding:16px 40px;font-size:17px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(91,127,255,.35)">🚀 Start Your Free Trial</button>
 </section>
 
 <!-- FOOTER -->
