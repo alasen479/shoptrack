@@ -11280,13 +11280,15 @@ function pgAdminBiz(){const _s=_L();
     const _bIsPaying = amt > 0 && !isTrial;
     const _bSetupItems = [_bHasProfile, _bHasWA, _bHasEmail, _bHasCity, _bHasCountry, _bIsPaying];
     const _bSetupDone = _bSetupItems.filter(Boolean).length;
-    // Last activity from updated_at or created date
+    const _bTotalTx = b.totalTx || 0;
+    // Last activity: most recent date from login or DB timestamps
     const _bLastAct = [b.lastLogin,b.updated_at,b.subExpires,b.trialEnd,b.created_at].filter(Boolean).sort().reverse()[0] || '';
     const _bDaysSince = _bLastAct ? Math.max(0, Math.round((Date.now() - new Date(_bLastAct).getTime()) / 86400000)) : 999;
-    // Score: 0-100
+    // Score: 0-100 (setup 20 + recency 25 + transactions 35 + paying 20)
     const _bScore = Math.min(100, Math.round(
-      (_bSetupDone / 6) * 40 +
-      (_bDaysSince <= 1 ? 40 : _bDaysSince <= 7 ? 30 : _bDaysSince <= 14 ? 20 : _bDaysSince <= 30 ? 10 : 0) +
+      (_bSetupDone / 6) * 20 +
+      (_bDaysSince <= 1 ? 25 : _bDaysSince <= 7 ? 18 : _bDaysSince <= 14 ? 10 : _bDaysSince <= 30 ? 5 : 0) +
+      Math.min(_bTotalTx, 30) / 30 * 35 +
       (_bIsPaying ? 20 : isTrial ? 10 : 0)
     ));
     const _bHealthColor = _bScore >= 70 ? 'var(--g)' : _bScore >= 40 ? 'var(--y)' : 'var(--r)';
@@ -11309,7 +11311,7 @@ function pgAdminBiz(){const _s=_L();
           <span style="font-size:10px;color:${_bHealthColor};font-weight:600">${_bScore}%</span>
         </div>
         <div style="font-size:9px;color:var(--text2)">${_bHealthLabel} ${_bStatusLabel}</div>
-        <div style="font-size:9px;color:var(--text2)">${_bSetupDone}/6 setup</div>
+        <div style="font-size:9px;color:var(--text2)">${_bTotalTx} tx · ${b.invCount||0}inv ${b.salesCount||0}sal ${b.custCount||0}cus</div>
       </td>
       <td style="font-size:11px;color:${phone?'var(--c)':'var(--r)'}">
         ${phone?_esc(phone):'⚠ No phone'}
@@ -11647,6 +11649,10 @@ function mManageBiz(bizId){const _s=_L();
         <div style="font-size:10px;color:var(--text2)">Location</div>
       </div>
       <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--ink)">${b.totalTx||0}</div>
+        <div style="font-size:10px;color:var(--text2)">Transactions</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center" title="Based on most recent login, database update, or subscription change">
         <div style="font-size:20px;font-weight:800;color:var(--ink)">${(function(){
           var dates=[b.lastLogin,b.updated_at,b.subExpires,b.trialEnd,b.created_at].filter(Boolean).sort().reverse();
           var la=dates[0]||'';
@@ -11654,7 +11660,7 @@ function mManageBiz(bizId){const _s=_L();
           var d=Math.max(0,Math.round((Date.now()-new Date(la).getTime())/86400000));
           return d===0?'Today':d===1?'Yesterday':d+'d ago';
         })()}</div>
-        <div style="font-size:10px;color:var(--text2)">Last Active</div>
+        <div style="font-size:10px;color:var(--text2)">Last Active ℹ️</div>
       </div>
       <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
         <div style="font-size:20px;font-weight:800;color:var(--ink)">${(function(){
@@ -11673,6 +11679,17 @@ function mManageBiz(bizId){const _s=_L();
       <div>✓ Location: ${(b.city||b.address)?'<span style="color:var(--g)">'+_esc(b.city||b.address)+', '+_esc(b.country||'')+'</span>':'<span style="color:var(--r)">Not set</span>'}</div>
       <div>✓ Payment: ${billingAmt>0&&!isTrial?'<span style="color:var(--g)">Paying — '+billingAmt.toLocaleString()+' XAF/mo</span>':isTrial?'<span style="color:var(--y)">Trial</span>':'<span style="color:var(--text2)">Free</span>'}</div>
     </div>
+    <div style="margin-top:10px;padding:10px;background:var(--bg3);border-radius:8px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:6px">📊 Transaction Breakdown</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+        <div><div style="font-size:16px;font-weight:700;color:var(--ink)">${b.invCount||0}</div><div style="font-size:9px;color:var(--text2)">Products</div></div>
+        <div><div style="font-size:16px;font-weight:700;color:var(--ink)">${b.salesCount||0}</div><div style="font-size:9px;color:var(--text2)">Sales</div></div>
+        <div><div style="font-size:16px;font-weight:700;color:var(--ink)">${b.custCount||0}</div><div style="font-size:9px;color:var(--text2)">Customers</div></div>
+        <div><div style="font-size:16px;font-weight:700;color:var(--ink)">${b.expCount||0}</div><div style="font-size:9px;color:var(--text2)">Expenses</div></div>
+      </div>
+      <div style="margin-top:6px;font-size:10px;color:var(--text2);text-align:center">${b.totalTx||0} total transactions</div>
+    </div>
+    <div style="margin-top:6px;font-size:9px;color:var(--text2);font-style:italic">ℹ️ "Last Active" = most recent login, database update, or subscription change date</div>
   </div>`,
 
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
@@ -14949,27 +14966,45 @@ function _idbHideCacheBanner(){
 async function _dbLoadAdminBiz(){
   if(!_sb) return;
   try {
-    // Exclude any businesses flagged as deleted server-side (status='Deleted' or deleted=true)
     const {data, error} = await _sb.from('businesses')
       .select('*')
       .neq('status', 'Deleted')
       .order('created_at');
     if(error) throw error;
-    const deleted = _getDeletedBizIds(); // also check local tombstones
+    const deleted = _getDeletedBizIds();
 
-    // Load platform_users to check email_verified status per business
+    // Load platform_users to check email_verified + last_login
     const {data:users} = await _sb.from('platform_users')
-      .select('biz_id,email_verified,status,verify_token_expiry').eq('level','owner');
+      .select('biz_id,email_verified,status,verify_token_expiry,last_login').eq('level','owner');
     const userMap = {};
     (users||[]).forEach(u=>{ if(u.biz_id) userMap[u.biz_id] = u; });
 
-    // Separate fully verified/active businesses from unverified pending signups
+    // Load transaction counts per business (parallel queries)
+    var countMap = {};
+    try{
+      var [invR, salR, cusR, expR] = await Promise.all([
+        _sb.from('inventory').select('biz_id', {count:'exact',head:false}).limit(5000),
+        _sb.from('sales').select('biz_id', {count:'exact',head:false}).limit(5000),
+        _sb.from('customers').select('biz_id', {count:'exact',head:false}).limit(5000),
+        _sb.from('expenses').select('biz_id', {count:'exact',head:false}).limit(5000),
+      ]);
+      // Count per biz_id
+      [['inv',invR],['sales',salR],['cust',cusR],['exp',expR]].forEach(function(pair){
+        var key=pair[0], res=pair[1];
+        (res.data||[]).forEach(function(r){
+          if(!r.biz_id) return;
+          if(!countMap[r.biz_id]) countMap[r.biz_id]={inv:0,sales:0,cust:0,exp:0};
+          countMap[r.biz_id][key]++;
+        });
+      });
+    }catch(ce){ console.warn('[SA] Count queries failed:', ce.message); }
+
     D.adminBiz = [];
     D.adminBizUnverified = [];
 
     (data||[]).filter(b => !deleted.has(b.id)).forEach(b => {
       const u = userMap[b.id];
-      // Catch both new (status=Pending) and legacy (status=Trial but email not yet verified)
+      const counts = countMap[b.id] || {inv:0,sales:0,cust:0,exp:0};
       const isUnverified = (b.status === 'Pending' || (u && u.email_verified === false && u.verify_token_expiry)) && u && u.email_verified === false;
       const mapped = {
         id:b.id, name:b.name, owner:b.owner, email:b.email,
@@ -14986,10 +15021,11 @@ async function _dbLoadAdminBiz(){
         lastLogin: u?.last_login || b.updated_at || b.created || null,
         updated_at: b.updated_at || b.created || null,
         created_at: b.created || null,
-        invCount: b.inv_count || 0,
-        salesCount: b.sales_count || 0,
-        custCount: b.cust_count || 0,
-        expCount: b.exp_count || 0,
+        invCount: counts.inv,
+        salesCount: counts.sales,
+        custCount: counts.cust,
+        expCount: counts.exp,
+        totalTx: counts.inv + counts.sales + counts.cust + counts.exp,
       };
       if(isUnverified){
         D.adminBizUnverified.push(mapped);
