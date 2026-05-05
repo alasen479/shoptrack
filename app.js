@@ -11255,7 +11255,9 @@ function pgAdminBiz(){const _s=_L();
     const _normPlan = (function(p){ var m={'professional':'Premium','pro':'Premium','starter':'Premium','enterprise':'Premium','free':'Free','premium':'Premium','trial':'Trial (30 Days)'}; return m[p.toLowerCase()]||p; })(b.plan||'Free');
     const planDisplay = isTrial
       ? bx('Trial (30 Days)','bx-y')
-      : bx(_normPlan,'bx-b');
+      : isFreePl
+        ? '<span style="font-size:11px;color:var(--text2)">Free</span>'
+        : bx(_normPlan,'bx-b');
 
     // Amount display
     const amtDisplay = isTrial
