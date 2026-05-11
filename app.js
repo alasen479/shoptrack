@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1778539207");
+console.log("ShopTrack v2.7 - build:1778540788");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -24510,6 +24510,7 @@ function _updateApptBadge(){
 
 // ── Calendar state ───────────────────────────────────────────
 let _apptCalY=new Date().getFullYear(), _apptCalM=new Date().getMonth(), _apptCalSel=null, _apptView='calendar';
+let _apptDayDate = null; // YYYY-MM-DD for the Day view focus
 
 function initAppointments(){ _updateApptBadge(); }
 
@@ -24519,9 +24520,42 @@ function initAppointments(){ _updateApptBadge(); }
 // ── APPOINTMENT VIEW HELPERS ─────────────────────────────────
 
 function _togApptView(mode, filter){
-  _apptView = mode || (_apptView==='calendar'?'list':'calendar');
+  // Tri-state: 'calendar' (month grid) | 'day' (hourly timeline) | 'list' (table)
+  // If no explicit mode, cycle through them in order.
+  if(mode){
+    _apptView = mode;
+  } else {
+    _apptView = (_apptView==='calendar') ? 'day' : (_apptView==='day') ? 'list' : 'calendar';
+  }
+  // Day view needs a date — default to selected day, else today.
+  if(_apptView==='day' && !_apptDayDate) _apptDayDate = _apptCalSel || localDateStr();
   nav('appointments');
   if(filter) setTimeout(()=>_apptFilter(filter),120);
+}
+
+// Open Day view for a specific date — used by month grid double-click and side-panel "Open Day"
+function _apptOpenDay(ds){
+  _apptDayDate = ds;
+  _apptView = 'day';
+  nav('appointments');
+}
+
+// Day view navigation
+function _apptDayNav(dir){
+  var dt = new Date((_apptDayDate||localDateStr())+'T12:00:00');
+  dt.setDate(dt.getDate()+dir);
+  _apptDayDate = dt.toISOString().slice(0,10);
+  var el=document.getElementById('appt-main'); if(el) el.innerHTML=_apptDayHTML();
+}
+
+function _apptDayToday(){
+  _apptDayDate = localDateStr();
+  var el=document.getElementById('appt-main'); if(el) el.innerHTML=_apptDayHTML();
+}
+
+// Shortcut: open Availability Manager pre-set to the Day view's current date
+function _apptDayBlock(){
+  mBlockTime(_apptDayDate || localDateStr());
 }
 function _apptCalHTML(){var _s=_L();
   const Y=_apptCalY, M=_apptCalM, today=localDateStr();
@@ -24554,7 +24588,7 @@ function _apptCalHTML(){var _s=_L();
       : hasAllDay ? 'rgba(239,68,68,.14)'
       : db.length ? 'rgba(239,68,68,.06)'
       : isWe ? 'var(--bg3)' : 'var(--bg2)';
-    cells+=`<div onclick="_apptDay('${ds}')" style="min-height:78px;border:1px solid ${isSel||isTd?'var(--a)':'var(--border)'};border-radius:var(--r8);padding:4px 5px;background:${cellBg};cursor:pointer;position:relative" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='${isSel||isTd?'var(--a)':'var(--border)'}'" >
+    cells+=`<div onclick="_apptDay('${ds}')" ondblclick="_apptOpenDay('${ds}')" title="Click to select · Double-click to open Day view" style="min-height:78px;border:1px solid ${isSel||isTd?'var(--a)':'var(--border)'};border-radius:var(--r8);padding:4px 5px;background:${cellBg};cursor:pointer;position:relative" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='${isSel||isTd?'var(--a)':'var(--border)'}'" >
       <div style="font-size:11px;font-weight:${isTd?'800':'500'};color:${isTd?'#fff':isWe?'var(--text2)':'var(--text)'};margin-bottom:2px;display:flex;justify-content:space-between;align-items:center;gap:2px">
         <span${isTd?' style="background:var(--a);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px"':''}>${d}</span>
         <span style="display:flex;gap:2px">
@@ -24582,7 +24616,10 @@ function _apptCalHTML(){var _s=_L();
     </div>
   </div></div>
   <div style="width:210px;flex-shrink:0"><div class="card" style="padding:12px;min-height:180px">
-    ${sd?`<div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">${sdFmt}</div>
+    ${sd?`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.4px">${sdFmt}</div>
+      <button class="btn btn-xs" style="background:var(--a-dim);color:var(--a);font-weight:700" onclick="_apptOpenDay('${sd}')" title="Open full Day view">🕒 Open</button>
+    </div>
     ${sa.length===0?`<div style="text-align:center;padding:16px 0;color:var(--text2);font-size:12px">No appointments</div>
     <button class="btn btn-p btn-sm" style="width:100%;margin-top:4px" onclick="mNewAppt('${sd}')">+ Book</button>`:
     sa.map(a=>`<div style="border:1px solid var(--border);border-left:3px solid ${_apptCol(a.st)};border-radius:var(--r8);padding:8px 9px;margin-bottom:7px;cursor:pointer" onclick="mViewAppt('${a.id}')">
@@ -24595,10 +24632,241 @@ function _apptCalHTML(){var _s=_L();
       </div>
     </div>`).join('')}
     <button class="btn btn-s btn-sm" style="width:100%;margin-top:2px" onclick="mNewAppt('${sd}')">+ Add</button>`
-    :`<div style="text-align:center;padding:30px 8px;color:var(--text2)"><div style="font-size:26px;margin-bottom:8px">📅</div><div style="font-size:12px">Click a day to view appointments</div></div>`}
+    :`<div style="text-align:center;padding:30px 8px;color:var(--text2)"><div style="font-size:26px;margin-bottom:8px">📅</div><div style="font-size:12px">Click a day to select<br/><span style="color:var(--text3);font-size:10px">Double-click to open Day view</span></div></div>`}
   </div></div>
 </div>`;
 }
+// ═══════════════════════════════════════════════════════════════════
+// DAY VIEW — hourly timeline with appointment blocks and Availability
+// Manager overlays. Single click on an appointment opens the view modal;
+// quick-action buttons appear on hover.
+// ═══════════════════════════════════════════════════════════════════
+function _apptDayHTML(){
+  var _s=_L();
+  var fr = BIZ.language==='fr';
+  var ds = _apptDayDate || localDateStr();
+  var today = localDateStr();
+  var isToday = ds===today;
+  var dt = new Date(ds+'T12:00:00');
+  var dayNames = fr ? ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi']
+                    : ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var monthNames = fr ? ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre']
+                      : ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var dateLabel = dayNames[dt.getDay()]+', '+dt.getDate()+' '+monthNames[dt.getMonth()]+' '+dt.getFullYear();
+
+  // Pull data for this day
+  var dayAppts = (D.appointments||[]).filter(function(a){return a.date===ds;});
+  // Sort by start time
+  dayAppts.sort(function(a,b){return (a.startTime||'').localeCompare(b.startTime||'');});
+  var dayBlocks = (D.blockedSlots||[]).filter(function(b){return b.date===ds;});
+
+  // Status counts + revenue for day summary
+  var counts = {Reserved:0,Confirmed:0,'In Progress':0,Completed:0,'No-Show':0,Cancelled:0};
+  var dayRev = 0;
+  dayAppts.forEach(function(a){
+    if(counts.hasOwnProperty(a.st)) counts[a.st]++;
+    if(a.st==='Completed') dayRev += (a.totalAmt||0);
+  });
+  var activeAppts = dayAppts.filter(function(a){return a.st!=='Cancelled';});
+
+  // Detect overlapping appointments (excluding cancelled/no-show)
+  function _toMin(t){var p=(t||'09:00').split(':');return (+p[0])*60+(+p[1]);}
+  var conflictPairs = [];
+  var live = activeAppts.filter(function(a){return a.st!=='No-Show';});
+  for(var i=0;i<live.length;i++){
+    for(var j=i+1;j<live.length;j++){
+      var a=live[i], b=live[j];
+      var aS=_toMin(a.startTime), aE=_toMin(a.endTime||a.startTime)+0;
+      var bS=_toMin(b.startTime), bE=_toMin(b.endTime||b.startTime)+0;
+      if(aS<bE && bS<aE){ conflictPairs.push([a,b]); }
+    }
+  }
+
+  // Timeline window — 6 AM to 10 PM, 16 hours, 60px per hour
+  var startHour = 6, endHour = 22;
+  var pxPerHour = 60;
+  var totalHeight = (endHour-startHour) * pxPerHour;
+
+  // Build hour labels column
+  var hourLabels = '';
+  for(var h=startHour; h<=endHour; h++){
+    var hLabel = (h<10?'0':'')+h+':00';
+    hourLabels += '<div style="height:'+pxPerHour+'px;font-size:10px;color:var(--text2);font-family:var(--mono);padding-right:6px;text-align:right;border-top:1px solid var(--border);position:relative">'
+      + '<span style="position:absolute;top:-7px;right:6px;background:var(--bg2);padding:0 4px">'+hLabel+'</span></div>';
+  }
+
+  // Current-time indicator (only if today, within window)
+  var nowLine = '';
+  if(isToday){
+    var now = new Date();
+    var nMin = now.getHours()*60 + now.getMinutes();
+    var startMin = startHour*60, endMin = endHour*60;
+    if(nMin>=startMin && nMin<=endMin){
+      var nowTop = ((nMin-startMin)/60) * pxPerHour;
+      nowLine = '<div style="position:absolute;left:0;right:0;top:'+nowTop+'px;height:2px;background:#ef4444;z-index:5;pointer-events:none">'
+        + '<div style="position:absolute;left:-6px;top:-4px;width:10px;height:10px;background:#ef4444;border-radius:50%"></div>'
+        + '<div style="position:absolute;right:4px;top:-8px;font-size:9px;font-weight:700;color:#ef4444;background:var(--bg2);padding:0 4px;border-radius:3px">'
+        + (fr?'maintenant':'now')+' '+_timeLabel(now.toTimeString().slice(0,5))+'</div></div>';
+    }
+  }
+
+  // Blocked overlays — render red striped backgrounds for each blocked range
+  var blockOverlays = '';
+  dayBlocks.forEach(function(b){
+    var bs = b.allDay ? startHour*60 : _toMin(b.startTime);
+    var be = b.allDay ? endHour*60   : _toMin(b.endTime);
+    if(be<=startHour*60 || bs>=endHour*60) return;
+    bs = Math.max(bs, startHour*60);
+    be = Math.min(be, endHour*60);
+    var top = ((bs - startHour*60)/60) * pxPerHour;
+    var height = ((be - bs)/60) * pxPerHour;
+    if(height<8) height=8;
+    blockOverlays += '<div title="🚫 '+(b.reason||(fr?'Non disponible':'Not Available'))+'" '
+      + 'style="position:absolute;left:0;right:0;top:'+top+'px;height:'+height+'px;'
+      + 'background:repeating-linear-gradient(45deg,rgba(239,68,68,.12),rgba(239,68,68,.12) 6px,rgba(239,68,68,.22) 6px,rgba(239,68,68,.22) 12px);'
+      + 'border-top:1px solid rgba(239,68,68,.45);border-bottom:1px solid rgba(239,68,68,.45);z-index:1;pointer-events:auto;cursor:pointer" '
+      + 'onclick="mBlockTime(\''+ds+'\')">'
+      + (height>=22?'<div style="font-size:10px;font-weight:700;color:#b91c1c;padding:3px 8px">🚫 '+(b.allDay?(fr?'Jour entier — Non disponible':'All day — Not Available'):(b.reason||(fr?'Non disponible':'Not Available')))+'</div>':'')
+      + '</div>';
+  });
+
+  // Appointment blocks — positioned absolutely on the timeline column
+  var apptBlocks = '';
+  // Track which appts have conflicts for visual flag
+  var conflictIds = {};
+  conflictPairs.forEach(function(p){ conflictIds[p[0].id]=true; conflictIds[p[1].id]=true; });
+
+  activeAppts.forEach(function(a){
+    var aS = _toMin(a.startTime);
+    var aE = _toMin(a.endTime||a.startTime);
+    if(aE<=aS) aE = aS+30; // assume 30 min if no end
+    if(aE<=startHour*60 || aS>=endHour*60) return;
+    var clipS = Math.max(aS, startHour*60);
+    var clipE = Math.min(aE, endHour*60);
+    var top = ((clipS - startHour*60)/60) * pxPerHour;
+    var height = ((clipE - clipS)/60) * pxPerHour;
+    if(height<24) height=24;
+    var col = _apptCol(a.st);
+    var bg = _apptBg(a.st);
+    var hasConflict = !!conflictIds[a.id];
+    var isCompact = height < 50;
+    apptBlocks += '<div onclick="mViewAppt(\''+a.id+'\')" '
+      + 'title="'+_esc(a.custName)+' · '+_esc(a.serviceName)+' · '+_timeLabel(a.startTime)+(a.endTime?'–'+_timeLabel(a.endTime):'')+' · '+a.st+'" '
+      + 'style="position:absolute;left:4px;right:4px;top:'+top+'px;height:'+height+'px;'
+      + 'background:'+bg+';border-left:4px solid '+col+';border-radius:6px;padding:'+(isCompact?'3px 7px':'6px 9px')+';'
+      + 'cursor:pointer;z-index:'+(hasConflict?'4':'3')+';overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05);'
+      + (hasConflict?'outline:2px solid rgba(239,68,68,.55);outline-offset:-2px;':'')
+      + 'transition:transform .1s,box-shadow .1s" '
+      + 'onmouseover="this.style.transform=\'translateX(2px)\';this.style.boxShadow=\'0 4px 10px rgba(0,0,0,.12)\'" '
+      + 'onmouseout="this.style.transform=\'\';this.style.boxShadow=\'0 1px 2px rgba(0,0,0,.05)\'">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px">'
+      + '<span style="font-size:'+(isCompact?'11px':'12px')+';font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">'
+      + (hasConflict?'⚠ ':'')+_esc(a.custName||'—')+'</span>'
+      + '<span style="font-size:10px;font-weight:700;color:'+col+';white-space:nowrap">'+_timeLabel(a.startTime)+'</span>'
+      + '</div>'
+      + (isCompact?'':'<div style="font-size:11px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(a.serviceName||'')+(a.staffName?' · 👤 '+_esc(a.staffName):'')+'</div>')
+      + (height>=70?'<div style="margin-top:4px"><span style="font-size:9px;font-weight:700;color:'+col+';background:'+col+'22;border-radius:10px;padding:1px 7px">'+a.st+'</span>'+(a.totalAmt>0?'<span style="font-size:10px;color:var(--g);font-family:var(--mono);font-weight:700;margin-left:6px">'+fmt(a.totalAmt)+'</span>':'')+'</div>':'')
+      + '</div>';
+  });
+
+  // Conflict banner
+  var conflictBanner = '';
+  if(conflictPairs.length){
+    conflictBanner = '<div style="background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.35);border-radius:var(--r8);padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">'
+      + '<span style="font-size:16px">⚠</span>'
+      + '<div style="font-size:12px;color:#b91c1c;font-weight:600">'
+      + (fr?'Chevauchement détecté — ':'Schedule conflict — ')
+      + conflictPairs.length+' '+(fr?'paire(s) d\'rendez-vous se chevauchent':'overlapping pair(s)')
+      + '</div></div>';
+  }
+
+  // Empty state
+  var emptyState = '';
+  if(dayAppts.length===0 && dayBlocks.length===0){
+    emptyState = '<div style="position:absolute;left:0;right:0;top:'+(totalHeight/2-60)+'px;text-align:center;color:var(--text2);z-index:2">'
+      + '<div style="font-size:42px;margin-bottom:8px">📅</div>'
+      + '<div style="font-weight:700;color:var(--ink);margin-bottom:4px">'+(fr?'Aucun rendez-vous':'No appointments yet')+'</div>'
+      + '<div style="font-size:12px;margin-bottom:14px">'+(fr?'Commencez votre journée':'Start your day')+'</div>'
+      + '<button class="btn btn-p btn-sm" onclick="mNewAppt(\''+ds+'\')">+ '+(fr?'Réserver':'Book first appointment')+'</button> '
+      + '<button class="btn btn-s btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="mBlockTime(\''+ds+'\')">🗓 '+(fr?'Gérer la disponibilité':'Availability Manager')+'</button>'
+      + '</div>';
+  }
+
+  // Side panel — day summary
+  var summaryRows = '';
+  Object.keys(counts).forEach(function(st){
+    if(counts[st]>0){
+      summaryRows += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">'
+        + '<span style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="width:9px;height:9px;background:'+_apptCol(st)+';border-radius:50%"></span>'+st+'</span>'
+        + '<span style="font-weight:700;color:var(--ink)">'+counts[st]+'</span></div>';
+    }
+  });
+  if(dayBlocks.length){
+    summaryRows += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">'
+      + '<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--r)"><span style="width:9px;height:9px;background:#ef4444;border-radius:50%"></span>'+(fr?'Bloqué':'Blocked')+'</span>'
+      + '<span style="font-weight:700;color:var(--r)">'+dayBlocks.length+'</span></div>';
+  }
+
+  var sidePanel = '<div style="width:230px;flex-shrink:0">'
+    + '<div class="card" style="padding:14px;margin-bottom:10px">'
+    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text2);letter-spacing:.4px;margin-bottom:8px">'+(fr?'Résumé':'Day summary')+'</div>'
+    + (summaryRows || '<div style="font-size:12px;color:var(--text2);padding:6px 0">'+(fr?'Rien à afficher':'Nothing scheduled')+'</div>')
+    + (dayRev>0?'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;margin-top:6px;border-top:1px solid var(--border)"><span style="font-size:11px;font-weight:700;color:var(--text2)">'+(fr?'Revenu':'Revenue')+'</span><span style="font-family:var(--mono);font-weight:700;color:var(--g)">'+fmt(dayRev)+'</span></div>':'')
+    + '</div>'
+    // Quick actions card
+    + '<div class="card" style="padding:14px">'
+    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text2);letter-spacing:.4px;margin-bottom:8px">'+(fr?'Actions':'Actions')+'</div>'
+    + '<button class="btn btn-p btn-sm" style="width:100%;margin-bottom:6px" onclick="mNewAppt(\''+ds+'\')">+ '+(fr?'Réserver':'Book appointment')+'</button>'
+    + '<button class="btn btn-s btn-sm" style="width:100%;margin-bottom:6px;background:var(--r-dim);color:var(--r)" onclick="mBlockTime(\''+ds+'\')">🗓 '+(fr?'Disponibilité':'Availability Manager')+'</button>'
+    + (activeAppts.length?'<button class="btn btn-g btn-sm" style="width:100%" onclick="_apptDayWA(\''+ds+'\')">💬 '+(fr?'Rappeler tous':'WhatsApp all')+'</button>':'')
+    + '</div></div>';
+
+  // Header with nav
+  var header = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap">'
+    + '<div style="display:flex;align-items:center;gap:6px">'
+    + '<button class="btn btn-g btn-sm" onclick="_apptDayNav(-1)" title="Previous day">‹</button>'
+    + '<button class="btn btn-s btn-sm" onclick="_apptDayToday()">'+(fr?'Aujourd\'hui':'Today')+'</button>'
+    + '<button class="btn btn-g btn-sm" onclick="_apptDayNav(1)" title="Next day">›</button>'
+    + '</div>'
+    + '<div style="flex:1;text-align:center">'
+    + '<div style="font-family:var(--display);font-size:17px;font-weight:800;color:var(--ink)">'+dateLabel+(isToday?' <span style="font-size:11px;background:var(--a);color:#fff;padding:2px 8px;border-radius:10px;vertical-align:middle">'+(fr?'AUJOURD\'HUI':'TODAY')+'</span>':'')+'</div>'
+    + '<div style="font-size:11px;color:var(--text2)">'+activeAppts.length+' '+(fr?'rendez-vous':'appt'+(activeAppts.length===1?'':'s'))
+    + (dayRev>0?' · '+fmt(dayRev)+' '+(fr?'attendu':'expected'):'')
+    + (dayBlocks.length?' · 🚫 '+dayBlocks.length+' '+(fr?'bloc(s)':'block'+(dayBlocks.length===1?'':'s')):'')
+    + '</div>'
+    + '</div>'
+    + '<input type="date" class="fi-s" value="'+ds+'" onchange="_apptDayDate=this.value;document.getElementById(\'appt-main\').innerHTML=_apptDayHTML()" style="width:150px"/>'
+    + '</div>';
+
+  return '<div>' + header + conflictBanner
+    + '<div style="display:flex;gap:12px;align-items:flex-start">'
+    + '<div style="flex:1;min-width:0"><div class="card" style="padding:14px">'
+    + '<div style="display:flex;align-items:stretch">'
+    + '<div style="width:56px;flex-shrink:0">'+hourLabels+'</div>'
+    + '<div style="flex:1;position:relative;border-left:1px solid var(--border);min-height:'+totalHeight+'px;background:'
+    +   'repeating-linear-gradient(to bottom,transparent,transparent '+(pxPerHour-1)+'px,var(--border) '+(pxPerHour-1)+'px,var(--border) '+pxPerHour+'px)">'
+    +   blockOverlays + apptBlocks + nowLine + emptyState
+    + '</div>'
+    + '</div>'
+    + '</div></div>'
+    + sidePanel
+    + '</div>'
+    + '</div>';
+}
+
+// Send WhatsApp reminders to everyone on this day with a phone number
+function _apptDayWA(ds){
+  var fr = BIZ.language==='fr';
+  var appts = (D.appointments||[]).filter(function(a){
+    return a.date===ds && a.custPhone && !['Cancelled','No-Show','Completed'].includes(a.st);
+  });
+  if(!appts.length){ toast(fr?'Aucun contact à rappeler':'No contacts to remind','info'); return; }
+  if(!confirm((fr?'Ouvrir WhatsApp pour ':'Open WhatsApp for ')+appts.length+(fr?' contact(s) ?':' contact(s)?'))) return;
+  appts.forEach(function(a, i){
+    setTimeout(function(){ _apptWA(a.id); }, i*400);
+  });
+}
+
 function _apptListHTML(){const _s=_L();
   const appts=[...D.appointments].sort((a,b)=>a.date<b.date?1:-1);
   const canEdit=canAccess('rentals'); // appointments follow same permission as services/bookings
@@ -24878,7 +25146,9 @@ function pgAppointments(){const _s=_L();
     +'<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>'+_s.nav_appointments+'</span></div>'
     +'<div class="ph-row"><h1>'+_s.appt_title+'</h1>'
     +'<div class="btn-row">'
-    +'<button class="btn btn-s btn-sm" onclick="_togApptView()">'+(_apptView==='calendar'?'📋 List':'📅 Calendar')+'</button>'
+    +'<button class="btn btn-sm" style="background:'+(_apptView==='calendar'?'var(--a)':'var(--bg3)')+';color:'+(_apptView==='calendar'?'#fff':'var(--text)')+'" onclick="_togApptView(\'calendar\')">📅 Month</button>'
+    +'<button class="btn btn-sm" style="background:'+(_apptView==='day'?'var(--a)':'var(--bg3)')+';color:'+(_apptView==='day'?'#fff':'var(--text)')+'" onclick="_togApptView(\'day\')">🕒 Day</button>'
+    +'<button class="btn btn-sm" style="background:'+(_apptView==='list'?'var(--a)':'var(--bg3)')+';color:'+(_apptView==='list'?'#fff':'var(--text)')+'" onclick="_togApptView(\'list\')">📋 List</button>'
     +'<button class="btn btn-s btn-sm" onclick="_apptBulkConfirm()">✓ Confirm All</button>'
     +'<button class="btn btn-s btn-sm" onclick="_apptSendReminders()">💬 Remind Tomorrow</button>'
     +'<button class="btn btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="mBlockTime()">🗓 Availability Manager</button>'
@@ -24940,7 +25210,7 @@ function pgAppointments(){const _s=_L();
     +'</div>'
 
     +todayCard
-    +'<div id="appt-main">'+(_apptView==='calendar' ? _apptCalHTML() : _apptListHTML())+'</div>';
+    +'<div id="appt-main">'+(_apptView==='calendar' ? _apptCalHTML() : _apptView==='day' ? _apptDayHTML() : _apptListHTML())+'</div>';
 }
 
 
