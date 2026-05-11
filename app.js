@@ -14811,6 +14811,7 @@ async function _idbRestoreAll(bizId){
       _idbLoad(bizId, 'audit'),
       _idbLoad(bizId, 'services'),
       _idbLoad(bizId, 'appts'),
+      _idbLoad(bizId, 'blockedSlots'),
       _idbLoad(bizId, 'invCats'),
       _idbLoad(bizId, 'expCats'),
       _idbLoad(bizId, 'vendorCats'),
@@ -14832,6 +14833,7 @@ async function _idbRestoreAll(bizId){
     if(audit)     D.audit        = audit;
     if(services)  D.services     = services;
     if(appts)     D.appointments = appts;
+    if(results[8])  D.blockedSlots = results[8]; // blockedSlots from IDB
 
     // Restore categories
     if(invCats && invCats.length)    D.invCats    = invCats;
@@ -24854,7 +24856,7 @@ function pgAppointments(){const _s=_L();
       +'<div class="card-hd"><div style="display:flex;align-items:center;gap:10px"><div class="card-ttl">📅 Today — '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</div>'
       +(todayRev>0?'<span style="font-size:12px;font-weight:700;color:var(--g);background:var(--g-dim);padding:2px 9px;border-radius:10px">'+fmt(todayRev)+' earned</span>':'')
       +'</div>'
-      +'<div class="btn-row"><button class="btn btn-s btn-sm" onclick="mNewAppt(\''+today+'\')">+ Add</button></div></div>'
+      +'<div class="btn-row"><button class="btn btn-s btn-sm" onclick="mNewAppt(\''+today+'\')">+ Add</button><button class="btn btn-s btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="mBlockTime()">🚫 Block Time</button></div></div>'
       +'<div style="display:flex;flex-direction:column;gap:6px">'+todayRows+'</div></div>'
     : '';
 
@@ -24865,6 +24867,7 @@ function pgAppointments(){const _s=_L();
     +'<button class="btn btn-s btn-sm" onclick="_togApptView()">'+(_apptView==='calendar'?'📋 List':'📅 Calendar')+'</button>'
     +'<button class="btn btn-s btn-sm" onclick="_apptBulkConfirm()">✓ Confirm All</button>'
     +'<button class="btn btn-s btn-sm" onclick="_apptSendReminders()">💬 Remind Tomorrow</button>'
+    +'<button class="btn btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="mBlockTime()">🚫 Block</button>'
     +'<button class="btn btn-g btn-sm" onclick="exportAppointmentsPDF()">⬇ PDF</button>'
     +'<button class="btn btn-p" onclick="mNewAppt()">+ Book</button>'
     +'</div></div></div>'
@@ -29106,6 +29109,12 @@ function _saveAppt(){var _s=_L();
   const amt=parseFloat(document.getElementById('na-amt')?.value)||0;
   const notes=document.getElementById('na-n')?.value||'';
   const wi=document.getElementById('na-wi')?.checked||false;
+  // Check availability — blocked time or existing booking
+  var avail=_isSlotAvailable(date, st, et||st);
+  if(!avail.available){
+    toast('🚫 '+(BIZ.language==='fr'?'Créneau non disponible: ':'Slot not available: ')+avail.reason,'error');
+    return;
+  }
   // Validate — if new-cust form is open, prompt to save first
   const ncForm=document.getElementById('na-new-cust-form');
   if(ncForm && ncForm.style.display!=='none'){
@@ -29376,6 +29385,106 @@ function mViewAppt(id){const _s=_L();
   modal('📅 '+a.serviceName+' \u2014 '+a.custName, statusHtml+grid+notesHtml+statusRow, footer, 'sm');
 }
 
+
+// ── Blocked Time / Availability System ──────────────────────────
+// D.blockedSlots = [{id, date, startTime, endTime, reason, allDay}]
+if(!D.blockedSlots) D.blockedSlots = [];
+
+function mBlockTime(){var _s=_L();
+  var fr=BIZ.language==='fr';
+  modal('🚫 '+(fr?'Bloquer du temps':'Block Time'),`
+  <div class="fg-2">
+    <div class="fg"><label class="fl">${fr?'Date':'Date'}</label><input class="fi" id="bt-date" type="date" value="${localDateStr()}"/></div>
+    <div class="fg"><label class="fl">${fr?'Type':'Type'}</label>
+      <select class="fs" id="bt-type" onchange="var r=document.getElementById('bt-hours');r.style.display=this.value==='hours'?'flex':'none'">
+        <option value="allday">${fr?'Journée entière':'Full Day'}</option>
+        <option value="hours">${fr?'Heures spécifiques':'Specific Hours'}</option>
+      </select>
+    </div>
+  </div>
+  <div id="bt-hours" class="fg-2" style="display:none">
+    <div class="fg"><label class="fl">${fr?'De':'From'}</label><input class="fi" id="bt-start" type="time" value="09:00"/></div>
+    <div class="fg"><label class="fl">${fr?'À':'To'}</label><input class="fi" id="bt-end" type="time" value="17:00"/></div>
+  </div>
+  <div class="fg"><label class="fl">${fr?'Raison (optionnel)':'Reason (optional)'}</label>
+    <select class="fs" id="bt-reason">
+      <option>${fr?'Non disponible':'Not Available'}</option>
+      <option>${fr?'Congé personnel':'Personal Day Off'}</option>
+      <option>${fr?'Vacances':'Holiday'}</option>
+      <option>${fr?'Formation':'Training'}</option>
+      <option>${fr?'Maintenance':'Maintenance'}</option>
+      <option>${fr?'Autre':'Other'}</option>
+    </select>
+  </div>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><input class="fi" id="bt-notes" placeholder="${fr?'Notes optionnelles':'Optional notes'}"/></div>
+
+  <!-- Current blocks for selected date -->
+  <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">${fr?'Blocs existants':'Existing Blocks'}</div>
+    <div id="bt-existing" style="font-size:12px;color:var(--text2)"></div>
+  </div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
+   <button class="btn btn-p" onclick="_saveBlockedTime()">🚫 ${fr?'Bloquer':'Block'}</button>`);
+  setTimeout(function(){ _updateBlockedList(); document.getElementById('bt-date')?.addEventListener('change', _updateBlockedList); },50);
+}
+
+function _updateBlockedList(){
+  var date=document.getElementById('bt-date')?.value||localDateStr();
+  var el=document.getElementById('bt-existing');
+  if(!el) return;
+  var fr=BIZ.language==='fr';
+  var blocks=D.blockedSlots.filter(function(b){return b.date===date;});
+  var booked=(D.appointments||[]).filter(function(a){return a.date===date&&a.st!=='Cancelled'&&a.st!=='No-Show';});
+  var html='';
+  blocks.forEach(function(b){
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">'
+      +'<span>🚫 '+(b.allDay?(fr?'Journée entière':'Full Day'):b.startTime+' — '+b.endTime)+' · '+b.reason+'</span>'
+      +'<button class="btn btn-xs" style="color:var(--r)" onclick="D.blockedSlots=D.blockedSlots.filter(function(x){return x.id!==\''+b.id+'\';});_idbSave(SESSION.bizId,\'blockedSlots\',D.blockedSlots);_updateBlockedList();toast(\'Unblocked\',\'success\')">✕</button>'
+      +'</div>';
+  });
+  booked.forEach(function(a){
+    html+='<div style="padding:4px 0;border-bottom:1px solid var(--border)">📅 '+a.startTime+' — '+(a.endTime||'?')+' · <strong>'+_esc(a.custName)+'</strong> · '+_esc(a.serviceName)+'</div>';
+  });
+  if(!html) html='<div style="color:var(--text2);font-style:italic">'+(fr?'Aucun bloc ni rendez-vous':'No blocks or appointments')+'</div>';
+  el.innerHTML=html;
+}
+
+function _saveBlockedTime(){
+  var date=document.getElementById('bt-date')?.value;
+  var type=document.getElementById('bt-type')?.value;
+  var start=document.getElementById('bt-start')?.value||'09:00';
+  var end=document.getElementById('bt-end')?.value||'17:00';
+  var reason=document.getElementById('bt-reason')?.value||'Not Available';
+  var notes=document.getElementById('bt-notes')?.value||'';
+  if(!date){toast('Select a date','error');return;}
+  var block={id:'BLK-'+Date.now(),date:date,allDay:type==='allday',startTime:type==='allday'?'00:00':start,endTime:type==='allday'?'23:59':end,reason:reason,notes:notes};
+  D.blockedSlots.push(block);
+  _idbSave(SESSION.bizId,'blockedSlots',D.blockedSlots).catch(function(){});
+  addAudit('Time blocked',date+(type==='allday'?' (all day)':' '+start+'-'+end)+' — '+reason);
+  closeModal();
+  toast('🚫 '+(BIZ.language==='fr'?'Temps bloqué':'Time blocked'),'success');
+  nav('appointments');
+}
+
+// Check if a time slot is available (not blocked and not booked)
+function _isSlotAvailable(date, startTime, endTime){
+  // Check blocked slots
+  var blocked = D.blockedSlots.filter(function(b){return b.date===date;});
+  for(var i=0;i<blocked.length;i++){
+    var b=blocked[i];
+    if(b.allDay) return {available:false, reason:b.reason||'Blocked'};
+    if(startTime<b.endTime && endTime>b.startTime) return {available:false, reason:b.reason||'Blocked'};
+  }
+  // Check existing confirmed appointments
+  var booked = (D.appointments||[]).filter(function(a){
+    return a.date===date && a.st!=='Cancelled' && a.st!=='No-Show';
+  });
+  for(var j=0;j<booked.length;j++){
+    var a=booked[j];
+    if(startTime<(a.endTime||a.startTime) && endTime>a.startTime) return {available:false, reason:'Booked: '+a.custName};
+  }
+  return {available:true};
+}
 
 function mNewAppt(date){const _s=_L();
   const td=date||localDateStr();
