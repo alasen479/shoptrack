@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1778538375");
+console.log("ShopTrack v2.7 - build:1778539207");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -24533,6 +24533,9 @@ function _apptCalHTML(){var _s=_L();
   const pY=M===0?Y-1:Y, pM=M===0?11:M-1, nY=M===11?Y+1:Y, nM=M===11?0:M+1;
   const amap={};
   (D.appointments||[]).filter(a=>a.date&&a.date.startsWith(ms)&&a.st!=='Cancelled').forEach(a=>{ (amap[a.date]=amap[a.date]||[]).push(a); });
+  // Blocked slots per day for this month — used to tint cells and show 🚫 counts.
+  const bmap={};
+  (D.blockedSlots||[]).filter(b=>b.date&&b.date.startsWith(ms)).forEach(b=>{ (bmap[b.date]=bmap[b.date]||[]).push(b); });
   const mA=(D.appointments||[]).filter(a=>a.date&&a.date.startsWith(ms));
   const mR=mA.filter(a=>a.st==='Completed').reduce((s,a)=>s+a.totalAmt,0);
   let cells='';
@@ -24541,12 +24544,23 @@ function _apptCalHTML(){var _s=_L();
     const ds=`${Y}-${String(M+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const da=amap[ds]||[];
     const isTd=(Y===tY&&M===tMo&&d===tD), isSel=_apptCalSel===ds, isWe=new Date(Y,M,d).getDay()%6===0;
+    // Blocks for this day — used to tint cell background and show 🚫 count next to appt count.
+    const db=bmap[ds]||[];
+    const hasAllDay=db.some(b=>b.allDay);
     const chips=da.slice(0,3).map(a=>`<div onclick="event.stopPropagation();mViewAppt('${a.id}')" title="${a.custName} ${_timeLabel(a.startTime)}" style="font-size:9px;font-weight:600;background:${_apptBg(a.st)};color:${_apptCol(a.st)};border-left:2px solid ${_apptCol(a.st)};padding:1px 3px;border-radius:2px;margin-bottom:1px;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${_timeLabel(a.startTime)} ${a.custName.split(' ')[0]}</div>`).join('');
     const more=da.length>3?`<div style="font-size:9px;color:var(--text2);padding:0 3px">+${da.length-3}</div>`:'';
-    cells+=`<div onclick="_apptDay('${ds}')" style="min-height:78px;border:1px solid ${isSel||isTd?'var(--a)':'var(--border)'};border-radius:var(--r8);padding:4px 5px;background:${isSel?'rgba(67,97,238,.07)':isWe?'var(--bg3)':'var(--bg2)'};cursor:pointer;position:relative" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='${isSel||isTd?'var(--a)':'var(--border)'}'" >
-      <div style="font-size:11px;font-weight:${isTd?'800':'500'};color:${isTd?'#fff':isWe?'var(--text2)':'var(--text)'};margin-bottom:2px;display:flex;justify-content:space-between">
+    // Background priority: selected > full-day block > partial block > today (handled via isTd badge) > weekend > base
+    const cellBg = isSel ? 'rgba(67,97,238,.07)'
+      : hasAllDay ? 'rgba(239,68,68,.14)'
+      : db.length ? 'rgba(239,68,68,.06)'
+      : isWe ? 'var(--bg3)' : 'var(--bg2)';
+    cells+=`<div onclick="_apptDay('${ds}')" style="min-height:78px;border:1px solid ${isSel||isTd?'var(--a)':'var(--border)'};border-radius:var(--r8);padding:4px 5px;background:${cellBg};cursor:pointer;position:relative" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='${isSel||isTd?'var(--a)':'var(--border)'}'" >
+      <div style="font-size:11px;font-weight:${isTd?'800':'500'};color:${isTd?'#fff':isWe?'var(--text2)':'var(--text)'};margin-bottom:2px;display:flex;justify-content:space-between;align-items:center;gap:2px">
         <span${isTd?' style="background:var(--a);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px"':''}>${d}</span>
-        ${da.length?`<span style="font-size:9px;background:var(--a-dim);color:var(--a);border-radius:8px;padding:0 4px;font-weight:700">${da.length}</span>`:''}
+        <span style="display:flex;gap:2px">
+          ${db.length?`<span title="${hasAllDay?'Day blocked':db.length+' blocked slot(s)'}" style="font-size:9px;background:rgba(239,68,68,.18);color:var(--r);border-radius:8px;padding:0 4px;font-weight:700">🚫${hasAllDay?'':db.length}</span>`:''}
+          ${da.length?`<span style="font-size:9px;background:var(--a-dim);color:var(--a);border-radius:8px;padding:0 4px;font-weight:700">${da.length}</span>`:''}
+        </span>
       </div>${chips}${more}
       <button onclick="event.stopPropagation();mNewAppt('${ds}')" title="Book" style="position:absolute;bottom:2px;right:2px;background:var(--a-dim);border:none;color:var(--a);cursor:pointer;border-radius:3px;width:16px;height:16px;font-size:12px;font-weight:700;opacity:0;transition:opacity .13s;display:flex;align-items:center;justify-content:center" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">+</button>
     </div>`;
@@ -24856,7 +24870,7 @@ function pgAppointments(){const _s=_L();
       +'<div class="card-hd"><div style="display:flex;align-items:center;gap:10px"><div class="card-ttl">📅 Today — '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</div>'
       +(todayRev>0?'<span style="font-size:12px;font-weight:700;color:var(--g);background:var(--g-dim);padding:2px 9px;border-radius:10px">'+fmt(todayRev)+' earned</span>':'')
       +'</div>'
-      +'<div class="btn-row"><button class="btn btn-s btn-sm" onclick="mNewAppt(\''+today+'\')">+ Add</button><button class="btn btn-s btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="mBlockTime()">🚫 Block Time</button></div></div>'
+      +'<div class="btn-row"><button class="btn btn-s btn-sm" onclick="mNewAppt(\''+today+'\')">+ Add</button><button class="btn btn-s btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="mBlockTime()">🗓 Availability Manager</button></div></div>'
       +'<div style="display:flex;flex-direction:column;gap:6px">'+todayRows+'</div></div>'
     : '';
 
@@ -24867,7 +24881,7 @@ function pgAppointments(){const _s=_L();
     +'<button class="btn btn-s btn-sm" onclick="_togApptView()">'+(_apptView==='calendar'?'📋 List':'📅 Calendar')+'</button>'
     +'<button class="btn btn-s btn-sm" onclick="_apptBulkConfirm()">✓ Confirm All</button>'
     +'<button class="btn btn-s btn-sm" onclick="_apptSendReminders()">💬 Remind Tomorrow</button>'
-    +'<button class="btn btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="mBlockTime()">🚫 Block</button>'
+    +'<button class="btn btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="mBlockTime()">🗓 Availability Manager</button>'
     +'<button class="btn btn-g btn-sm" onclick="exportAppointmentsPDF()">⬇ PDF</button>'
     +'<button class="btn btn-p" onclick="mNewAppt()">+ Book</button>'
     +'</div></div></div>'
@@ -29393,14 +29407,62 @@ if(!D.blockedSlots) D.blockedSlots = [];
 // Visual Schedule Manager — Day/Week/Month views with click-to-block
 var _schedView = 'day';
 var _schedDate = null;
+var _schedDirty = false;
+var _schedSnapshot = null;
 
 function mBlockTime(initDate){
   var fr=BIZ.language==='fr';
   _schedDate = initDate || localDateStr();
   _schedView = 'day';
+  // Snapshot current state for cancel/revert. Deep clone so in-place mutations don't leak.
+  _schedSnapshot = JSON.parse(JSON.stringify(D.blockedSlots||[]));
+  _schedDirty = false;
+  var footer='<button class="btn btn-s" onclick="_schedCancel()">'+(fr?'Annuler':'Cancel')+'</button>'
+    +'<button class="btn btn-p" id="sched-save-btn" onclick="_schedSave()">💾 '+(fr?'Enregistrer':'Save')+'</button>';
   modal('🗓 '+(fr?'Gestion de disponibilité':'Availability Manager'),'<div id="sched-root"></div>',
-    '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>','lg');
+    footer,'lg');
   setTimeout(_renderSchedule, 50);
+}
+
+// Mark the manager dirty and update the Save button to reflect unsaved changes.
+function _schedMarkDirty(){
+  _schedDirty = true;
+  var btn=document.getElementById('sched-save-btn');
+  if(btn){
+    var fr=BIZ.language==='fr';
+    btn.innerHTML='💾 '+(fr?'Enregistrer*':'Save*');
+    btn.style.background='var(--o)';
+    btn.style.color='#fff';
+  }
+}
+
+// Commit staged blockedSlots to IDB and refresh the main appointments view.
+function _schedSave(){
+  var fr=BIZ.language==='fr';
+  _idbSave(SESSION.bizId,'blockedSlots',D.blockedSlots).then(function(){
+    addAudit('Availability updated', D.blockedSlots.length+' block(s) saved');
+    _schedDirty = false;
+    _schedSnapshot = null;
+    closeModal();
+    toast('✅ '+(fr?'Disponibilité enregistrée':'Availability saved'),'success');
+    // Re-render the appointments page so the main calendar reflects new blocks.
+    if(typeof nav==='function' && (typeof CURRENT_NAV==='undefined' || CURRENT_NAV==='appointments')) nav('appointments');
+  }).catch(function(e){
+    console.error('[Availability Save] failed',e);
+    toast('⚠ '+(fr?'Échec de l\'enregistrement':'Save failed'),'error');
+  });
+}
+
+// Cancel with confirm + revert to snapshot if dirty.
+function _schedCancel(){
+  var fr=BIZ.language==='fr';
+  if(_schedDirty){
+    if(!confirm(fr?'Annuler les modifications non enregistrées ?':'Discard unsaved changes?')) return;
+    if(_schedSnapshot) D.blockedSlots = _schedSnapshot;
+  }
+  _schedDirty = false;
+  _schedSnapshot = null;
+  closeModal();
 }
 
 function _renderSchedule(){
@@ -29585,7 +29647,7 @@ function _toggleSlotBlock(date, start, end){
     // Block it
     D.blockedSlots.push({id:'BLK-'+Date.now()+Math.random().toString(36).slice(2,5),date:date,allDay:false,startTime:start,endTime:end,reason:'Not Available',notes:''});
   }
-  _idbSave(SESSION.bizId,'blockedSlots',D.blockedSlots).catch(function(){});
+  _schedMarkDirty();
   _renderSchedule();
 }
 
@@ -29593,7 +29655,7 @@ function _blockFullDay(date){
   // Remove any existing blocks for this day, add full day block
   D.blockedSlots=D.blockedSlots.filter(function(b){return b.date!==date;});
   D.blockedSlots.push({id:'BLK-'+Date.now(),date:date,allDay:true,startTime:'00:00',endTime:'23:59',reason:'Not Available',notes:''});
-  _idbSave(SESSION.bizId,'blockedSlots',D.blockedSlots).catch(function(){});
+  _schedMarkDirty();
   addAudit('Day blocked',date);
   toast('🚫 '+(BIZ.language==='fr'?'Journée bloquée':'Day blocked'),'success');
   _renderSchedule();
@@ -29604,14 +29666,14 @@ function _blockHours(date, start, end){
   var exists=D.blockedSlots.find(function(b){return b.date===date&&b.startTime===start&&b.endTime===end;});
   if(exists){toast('Already blocked','info');return;}
   D.blockedSlots.push({id:'BLK-'+Date.now()+Math.random().toString(36).slice(2,5),date:date,allDay:false,startTime:start,endTime:end,reason:'Not Available',notes:''});
-  _idbSave(SESSION.bizId,'blockedSlots',D.blockedSlots).catch(function(){});
+  _schedMarkDirty();
   _renderSchedule();
 }
 
 function _clearDayBlocks(date){
   D.blockedSlots=D.blockedSlots.filter(function(b){return b.date!==date;});
-  _idbSave(SESSION.bizId,'blockedSlots',D.blockedSlots).catch(function(){});
-  toast('✅ '+(BIZ.language==='fr'?'Blocs supprimés':'Blocks cleared'),'success');
+  _schedMarkDirty();
+  toast('✅ '+(BIZ.language==='fr'?'Blocs supprimés':'Blocks cleared (unsaved)'),'success');
   _renderSchedule();
 }
 
