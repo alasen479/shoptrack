@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1777317000");
+console.log("ShopTrack v2.7 - build:1778538375");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
