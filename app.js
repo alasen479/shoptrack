@@ -29390,80 +29390,229 @@ function mViewAppt(id){const _s=_L();
 // D.blockedSlots = [{id, date, startTime, endTime, reason, allDay}]
 if(!D.blockedSlots) D.blockedSlots = [];
 
-function mBlockTime(){var _s=_L();
-  var fr=BIZ.language==='fr';
-  modal('🚫 '+(fr?'Bloquer du temps':'Block Time'),`
-  <div class="fg-2">
-    <div class="fg"><label class="fl">${fr?'Date':'Date'}</label><input class="fi" id="bt-date" type="date" value="${localDateStr()}"/></div>
-    <div class="fg"><label class="fl">${fr?'Type':'Type'}</label>
-      <select class="fs" id="bt-type" onchange="var r=document.getElementById('bt-hours');r.style.display=this.value==='hours'?'flex':'none'">
-        <option value="allday">${fr?'Journée entière':'Full Day'}</option>
-        <option value="hours">${fr?'Heures spécifiques':'Specific Hours'}</option>
-      </select>
-    </div>
-  </div>
-  <div id="bt-hours" class="fg-2" style="display:none">
-    <div class="fg"><label class="fl">${fr?'De':'From'}</label><input class="fi" id="bt-start" type="time" value="09:00"/></div>
-    <div class="fg"><label class="fl">${fr?'À':'To'}</label><input class="fi" id="bt-end" type="time" value="17:00"/></div>
-  </div>
-  <div class="fg"><label class="fl">${fr?'Raison (optionnel)':'Reason (optional)'}</label>
-    <select class="fs" id="bt-reason">
-      <option>${fr?'Non disponible':'Not Available'}</option>
-      <option>${fr?'Congé personnel':'Personal Day Off'}</option>
-      <option>${fr?'Vacances':'Holiday'}</option>
-      <option>${fr?'Formation':'Training'}</option>
-      <option>${fr?'Maintenance':'Maintenance'}</option>
-      <option>${fr?'Autre':'Other'}</option>
-    </select>
-  </div>
-  <div class="fg"><label class="fl">${_s.ui_notes}</label><input class="fi" id="bt-notes" placeholder="${fr?'Notes optionnelles':'Optional notes'}"/></div>
+// Visual Schedule Manager — Day/Week/Month views with click-to-block
+var _schedView = 'day';
+var _schedDate = null;
 
-  <!-- Current blocks for selected date -->
-  <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-    <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">${fr?'Blocs existants':'Existing Blocks'}</div>
-    <div id="bt-existing" style="font-size:12px;color:var(--text2)"></div>
-  </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
-   <button class="btn btn-p" onclick="_saveBlockedTime()">🚫 ${fr?'Bloquer':'Block'}</button>`);
-  setTimeout(function(){ _updateBlockedList(); document.getElementById('bt-date')?.addEventListener('change', _updateBlockedList); },50);
+function mBlockTime(initDate){
+  var fr=BIZ.language==='fr';
+  _schedDate = initDate || localDateStr();
+  _schedView = 'day';
+  modal('🗓 '+(fr?'Gestion de disponibilité':'Availability Manager'),'<div id="sched-root"></div>',
+    '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>','lg');
+  setTimeout(_renderSchedule, 50);
 }
 
-function _updateBlockedList(){
-  var date=document.getElementById('bt-date')?.value||localDateStr();
-  var el=document.getElementById('bt-existing');
-  if(!el) return;
+function _renderSchedule(){
+  var root=document.getElementById('sched-root');
+  if(!root) return;
   var fr=BIZ.language==='fr';
-  var blocks=D.blockedSlots.filter(function(b){return b.date===date;});
-  var booked=(D.appointments||[]).filter(function(a){return a.date===date&&a.st!=='Cancelled'&&a.st!=='No-Show';});
-  var html='';
-  blocks.forEach(function(b){
-    html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">'
-      +'<span>🚫 '+(b.allDay?(fr?'Journée entière':'Full Day'):b.startTime+' — '+b.endTime)+' · '+b.reason+'</span>'
-      +'<button class="btn btn-xs" style="color:var(--r)" onclick="D.blockedSlots=D.blockedSlots.filter(function(x){return x.id!==\''+b.id+'\';});_idbSave(SESSION.bizId,\'blockedSlots\',D.blockedSlots);_updateBlockedList();toast(\'Unblocked\',\'success\')">✕</button>'
+  var d=_schedDate||localDateStr();
+  var dt=new Date(d+'T12:00:00');
+  var dayNames=fr?['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var monthNames=fr?['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']:['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  // Header with nav and view toggle
+  var hdr='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+    +'<div style="display:flex;gap:4px">'
+    +'<button class="btn btn-xs btn-s" onclick="_schedNav(-1)">◂</button>'
+    +'<button class="btn btn-xs btn-s" onclick="_schedDate=localDateStr();_renderSchedule()">'+(fr?'Auj.':'Today')+'</button>'
+    +'<button class="btn btn-xs btn-s" onclick="_schedNav(1)">▸</button>'
+    +'</div>'
+    +'<div style="font-size:15px;font-weight:700;color:var(--ink)">'+dayNames[dt.getDay()]+' '+dt.getDate()+' '+monthNames[dt.getMonth()]+' '+dt.getFullYear()+'</div>'
+    +'<div style="display:flex;gap:3px">'
+    +'<button class="btn btn-xs'+((_schedView==='day')?' btn-p':' btn-s')+'" onclick="_schedView=\'day\';_renderSchedule()">'+(fr?'Jour':'Day')+'</button>'
+    +'<button class="btn btn-xs'+((_schedView==='week')?' btn-p':' btn-s')+'" onclick="_schedView=\'week\';_renderSchedule()">'+(fr?'Semaine':'Week')+'</button>'
+    +'<button class="btn btn-xs'+((_schedView==='month')?' btn-p':' btn-s')+'" onclick="_schedView=\'month\';_renderSchedule()">'+(fr?'Mois':'Month')+'</button>'
+    +'</div></div>';
+
+  // Legend
+  var legend='<div style="display:flex;gap:12px;font-size:10px;margin-bottom:8px;color:var(--text2)">'
+    +'<span>⬜ '+(fr?'Disponible':'Available')+'</span>'
+    +'<span style="color:var(--r)">🚫 '+(fr?'Bloqué':'Blocked')+'</span>'
+    +'<span style="color:var(--a)">📅 '+(fr?'Réservé':'Booked')+'</span>'
+    +'<span style="font-style:italic">'+(fr?'Cliquer pour bloquer/débloquer':'Click to block/unblock')+'</span></div>';
+
+  var body='';
+  if(_schedView==='day') body=_schedDayView(d);
+  else if(_schedView==='week') body=_schedWeekView(d);
+  else body=_schedMonthView(d);
+
+  root.innerHTML=hdr+legend+body;
+}
+
+function _schedNav(dir){
+  var dt=new Date(_schedDate+'T12:00:00');
+  if(_schedView==='day') dt.setDate(dt.getDate()+dir);
+  else if(_schedView==='week') dt.setDate(dt.getDate()+(dir*7));
+  else dt.setMonth(dt.getMonth()+dir);
+  _schedDate=dt.toISOString().slice(0,10);
+  _renderSchedule();
+}
+
+function _schedDayView(date){
+  var fr=BIZ.language==='fr';
+  var slots=[];
+  // Generate 15-min slots from 06:00 to 22:00
+  for(var h=6;h<22;h++){
+    for(var m=0;m<60;m+=15){
+      var t=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+      var tEnd=String(m+15>=60?h+1:h).padStart(2,'0')+':'+String((m+15)%60).padStart(2,'0');
+      slots.push({time:t, end:tEnd});
+    }
+  }
+  var html='<div style="max-height:450px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">';
+  slots.forEach(function(s){
+    var status=_getSlotStatus(date, s.time, s.end);
+    var bg=status.type==='blocked'?'rgba(239,68,68,.1)':status.type==='booked'?'rgba(91,127,255,.1)':'transparent';
+    var border=s.time.endsWith(':00')?'border-top:1px solid var(--border)':'border-top:1px solid var(--border2)';
+    var label=s.time.endsWith(':00')?'<span style="font-size:12px;font-weight:700;color:var(--ink)">'+s.time+'</span>':'<span style="font-size:10px;color:var(--text2)">'+s.time+'</span>';
+    var info='';
+    if(status.type==='blocked') info='<span style="font-size:10px;color:var(--r);font-weight:600">🚫 '+_esc(status.reason)+'</span>';
+    else if(status.type==='booked') info='<span style="font-size:10px;color:var(--a);font-weight:600">📅 '+_esc(status.detail)+'</span>';
+
+    html+='<div style="display:flex;align-items:center;gap:10px;padding:3px 10px;'+border+';background:'+bg+';cursor:pointer;min-height:24px" '
+      +'onclick="_toggleSlotBlock(\''+date+'\',\''+s.time+'\',\''+s.end+'\')" '
+      +'onmouseover="if(!this.dataset.st)this.style.background=\'var(--bg3)\'" onmouseout="if(!this.dataset.st)this.style.background=\''+bg+'\'" '
+      +(status.type?'data-st="1"':'')+'>'
+      +'<div style="width:50px;flex-shrink:0">'+label+'</div>'
+      +'<div style="flex:1">'+info+'</div>'
       +'</div>';
   });
-  booked.forEach(function(a){
-    html+='<div style="padding:4px 0;border-bottom:1px solid var(--border)">📅 '+a.startTime+' — '+(a.endTime||'?')+' · <strong>'+_esc(a.custName)+'</strong> · '+_esc(a.serviceName)+'</div>';
-  });
-  if(!html) html='<div style="color:var(--text2);font-style:italic">'+(fr?'Aucun bloc ni rendez-vous':'No blocks or appointments')+'</div>';
-  el.innerHTML=html;
+  html+='</div>';
+  // Quick block buttons
+  html+='<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
+    +'<button class="btn btn-xs" style="background:var(--r-dim);color:var(--r)" onclick="_blockFullDay(\''+date+'\')">🚫 '+(fr?'Bloquer la journée':'Block Full Day')+'</button>'
+    +'<button class="btn btn-xs" style="background:var(--r-dim);color:var(--r)" onclick="_blockHours(\''+date+'\',\'08:00\',\'12:00\')">'+(fr?'Matin':'Morning')+' 8-12</button>'
+    +'<button class="btn btn-xs" style="background:var(--r-dim);color:var(--r)" onclick="_blockHours(\''+date+'\',\'12:00\',\'14:00\')">'+(fr?'Midi':'Lunch')+' 12-14</button>'
+    +'<button class="btn btn-xs" style="background:var(--r-dim);color:var(--r)" onclick="_blockHours(\''+date+'\',\'14:00\',\'18:00\')">'+(fr?'Après-midi':'Afternoon')+' 14-18</button>'
+    +'<button class="btn btn-xs btn-g" onclick="_clearDayBlocks(\''+date+'\')">'+(fr?'Tout débloquer':'Clear All Blocks')+'</button>'
+    +'</div>';
+  return html;
 }
 
-function _saveBlockedTime(){
-  var date=document.getElementById('bt-date')?.value;
-  var type=document.getElementById('bt-type')?.value;
-  var start=document.getElementById('bt-start')?.value||'09:00';
-  var end=document.getElementById('bt-end')?.value||'17:00';
-  var reason=document.getElementById('bt-reason')?.value||'Not Available';
-  var notes=document.getElementById('bt-notes')?.value||'';
-  if(!date){toast('Select a date','error');return;}
-  var block={id:'BLK-'+Date.now(),date:date,allDay:type==='allday',startTime:type==='allday'?'00:00':start,endTime:type==='allday'?'23:59':end,reason:reason,notes:notes};
-  D.blockedSlots.push(block);
+function _schedWeekView(date){
+  var fr=BIZ.language==='fr';
+  var dt=new Date(date+'T12:00:00');
+  var dow=dt.getDay();
+  var mon=new Date(dt); mon.setDate(mon.getDate()-(dow===0?6:dow-1)); // Monday
+  var dayLabels=fr?['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">';
+  html+='<thead><tr><th style="width:50px;padding:4px;border:1px solid var(--border);background:var(--bg3)"></th>';
+  var weekDates=[];
+  for(var d=0;d<7;d++){
+    var dd=new Date(mon); dd.setDate(dd.getDate()+d);
+    var ds=dd.toISOString().slice(0,10);
+    weekDates.push(ds);
+    var isToday=ds===localDateStr();
+    html+='<th style="padding:4px 2px;border:1px solid var(--border);background:'+(isToday?'var(--a-dim)':'var(--bg3)')+';cursor:pointer;font-size:10px" onclick="_schedDate=\''+ds+'\';_schedView=\'day\';_renderSchedule()">'+dayLabels[d]+'<br>'+dd.getDate()+'</th>';
+  }
+  html+='</tr></thead><tbody>';
+  // Hour rows (full hours only for week view)
+  for(var h=7;h<21;h++){
+    var t=String(h).padStart(2,'0')+':00';
+    var tEnd=String(h+1).padStart(2,'0')+':00';
+    html+='<tr><td style="padding:2px 4px;border:1px solid var(--border);font-size:10px;font-weight:600;color:var(--text2);text-align:center">'+t+'</td>';
+    for(var d2=0;d2<7;d2++){
+      var st=_getSlotStatus(weekDates[d2],t,tEnd);
+      var bg2=st.type==='blocked'?'rgba(239,68,68,.15)':st.type==='booked'?'rgba(91,127,255,.15)':'';
+      var cell=st.type==='blocked'?'🚫':st.type==='booked'?'📅':'';
+      html+='<td style="padding:2px;border:1px solid var(--border);background:'+bg2+';text-align:center;cursor:pointer;font-size:10px" '
+        +'onclick="_toggleSlotBlock(\''+weekDates[d2]+'\',\''+t+'\',\''+tEnd+'\')" '
+        +'title="'+(st.type?st.reason||st.detail||'':'Click to block')+'">'
+        +cell+'</td>';
+    }
+    html+='</tr>';
+  }
+  html+='</tbody></table></div>';
+  return html;
+}
+
+function _schedMonthView(date){
+  var fr=BIZ.language==='fr';
+  var dt=new Date(date+'T12:00:00');
+  var y=dt.getFullYear(), m=dt.getMonth();
+  var first=new Date(y,m,1);
+  var startDay=(first.getDay()+6)%7; // Monday=0
+  var daysInMonth=new Date(y,m+1,0).getDate();
+  var dayLabels=fr?['L','M','M','J','V','S','D']:['M','T','W','T','F','S','S'];
+  var html='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:11px">';
+  dayLabels.forEach(function(dl){html+='<div style="text-align:center;font-weight:700;color:var(--text2);padding:4px">'+dl+'</div>';});
+  // Empty cells before month start
+  for(var e=0;e<startDay;e++) html+='<div></div>';
+  for(var d=1;d<=daysInMonth;d++){
+    var ds=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var blocks=D.blockedSlots.filter(function(b){return b.date===ds;});
+    var appts=(D.appointments||[]).filter(function(a){return a.date===ds&&a.st!=='Cancelled'&&a.st!=='No-Show';});
+    var isToday=ds===localDateStr();
+    var hasFullBlock=blocks.some(function(b){return b.allDay;});
+    var bg3=hasFullBlock?'rgba(239,68,68,.12)':blocks.length?'rgba(239,68,68,.06)':isToday?'var(--a-dim)':'var(--bg3)';
+    html+='<div style="padding:4px;border-radius:6px;background:'+bg3+';text-align:center;cursor:pointer;min-height:38px" '
+      +'onclick="_schedDate=\''+ds+'\';_schedView=\'day\';_renderSchedule()">'
+      +'<div style="font-weight:'+(isToday?'800':'500')+';color:'+(isToday?'var(--a)':'var(--ink)')+'">'+d+'</div>';
+    if(blocks.length) html+='<div style="font-size:8px;color:var(--r)">🚫'+blocks.length+'</div>';
+    if(appts.length) html+='<div style="font-size:8px;color:var(--a)">📅'+appts.length+'</div>';
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+function _getSlotStatus(date, startTime, endTime){
+  var blocks=D.blockedSlots.filter(function(b){return b.date===date;});
+  for(var i=0;i<blocks.length;i++){
+    var b=blocks[i];
+    if(b.allDay) return {type:'blocked',reason:b.reason||'Blocked'};
+    if(startTime<b.endTime && endTime>b.startTime) return {type:'blocked',reason:b.reason||'Blocked'};
+  }
+  var appts=(D.appointments||[]).filter(function(a){return a.date===date&&a.st!=='Cancelled'&&a.st!=='No-Show';});
+  for(var j=0;j<appts.length;j++){
+    var a=appts[j];
+    if(startTime<(a.endTime||a.startTime) && endTime>a.startTime) return {type:'booked',detail:a.custName+' — '+a.serviceName};
+  }
+  return {type:''};
+}
+
+function _toggleSlotBlock(date, start, end){
+  // If slot is blocked, unblock it
+  var existing=D.blockedSlots.findIndex(function(b){return b.date===date&&!b.allDay&&b.startTime===start&&b.endTime===end;});
+  if(existing>=0){
+    D.blockedSlots.splice(existing,1);
+  } else {
+    // If booked, can't block
+    var st=_getSlotStatus(date,start,end);
+    if(st.type==='booked'){toast('📅 '+(BIZ.language==='fr'?'Créneau réservé — annulez d\'abord':'Slot booked — cancel first'),'error');return;}
+    // Block it
+    D.blockedSlots.push({id:'BLK-'+Date.now()+Math.random().toString(36).slice(2,5),date:date,allDay:false,startTime:start,endTime:end,reason:'Not Available',notes:''});
+  }
   _idbSave(SESSION.bizId,'blockedSlots',D.blockedSlots).catch(function(){});
-  addAudit('Time blocked',date+(type==='allday'?' (all day)':' '+start+'-'+end)+' — '+reason);
-  closeModal();
-  toast('🚫 '+(BIZ.language==='fr'?'Temps bloqué':'Time blocked'),'success');
-  nav('appointments');
+  _renderSchedule();
+}
+
+function _blockFullDay(date){
+  // Remove any existing blocks for this day, add full day block
+  D.blockedSlots=D.blockedSlots.filter(function(b){return b.date!==date;});
+  D.blockedSlots.push({id:'BLK-'+Date.now(),date:date,allDay:true,startTime:'00:00',endTime:'23:59',reason:'Not Available',notes:''});
+  _idbSave(SESSION.bizId,'blockedSlots',D.blockedSlots).catch(function(){});
+  addAudit('Day blocked',date);
+  toast('🚫 '+(BIZ.language==='fr'?'Journée bloquée':'Day blocked'),'success');
+  _renderSchedule();
+}
+
+function _blockHours(date, start, end){
+  // Check for existing block at this range
+  var exists=D.blockedSlots.find(function(b){return b.date===date&&b.startTime===start&&b.endTime===end;});
+  if(exists){toast('Already blocked','info');return;}
+  D.blockedSlots.push({id:'BLK-'+Date.now()+Math.random().toString(36).slice(2,5),date:date,allDay:false,startTime:start,endTime:end,reason:'Not Available',notes:''});
+  _idbSave(SESSION.bizId,'blockedSlots',D.blockedSlots).catch(function(){});
+  _renderSchedule();
+}
+
+function _clearDayBlocks(date){
+  D.blockedSlots=D.blockedSlots.filter(function(b){return b.date!==date;});
+  _idbSave(SESSION.bizId,'blockedSlots',D.blockedSlots).catch(function(){});
+  toast('✅ '+(BIZ.language==='fr'?'Blocs supprimés':'Blocks cleared'),'success');
+  _renderSchedule();
 }
 
 // Check if a time slot is available (not blocked and not booked)
