@@ -5135,11 +5135,24 @@ function mInvoiceNew(){const _s=_L();
 
   modal('📄 Create Invoice',`
   <div class="fg-2">
-    <div class="fg"><label class="fl">Customer *</label>
-      <select class="fs" id="inv-cust">
-        <option value="">-- Select customer --</option>
-        ${D.cust.map(c=>`<option value="${_esc(c.name)}">${_esc(c.name)}</option>`).join('')}
-      </select>
+    <div class="fg"><label class="fl">${BIZ.language==='fr'?'Client *':'Customer *'}</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select class="fs" id="inv-cust" style="flex:1">
+          <option value="">-- ${BIZ.language==='fr'?'Sélectionner un client':'Select customer'} --</option>
+          ${D.cust.map(c=>`<option value="${_esc(c.name)}">${_esc(c.name)}</option>`).join('')}
+        </select>
+        <button type="button" class="btn btn-g btn-xs" style="white-space:nowrap;padding:0 10px;height:34px" onclick="
+          var row=document.getElementById('inv-newcust-row');
+          row.style.display=row.style.display==='none'?'flex':'none';
+          if(row.style.display==='flex') document.getElementById('inv-newcust-name').focus();
+        ">+ ${BIZ.language==='fr'?'Nouveau':'New'}</button>
+      </div>
+      <div id="inv-newcust-row" style="display:none;gap:6px;margin-top:6px;align-items:center">
+        <input class="fi" id="inv-newcust-name" placeholder="${BIZ.language==='fr'?'Nom du client':'Customer name'}" style="flex:1;margin:0" onkeydown="if(event.key==='Enter'){event.preventDefault();_invAddNewCust();}"/>
+        <input class="fi" id="inv-newcust-phone" placeholder="${BIZ.language==='fr'?'Téléphone':'Phone'}" style="width:130px;margin:0"/>
+        <button type="button" class="btn btn-p btn-xs" style="white-space:nowrap;padding:0 12px;height:34px" onclick="_invAddNewCust()">Add</button>
+        <button type="button" class="btn btn-s btn-xs" style="height:34px;padding:0 10px" onclick="document.getElementById('inv-newcust-row').style.display='none'">✕</button>
+      </div>
     </div>
     <div class="fg"><label class="fl">${_s.inv_modal_date}</label>
       <input class="fi" type="date" id="inv-date" value="${localDateStr()}"/>
@@ -5331,6 +5344,40 @@ function _invUpdateTotals(){
 }
 
 // ── Save the invoice as a sale record ─────────────────────────
+function _invAddNewCust(){
+  var name = document.getElementById('inv-newcust-name')?.value?.trim();
+  var phone = document.getElementById('inv-newcust-phone')?.value?.trim();
+  if(!name){ toast(BIZ.language==='fr'?'Entrez le nom du client':'Enter customer name','error'); return; }
+  // Check if customer already exists
+  var existing = D.cust.find(function(c){ return c.name.toLowerCase()===name.toLowerCase(); });
+  if(!existing){
+    // Generate new customer ID
+    var _maxCNum=D.cust.reduce(function(m,c){var n=parseInt((c.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0);
+    var newId='C-'+String(_maxCNum+1).padStart(4,'0');
+    var newCust={id:newId, name:name, phone:phone||'', email:'', type:'Regular', tier:'Bronze', visits:0, totalSpent:0, notes:'Added from invoice'};
+    D.cust.push(newCust);
+    _dbSaveCust(newCust);
+    addAudit('Customer added',newId+' — '+name+' (from invoice)');
+  }
+  // Add to select and select it
+  var sel=document.getElementById('inv-cust');
+  if(sel){
+    var optExists=false;
+    for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===name){optExists=true;sel.selectedIndex=i;break;}}
+    if(!optExists){
+      var opt=document.createElement('option');
+      opt.value=name; opt.textContent=name;
+      sel.appendChild(opt);
+      sel.value=name;
+    }
+  }
+  // Clear and hide the new customer row
+  document.getElementById('inv-newcust-name').value='';
+  document.getElementById('inv-newcust-phone').value='';
+  document.getElementById('inv-newcust-row').style.display='none';
+  toast('✅ '+name+(BIZ.language==='fr'?' ajouté(e)':' added'),'success');
+}
+
 function _saveInvoice(){var _s=_L();
   const cust = document.getElementById('inv-cust')?.value?.trim();
   if(!cust){ toast(_L().t_select_cust,'error'); return; }
