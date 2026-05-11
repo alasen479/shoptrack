@@ -1132,15 +1132,31 @@ function _addExpCat(){var _s=_L();
   var val=document.getElementById('ae-newcat-inp').value.trim();
   if(!val){toast(_L().t_cat_name,'error');return;}
   if(D.expCats.indexOf(val)===-1) D.expCats.push(val);
-  var hidden=document.getElementById('ae-cat');
-  if(hidden) hidden.value=val;
-  if(document.getElementById('ae-cat-wrap')){
-    _mkSearchSelect('ae-cat-wrap', D.expCats.map(function(c){return{val:c,label:c};}), val,
-      function(v){ var h=document.getElementById('ae-cat'); if(h) h.value=v; }, 'Expense category…');
+  // Add to native select and select it
+  var sel=document.getElementById('ae-cat');
+  if(sel){
+    // Check if option already exists
+    var exists=false;
+    for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===val){exists=true;sel.selectedIndex=i;break;}}
+    if(!exists){
+      var opt=document.createElement('option');
+      opt.value=val; opt.textContent=val;
+      sel.appendChild(opt);
+      sel.value=val;
+    }
+  }
+  // Also update edit expense select if open
+  var editSel=document.getElementById('edit-exp-cat');
+  if(editSel){
+    var ex2=false;
+    for(var j=0;j<editSel.options.length;j++){if(editSel.options[j].value===val){ex2=true;break;}}
+    if(!ex2){var o2=document.createElement('option');o2.value=val;o2.textContent=val;editSel.appendChild(o2);}
   }
   document.getElementById('ae-newcat-inp').value='';
   var row=document.getElementById('ae-newcat-row'); if(row) row.style.display='none';
   toast(_L().t_cat_prefix2+val+'" added','success');
+  // Persist categories to Supabase
+  _saveCatsToDb();
 }
 
 // ── Expense line items helpers ──────────────────────────────────
@@ -3843,7 +3859,6 @@ async function _syncCatsFromDB(){const _s=_L();
   try {
     var res = await _sb.from('categories').select('name,type').eq('biz_id', SESSION.bizId);
     if(!res.data || !res.data.length) return;
-    // Merge: DB is authoritative — keep DB list, preserving order
     var inv  = res.data.filter(function(r){return r.type==='inv';}).map(function(r){return r.name;});
     var exp  = res.data.filter(function(r){return r.type==='exp';}).map(function(r){return r.name;});
     var svc  = res.data.filter(function(r){return r.type==='svc';}).map(function(r){return r.name;});
@@ -3853,6 +3868,15 @@ async function _syncCatsFromDB(){const _s=_L();
     if(svc.length)  D.svcCats    = svc;
     if(vend.length) D.vendorCats = vend;
   } catch(e) { console.warn('[_syncCatsFromDB]', e.message); }
+}
+
+async function _saveCatsToDb(){
+  if(!_sb || !SESSION.bizId || SESSION.isSuperAdmin) return;
+  try {
+    // Upsert all expense categories
+    var rows = D.expCats.map(function(c){ return {biz_id:SESSION.bizId, name:c, type:'exp'}; });
+    await _sb.from('categories').upsert(rows, {onConflict:'biz_id,name,type'});
+  } catch(e) { console.warn('[_saveCatsToDb]', e.message); }
 }
 
 async function mAddItem(_returnSelectId){const _s=_L();
@@ -8201,7 +8225,7 @@ async function mAddExp(){const _s=_L();
     <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" type="date" id="ae-dt" value="${today}"/></div>
     <div class="fg"><label class="fl">${_s.ui_category}</label>
       <div style="display:flex;gap:6px;align-items:center">
-        <div id="ae-cat-wrap" style="position:relative;flex:1"></div><input type="hidden" id="ae-cat" value="${_esc(D.expCats[0]||'Rent & Lease')}"/>
+        <select class="fs" id="ae-cat" style="flex:1">${D.expCats.map(c=>`<option value="${_esc(c)}">${_esc(c)}</option>`).join('')}</select>
         <button type="button" class="btn btn-g btn-xs" style="white-space:nowrap;padding:0 10px;height:34px" onclick="
           var row=document.getElementById('ae-newcat-row');
           row.style.display=row.style.display==='none'?'flex':'none';
@@ -8302,7 +8326,7 @@ async function mAddExp(){const _s=_L();
     var newExp={
       id:id,
       dt:document.getElementById('ae-dt').value,
-      cat:_ssGetVal('ae-cat-wrap')||document.getElementById('ae-cat')?.value||'Other',
+      cat:document.getElementById('ae-cat')?.value||'Other',
       payee:payee, amt:amtBase,
       type:document.getElementById('ae-type').value,
       method:document.getElementById('ae-method').value,
@@ -8337,12 +8361,6 @@ async function mAddExp(){const _s=_L();
     }
    })()">💾 Record Expense</button>`);
 }
-  // Init expense category dropdown explicitly after modal renders
-  setTimeout(function(){
-    var expC=D.expCats.length?D.expCats:['Rent & Lease','Salaries & Wages','Utilities','Internet & Phone','Marketing & Advertising','Transport & Fuel','Packaging & Supplies','Repairs & Maintenance','Insurance','Staff Bonus','Cleaning','Photography','Bank Charges','Taxes & Duties','Miscellaneous','Other'];
-    var cur=document.getElementById('ae-cat')?document.getElementById('ae-cat').value:expC[0];
-    if(document.getElementById('ae-cat-wrap')) _mkSearchSelect('ae-cat-wrap',expC.map(function(c){return{val:c,label:c};}),cur||expC[0],function(v){var h=document.getElementById('ae-cat');if(h)h.value=v;},'Expense category…');
-  },60);
 function mDeleteExp(id){const _s=_L();
   var e=D.exp.find(function(x){return x.id===id;}); if(!e) return;
   modal('&#x1F5D1; Delete Expense',
