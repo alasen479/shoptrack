@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1778540788");
+console.log("ShopTrack v2.7 - build:1778542781");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -19,6 +19,12 @@ if(typeof Chart==='undefined'){
   var s=document.createElement('script');
   s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
   document.head.appendChild(s);
+}
+// QR code generator — tiny (~10KB) pure-JS, no deps. Loaded lazily on first booking-link visit.
+if(typeof qrcode==='undefined'){
+  var qs=document.createElement('script');
+  qs.src='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
+  document.head.appendChild(qs);
 }
 
 
@@ -25296,6 +25302,150 @@ async function _applyPriceFix(){
   nav('services');
 }
 
+// ── QR CODE MODAL ─────────────────────────────────────────────
+// Generates a QR code as SVG from any URL. Used for the booking link
+// but generic — pass any URL + title.
+// Library: qrcode-generator (jsDelivr, lazy-loaded at app start).
+function mShowQRCode(url, title){
+  var fr = BIZ.language==='fr';
+  title = title || (fr?'Code QR':'QR Code');
+  // If library hasn't finished loading, retry after 200ms
+  if(typeof qrcode === 'undefined'){
+    toast(fr?'Chargement du générateur QR…':'Loading QR generator…','info');
+    setTimeout(function(){ mShowQRCode(url, title); }, 250);
+    return;
+  }
+  // Type number 0 = auto, error-correction 'M' = ~15% error tolerance (good for print)
+  var qr;
+  try {
+    qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+  } catch(e){
+    console.error('[QR] generation failed', e);
+    toast(fr?'Échec de la génération du code QR':'QR generation failed','error');
+    return;
+  }
+  // Render as SVG — sharp at any size, great for print
+  var svgString = qr.createSvgTag({ cellSize: 8, margin: 2, scalable: true });
+
+  var body = '<div style="text-align:center">'
+    + '<div style="font-size:13px;color:var(--text2);margin-bottom:14px;font-style:italic">'
+      + (fr?'Scannez avec un téléphone pour ouvrir la page de réservation':'Scan with a phone to open the booking page')
+    + '</div>'
+    + '<div id="qr-canvas-wrap" style="display:inline-block;background:#fff;padding:18px;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 10px rgba(0,0,0,.06);max-width:300px;width:100%">'
+    +   '<div style="font-size:11px;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">'+_esc(title)+'</div>'
+    +   '<div id="qr-svg-holder" style="width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center">'+svgString+'</div>'
+    +   '<div style="font-size:10px;color:#475569;margin-top:8px;font-family:var(--mono);word-break:break-all">'+_esc(url)+'</div>'
+    + '</div>'
+    + '<div style="margin-top:14px;font-size:12px;color:var(--text2)">'
+      + (fr?'Astuce : Imprimez et affichez-le au comptoir ou ajoutez-le aux cartes de visite, reçus et flyers.':'Tip: Print and display at your counter, or add it to business cards, receipts, and flyers.')
+    + '</div></div>';
+
+  var foot = '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>'
+    + '<button class="btn btn-g btn-sm" onclick="_qrCopyImage()">📋 '+(fr?'Copier image':'Copy image')+'</button>'
+    + '<button class="btn btn-g btn-sm" onclick="_qrPrint(\''+_esc(title).replace(/'/g,"\\'")+'\')">🖨 '+(fr?'Imprimer':'Print')+'</button>'
+    + '<button class="btn btn-p" onclick="_qrDownload(\''+_esc(title).replace(/'/g,"\\'")+'\')">⬇ '+(fr?'Télécharger PNG':'Download PNG')+'</button>';
+
+  modal('🔳 '+title, body, foot);
+}
+
+// Convert the displayed SVG to a high-res PNG and trigger download
+function _qrDownload(label){
+  var fr = BIZ.language==='fr';
+  _qrSvgToPng(function(blob, dataUrl){
+    if(!blob){ toast(fr?'Échec du téléchargement':'Download failed','error'); return; }
+    var a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = (label||'qr-code').replace(/[^a-z0-9-]+/gi,'-').toLowerCase() + '.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast(fr?'✓ Téléchargé':'✓ Downloaded','success');
+  });
+}
+
+// Copy QR PNG to clipboard (works on Chrome/Edge; Safari falls back to download)
+function _qrCopyImage(){
+  var fr = BIZ.language==='fr';
+  _qrSvgToPng(function(blob){
+    if(!blob){ toast(fr?'Échec':'Copy failed','error'); return; }
+    if(navigator.clipboard && window.ClipboardItem){
+      navigator.clipboard.write([new ClipboardItem({'image/png': blob})]).then(function(){
+        toast(fr?'✓ Image copiée':'✓ Image copied','success');
+      }).catch(function(){
+        toast(fr?'Le presse-papiers ne prend pas en charge les images sur ce navigateur':'Clipboard images not supported here — try Download','info');
+      });
+    } else {
+      toast(fr?'Utilisez Télécharger sur ce navigateur':'Use Download on this browser','info');
+    }
+  });
+}
+
+// Open a print-friendly window with the QR centred at a comfortable physical size
+function _qrPrint(label){
+  var fr = BIZ.language==='fr';
+  var svgHolder = document.getElementById('qr-svg-holder');
+  if(!svgHolder){ return; }
+  var svg = svgHolder.querySelector('svg');
+  if(!svg){ return; }
+  var serializer = new XMLSerializer();
+  var svgStr = serializer.serializeToString(svg);
+  var w = window.open('', '_blank', 'width=600,height=720');
+  if(!w){ toast(fr?'Fenêtre bloquée':'Popup blocked','error'); return; }
+  w.document.write(
+    '<!doctype html><html><head><title>'+_esc(label||'QR Code')+'</title>'
+    + '<style>'
+    + 'body{font-family:system-ui,-apple-system,sans-serif;margin:0;padding:40px;text-align:center;color:#0f172a}'
+    + '.card{display:inline-block;border:2px solid #e2e8f0;border-radius:14px;padding:30px 30px 24px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.08)}'
+    + 'h1{font-size:20px;margin:0 0 6px;letter-spacing:1px;text-transform:uppercase}'
+    + '.qr{width:300px;height:300px;margin:18px auto}'
+    + '.qr svg{width:100%;height:100%}'
+    + '.sub{font-size:13px;color:#475569;margin-top:6px}'
+    + '.cta{font-size:15px;font-weight:700;margin-top:14px;color:#0f172a}'
+    + '@media print{body{padding:0}.card{border:none;box-shadow:none}}'
+    + '</style></head><body>'
+    + '<div class="card">'
+    +   '<h1>'+_esc(label||'Book Online')+'</h1>'
+    +   '<div class="sub">'+(fr?'Scannez avec votre téléphone':'Scan with your phone')+'</div>'
+    +   '<div class="qr">'+svgStr+'</div>'
+    +   '<div class="cta">'+(fr?'📅 Réservez en ligne, 24h/24':'📅 Book online, 24/7')+'</div>'
+    + '</div>'
+    + '<script>setTimeout(function(){window.print();},250);</'+'script>'
+    + '</body></html>'
+  );
+  w.document.close();
+}
+
+// Rasterise the SVG QR to a PNG blob via canvas
+function _qrSvgToPng(cb){
+  var holder = document.getElementById('qr-svg-holder');
+  if(!holder){ cb(null); return; }
+  var svg = holder.querySelector('svg');
+  if(!svg){ cb(null); return; }
+  var serializer = new XMLSerializer();
+  var svgStr = serializer.serializeToString(svg);
+  // Ensure xmlns is present so the data: URL parses
+  if(!svgStr.match(/xmlns=/)) svgStr = svgStr.replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ');
+  // High-res for print/scanning (600×600)
+  var size = 600;
+  var img = new Image();
+  var url = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgStr)));
+  img.onload = function(){
+    var canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,size,size);
+    ctx.drawImage(img, 0, 0, size, size);
+    canvas.toBlob(function(blob){
+      cb(blob, canvas.toDataURL('image/png'));
+    }, 'image/png');
+  };
+  img.onerror = function(){ cb(null); };
+  img.src = url;
+}
+
 // ── BOOKING PAGE SETTINGS ─────────────────────────────────────
 function pgBookingSettings(){const _s=_L();
   const link = (window.location.origin||'https://shoptrack.org')+'/booking.html?biz='+(SESSION.bizId||'');
@@ -25314,6 +25464,7 @@ function pgBookingSettings(){const _s=_L();
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-g btn-sm" onclick="const m=encodeURIComponent('Book an appointment with us! 📅\\n\\n${link}\\n\\nChoose your service and time — we confirm right away!');window.open('https://wa.me/?text='+m,'_blank')">💬 Share on WhatsApp</button>
+      <button class="btn btn-s btn-sm" onclick="mShowQRCode('${link}','${_esc(BIZ.name||'ShopTrack').replace(/'/g,"\\'")}')">🔳 QR Code</button>
       <button class="btn btn-s btn-sm" onclick="window.open('${link}','_blank')">👁 Preview Page</button>
     </div>
   </div>
