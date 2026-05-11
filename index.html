@@ -850,7 +850,7 @@ body.light .ai-out.has-content{background:#f8faff;border-color:var(--a)}
   var scripts = [
     'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
-    '/app.js?v=1778499086'
+    '/app.js?v=1778499460'
   ];
   var i = 0;
   function loadNext(){
@@ -894,6 +894,20 @@ window.addEventListener('unhandledrejection', function(e){
      SEO LANDING PAGE — crawlable by Google, visible before JS loads
      Hidden once app JS loads and user is authenticated
      ═══════════════════════════════════════════════════════════ -->
+<script>
+// If user has a session, skip landing page entirely — prevents flash on refresh
+(function(){
+  try{
+    var s=localStorage.getItem('st_session')||sessionStorage.getItem('st_session');
+    if(s){
+      var p=JSON.parse(s);
+      if(p&&(p.bizId||p.isSuperAdmin)){
+        document.write('<style>#landing-page{display:none!important}</style>');
+      }
+    }
+  }catch(e){}
+})();
+</script>
 <div id="landing-page" style="font-family:'Plus Jakarta Sans','Segoe UI',sans-serif;color:#1e293b;background:#ffffff;position:fixed;inset:0;z-index:9998;overflow-y:auto;-webkit-overflow-scrolling:touch">
 
 <!-- NAV -->
@@ -1041,6 +1055,18 @@ window.addEventListener('unhandledrejection', function(e){
 </div>
 
 
+<script>
+// If session exists, show login screen (app.js will hide it and show the app)
+// If no session, login screen stays hidden and landing page shows
+(function(){
+  try{
+    var s=localStorage.getItem('st_session')||sessionStorage.getItem('st_session');
+    if(s){var p=JSON.parse(s);if(p&&(p.bizId||p.isSuperAdmin)){
+      document.write('<style>#login-screen{display:flex!important}</style>');
+    }}
+  }catch(e){}
+})();
+</script>
 <div id="login-screen" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0d0f1c 0%,#131626 50%,#0f1120 100%);display:none;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;overflow-y:auto">
   <div style="width:100%;max-width:440px;padding:24px;box-sizing:border-box;margin:auto">
 
