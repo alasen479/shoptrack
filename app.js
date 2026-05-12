@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1778545680");
+console.log("ShopTrack v2.7 - build:1778549544");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -24910,11 +24910,18 @@ function _apptListHTML(){const _s=_L();
       <td><span style="background:${_apptBg(a.st)};color:${_apptCol(a.st)};border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap">${a.st}</span></td>
       <td><span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${a.totalAmt>0?'var(--g)':'var(--text3)'}">${a.totalAmt>0?fmt(a.totalAmt):'—'}</span></td>
       <td onclick="event.stopPropagation()">
-        <div class="btn-row" style="gap:3px;flex-wrap:nowrap">
-          ${a.st==='Completed'&&!a.saleId&&(a.totalAmt||0)>0?`<button class="btn btn-p btn-xs" onclick="_apptCheckout('${a.id}')" title="Record payment">💳</button>`:''}
-          ${!['Completed','Cancelled','No-Show'].includes(a.st)?`<button class="btn btn-xs" style="background:var(--y-dim);color:var(--y)" onclick="mRescheduleAppt('${a.id}')" title="Reschedule">🔄</button>`:''}
-          ${!['Completed','Cancelled','No-Show'].includes(a.st)?`<button class="btn btn-xs" style="background:var(--r-dim);color:var(--r)" onclick="_cancelAppt('${a.id}')" title="Cancel">✕</button>`:''}
-          ${a.custPhone?`<button class="btn btn-g btn-xs" onclick="_apptWA('${a.id}')" title="WhatsApp">💬</button>`:''}
+        <div class="btn-row" style="gap:3px;flex-wrap:nowrap;justify-content:flex-end">
+          ${a.st==='Reserved' && a.custPhone ? `<button class="btn btn-xs" style="background:var(--g);color:#fff;font-weight:700" onclick="_apptConfirmAndNotify('${a.id}')" title="Confirm &amp; notify customer">✓</button>` : ''}
+          ${a.st==='Reserved' && !a.custPhone ? `<button class="btn btn-xs" style="background:var(--g);color:#fff;font-weight:700" onclick="_apptQuickStatus('${a.id}','Confirmed')" title="Confirm (no phone on file)">✓</button>` : ''}
+          ${a.st==='Confirmed' ? `<button class="btn btn-xs" style="background:var(--a);color:#fff" onclick="_apptQuickStatus('${a.id}','In Progress')" title="Start appointment">▶</button>` : ''}
+          ${a.st==='In Progress' ? `<button class="btn btn-xs" style="background:var(--g);color:#fff" onclick="_apptQuickStatus('${a.id}','Completed')" title="Mark complete">✓</button>` : ''}
+          ${a.st==='Completed' && !a.saleId && (a.totalAmt||0)>0 ? `<button class="btn btn-p btn-xs" onclick="_apptCheckout('${a.id}')" title="Record payment">💳</button>` : ''}
+          ${a.st==='Completed' && (a.saleId || (a.totalAmt||0)===0) ? `<button class="btn btn-g btn-xs" onclick="genApptInvoice('${a.id}')" title="View invoice">🧾</button>` : ''}
+          ${(a.st==='Cancelled' || a.st==='No-Show') ? `<button class="btn btn-xs" style="background:var(--a-dim);color:var(--a)" onclick="_apptQuickStatus('${a.id}','Reserved')" title="Restore to Reserved">↻</button>` : ''}
+          ${!['Completed','Cancelled','No-Show'].includes(a.st) ? `<button class="btn btn-xs" style="background:var(--y-dim);color:var(--y)" onclick="mRescheduleAppt('${a.id}')" title="Reschedule">🔄</button>` : ''}
+          ${a.custPhone ? `<button class="btn btn-g btn-xs" onclick="_apptWA('${a.id}')" title="WhatsApp">💬</button>` : ''}
+          ${!['Completed','Cancelled','No-Show'].includes(a.st) ? `<button class="btn btn-xs" style="background:var(--o-dim);color:var(--o)" onclick="_cancelAppt('${a.id}')" title="Cancel appointment">✕</button>` : ''}
+          <button class="btn btn-xs" style="background:var(--r-dim);color:var(--r)" onclick="_deleteAppt('${a.id}')" title="Delete permanently">🗑</button>
         </div>
       </td>
     </tr>`).join('')}
