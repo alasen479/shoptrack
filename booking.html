@@ -220,13 +220,20 @@ textarea.fi{resize:vertical;min-height:70px}
     <div class="card">
       <div class="success-wrap">
         <div class="success-icon">🎉</div>
-        <div class="success-title">Booking Confirmed!</div>
-        <div class="badge">✓ Appointment Received</div>
-        <div class="success-sub" id="success-sub">Your appointment has been booked successfully.</div>
+        <div class="success-title">Booking Received!</div>
+        <div class="badge">✓ Awaiting Confirmation</div>
+        <div class="success-sub" id="success-sub">Your appointment request has been received.</div>
         <div id="success-details" style="text-align:left;margin-bottom:20px"></div>
-        <button class="btn btn-wa" onclick="sendWhatsApp()">
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;margin-bottom:16px;text-align:left;display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:22px">📲</div>
+          <div>
+            <div style="font-weight:700;color:#15803d;font-size:14px;margin-bottom:2px">The business has been notified</div>
+            <div style="font-size:12px;color:#166534;line-height:1.5">You'll receive a WhatsApp confirmation as soon as they review your request — usually within a few minutes.</div>
+          </div>
+        </div>
+        <button class="btn btn-wa" onclick="notifyBusinessAgain()" id="btn-notify-again" style="display:none">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
-          Send Confirmation via WhatsApp
+          Notify Business Again
         </button>
         <button class="btn btn-s" style="width:100%" onclick="resetBooking()">Book Another Appointment</button>
       </div>
@@ -666,20 +673,21 @@ async function confirmBooking(){
     // Add to local APPTS so double-booking is prevented if user books again
     APPTS.push({date:selDate, start_time:selTime, end_time:selTimeEnd});
 
-    // Build confirmation message for WhatsApp
-    const note = BIZ.booking_note || 'Thank you for booking with us! We look forward to seeing you.';
+    // Build OWNER-targeted notification message — opens automatically after booking
+    // so the business owner gets the request in their WhatsApp immediately.
     const pt2 = selSvc.price_type || 'flat';
     const priceStr = ['per_hour','per_min','per_day','per_week'].includes(pt2)
       ? `${fmtSvcPrice(selSvc)}${selSvc.duration_mins>0?" (Est. "+fmtSvcTotal(selSvc)+" for "+selSvc.duration_mins+" min)":""}`
       : fmtSvcPrice(selSvc);
-    window._waMsg = `Hi ${name.split(' ')[0]}! Your appointment is confirmed ✅\n\n`
-      +`🏪 *${BIZ.name}*\n`
+    window._waOwnerMsg = `🆕 *New Booking Request*\n\n`
+      +`👤 *${name}*\n`
+      +`📞 ${phone}\n\n`
       +`📋 *${selSvc.name}*\n`
       +`💰 ${priceStr}\n`
       +`📅 ${dateFmt}\n`
-      +`🕐 ${timeLabel(selTime)} – ${timeLabel(selTimeEnd)}\n\n`
-      +`${note}\n\n`
-      +`_Reply to this message if you need to reschedule._`;
+      +`🕐 ${timeLabel(selTime)} – ${timeLabel(selTimeEnd)}\n`
+      +(notes?`📝 _Note: ${notes}_\n`:'')
+      +`\n_Open ShopTrack to confirm or reschedule this booking._`;
 
     // Show confirmation
     const pt3 = selSvc.price_type || 'flat';
@@ -687,7 +695,7 @@ async function confirmBooking(){
       ? `<div class="summary-row"><div class="summary-icon">💰</div><div><div class="summary-lbl">Rate</div><div class="summary-val">${fmtSvcPrice(selSvc)}</div></div></div>
          <div class="summary-row" style="border-bottom:none"><div class="summary-icon">🧾</div><div><div class="summary-lbl">Est. Total</div><div class="summary-val" style="color:var(--g)">${fmtSvcTotal(selSvc)}</div></div></div>`
       : `<div class="summary-row" style="border-bottom:none"><div class="summary-icon">💰</div><div><div class="summary-lbl">Price${pt3==='starting'?' (Starting From)':''}</div><div class="summary-val" style="color:var(--g)">${fmtSvcPrice(selSvc)}</div></div></div>`;
-    $('success-sub').textContent = `See you on ${dateFmt}!`;
+    $('success-sub').textContent = `Requested for ${dateFmt}`;
     $('success-details').innerHTML = `
       <div class="summary-row"><div class="summary-icon">✂️</div><div><div class="summary-lbl">Service</div><div class="summary-val">${esc(selSvc.name)}</div></div></div>
       <div class="summary-row"><div class="summary-icon">📅</div><div><div class="summary-lbl">Date</div><div class="summary-val">${dateFmt}</div></div></div>
@@ -695,6 +703,18 @@ async function confirmBooking(){
       ${confPriceRow}`;
 
     goStep(4);
+
+    // Auto-open WhatsApp to owner. Some mobile browsers block popups not in a click handler;
+    // confirmBooking IS called from a click, so window.open should be permitted.
+    // We delay slightly so the confirmation screen renders first.
+    setTimeout(function(){
+      const opened = notifyOwner(true);
+      // If popup was blocked, show the "Notify Business Again" button as a fallback.
+      if(!opened){
+        const fb = $('btn-notify-again');
+        if(fb) fb.style.display = '';
+      }
+    }, 400);
 
   }catch(e){
     btn.innerHTML = '📅 Confirm Booking';
@@ -704,12 +724,21 @@ async function confirmBooking(){
   }
 }
 
-// ── WhatsApp ─────────────────────────────────────────────────
-function sendWhatsApp(){
+// ── WhatsApp: notify the OWNER of a new booking ──────────────
+// Returns true if window.open succeeded, false if blocked (mobile popup blocker).
+function notifyOwner(silent){
   const phone = (BIZ.whatsapp || BIZ.phone || '').replace(/[^0-9]/g,'');
-  const msg   = encodeURIComponent(window._waMsg || '');
-  window.open(phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+  const msg   = encodeURIComponent(window._waOwnerMsg || '');
+  if(!phone){
+    // No owner phone configured — nothing we can do.
+    if(!silent) alert('Business has not configured a WhatsApp number yet.');
+    return false;
+  }
+  const w = window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+  return !!w;
 }
+// Manual fallback shown when popup was blocked
+function notifyBusinessAgain(){ notifyOwner(false); }
 
 // ── Navigation ───────────────────────────────────────────────
 function goStep(n){

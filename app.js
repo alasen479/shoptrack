@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1778542781");
+console.log("ShopTrack v2.7 - build:1778545680");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -25041,11 +25041,62 @@ function _apptWA(id){var _s=_L();
 // ── SERVICES PAGE ────────────────────────────────────────────
 function _updAppt(id){var _s=_L();
   const a=D.appointments.find(x=>x.id===id); if(!a) return;
+  const prevSt = a.st;
   a.st=document.getElementById('va-st')?.value||a.st;
   a.notes=document.getElementById('va-n')?.value||'';
   _dbSaveAppt(a); refreshLiveKpis(); _updateApptBadge();
   addAudit('Appointment updated',id+' → '+a.st);
   closeModal(); toast(_L().t_saved2,'success'); nav('appointments');
+  // Auto-trigger customer WhatsApp confirmation when the appointment is
+  // moved from Reserved → Confirmed. Owner sees a small prompt first.
+  if(prevSt==='Reserved' && a.st==='Confirmed'){
+    _apptNotifyCustomerConfirmed(a);
+  }
+}
+
+// Quick action — set status to Confirmed AND fire the WhatsApp confirmation in one click.
+function _apptConfirmAndNotify(id){
+  var a = D.appointments.find(function(x){return x.id===id;});
+  if(!a) return;
+  a.st = 'Confirmed';
+  _dbSaveAppt(a);
+  refreshLiveKpis(); _updateApptBadge();
+  addAudit('Appointment confirmed', id+' (one-click confirm & notify)');
+  closeModal();
+  toast(a.custName+' — Confirmed','success');
+  setTimeout(function(){ _apptNotifyCustomerConfirmed(a); }, 200);
+  nav('appointments');
+}
+
+// Send a "your appointment is confirmed" WhatsApp message to the customer.
+// Uses the existing _sendWA helper which opens wa.me on a new tab.
+function _apptNotifyCustomerConfirmed(a){
+  const fr = BIZ.language==='fr';
+  if(!a || !a.custPhone){
+    toast(fr?'Aucun numéro client — confirmation non envoyée':'No customer phone — confirmation not sent','info');
+    return;
+  }
+  const ph = (a.custPhone||'').replace(/[^0-9]/g,'');
+  if(!ph){ toast(fr?'Numéro de téléphone invalide':'Invalid phone number','info'); return; }
+  const note = BIZ.bookingNote || (fr?'Merci pour votre réservation ! Nous avons hâte de vous voir.':'Thank you for booking with us! We look forward to seeing you.');
+  const dt = new Date(a.date+'T12:00:00');
+  const dateFmt = dt.toLocaleDateString(fr?'fr-FR':'en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const first = (a.custName||'').split(' ')[0] || (fr?'Client':'there');
+  const msg = (fr
+    ? `Bonjour ${first} ! Votre rendez-vous est confirmé ✅\n\n`
+    : `Hi ${first}! Your appointment is confirmed ✅\n\n`)
+    + `🏪 *${BIZ.name}*\n`
+    + `📋 *${a.serviceName}*\n`
+    + `📅 ${dateFmt}\n`
+    + `🕐 ${_timeLabel(a.startTime)}${a.endTime?' – '+_timeLabel(a.endTime):''}\n`
+    + (a.staffName?`👤 ${a.staffName}\n`:'')
+    + `\n${note}\n\n`
+    + (fr?'_Répondez à ce message si vous avez besoin de reporter._':'_Reply if you need to reschedule._');
+  // Confirm before opening so it doesn't surprise owners who used "Save" purely to edit a note.
+  if(confirm((fr?'Envoyer une confirmation WhatsApp à ':'Send WhatsApp confirmation to ')+a.custName+'?')){
+    _sendWA(ph, msg);
+    addAudit('Customer notified (Confirmed)', a.id+' → '+a.custName);
+  }
 }
 function _delAppt(id){
   // Use the smart delete with rules
@@ -25248,6 +25299,60 @@ async function _syncServicesToCloud(){var _s=_L();
   if(btn){ btn.textContent='☁ Sync to Cloud'; btn.disabled=false; }
   if(errors){ toast(errors+' service(s) failed to sync','error'); }
   else { toast('✓ '+D.services.length+' service(s) synced — booking page is live!','success'); }
+}
+
+// ── Diagnose: which service photos are actually present in Supabase? ──
+// Useful for debugging cases like "QR scan doesn't show image but link does"
+// when the issue is actually that the image only lives in local IDB cache.
+async function _diagSvcPhotos(){
+  var fr = BIZ.language==='fr';
+  if(!SESSION.bizId || !_sb){ toast(fr?'Pas de connexion cloud':'Cloud not available','error'); return; }
+  if(!(D.services||[]).length){ toast(fr?'Aucun service':'No services','info'); return; }
+  var btn = document.querySelector('[onclick="_diagSvcPhotos()"]');
+  if(btn){ btn.textContent='⏳ Checking…'; btn.disabled=true; }
+  try{
+    var {data, error} = await _sb.from('services')
+      .select('id,name,img_data_url')
+      .eq('biz_id', SESSION.bizId);
+    if(error) throw error;
+    var cloudMap = {};
+    (data||[]).forEach(function(r){ cloudMap[r.id] = !!(r.img_data_url && r.img_data_url.length > 100); });
+    // Compare against local
+    var localOnly = [], cloudOk = [], neither = [];
+    D.services.forEach(function(s){
+      var hasLocal = !!(s.imgDataUrl && s.imgDataUrl.length > 100);
+      var hasCloud = !!cloudMap[s.id];
+      if(hasLocal && !hasCloud) localOnly.push(s);
+      else if(hasCloud) cloudOk.push(s);
+      else if(!hasLocal && !hasCloud) neither.push(s);
+    });
+    var rows = '';
+    if(localOnly.length){
+      rows += '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:10px 12px;margin-bottom:10px">'
+        + '<div style="font-weight:700;color:#b45309;margin-bottom:4px">⚠ '+localOnly.length+' photo(s) in this device only — NOT on booking page yet</div>'
+        + '<div style="font-size:12px;color:var(--text2);margin-bottom:6px">These show in your app but not when customers scan the QR code or visit the booking link from another device.</div>'
+        + '<ul style="margin:6px 0 0 18px;padding:0;font-size:12px">'+localOnly.map(function(s){return '<li>'+_esc(s.name)+'</li>';}).join('')+'</ul></div>';
+    }
+    if(neither.length){
+      rows += '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px">'
+        + '<div style="font-weight:700;color:var(--text);margin-bottom:4px">📷 '+neither.length+' service(s) have no photo</div>'
+        + '<div style="font-size:12px;color:var(--text2);margin-bottom:6px">Customers see a colored circle instead. Add a photo to make your booking page more attractive.</div>'
+        + '<ul style="margin:6px 0 0 18px;padding:0;font-size:12px">'+neither.map(function(s){return '<li>'+_esc(s.name)+'</li>';}).join('')+'</ul></div>';
+    }
+    if(cloudOk.length){
+      rows += '<div style="background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.3);border-radius:8px;padding:10px 12px">'
+        + '<div style="font-weight:700;color:#047857">✓ '+cloudOk.length+' photo(s) live on booking page</div></div>';
+    }
+    var actions = localOnly.length
+      ? '<button class="btn btn-p" onclick="closeModal();_syncServicesToCloud()">☁ '+(fr?'Synchroniser maintenant':'Sync Now')+'</button>'
+      : '';
+    modal('🔍 '+(fr?'État des photos':'Photo Status'), rows || '<div style="padding:20px;text-align:center;color:var(--text2)">'+(fr?'Tout est bon !':'All good!')+'</div>',
+      '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>'+actions);
+  }catch(e){
+    toast(fr?'Vérification échouée — '+(e.message||''):'Check failed — '+(e.message||''),'error');
+  }finally{
+    if(btn){ btn.textContent='🔍 Check Photos'; btn.disabled=false; }
+  }
 }
 
 // ── Fix service prices that were saved in display currency instead of base USD ─
@@ -25501,6 +25606,7 @@ function pgServices(){const _s=_L();const _ui=_s;
   out += '<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>'+_s.nav_services+'</span></div>';
   out += '<div class="ph-row"><h1>'+_s.svc_title+'</h1><div class="btn-row">';
   out += '<button class="btn btn-s btn-sm" onclick="_syncServicesToCloud()" title="Save all services to cloud so they appear on your booking page">\u2601 Sync to Cloud</button>';
+  out += '<button class="btn btn-s btn-sm" onclick="_diagSvcPhotos()" title="Diagnose which service photos are live on the booking page">🔍 Check Photos</button>';
   out += '<button class="btn btn-g btn-sm" onclick="_fixServicePrices()" title="Detect and fix prices that appear wrong on the booking page">🔧 Fix Prices</button>';
   out += '<button class="btn btn-g btn-sm" onclick="mDuplicateCategory(\'svc\')">⧉ Duplicate Category</button>';
   out += '<button class="btn btn-p btn-sm" onclick="mNewService()">'+_s.svc_add+'</button>';
@@ -25647,11 +25753,16 @@ function _filterSvcs(cat){const _s=_L();
 }
 function _apptQuickStatus(id, newSt){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a) return;
+  var prevSt = a.st;
   a.st=newSt; _dbSaveAppt(a);
   addAudit('Appt status',id+' \u2192 '+newSt);
   toast(a.custName+' \u2014 '+newSt,'success');
   if(newSt==='Completed'&&(a.totalAmt||0)>0&&!a.saleId)
     setTimeout(function(){if(confirm('Checkout & create sale for '+a.custName+'?'))_apptCheckout(id);},300);
+  // Auto-fire customer WhatsApp confirmation on Reserved → Confirmed
+  if(prevSt==='Reserved' && newSt==='Confirmed'){
+    setTimeout(function(){ _apptNotifyCustomerConfirmed(a); }, 200);
+  }
   nav('appointments');
 }
 
@@ -29812,10 +29923,12 @@ function mViewAppt(id){const _s=_L();
   var invoiceBtn = (a.st==='Completed'&&(a.totalAmt||0)>0) ? '<button class="btn btn-g btn-sm" onclick="genApptInvoice(\''+id+'\')">🧾 Invoice</button>' : '';
   var deleteBtn  = '<button class="btn btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="_deleteAppt(\''+id+'\')">🗑 Delete</button>';
   var saveBtn     = canEdit ? '<button class="btn btn-p btn-sm" onclick="_updAppt(\''+id+'\')">💾 Save</button>' : '<button class="btn btn-s btn-sm" onclick="closeModal()">'+_L().ui_close+'</button>';
+  // Quick-action button: when appointment is Reserved, owner can confirm + notify in one click.
+  var confirmNotifyBtn = (a.st==='Reserved' && a.custPhone) ? '<button class="btn btn-sm" style="background:var(--g);color:#fff;font-weight:700" onclick="_apptConfirmAndNotify(\''+id+'\')">✓ Confirm &amp; Notify</button>' : '';
 
   var footer = '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:6px;flex-wrap:wrap">'
     +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+waBtn+reschedBtn+cancelBtn+checkoutBtn+deleteBtn+'</div>'
-    +'<div style="display:flex;gap:5px">'+editBtn+editAmtBtn+invoiceBtn+saveBtn+'</div></div>';
+    +'<div style="display:flex;gap:5px">'+confirmNotifyBtn+editBtn+editAmtBtn+invoiceBtn+saveBtn+'</div></div>';
 
   modal('📅 '+a.serviceName+' \u2014 '+a.custName, statusHtml+grid+notesHtml+statusRow, footer, 'sm');
 }
