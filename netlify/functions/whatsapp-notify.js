@@ -11,6 +11,11 @@ const TEMPLATES = {
   // Alias — frontend uses 'new_sale_alert' for the owner-alert-on-sale flow.
   // Points to the same approved template as sale_alert.
   new_sale_alert:   'HXe8714706a1f6c0d3553c01158ebfcff8',
+  // Customer-facing appointment confirmation. SID is filled in once the
+  // template is approved in the Twilio Console — see TWILIO_TEMPLATE_SETUP
+  // section in the appointment confirmation flow. Until then, this falls
+  // through to the freeform fallback (wa.me link).
+  appt_confirmed:   process.env.TWILIO_TPL_APPT_CONFIRMED || '',
 };
 
 exports.handler = async (event) => {

@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1778549544");
+console.log("ShopTrack v2.7 - build:1778939169");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -25089,21 +25089,40 @@ function _apptNotifyCustomerConfirmed(a){
   const dt = new Date(a.date+'T12:00:00');
   const dateFmt = dt.toLocaleDateString(fr?'fr-FR':'en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const first = (a.custName||'').split(' ')[0] || (fr?'Client':'there');
-  const msg = (fr
+  const timeRange = _timeLabel(a.startTime)+(a.endTime?' – '+_timeLabel(a.endTime):'');
+  // Variable 6 doubles up — staff name if assigned, otherwise the business note —
+  // so a 6-placeholder template can flex to either case.
+  const var6 = a.staffName ? a.staffName : note;
+
+  // Freeform fallback used if the Twilio template is unapproved or send fails.
+  const fallbackMsg = (fr
     ? `Bonjour ${first} ! Votre rendez-vous est confirmé ✅\n\n`
     : `Hi ${first}! Your appointment is confirmed ✅\n\n`)
     + `🏪 *${BIZ.name}*\n`
     + `📋 *${a.serviceName}*\n`
     + `📅 ${dateFmt}\n`
-    + `🕐 ${_timeLabel(a.startTime)}${a.endTime?' – '+_timeLabel(a.endTime):''}\n`
+    + `🕐 ${timeRange}\n`
     + (a.staffName?`👤 ${a.staffName}\n`:'')
     + `\n${note}\n\n`
     + (fr?'_Répondez à ce message si vous avez besoin de reporter._':'_Reply if you need to reschedule._');
-  // Confirm before opening so it doesn't surprise owners who used "Save" purely to edit a note.
-  if(confirm((fr?'Envoyer une confirmation WhatsApp à ':'Send WhatsApp confirmation to ')+a.custName+'?')){
-    _sendWA(ph, msg);
-    addAudit('Customer notified (Confirmed)', a.id+' → '+a.custName);
-  }
+
+  // Confirm before sending so it doesn't surprise owners who used "Save" purely to edit a note.
+  if(!confirm((fr?'Envoyer une confirmation WhatsApp à ':'Send WhatsApp confirmation to ')+a.custName+'?')) return;
+
+  // _sendWA tries the Twilio API first (with the appt_confirmed template),
+  // and falls back to a wa.me link with the freeform message if the API fails.
+  _sendWA(ph, fallbackMsg, {
+    template: 'appt_confirmed',
+    variables: {
+      '1': first,
+      '2': BIZ.name || 'Our shop',
+      '3': a.serviceName || '',
+      '4': dateFmt,
+      '5': timeRange,
+      '6': var6
+    }
+  });
+  addAudit('Customer notified (Confirmed)', a.id+' → '+a.custName);
 }
 function _delAppt(id){
   // Use the smart delete with rules
