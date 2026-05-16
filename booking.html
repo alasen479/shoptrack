@@ -673,7 +673,7 @@ async function confirmBooking(){
     // Add to local APPTS so double-booking is prevented if user books again
     APPTS.push({date:selDate, start_time:selTime, end_time:selTimeEnd});
 
-    // Build OWNER-targeted notification message — opens automatically after booking
+    // Build OWNER-targeted notification message — sent automatically after booking
     // so the business owner gets the request in their WhatsApp immediately.
     const pt2 = selSvc.price_type || 'flat';
     const priceStr = ['per_hour','per_min','per_day','per_week'].includes(pt2)
@@ -688,6 +688,22 @@ async function confirmBooking(){
       +`🕐 ${timeLabel(selTime)} – ${timeLabel(selTimeEnd)}\n`
       +(notes?`📝 _Note: ${notes}_\n`:'')
       +`\n_Open ShopTrack to confirm or reschedule this booking._`;
+
+    // Template variables for the Twilio 'new_booking_request' template.
+    // Mapping (keep stable — must match the approved template body):
+    //   {{1}} customer name      {{2}} customer phone
+    //   {{3}} service            {{4}} price
+    //   {{5}} date               {{6}} time range
+    //   {{7}} customer note (or "—" if blank, since templates can't have empty vars)
+    window._waOwnerVars = {
+      '1': name,
+      '2': phone,
+      '3': selSvc.name,
+      '4': priceStr,
+      '5': dateFmt,
+      '6': `${timeLabel(selTime)} – ${timeLabel(selTimeEnd)}`,
+      '7': notes ? notes : '—'
+    };
 
     // Show confirmation
     const pt3 = selSvc.price_type || 'flat';
@@ -704,12 +720,12 @@ async function confirmBooking(){
 
     goStep(4);
 
-    // Auto-open WhatsApp to owner. Some mobile browsers block popups not in a click handler;
-    // confirmBooking IS called from a click, so window.open should be permitted.
-    // We delay slightly so the confirmation screen renders first.
-    setTimeout(function(){
-      const opened = notifyOwner(true);
-      // If popup was blocked, show the "Notify Business Again" button as a fallback.
+    // Notify the owner. Tries Twilio API first (auto-send from +13045033113);
+    // falls back to opening wa.me on this device. We delay slightly so the
+    // confirmation screen renders first.
+    setTimeout(async function(){
+      const opened = await notifyOwner(true);
+      // If the API also failed and popup was blocked, show the manual button.
       if(!opened){
         const fb = $('btn-notify-again');
         if(fb) fb.style.display = '';
@@ -725,19 +741,48 @@ async function confirmBooking(){
 }
 
 // ── WhatsApp: notify the OWNER of a new booking ──────────────
-// Returns true if window.open succeeded, false if blocked (mobile popup blocker).
-function notifyOwner(silent){
+// Tries the Twilio Business API (auto-send from +13045033113) FIRST.
+// Only opens wa.me on the customer's phone as a fallback if the API
+// is unavailable or the template hasn't been approved yet.
+async function notifyOwner(silent){
   const phone = (BIZ.whatsapp || BIZ.phone || '').replace(/[^0-9]/g,'');
-  const msg   = encodeURIComponent(window._waOwnerMsg || '');
   if(!phone){
-    // No owner phone configured — nothing we can do.
     if(!silent) alert('Business has not configured a WhatsApp number yet.');
     return false;
   }
+
+  // Try the Twilio API first via the same Netlify function the main app uses.
+  // Variables match the new_booking_request template body.
+  try {
+    const resp = await fetch('/.netlify/functions/whatsapp-notify', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        to: phone,
+        template: 'new_booking_request',
+        variables: window._waOwnerVars || {},
+        // Freeform fallback included in case the function expands to send
+        // it when the template is missing (currently it returns an error,
+        // which our catch below handles).
+        message: window._waOwnerMsg || ''
+      })
+    });
+    const data = await resp.json();
+    if(data.success){
+      // Success — no need to open WhatsApp on the customer's phone.
+      console.log('[Booking] Owner notified via Twilio, msgId:', data.messageId);
+      return true;
+    }
+    console.warn('[Booking] Twilio send failed:', data.error, data.code, '— falling back to wa.me');
+  } catch(e){
+    console.warn('[Booking] Notify fetch error:', e.message, '— falling back to wa.me');
+  }
+
+  // Fallback: open wa.me on the customer's phone (existing behavior).
+  const msg = encodeURIComponent(window._waOwnerMsg || '');
   const w = window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
   return !!w;
 }
-// Manual fallback shown when popup was blocked
+// Manual fallback button uses the same flow (will also try Twilio first).
 function notifyBusinessAgain(){ notifyOwner(false); }
 
 // ── Navigation ───────────────────────────────────────────────

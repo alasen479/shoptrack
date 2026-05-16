@@ -16,6 +16,11 @@ const TEMPLATES = {
   // section in the appointment confirmation flow. Until then, this falls
   // through to the freeform fallback (wa.me link).
   appointment_confirmation: process.env.TWILIO_TPL_APPT_CONFIRMED || '',
+  // Owner-facing new booking request from the public booking page.
+  // Sent automatically from +13045033113 when a customer submits a booking,
+  // so the owner sees it in their business WhatsApp without the customer
+  // having to tap Send on their own phone.
+  new_booking_request: process.env.TWILIO_TPL_NEW_BOOKING || '',
 };
 
 exports.handler = async (event) => {
