@@ -8,6 +8,9 @@ const TWILIO_FROM = 'whatsapp:' + (process.env.TWILIO_WA_NUMBER || process.env.T
 const TEMPLATES = {
   payment_reminder: 'HX8b7b304ade92c8d278001a2ed7f5998d',
   sale_alert:       'HXe8714706a1f6c0d3553c01158ebfcff8',
+  // Alias — frontend uses 'new_sale_alert' for the owner-alert-on-sale flow.
+  // Points to the same approved template as sale_alert.
+  new_sale_alert:   'HXe8714706a1f6c0d3553c01158ebfcff8',
 };
 
 exports.handler = async (event) => {
