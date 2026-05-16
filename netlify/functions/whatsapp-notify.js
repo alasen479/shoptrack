@@ -15,7 +15,7 @@ const TEMPLATES = {
   // template is approved in the Twilio Console — see TWILIO_TEMPLATE_SETUP
   // section in the appointment confirmation flow. Until then, this falls
   // through to the freeform fallback (wa.me link).
-  appt_confirmed:   process.env.TWILIO_TPL_APPT_CONFIRMED || '',
+  appointment_confirmation: process.env.TWILIO_TPL_APPT_CONFIRMED || '',
 };
 
 exports.handler = async (event) => {

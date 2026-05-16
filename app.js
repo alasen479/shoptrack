@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1778939169");
+console.log("ShopTrack v2.7 - build:1778939729");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -25112,7 +25112,7 @@ function _apptNotifyCustomerConfirmed(a){
   // _sendWA tries the Twilio API first (with the appt_confirmed template),
   // and falls back to a wa.me link with the freeform message if the API fails.
   _sendWA(ph, fallbackMsg, {
-    template: 'appt_confirmed',
+    template: 'appointment_confirmation',
     variables: {
       '1': first,
       '2': BIZ.name || 'Our shop',
