@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1778942139");
+console.log("ShopTrack v2.7 - build:1778945754");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -25959,6 +25959,56 @@ function mAddService(){ mNewService(); }
 function mEditService(id){ mEditSvc(id); }
 
 
+// ── Add a new service category inline from the New/Edit Service modal ──
+// Persists to D.svcCats, syncs to the cloud (so it appears in Settings → Service
+// Categories on this and other devices), and re-renders the dropdown with the
+// new category pre-selected.
+function _svcCatAddInline(){
+  var fr = BIZ.language==='fr';
+  var raw = prompt(fr ? 'Nom de la nouvelle catégorie de service :' : 'New service category name:');
+  if(raw === null) return; // user cancelled
+  var name = String(raw).trim();
+  if(!name){
+    toast(fr ? 'Nom de catégorie requis' : 'Category name required', 'error');
+    return;
+  }
+  if(name.length > 50){
+    toast(fr ? 'Nom trop long (max 50 caractères)' : 'Name too long (max 50 chars)', 'error');
+    return;
+  }
+  if(!Array.isArray(D.svcCats)) D.svcCats = [];
+  // Case-insensitive duplicate check
+  var existing = D.svcCats.find(function(c){ return c.toLowerCase() === name.toLowerCase(); });
+  if(existing){
+    toast(fr ? 'Cette catégorie existe déjà' : 'That category already exists', 'info');
+    // Still useful — pre-select the existing one with the user's typed casing.
+    _svcCatPickInDropdown(existing);
+    return;
+  }
+  // Persist
+  D.svcCats.push(name);
+  if(SESSION.bizId && !SESSION.isSuperAdmin && typeof _dbSaveCategories === 'function'){
+    _dbSaveCategories(SESSION.bizId);
+  }
+  addAudit('Service category added', name + ' (inline)');
+  toast('"' + name + '" ' + (fr ? 'ajouté ✓' : 'added ✓'), 'success');
+  // Re-render the searchable dropdown with the new category pre-selected
+  _svcCatPickInDropdown(name);
+}
+
+// Rebuild the sv-cat-wrap searchable select and select the given value.
+function _svcCatPickInDropdown(val){
+  var hidden = document.getElementById('sv-cat');
+  if(hidden) hidden.value = val;
+  var wrap = document.getElementById('sv-cat-wrap');
+  if(!wrap) return;
+  var cats = D.svcCats || [];
+  var opts = [{val:'',label:'— No category —'}].concat(cats.map(function(c){ return {val:c, label:c}; }));
+  _mkSearchSelect('sv-cat-wrap', opts, val || '', function(v){
+    var h = document.getElementById('sv-cat'); if(h) h.value = v;
+  }, 'Service category…');
+}
+
 async function mNewService(){const _s=_L();
   await _syncCatsFromDB();
   window._svcImgData = undefined; window._svcExistingImg = undefined; // fresh modal
@@ -25969,7 +26019,10 @@ async function mNewService(){const _s=_L();
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.svc_name_ph}</label><input class="fi" id="sv-nm" placeholder="e.g. Interior Consultation, Haircut…"/></div>
     <div class="fg"><label class="fl">${_s.ui_category}</label>
-      <div id="sv-cat-wrap" style="position:relative"></div>
+      <div style="display:flex;gap:6px;align-items:flex-start">
+        <div id="sv-cat-wrap" style="position:relative;flex:1"></div>
+        <button type="button" class="btn btn-s btn-sm" onclick="_svcCatAddInline()" title="Create a new service category — saves to settings automatically" style="flex-shrink:0;white-space:nowrap">+ New</button>
+      </div>
       <input type="hidden" id="sv-cat" value=""/>
     </div>
   </div>
@@ -26030,7 +26083,10 @@ async function mEditSvc(id){const _s=_L();
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.svc_name_ph}</label><input class="fi" id="sv-nm" value="${_esc(s.name)}"/></div>
     <div class="fg"><label class="fl">${_s.ui_category}</label>
-      <div id="sv-cat-wrap" style="position:relative"></div>
+      <div style="display:flex;gap:6px;align-items:flex-start">
+        <div id="sv-cat-wrap" style="position:relative;flex:1"></div>
+        <button type="button" class="btn btn-s btn-sm" onclick="_svcCatAddInline()" title="Create a new service category — saves to settings automatically" style="flex-shrink:0;white-space:nowrap">+ New</button>
+      </div>
       <input type="hidden" id="sv-cat" value="${_esc(sCat)}"/>
     </div>
   </div>
