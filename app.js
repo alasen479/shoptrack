@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779135523");
+console.log("ShopTrack v2.7 - build:1779137815");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -14835,7 +14835,7 @@ async function _dbLoadBizData(bizId){
     // Services and appointments — always load from Supabase for real businesses
     if(!_is107 || (_svcResult.data||[]).length){
       if(_svcResult.error) console.error('Services load error:', _svcResult.error.message);
-      else D.services = (_svcResult.data||[]).map(function(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null}; });
+      else D.services = (_svcResult.data||[]).map(function(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,bookable:r.bookable!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null}; });
     }
     if(!_is107 || (appts.data||[]).length){
       if(appts.error) console.error('Appointments load error:', appts.error.message);
@@ -25186,9 +25186,9 @@ function filterLedger(el, type){
 // ============================================================
 
 // ── DB helpers ──────────────────────────────────────────────
-function _dbToService(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null,costLines:r.cost_lines?JSON.parse(r.cost_lines):null}; }
+function _dbToService(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,bookable:r.bookable!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null,costLines:r.cost_lines?JSON.parse(r.cost_lines):null}; }
 function _dbToAppt(r){ return {id:r.id,serviceId:r.service_id||'',serviceName:r.service_name||'',custId:r.customer_id||'',custName:r.customer_name||'',custPhone:r.customer_phone||'',staffId:r.staff_id||'',staffName:r.staff_name||'',date:r.date||'',startTime:r.start_time||'',endTime:r.end_time||'',st:r.status||'Reserved',notes:r.notes||'',walkIn:r.walk_in||false,totalAmt:r.total_amount||0,payMethod:r.pay_method||'Cash',saleId:r.sale_id||'',createdAt:r.created_at||''}; }
-function _serviceDB(s,bizId){ return {id:s.id,biz_id:bizId,name:s.name,duration_mins:s.duration,price:s.price||0,price_type:s.priceType||'flat',category:s.cat||'',color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null,cost_lines:s.costLines?JSON.stringify(s.costLines):null}; }
+function _serviceDB(s,bizId){ return {id:s.id,biz_id:bizId,name:s.name,duration_mins:s.duration,price:s.price||0,price_type:s.priceType||'flat',category:s.cat||'',color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,bookable:s.bookable!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null,cost_lines:s.costLines?JSON.stringify(s.costLines):null}; }
 function _apptDB(a,bizId){ return {id:a.id,biz_id:bizId,service_id:a.serviceId,service_name:a.serviceName,customer_id:a.custId,customer_name:a.custName,customer_phone:a.custPhone,staff_id:a.staffId,staff_name:a.staffName,date:a.date,start_time:a.startTime,end_time:a.endTime,status:a.st,notes:a.notes,walk_in:a.walkIn,total_amount:a.totalAmt,pay_method:a.payMethod||'',sale_id:a.saleId||''}; }
 async function _dbSaveService(s){
   if(!SESSION.bizId) return;
@@ -25207,7 +25207,7 @@ async function _dbSaveService(s){
     var payload = _serviceDB(s, SESSION.bizId);
     var {error} = await _sb.from('services').upsert(payload);
     if(error){
-      if(error.message && (error.message.includes('price_type')||error.message.includes('category')||error.message.includes('column'))){
+      if(error.message && (error.message.includes('price_type')||error.message.includes('category')||error.message.includes('bookable')||error.message.includes('column'))){
         console.warn('[ShopTrack] New service columns not yet in DB, falling back to base payload:', error.message);
         var base = {id:s.id,biz_id:SESSION.bizId,name:s.name,duration_mins:s.duration,price:s.price||0,color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null};
         var {error:e2} = await _sb.from('services').upsert(base);
@@ -26553,6 +26553,10 @@ function pgServices(){const _s=_L();const _ui=_s;
     card += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">';
     if(s.cat) card += '<span style="font-size:10px;font-weight:600;background:var(--bg3);color:var(--text2);padding:2px 8px;border-radius:10px;border:1px solid var(--border2)">'+_esc(s.cat)+'</span>';
     if(pt!=='flat') card += '<span style="font-size:10px;font-weight:700;background:'+ptColor+'18;color:'+ptColor+';padding:2px 8px;border-radius:10px;border:1px solid '+ptColor+'33">'+ptL+'</span>';
+    // "Hidden from booking" indicator — active service but invisible to public booking
+    if(!inactive && s.bookable===false){
+      card += '<span title="This service is hidden from the public booking page but still available for invoices and quotes." style="font-size:10px;font-weight:700;background:rgba(245,158,11,.12);color:#b45309;padding:2px 8px;border-radius:10px;border:1px solid rgba(245,158,11,.3)">\uD83D\uDD12 Internal only</span>';
+    }
     card += '</div>';
 
     // Row 3: price + duration side by side — fully separated, no overlap
@@ -26925,7 +26929,8 @@ async function mNewService(){const _s=_L();
   <div class="fg"><label class="fl">${_s.ui_description}</label><textarea class="ft" id="sv-ds" rows="2" placeholder="Brief description shown on booking page…"></textarea></div>
   <div class="fg">${_costBreakdownHTML('cs',[])}</div>
   ${stO?`<div class="fg"><label class="fl">Staff (leave blank = any)</label><div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:var(--bg3);border-radius:var(--r6)" id="sv-stl">${stO}</div></div>`:''}
-  <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:6px"><input type="checkbox" id="sv-ac" checked style="accent-color:var(--a)"/> Active</label>
+  <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:6px"><input type="checkbox" id="sv-ac" checked style="accent-color:var(--a)"/> Active <span style="font-size:11px;color:var(--text2);font-weight:400">— available for invoices &amp; quotes</span></label>
+  <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px"><input type="checkbox" id="sv-bk" checked style="accent-color:var(--a)"/> Visible on booking page <span style="font-size:11px;color:var(--text2);font-weight:400">— customers can book this online</span></label>
   <div class="fg" style="margin-top:10px">
     <label class="fl">Service Photo <span style="font-size:10px;color:var(--text2)">(shown on booking page)</span></label>
     <div style="display:flex;align-items:center;gap:10px">
@@ -26989,7 +26994,8 @@ async function mEditSvc(id){const _s=_L();
   <div class="fg"><label class="fl">${_s.ui_description}</label><textarea class="ft" id="sv-ds" rows="2">${s.desc||''}</textarea></div>
   <div class="fg">${_costBreakdownHTML('cs', s.costLines||[])}</div>
   ${stO?`<div class="fg"><label class="fl">${_s.appt_staff}</label><div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:var(--bg3);border-radius:var(--r6)" id="sv-stl">${stO}</div></div>`:''}
-  <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:6px"><input type="checkbox" id="sv-ac" ${s.active!==false?'checked':''} style="accent-color:var(--a)"/> Active</label>
+  <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:6px"><input type="checkbox" id="sv-ac" ${s.active!==false?'checked':''} style="accent-color:var(--a)"/> Active <span style="font-size:11px;color:var(--text2);font-weight:400">— available for invoices &amp; quotes</span></label>
+  <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px"><input type="checkbox" id="sv-bk" ${s.bookable!==false?'checked':''} style="accent-color:var(--a)"/> Visible on booking page <span style="font-size:11px;color:var(--text2);font-weight:400">— customers can book this online</span></label>
   <div class="fg" style="margin-top:10px">
     <label class="fl">Service Photo <span style="font-size:10px;color:var(--text2)">(shown on booking page)</span></label>
     <div style="display:flex;align-items:center;gap:10px">
@@ -27065,7 +27071,7 @@ function _getSvcData(){var _s=_L();
   const cat = document.getElementById('sv-cat')?.value || '';
   // Use newly uploaded image, or preserve existing (set by edit modal)
   // If user uploaded a new photo, use it; otherwise preserve existing (set by edit modal) or null
-  const result = {name:nm,cat,duration:parseInt(document.getElementById('sv-du')?.value)||0,price:(parseFloat(document.getElementById('sv-pr')?.value)||0)/CUR.rate,priceType,color:document.getElementById('sv-cl')?.value||'#4361ee',desc:document.getElementById('sv-ds')?.value||'',active:document.getElementById('sv-ac')?.checked!==false,staffIds:[...document.querySelectorAll('#sv-stl input:checked')].map(e=>e.value),costLines:_cbReadLines('cs')};
+  const result = {name:nm,cat,duration:parseInt(document.getElementById('sv-du')?.value)||0,price:(parseFloat(document.getElementById('sv-pr')?.value)||0)/CUR.rate,priceType,color:document.getElementById('sv-cl')?.value||'#4361ee',desc:document.getElementById('sv-ds')?.value||'',active:document.getElementById('sv-ac')?.checked!==false,bookable:document.getElementById('sv-bk')?.checked!==false,staffIds:[...document.querySelectorAll('#sv-stl input:checked')].map(e=>e.value),costLines:_cbReadLines('cs')};
   if(window._svcImgData !== undefined && window._svcImgData !== null) {
     result.imgDataUrl = window._svcImgData; // new upload
   } else if(window._svcExistingImg !== undefined) {

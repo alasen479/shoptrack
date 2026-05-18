@@ -369,14 +369,26 @@ async function init(){
 }
 
 async function loadServices(bizId){
-  // Try with photo column first
+  // Try with photo + bookable column first
+  try{
+    const {data, error} = await sb.from('services')
+      .select('id,name,duration_mins,price,price_type,category,color,description,img_data_url,active,bookable')
+      .eq('biz_id', bizId)
+      .order('name');
+    if(error) throw error;
+    // Public booking page must hide both inactive AND non-bookable services.
+    // active===null is treated as active (legacy rows with no value set).
+    SERVICES = (data||[]).filter(s => s.active !== false && s.bookable !== false);
+    return;
+  }catch(e){ console.warn('Services query (with photo+bookable) failed:', e.message); }
+
+  // Fallback if bookable column doesn't exist yet
   try{
     const {data, error} = await sb.from('services')
       .select('id,name,duration_mins,price,price_type,category,color,description,img_data_url,active')
       .eq('biz_id', bizId)
       .order('name');
     if(error) throw error;
-    // Include active=true AND active=null (some may not have column set)
     SERVICES = (data||[]).filter(s => s.active !== false);
     return;
   }catch(e){ console.warn('Services query (with photo) failed:', e.message); }
