@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779125711");
+console.log("ShopTrack v2.7 - build:1779126042");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -14171,24 +14171,24 @@ function _affRenderTable(){const _s=_L();
       '<td style="color:var(--g)">'+fmt(a.total_earned_xaf||0)+'</td>'+
       '<td style="color:'+(a.unpaid_xaf>0?'var(--r)':'var(--text2)')+'">'+fmt(a.unpaid_xaf||0)+'</td>'+
       '<td style="color:var(--text2);font-size:12px">'+(a.created_at||'').slice(0,10)+'</td>'+
-      '<td><div class="btn-row">'+
+      '<td><div class="btn-row" style="flex-wrap:nowrap;gap:3px;justify-content:flex-end;white-space:nowrap">'+
         (a.status==='pending'?
-          '<button class="btn btn-g btn-xs" onclick="_affApprove(\''+a.id+'\')">&#x2714; Approve</button>'
+          '<button class="btn btn-g btn-xs" style="background:var(--g);color:#fff;font-weight:700" onclick="_affApprove(\''+a.id+'\')" title="Approve this application">&#x2714; Approve</button>'
         :'')+
         (a.status==='approved'?
-          '<button class="btn btn-p btn-xs" onclick="_affPayPartial(\''+a.id+'\')">&#x1F4B3; Pay</button>'+
-          (a.unpaid_xaf>0?'<button class="btn btn-g btn-xs" onclick="_affMarkPaid(\''+a.id+'\')">&#x2714; All Paid</button>':'')+
-          '<button class="btn btn-s btn-xs" onclick="_affViewHistory(\''+a.id+'\')">&#x1F4CB; History</button>'+
-          (a.email?'<button class="btn btn-b btn-xs" onclick="_affResendApprovalEmail(\''+a.id+'\')" title="'+_s.adm_resend_aff+'">&#x1F4E7; Send Link</button>':'')
+          '<button class="btn btn-p btn-xs" onclick="_affPayPartial(\''+a.id+'\')" title="Record commission payment">&#x1F4B3;</button>'+
+          (a.unpaid_xaf>0?'<button class="btn btn-g btn-xs" onclick="_affMarkPaid(\''+a.id+'\')" title="Mark all unpaid as paid">&#x2714;</button>':'')+
+          '<button class="btn btn-s btn-xs" onclick="_affViewHistory(\''+a.id+'\')" title="View payment history">&#x1F4CB;</button>'+
+          (a.email?'<button class="btn btn-b btn-xs" onclick="_affResendApprovalEmail(\''+a.id+'\')" title="'+_s.adm_resend_aff+'">&#x1F4E7;</button>':'')
         :'')+
         (a.status==='suspended'?
-          '<button class="btn btn-g btn-xs" onclick="_affApprove(\''+a.id+'\')">&#x21BA; Reactivate</button>':
-          '<button class="btn btn-d btn-xs" onclick="_affSuspend(\''+a.id+'\')">&#x26D4; Suspend</button>')+
-        '<button class="btn btn-s btn-xs" onclick="_affSetCode(\''+a.id+'\')">&#x270F; Code</button>'+
+          '<button class="btn btn-g btn-xs" onclick="_affApprove(\''+a.id+'\')" title="Reactivate this affiliate">&#x21BA;</button>':
+          '<button class="btn btn-d btn-xs" onclick="_affSuspend(\''+a.id+'\')" title="Suspend this affiliate">&#x26D4;</button>')+
+        '<button class="btn btn-s btn-xs" onclick="_affSetCode(\''+a.id+'\')" title="Set / edit affiliate code">&#x270F;</button>'+
         (a.affiliate_code&&!a.affiliate_code.startsWith('PENDING')?
-          '<button class="btn btn-s btn-xs" onclick="_affCopyLink(\''+affLink+'\')">&#x1F4CB; Copy</button>':
-          '<span style="font-size:10px;color:var(--y)">&#x26A0; Set code first</span>')+
-        '<button class="btn btn-d btn-xs" onclick="_affDelete(\''+a.id+'\')">&#x1F5D1; Delete</button>'+
+          '<button class="btn btn-s btn-xs" onclick="_affCopyLink(\''+affLink+'\')" title="Copy affiliate link">&#x1F4CB;</button>':
+          '<span style="font-size:10px;color:var(--y);align-self:center;padding:0 2px" title="Set a real code before copy/approval">&#x26A0;</span>')+
+        '<button class="btn btn-d btn-xs" onclick="_affDelete(\''+a.id+'\')" title="Delete permanently">&#x1F5D1;</button>'+
       '</div></td>'+
     '</tr>';
   }).join('');
@@ -14245,10 +14245,13 @@ async function _affApprove(id){const _s=_L();
   if(!a) return;
   var isReactivate = a.status==='suspended';
   var code = a.affiliate_code&&!a.affiliate_code.startsWith('PENDING') ? a.affiliate_code : '';
-  // If still has PENDING code, require SA to set a real code first
+  // If still has PENDING code, open Set Code with auto-approve flag so SA
+  // only needs ONE action (set code → auto-approves on save, no second click).
   if(!code){
-    toast(_L().t_set_code_first,'error');
-    _affSetCode(id); return;
+    if(btn){ btn.disabled=false; btn.textContent='✔ Approve'; }
+    toast(_L().t_set_code_first,'info');
+    _affSetCode(id, /*autoApproveAfter*/ true);
+    return;
   }
   var r=await _affManage('approve',id);
   if(r.ok){
@@ -14339,29 +14342,39 @@ async function _doAffMarkPaid(id){const _s=_L();
   } else toast(_L().t_error_prefix+r.error,'error');
 }
 
-function _affSetCode(id){const _s=_L();
+function _affSetCode(id, autoApproveAfter){const _s=_L();
   var a=_affiliates.find(function(x){return x.id===id;});
   var cur=a?(a.affiliate_code&&!a.affiliate_code.startsWith('PENDING')?a.affiliate_code:''):''
+  var btnLabel = autoApproveAfter ? '\u270F Save Code &amp; Approve' : '\u270F Save Code';
+  var preface = autoApproveAfter
+    ? '<div class="alrt alrt-y" style="margin-bottom:10px;padding:8px 12px;font-size:12px">Set a unique code for this affiliate. Saving will also approve their application.</div>'
+    : '';
   modal(_s.adm_edit_aff_code,
-    '<div class="fg"><label class="fl">Affiliate Code *</label>'
+    preface
+    +'<div class="fg"><label class="fl">Affiliate Code *</label>'
     +'<input class="fi" id="aff-code-inp" value="'+_esc(cur)+'"'
     +' placeholder="e.g. AMAKA2026" style="text-transform:uppercase;font-family:var(--mono)"'
     +' oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\')"/>'
     +'<div class="fh">Min 3 chars, letters and numbers only. Used in shoptrack.org/?aff=CODE</div></div>',
     '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
-    +'<button class="btn btn-p" onclick="_doAffSetCode(\''+id+'\')">\u270F Save Code</button>'
+    +'<button class="btn btn-p" onclick="_doAffSetCode(\''+id+'\','+(autoApproveAfter?'true':'false')+')">'+btnLabel+'</button>'
   );
   setTimeout(function(){ var el=document.getElementById('aff-code-inp'); if(el){el.focus();el.select();} },80);
 }
-async function _doAffSetCode(id){const _s=_L();
+async function _doAffSetCode(id, autoApproveAfter){const _s=_L();
   var code=((document.getElementById('aff-code-inp')||{}).value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
   if(code.length<3){ toast(_L().t_code_min,'error'); return; }
   var r=await _affManage('set-code',id,{affiliate_code:code});
-  if(r.ok){
-    var a=_affiliates.find(function(x){return x.id===id;}); if(a) a.affiliate_code=code;
-    closeModal(); _affRenderTable();
-    toast(_L().t_code_updated+code,'success');
-  } else toast(_L().t_error_prefix+r.error,'error');
+  if(!r.ok){ toast(_L().t_error_prefix+r.error,'error'); return; }
+  var a=_affiliates.find(function(x){return x.id===id;}); if(a) a.affiliate_code=code;
+  closeModal();
+  _affRenderTable();
+  toast(_L().t_code_updated+code,'success');
+  // If the SA reached here from the Approve flow, chain straight into approval.
+  // Tiny delay so the toast for "code updated" renders first.
+  if(autoApproveAfter){
+    setTimeout(function(){ _affApprove(id); }, 300);
+  }
 }
 
 async function _affDelete(id){const _s=_L();
