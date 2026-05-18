@@ -313,15 +313,38 @@ footer a:hover{color:var(--a)}
   <p class="sec-t" id="t-dash-ttl">&#x1F4CA; Affiliate Dashboard</p>
   <p class="sec-s" id="t-dash-sub">Already an affiliate? Enter your email to view your live stats.</p>
   <div style="max-width:600px;margin:0 auto">
-    <div class="d-card">
-      <div class="d-ttl" id="t-dash-check">Check your performance</div>
+    <!-- Sign-in card (visible by default; hidden when a valid session loads) -->
+    <div class="d-card" id="d-signin-card">
+      <div class="d-ttl" id="t-dash-check">Sign in to your dashboard</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <input class="fi" type="email" id="dash-email" placeholder="Enter your email address" autocomplete="email" style="flex:1;min-width:180px"/>
-        <button class="btn-p" id="dash-btn" onclick="_loadDash()">View Stats &rarr;</button>
+        <button class="btn-p" id="dash-btn" onclick="_requestSignInLink()">Email me a sign-in link &rarr;</button>
       </div>
-      <p class="fh" id="t-dash-hint" style="margin-top:8px">Enter the email you applied with. Your data loads instantly.</p>
+      <p class="fh" id="t-dash-hint" style="margin-top:8px">Enter the email you applied with. We&rsquo;ll send a one-tap sign-in link that&rsquo;s valid for 30 minutes.</p>
+      <div id="d-signin-err" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(255,96,128,.08);border:1px solid rgba(255,96,128,.25);border-radius:8px;font-size:12px;color:var(--r)"></div>
     </div>
+
+    <!-- Confirmation after the link is sent -->
+    <div class="d-card" id="d-signin-sent" style="display:none;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3)">
+      <div style="font-size:32px;margin-bottom:8px">&#x1F4E7;</div>
+      <div class="d-ttl">Check your inbox</div>
+      <p style="margin:0 0 8px;color:var(--text)">If <strong id="d-sent-email"></strong> is registered as an affiliate, we&rsquo;ve sent a sign-in link. Click the link from any device to open your dashboard. The link is valid for 30 minutes.</p>
+      <p class="fh" style="margin:8px 0 0">Didn&rsquo;t get it? Check your spam folder, or <button onclick="_resetSignIn()" style="background:none;border:none;color:var(--a);text-decoration:underline;cursor:pointer;padding:0;font:inherit">try a different email</button>.</p>
+    </div>
+
+    <!-- Token error (invalid / expired) -->
+    <div class="d-card" id="d-token-err" style="display:none;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.3)">
+      <div class="d-ttl" style="color:var(--y)">&#x26A0; Sign-in link expired</div>
+      <p style="margin:0 0 12px">This sign-in link has expired or is no longer valid. Request a fresh one:</p>
+      <button class="btn-p" onclick="_resetSignIn()">Get a new link</button>
+    </div>
+
     <div id="dash-result" style="display:none">
+      <!-- Top-right session bar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:12px;color:var(--text2)">
+        <span>Signed in as <strong id="d-signed-as" style="color:var(--ink)"></strong></span>
+        <button onclick="_signOut()" style="background:none;border:1px solid var(--border2);color:var(--text2);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px">Sign out</button>
+      </div>
       <div id="d-pending" style="display:none;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.25);border-radius:var(--r12);padding:16px 20px;margin-bottom:14px;font-size:13px;color:var(--y)">
         <span id="t-pending">&#x23F3; Your application is under review. We&rsquo;ll email you within 48 hours with your affiliate code.</span>
       </div>
@@ -548,7 +571,7 @@ en:{
   eh1:'Plan',eh2:'Month 1 (20%)',eh3:'Months 2–12 × 11 (10%)',
   er1:'Premium — 4,900 XAF/mo',er2:'Premium — 4,900 XAF/mo',er3:'Business — 28,900 XAF/mo',er4:'3 referrals on Pro',
   dashTtl:'Affiliate Dashboard',dashSub:'Already an affiliate? Enter your email to view your live stats.',
-  dashCheck:'Check your performance',dashHint:'Enter the email you applied with. Your data loads instantly.',dashBtn:'View Stats →',
+  dashCheck:'Sign in to your dashboard',dashHint:'Enter the email you applied with. We\u2019ll send a one-tap sign-in link that\u2019s valid for 30 minutes.',dashBtn:'Email me a sign-in link \u2192',
   pending:'Your application is under review. We’ll email you within 48 hours with your affiliate code.',
   suspended:'Your affiliate account is suspended. Contact',
   linkTtl:'Your affiliate link',copy:'Copy',wa:'Share on WhatsApp',cpMsg:'Copy message',
@@ -601,7 +624,7 @@ fr:{
   eh1:'Forfait',eh2:'Mois 1 (20%)',eh3:'Mois 2–12 × 11 (10%)',
   er1:'Starter — 4 900 XAF/mois',er2:'Professionnel — 11 900 XAF/mois',er3:'Business — 24 900 XAF/mois',er4:'3 parrainages Pro',
   dashTtl:'Tableau de bord affilié',dashSub:'Déjà affilié(e) ? Entrez votre e-mail pour voir vos statistiques en direct.',
-  dashCheck:'Vérifier vos performances',dashHint:'Entrez l’e-mail utilisé lors de votre candidature. Les données se chargent instantanément.',dashBtn:'Voir mes stats →',
+  dashCheck:'Connectez-vous à votre tableau de bord',dashHint:'Entrez l\u2019e-mail utilisé lors de votre candidature. Nous vous enverrons un lien de connexion valide 30 minutes.',dashBtn:'M\u2019envoyer un lien de connexion \u2192',
   pending:'Votre candidature est en cours d’examen. Nous vous enverrons votre code par e-mail sous 48h.',
   suspended:'Votre compte affilié est suspendu. Contactez',
   linkTtl:'Votre lien d’affiliation',copy:'Copier',wa:'Partager sur WhatsApp',cpMsg:'Copier le message',
@@ -765,15 +788,129 @@ document.querySelectorAll('.faq-q').forEach(function(btn){
 });
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-async function _loadDash(){
-  var email=(document.getElementById('dash-email').value||'').trim().toLowerCase();
+// ── New: request a magic sign-in link via email ───────────────────────────
+async function _requestSignInLink(){
   var L=T[_lang];
-  if(!email||!email.includes('@')){toast(L.errEmail,'error');return;}
+  var email=(document.getElementById('dash-email').value||'').trim().toLowerCase();
+  var errEl=document.getElementById('d-signin-err');
+  errEl.style.display='none';
+  if(!email||!email.includes('@')){
+    errEl.textContent = L.errEmail || 'Please enter a valid email address.';
+    errEl.style.display=''; return;
+  }
   var btn=document.getElementById('dash-btn');
-  btn.disabled=true; btn.textContent=L.loadingBtn;
+  var origLabel=btn.textContent;
+  btn.disabled=true; btn.textContent='Sending…';
   try{
-    var res=await fetch('/.netlify/functions/aff-lookup?email='+encodeURIComponent(email));
+    var res=await fetch('/.netlify/functions/aff-request-link',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:email})
+    });
+    // Backend always returns 200 to prevent email enumeration.
+    if(res.ok){
+      document.getElementById('d-signin-card').style.display='none';
+      document.getElementById('d-sent-email').textContent=email;
+      document.getElementById('d-signin-sent').style.display='';
+      document.getElementById('d-signin-sent').scrollIntoView({behavior:'smooth',block:'center'});
+    } else {
+      errEl.textContent='Couldn\u2019t send the link right now. Please try again in a moment.';
+      errEl.style.display='';
+    }
+  }catch(e){
+    errEl.textContent='Network error. Check your connection and try again.';
+    errEl.style.display='';
+  }finally{
+    btn.disabled=false; btn.textContent=origLabel;
+  }
+}
+
+// Reset to the sign-in form (used by "try a different email" and "get a new link")
+function _resetSignIn(){
+  document.getElementById('d-signin-card').style.display='';
+  document.getElementById('d-signin-sent').style.display='none';
+  document.getElementById('d-token-err').style.display='none';
+  document.getElementById('dash-result').style.display='none';
+  document.getElementById('d-signin-err').style.display='none';
+  var emailIn=document.getElementById('dash-email');
+  if(emailIn){ emailIn.value=''; emailIn.focus(); }
+  // Clear URL params (so token doesn't linger after a failed attempt)
+  if(window.history && history.replaceState){
+    history.replaceState(null, '', location.pathname + '#dashboard');
+  }
+}
+
+// Sign out: clear cached session and reset UI
+function _signOut(){
+  try{ sessionStorage.removeItem('aff_session'); }catch(e){}
+  if(window.history && history.replaceState){
+    history.replaceState(null, '', location.pathname + '#dashboard');
+  }
+  _resetSignIn();
+}
+
+// ── Core dashboard loader — now requires a valid token ────────────────────
+// Token + email come either from the URL (?token=&email=) on first arrival
+// after clicking the magic link, OR from sessionStorage if the affiliate is
+// re-visiting within the same browser tab.
+async function _loadDash(){
+  var L=T[_lang];
+
+  // Try to pull credentials from URL first; fall back to sessionStorage.
+  var qs = new URLSearchParams(location.search);
+  var token = qs.get('token') || '';
+  var email = (qs.get('email') || '').toLowerCase();
+
+  // If URL doesn't have them, see if we have a cached session for this tab.
+  if(!token || !email){
+    try{
+      var cached = JSON.parse(sessionStorage.getItem('aff_session') || 'null');
+      if(cached && cached.token && cached.email){
+        token = cached.token;
+        email = cached.email;
+      }
+    }catch(e){ /* ignore */ }
+  }
+
+  // No creds → bail; the sign-in card remains visible.
+  if(!token || !email) return;
+  var btn=document.getElementById('dash-btn');
+  if(btn){ btn.disabled=true; btn.textContent=L.loadingBtn||'Loading…'; }
+  try{
+    var res=await fetch('/.netlify/functions/aff-lookup?email='+encodeURIComponent(email)+'&token='+encodeURIComponent(token));
+
+    // 401 = expired / invalid token. Show the dedicated error card and
+    // wipe any cached session so the affiliate can request a fresh link.
+    if(res.status === 401){
+      try{ sessionStorage.removeItem('aff_session'); }catch(e){}
+      document.getElementById('d-signin-card').style.display='none';
+      document.getElementById('d-signin-sent').style.display='none';
+      document.getElementById('dash-result').style.display='none';
+      document.getElementById('d-token-err').style.display='';
+      // Clear URL token so refreshing doesn't loop
+      if(window.history && history.replaceState){
+        history.replaceState(null, '', location.pathname + '#dashboard');
+      }
+      return;
+    }
+
     var data=await res.json().catch(function(){return[];});
+
+    // Persist successful session for re-visits in this tab.
+    try{
+      sessionStorage.setItem('aff_session', JSON.stringify({token:token, email:email, at:Date.now()}));
+    }catch(e){ /* ignore quota errors */ }
+
+    // Clean the URL — keep the token out of the address bar after first use
+    // so it doesn't get pasted into other devices or shared by accident.
+    if(window.history && history.replaceState && qs.get('token')){
+      history.replaceState(null, '', location.pathname + '#dashboard');
+    }
+
+    // Hide sign-in / sent cards; show the dashboard area
+    document.getElementById('d-signin-card').style.display='none';
+    document.getElementById('d-signin-sent').style.display='none';
+    document.getElementById('d-token-err').style.display='none';
     ['d-pending','d-suspended','d-approved','d-notfound'].forEach(function(id){
       var el=document.getElementById(id); if(el) el.style.display='none';
     });
@@ -783,6 +920,9 @@ async function _loadDash(){
       document.getElementById('d-notfound').style.display='';
     } else {
       var af=data[0]; _aff=af;
+      // Show "Signed in as" header
+      var signedAsEl = document.getElementById('d-signed-as');
+      if(signedAsEl) signedAsEl.textContent = af.name ? (af.name + ' (' + email + ')') : email;
       if(af.status==='pending'){
         document.getElementById('d-pending').style.display='';
       } else if(af.status==='suspended'){
@@ -896,13 +1036,42 @@ async function _loadDash(){
     console.error('[_loadDash]',e.message);
     toast(T[_lang].toastErr||'Error loading stats','error');
   }
-  finally{btn.disabled=false; btn.textContent=T[_lang].dashBtn||'View Stats →';}
+  finally{ if(btn){ btn.disabled=false; btn.textContent=T[_lang].dashBtn||'Email me a sign-in link →'; } }
 }
 
 function _esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 document.getElementById('dash-email').addEventListener('keydown',function(e){
-  if(e.key==='Enter') _loadDash();
+  if(e.key==='Enter') _requestSignInLink();
 });
+
+// On page load: if the URL has a token, or sessionStorage has a cached session,
+// auto-attempt _loadDash. This handles the magic-link click flow and
+// re-visits within the same browser tab.
+(function _affAutoLoad(){
+  try{
+    var qs = new URLSearchParams(location.search);
+    var hasUrlToken = !!qs.get('token') && !!qs.get('email');
+    var hasCachedSession = false;
+    try{
+      var cached = JSON.parse(sessionStorage.getItem('aff_session')||'null');
+      hasCachedSession = !!(cached && cached.token && cached.email);
+    }catch(e){}
+    // Prefill the email field if we know the email — saves typing if they
+    // need to request another link.
+    var knownEmail = qs.get('email') || '';
+    if(!knownEmail){
+      try{ knownEmail = (JSON.parse(sessionStorage.getItem('aff_session')||'null')||{}).email || ''; }catch(e){}
+    }
+    if(knownEmail){
+      var emailIn = document.getElementById('dash-email');
+      if(emailIn && !emailIn.value) emailIn.value = knownEmail;
+    }
+    if(hasUrlToken || hasCachedSession){
+      // Defer so the rest of the page renders first
+      setTimeout(function(){ _loadDash(); }, 50);
+    }
+  }catch(e){ /* never block the page on auth errors */ }
+})();
 
 function _cpLink(){
   var l=document.getElementById('d-link').textContent;
