@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779130934");
+console.log("ShopTrack v2.7 - build:1779135523");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -90,6 +90,7 @@ function _ensureDArrays(){
   if(!Array.isArray(D.vendorCats)||D.vendorCats.length===0) D.vendorCats = ['Supplier','Distributor','Manufacturer','Wholesaler','Service Provider','Other'];
   if(!Array.isArray(D.expCats)||D.expCats.length===0)    D.expCats    = ['Rent & Lease','Salaries & Wages','Utilities','Internet & Phone','Marketing & Advertising','Transport & Fuel','Packaging & Supplies','Repairs & Maintenance','Insurance','Staff Bonus','Cleaning','Photography','Bank Charges','Taxes & Duties','Miscellaneous','Other'];
   if(!Array.isArray(D.svcCats)||D.svcCats.length===0)    D.svcCats    = ['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
+  if(!Array.isArray(D.custTypes)||D.custTypes.length===0) D.custTypes = ['Regular','VIP','New'];
 }
 
 const _DEMO_DATA = {
@@ -1119,6 +1120,75 @@ function _addSvcCatSettings(){var _s=_L();
   document.getElementById('settings-new-svccat-inp').value='';
   _renderSvcCatPills();
   toast('"'+val+'" service category added ✓','success');
+}
+
+// ── Customer Types: Settings page handlers ─────────────────────────────────
+function _renderCustTypePills(){
+  var el = document.getElementById('cust-types-list');
+  if(!el) return;
+  var html = (D.custTypes||[]).map(function(c,i){
+    var inUse = (D.cust||[]).filter(function(cu){return cu.type===c;}).length;
+    var subtitle = inUse>0 ? '<span style="font-size:10px;color:var(--text2);margin-left:4px">'+inUse+'</span>' : '';
+    return '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:20px;padding:5px 10px 5px 13px">'
+      +'<span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c)+'</span>'+subtitle
+      +'<button type="button" onclick="_delCustType('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="Remove">\u2715</button>'
+      +'</div>';
+  }).join('');
+  el.innerHTML = html;
+}
+
+function _addCustTypeSettings(){
+  var fr = BIZ.language==='fr';
+  var val = (document.getElementById('settings-new-custtype-inp')?.value||'').trim();
+  if(!val){ toast(fr?'Nom requis':'Type name required','error'); return; }
+  if(val.length > 30){ toast(fr?'Nom trop long (max 30 caractères)':'Name too long (max 30 chars)','error'); return; }
+  if(!Array.isArray(D.custTypes)) D.custTypes = ['Regular','VIP','New'];
+  // Case-insensitive duplicate check
+  if(D.custTypes.some(function(t){return t.toLowerCase()===val.toLowerCase();})){
+    toast(fr?'Ce type existe déjà':'That type already exists','error');
+    return;
+  }
+  D.custTypes.push(val);
+  if(SESSION.bizId && !SESSION.isSuperAdmin) _dbSaveCategories(SESSION.bizId);
+  document.getElementById('settings-new-custtype-inp').value='';
+  _renderCustTypePills();
+  addAudit('Customer type added', val);
+  toast('"'+val+'" '+(fr?'ajouté ✓':'added ✓'),'success');
+}
+
+function _delCustType(idx){
+  var fr = BIZ.language==='fr';
+  if(!Array.isArray(D.custTypes)) return;
+  var type = D.custTypes[idx];
+  if(idx<0 || !type) return;
+  // Hard guard: can't remove the last type
+  if(D.custTypes.length <= 1){
+    toast(fr?'Impossible de supprimer le dernier type':'Cannot remove the last remaining type','error');
+    return;
+  }
+  var inUse = (D.cust||[]).filter(function(c){return c.type===type;}).length;
+  if(inUse > 0){
+    var msg = fr
+      ? type+' est utilisé par '+inUse+' client'+(inUse>1?'s':'')+'. Les supprimer comme type ? Les clients eux-mêmes ne seront PAS supprimés, mais leur type sera vide.'
+      : type+' is used by '+inUse+' customer'+(inUse>1?'s':'')+'. Remove this type? The customers themselves will NOT be deleted, but their type field will be cleared.';
+    if(!confirm(msg)) return;
+    // Clear the type field on affected customers (don't delete them)
+    (D.cust||[]).forEach(function(c){
+      if(c.type === type){
+        c.type = (D.custTypes[0] && D.custTypes[0] !== type) ? D.custTypes[0] : '';
+        c.tier = c.type;
+        c.vip  = c.type === 'VIP';
+        if(SESSION.bizId && !SESSION.isSuperAdmin && typeof _dbSaveCust === 'function'){
+          _dbSaveCust(c);
+        }
+      }
+    });
+  }
+  D.custTypes.splice(idx,1);
+  if(SESSION.bizId && !SESSION.isSuperAdmin) _dbSaveCategories(SESSION.bizId);
+  _renderCustTypePills();
+  addAudit('Customer type removed', type+(inUse?' ('+inUse+' customer'+(inUse>1?'s':'')+' updated)':''));
+  toast('"'+type+'" '+(fr?'supprimé':'removed')+(inUse?' ('+inUse+' '+(fr?'mis à jour':'updated')+')':''),'success');
 }
 
 function _addVendorCat(){var _s=_L();
@@ -7526,7 +7596,7 @@ ${_custOverBanner}<div class="ph">
 <div class="fbar" style="margin-bottom:10px">
   <input class="fi-s" id="cust-search" placeholder="${_ui.flt_search_cust}" style="flex:1;min-width:160px" oninput="filterCustTable()"/>
   <select class="sel" id="cust-type-filter" onchange="filterCustTable()">
-    <option value="">${_ui.flt_all_type}</option><option>VIP</option><option>${_s.cust_type_reg}</option><option>New</option>
+    <option value="">${_ui.flt_all_type}</option>${(D.custTypes||['Regular','VIP','New']).map(function(t){var lbl=t==='Regular'?_s.cust_type_reg:t;return '<option value="'+_esc(t)+'">'+_esc(lbl)+'</option>';}).join('')}
   </select>
   <select class="sel" id="cust-bal-filter" onchange="filterCustTable()">
     <option value="">${_ui.flt_all_bal}</option>
@@ -7593,7 +7663,12 @@ function mAddCustomer(_returnSelectId){const _s=_L();
   modal(_s.cust_add_title,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="ac-name" placeholder="e.g. Jessica Williams"/></div>
-    <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="ac-type"><option>${_s.cust_type_reg}</option><option>VIP</option><option>New</option></select></div>
+    <div class="fg"><label class="fl">${_s.ui_type}</label>
+      <div style="display:flex;gap:6px;align-items:flex-start">
+        <select class="fs" id="ac-type" style="flex:1">${(D.custTypes||['Regular','VIP','New']).map(function(t){var lbl=t==='Regular'?_s.cust_type_reg:t;return '<option value="'+_esc(t)+'">'+_esc(lbl)+'</option>';}).join('')}</select>
+        <button type="button" class="btn btn-s btn-sm" onclick="_custTypeAddInline('ac-type')" title="Create a new customer type — saves to your list" style="flex-shrink:0;white-space:nowrap">+ New</button>
+      </div>
+    </div>
     <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" type="email" id="ac-email" placeholder="email@example.com"/></div>
     <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="ac-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
     <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="ac-whatsapp" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
@@ -7656,11 +7731,18 @@ function mEditCustomer(id){const _s=_L();
   modal(_s.cust_edit_title+' '+c.name,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="ec-name" value="${c.name||''}"/></div>
-    <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="ec-type">
-      <option${(c.type||'')==='Regular'?' selected':''}>${_s.cust_type_reg}</option>
-      <option${(c.type||'')==='VIP'?' selected':''}>VIP</option>
-      <option${(c.type||'')==='New'?' selected':''}>New</option>
-    </select></div>
+    <div class="fg"><label class="fl">${_s.ui_type}</label>
+      <div style="display:flex;gap:6px;align-items:flex-start">
+        <select class="fs" id="ec-type" style="flex:1">${(function(){
+          var cur=c.type||'Regular';
+          var types=D.custTypes||['Regular','VIP','New'];
+          // If the customer has a legacy type that's no longer in the list, still show it (don't lose data)
+          if(types.indexOf(cur)===-1 && cur) types=[cur].concat(types);
+          return types.map(function(t){var lbl=t==='Regular'?_s.cust_type_reg:t;return '<option value="'+_esc(t)+'"'+(t===cur?' selected':'')+'>'+_esc(lbl)+'</option>';}).join('');
+        })()}</select>
+        <button type="button" class="btn btn-s btn-sm" onclick="_custTypeAddInline('ec-type')" title="Create a new customer type — saves to your list" style="flex-shrink:0;white-space:nowrap">+ New</button>
+      </div>
+    </div>
     <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" type="email" id="ec-email" value="${c.email||''}"/></div>
     <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="ec-phone" value="${c.ph||c.phone||''}"/></div>
     <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="ec-whatsapp" value="${c.whatsapp||''}"/></div>
@@ -14773,10 +14855,12 @@ async function _dbLoadBizData(bizId){
     const vendorCats = (cats.data||[]).filter(c=>c.type==='vendor').map(c=>c.name);
     const expCats    = (cats.data||[]).filter(c=>c.type==='exp').map(c=>c.name);
     const svcCats    = (cats.data||[]).filter(c=>c.type==='svc').map(c=>c.name);
+    const custTypes  = (cats.data||[]).filter(c=>c.type==='cust').map(c=>c.name);
     if(invCats.length)    D.invCats    = invCats;    else _ensureDArrays(); // seeds defaults
     if(vendorCats.length) D.vendorCats = vendorCats; else _ensureDArrays();
     if(expCats.length)    D.expCats    = expCats;    else _ensureDArrays();
     if(svcCats.length)    D.svcCats    = svcCats;    else _ensureDArrays();
+    if(custTypes.length)  D.custTypes  = custTypes;  else _ensureDArrays();
     // If brand new business (no categories saved), persist defaults to Supabase immediately
     if(!(cats.data||[]).length && bizId && !_is107){
       setTimeout(function(){ _dbSaveCategories(bizId); }, 1000);
@@ -15419,6 +15503,7 @@ async function _idbWriteAll(bizId){
       _idbSave(bizId, 'expCats',   D.expCats),
       _idbSave(bizId, 'vendorCats',D.vendorCats),
       _idbSave(bizId, 'svcCats',   D.svcCats),
+      _idbSave(bizId, 'custTypes', D.custTypes||[]),
       _idbSave(bizId, 'biz',       BIZ),
     ]);
     console.log('[IDB] Cache written for', bizId);
@@ -15430,7 +15515,7 @@ async function _idbRestoreAll(bizId){
   if(!bizId || bizId === 'BIZ-001' || bizId === 'BIZ-107') return false;
   try{
     var [inv,cust,sales,rentals,exp,vendors,purchases,audit,services,appts,blockedSlots,quotes,
-         invCats,expCats,vendorCats,svcCats,biz] = await Promise.all([
+         invCats,expCats,vendorCats,svcCats,custTypes,biz] = await Promise.all([
       _idbLoad(bizId, 'inv'),
       _idbLoad(bizId, 'cust'),
       _idbLoad(bizId, 'sales'),
@@ -15447,6 +15532,7 @@ async function _idbRestoreAll(bizId){
       _idbLoad(bizId, 'expCats'),
       _idbLoad(bizId, 'vendorCats'),
       _idbLoad(bizId, 'svcCats'),
+      _idbLoad(bizId, 'custTypes'),
       _idbLoad(bizId, 'biz'),
     ]);
 
@@ -15472,6 +15558,7 @@ async function _idbRestoreAll(bizId){
     if(expCats && expCats.length)    D.expCats    = expCats;
     if(vendorCats && vendorCats.length) D.vendorCats = vendorCats;
     if(svcCats && svcCats.length)    D.svcCats    = svcCats;
+    if(custTypes && custTypes.length) D.custTypes  = custTypes;
 
     // Restore BIZ profile fields (non-destructive — only set what cache has)
     if(biz){
@@ -16619,12 +16706,14 @@ async function _dbSaveCategories(bizId){
   _idbSave(bizId,'expCats',D.expCats).catch(function(){});
   _idbSave(bizId,'vendorCats',D.vendorCats).catch(function(){});
   _idbSave(bizId,'svcCats',D.svcCats).catch(function(){});
+  _idbSave(bizId,'custTypes',D.custTypes||[]).catch(function(){});
 
   var rows = [
     ...D.invCats.map(function(n){return {biz_id:bizId,type:'inv',name:n};}),
     ...D.vendorCats.map(function(n){return {biz_id:bizId,type:'vendor',name:n};}),
     ...(D.svcCats||[]).map(function(n){return {biz_id:bizId,type:'svc',name:n};}),
     ...D.expCats.map(function(n){return {biz_id:bizId,type:'exp',name:n};}),
+    ...(D.custTypes||[]).map(function(n){return {biz_id:bizId,type:'cust',name:n};}),
   ];
 
   if(!_sb || !navigator.onLine){
@@ -19726,6 +19815,14 @@ function pgSettings(){
       +'<button type="button" onclick="_delSvcCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="'+_s.set_remove+'">\u2715</button>'
       +'</div>';
   }).join('');
+  var custTypePills = (D.custTypes||[]).map(function(c,i){
+    var inUse = (D.cust||[]).filter(function(cu){return cu.type===c;}).length;
+    var subtitle = inUse>0 ? '<span style="font-size:10px;color:var(--text2);margin-left:4px">'+inUse+'</span>' : '';
+    return '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:20px;padding:5px 10px 5px 13px">'
+      +'<span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c)+'</span>'+subtitle
+      +'<button type="button" onclick="_delCustType('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="Remove (will not delete customers — they\u2019ll fall back to Regular)">\u2715</button>'
+      +'</div>';
+  }).join('');
   var expCatPills = D.expCats.map(function(c,i){
     return '<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 10px 5px 13px">'
       +'<span style="font-size:13px;font-weight:500;color:var(--ink)">'+_esc(c)+'</span>'
@@ -20355,6 +20452,17 @@ ${tabDocsHtml}
     <div style="display:flex;gap:8px;align-items:center;max-width:400px;margin-bottom:20px">
       <input class="fi" id="settings-new-svccat-inp" placeholder="${_s.set_cat_svc_ph}" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addSvcCatSettings();}"/>
       <button class="btn btn-p btn-sm" onclick="_addSvcCatSettings()">+ Add</button>
+    </div>
+  </div>
+  <div style="padding-top:16px;border-top:1px solid var(--border)">
+    <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px">${BIZ.language==='fr'?'Types de clients':'Customer Types'}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">${BIZ.language==='fr'?'Catégorisez vos clients (VIP, B2B, sur recommandation, etc.). Les types personnalisés apparaissent dans les filtres et formulaires client.':'Categorise your customers (e.g. VIP, B2B, Referral). Custom types appear in customer filters and forms. Number next to a type = how many customers currently use it.'}</div>
+    <div id="cust-types-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+      ${custTypePills}
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;max-width:400px;margin-bottom:20px">
+      <input class="fi" id="settings-new-custtype-inp" placeholder="${BIZ.language==='fr'?'Nouveau type… ex. B2B, Recommandation':'New type… e.g. B2B, Referral'}" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_addCustTypeSettings();}"/>
+      <button class="btn btn-p btn-sm" onclick="_addCustTypeSettings()">+ Add</button>
     </div>
   </div>
   <div style="padding-top:16px;border-top:1px solid var(--border)">
@@ -26734,6 +26842,51 @@ function _svcCatPickInDropdown(val){
   _mkSearchSelect('sv-cat-wrap', opts, val || '', function(v){
     var h = document.getElementById('sv-cat'); if(h) h.value = v;
   }, 'Service category…');
+}
+
+// ── Add a new customer type inline from the New/Edit Customer modal ──
+// Persists to D.custTypes, syncs to the cloud (so it shows up in filter
+// dropdowns and on other devices), and re-renders the given select with
+// the new type pre-selected.
+function _custTypeAddInline(selectId){
+  var fr = BIZ.language === 'fr';
+  var raw = prompt(fr ? 'Nom du nouveau type de client :' : 'New customer type name:');
+  if(raw === null) return; // cancelled
+  var name = String(raw).trim();
+  if(!name){
+    toast(fr ? 'Nom requis' : 'Type name required', 'error');
+    return;
+  }
+  if(name.length > 30){
+    toast(fr ? 'Nom trop long (max 30 caractères)' : 'Name too long (max 30 chars)', 'error');
+    return;
+  }
+  if(!Array.isArray(D.custTypes)) D.custTypes = ['Regular','VIP','New'];
+  // Case-insensitive duplicate check
+  var existing = D.custTypes.find(function(t){ return t.toLowerCase() === name.toLowerCase(); });
+  if(existing){
+    toast(fr ? 'Ce type existe déjà' : 'That type already exists', 'info');
+    var selA = document.getElementById(selectId);
+    if(selA) selA.value = existing;
+    return;
+  }
+  D.custTypes.push(name);
+  if(SESSION.bizId && !SESSION.isSuperAdmin && typeof _dbSaveCategories === 'function'){
+    _dbSaveCategories(SESSION.bizId);
+  }
+  addAudit('Customer type added', name + ' (inline)');
+  toast('"' + name + '" ' + (fr ? 'ajouté ✓' : 'added ✓'), 'success');
+  // Rebuild the select with the new option pre-selected
+  var sel = document.getElementById(selectId);
+  if(sel){
+    var _s = _L();
+    var cur = name;
+    sel.innerHTML = D.custTypes.map(function(t){
+      var lbl = t === 'Regular' ? _s.cust_type_reg : t;
+      return '<option value="' + _esc(t) + '"' + (t === cur ? ' selected' : '') + '>' + _esc(lbl) + '</option>';
+    }).join('');
+    sel.value = name;
+  }
 }
 
 async function mNewService(){const _s=_L();
