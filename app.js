@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779126042");
+console.log("ShopTrack v2.7 - build:1779126831");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -14010,6 +14010,194 @@ async function _affDoPayPartial(id, totalUnpaid){var _s=_L();
 }
 
 // Payment history modal with receipt thumbnails
+// ── Parse the composite social_handle field into structured pieces ────────
+// The signup form on affiliates.html packs everything into one string:
+//   "{handle} [{platforms}] [{country}] [{niche}] [{audience}] | {whyJoin} [lang:{lang}]"
+// Example:
+//   "@orbit_interiors [TikTok,Instagram,Facebook,WhatsApp] [CM] [other] [lang:en]"
+// This helper splits it back so we can display fields properly in the
+// view-details modal.
+function _affParseHandle(raw){
+  var out = { handle:'', platforms:[], country:'', niche:'', audience:'', whyJoin:'', lang:'en' };
+  if(!raw) return out;
+  var s = String(raw);
+  // Pull the why-join (text after " | ") and lang tag first — both can come after the
+  // bracketed fields, in any order. The lang is always at the very end.
+  var langMatch = s.match(/\[lang:([a-z]{2})\]\s*$/i);
+  if(langMatch){ out.lang = langMatch[1].toLowerCase(); s = s.replace(langMatch[0], '').trim(); }
+  var pipeIdx = s.indexOf(' | ');
+  if(pipeIdx >= 0){ out.whyJoin = s.slice(pipeIdx + 3).trim(); s = s.slice(0, pipeIdx).trim(); }
+  // Now extract each [bracketed] segment in order: platforms, country, niche, audience.
+  // Order in the source is fixed (see affiliates.html), so we just consume them in sequence.
+  var brackets = [];
+  s = s.replace(/\[([^\]]+)\]/g, function(_, inner){ brackets.push(inner); return ''; });
+  s = s.trim();
+  out.handle = s; // whatever's left after pulling brackets
+  // Map by index
+  if(brackets[0] && /,/.test(brackets[0])) out.platforms = brackets[0].split(',').map(function(x){return x.trim();}).filter(Boolean);
+  else if(brackets[0]) out.platforms = [brackets[0]];
+  if(brackets[1]) out.country = brackets[1];
+  if(brackets[2]) out.niche = brackets[2];
+  if(brackets[3]) out.audience = brackets[3];
+  return out;
+}
+
+// ── Full affiliate details modal — opens on row click ─────────────────────
+function _affViewDetails(id){
+  var _s = _L();
+  var a = _affiliates.find(function(x){ return x.id===id; });
+  if(!a){ toast('Affiliate not found','error'); return; }
+  var parsed = _affParseHandle(a.social_handle || '');
+
+  // Status badge styling
+  var stColor = a.status==='approved' ? '#047857' : a.status==='pending' ? '#a16207' : '#dc2626';
+  var stBg    = a.status==='approved' ? '#d1fae5' : a.status==='pending' ? '#fef3c7' : '#fee2e2';
+  var stLabel = a.status==='approved' ? 'Approved' : a.status==='pending' ? 'Pending' : 'Suspended';
+
+  // Conversion rate
+  var cr   = a.clicks > 0 ? ((a.conversions||0) / a.clicks * 100) : 0;
+  var crStr = a.clicks > 0 ? cr.toFixed(1) + '%' : '—';
+  var crColor = cr >= 5 ? 'var(--g)' : cr >= 2 ? 'var(--y)' : a.clicks > 0 ? 'var(--r)' : 'var(--text2)';
+
+  // Payment counts
+  var paymentCount = (a.payment_history || []).length;
+  var paidTotal = (a.total_earned_xaf || 0) - (a.unpaid_xaf || 0);
+
+  // Last payment date (if any)
+  var lastPay = (a.payment_history || []).slice(-1)[0];
+  var lastPayStr = lastPay ? (lastPay.date || '—') + ' · ' + fmt(lastPay.amt || 0) + ' XAF' : '—';
+
+  // Affiliate link
+  var affLink = a.affiliate_code && !a.affiliate_code.startsWith('PENDING')
+    ? 'https://shoptrack.org/?aff=' + a.affiliate_code
+    : '';
+
+  // Build conditional action buttons for the footer
+  var actionBtns = '';
+  if(a.status === 'pending'){
+    actionBtns += '<button class="btn btn-p" onclick="closeModal();_affApprove(\''+a.id+'\')">✔ Approve</button>';
+  }
+  if(a.status === 'approved'){
+    actionBtns += '<button class="btn btn-p btn-sm" onclick="closeModal();_affPayPartial(\''+a.id+'\')">💳 Pay</button>';
+    if(a.unpaid_xaf > 0){
+      actionBtns += '<button class="btn btn-g btn-sm" onclick="closeModal();_affMarkPaid(\''+a.id+'\')">✔ Mark All Paid</button>';
+    }
+    if(paymentCount > 0){
+      actionBtns += '<button class="btn btn-s btn-sm" onclick="closeModal();_affViewHistory(\''+a.id+'\')">📋 History</button>';
+    }
+    if(a.email){
+      actionBtns += '<button class="btn btn-s btn-sm" onclick="_affResendApprovalEmail(\''+a.id+'\')">📧 Resend Welcome</button>';
+    }
+    actionBtns += '<button class="btn btn-d btn-sm" onclick="closeModal();_affSuspend(\''+a.id+'\')">⛔ Suspend</button>';
+  }
+  if(a.status === 'suspended'){
+    actionBtns += '<button class="btn btn-g btn-sm" onclick="closeModal();_affApprove(\''+a.id+'\')">↺ Reactivate</button>';
+  }
+  actionBtns += '<button class="btn btn-s btn-sm" onclick="closeModal();_affSetCode(\''+a.id+'\')">✏ Edit Code</button>';
+  if(affLink){
+    actionBtns += '<button class="btn btn-s btn-sm" onclick="_affCopyLink(\''+affLink+'\')">📋 Copy Link</button>';
+  }
+  actionBtns += '<button class="btn btn-d btn-sm" onclick="closeModal();_affDelete(\''+a.id+'\')">🗑 Delete</button>';
+
+  // Field row helper
+  function fieldRow(label, value, opts){
+    opts = opts || {};
+    var val = (value === undefined || value === null || value === '') ? '<span style="color:var(--text3)">—</span>' : value;
+    return '<div style="display:flex;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start;gap:12px">'
+      + '<div style="width:130px;flex-shrink:0;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;font-weight:700;padding-top:2px">'+label+'</div>'
+      + '<div style="flex:1;font-size:13px;color:'+(opts.color||'var(--ink)')+';'+(opts.mono?'font-family:var(--mono);':'')+(opts.bold?'font-weight:700;':'')+'word-break:break-word">'+val+'</div>'
+      + '</div>';
+  }
+
+  // KPI card helper
+  function kpiCard(label, value, color){
+    return '<div style="flex:1;min-width:110px;background:var(--bg3);border-radius:8px;padding:10px 12px">'
+      + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);margin-bottom:4px">'+label+'</div>'
+      + '<div style="font-size:17px;font-weight:700;color:'+(color||'var(--ink)')+';font-family:var(--mono)">'+value+'</div>'
+      + '</div>';
+  }
+
+  // Platform pills
+  var platformsHtml = parsed.platforms.length
+    ? '<div style="display:flex;flex-wrap:wrap;gap:5px">' + parsed.platforms.map(function(p){
+        return '<span style="font-size:11px;background:var(--a-dim);color:var(--a);border-radius:10px;padding:2px 9px;font-weight:600">'+_esc(p)+'</span>';
+      }).join('') + '</div>'
+    : '<span style="color:var(--text3)">—</span>';
+
+  var body =
+    // Header strip with status
+    '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg3);border-radius:8px;padding:12px 14px;margin-bottom:14px">'
+      +'<div>'
+        +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Affiliate Code</div>'
+        +'<div style="font-family:var(--mono);font-size:17px;font-weight:700;color:var(--a)">'+_esc(a.affiliate_code||'—')+'</div>'
+      +'</div>'
+      +'<div style="text-align:right">'
+        +'<span style="display:inline-block;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:700;background:'+stBg+';color:'+stColor+'">'+stLabel+'</span>'
+        +'<div style="font-size:11px;color:var(--text2);margin-top:4px">Signed up '+((a.created_at||'').slice(0,10) || '—')+'</div>'
+      +'</div>'
+    +'</div>'
+
+    // KPI grid
+    +'<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
+      + kpiCard('Clicks', (a.clicks||0).toString(), 'var(--a)')
+      + kpiCard('Conversions', (a.conversions||0).toString(), 'var(--g)')
+      + kpiCard('Conv. rate', crStr, crColor)
+      + kpiCard('Total earned', fmt(a.total_earned_xaf||0), 'var(--g)')
+      + kpiCard('Paid out', fmt(paidTotal), 'var(--text)')
+      + kpiCard('Unpaid', fmt(a.unpaid_xaf||0), (a.unpaid_xaf||0) > 0 ? 'var(--r)' : 'var(--text2)')
+    +'</div>'
+
+    // Contact & profile
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);margin-bottom:6px">Contact & profile</div>'
+    +'<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 14px;margin-bottom:16px">'
+      + fieldRow('Name', _esc(a.name||''), {bold:true})
+      + fieldRow('Email', a.email ? '<a href="mailto:'+_esc(a.email)+'" style="color:var(--a)">'+_esc(a.email)+'</a>' : '', {mono:true})
+      + fieldRow('Social handle', parsed.handle ? _esc(parsed.handle) : '', {mono:true})
+      + fieldRow('Platforms', platformsHtml)
+      + fieldRow('Country', parsed.country ? _esc(parsed.country) : '')
+      + fieldRow('Niche', parsed.niche ? '<span style="font-size:11px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:2px 9px;text-transform:capitalize">'+_esc(parsed.niche)+'</span>' : '')
+      + fieldRow('Audience size', parsed.audience ? _esc(parsed.audience) : '')
+      + fieldRow('Language', parsed.lang === 'fr' ? '🇫🇷 French' : '🇬🇧 English')
+    +'</div>'
+
+    // Application motivation
+    +(parsed.whyJoin ? (
+      '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);margin-bottom:6px">Why they want to join</div>'
+      +'<div style="background:var(--bg2);border-left:3px solid var(--a);border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:16px;font-size:13px;line-height:1.6;color:var(--text);white-space:pre-wrap;font-style:italic">"'+_esc(parsed.whyJoin)+'"</div>'
+    ) : '')
+
+    // Commission settings
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);margin-bottom:6px">Commission & payments</div>'
+    +'<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 14px;margin-bottom:16px">'
+      + fieldRow('Commission rate', (a.commission_pct || 20) + '%')
+      + fieldRow('Total earned', fmt(a.total_earned_xaf||0) + ' XAF', {bold:true, color:'var(--g)'})
+      + fieldRow('Paid out', fmt(paidTotal) + ' XAF')
+      + fieldRow('Outstanding', fmt(a.unpaid_xaf||0) + ' XAF', {bold:true, color:(a.unpaid_xaf||0)>0?'var(--r)':'var(--text2)'})
+      + fieldRow('Payments made', paymentCount + ' transaction'+(paymentCount===1?'':'s'))
+      + fieldRow('Last payment', _esc(lastPayStr))
+    +'</div>'
+
+    // Affiliate link
+    +(affLink ? (
+      '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);margin-bottom:6px">Affiliate link</div>'
+      +'<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">'
+        +'<code style="flex:1;font-family:var(--mono);font-size:12px;color:var(--a);word-break:break-all">'+_esc(affLink)+'</code>'
+        +'<button class="btn btn-s btn-xs" onclick="_affCopyLink(\''+affLink+'\')">📋 Copy</button>'
+      +'</div>'
+    ) : (a.affiliate_code && a.affiliate_code.startsWith('PENDING') ? (
+      '<div class="alrt alrt-y" style="margin-bottom:14px;padding:10px 14px;font-size:12px">⚠ A real affiliate code has not been assigned yet. Use Edit Code to set one before approving.</div>'
+    ) : ''))
+
+    // Identifier
+    +'<div style="font-size:10px;color:var(--text3);text-align:right;font-family:var(--mono);margin-top:6px">ID: '+_esc(a.id||'')+'</div>';
+
+  modal('👤 Affiliate Details — '+_esc(a.name||''), body,
+    '<button class="btn btn-s" onclick="closeModal()">Close</button>' + actionBtns,
+    'lg'
+  );
+}
+
+
 function _affViewHistory(id){const _s=_L();
   var a = _affiliates.find(function(x){ return x.id===id; });
   if(!a) return;
@@ -14161,8 +14349,8 @@ function _affRenderTable(){const _s=_L();
       : a.status==='pending' ? '<span class="bx bx-y">'+_s.ui_st_pending+'</span>'
       : '<span class="bx bx-r">'+_s.adm_suspended+'</span>';
     var affLink = 'https://shoptrack.org/?aff='+_esc(a.affiliate_code||'');
-    return '<tr>'+
-      '<td><strong style="color:var(--ink)">'+_esc(a.name||'')+'</strong><div style="font-size:11px;color:var(--text2)">'+_esc(a.email||'')+'</div>'+(a.social_handle?'<div style="font-size:11px;color:var(--a)">'+_esc(a.social_handle)+'</div>':'')+'</td>'+
+    return '<tr style="cursor:pointer" onclick="_affViewDetails(\''+a.id+'\')" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'\'">'+
+      '<td><strong style="color:var(--ink)">'+_esc(a.name||'')+'</strong><div style="font-size:11px;color:var(--text2)">'+_esc(a.email||'')+'</div></td>'+
       '<td><span style="font-family:var(--mono);font-size:12px;color:var(--a)">'+_esc(a.affiliate_code||'')+'</span></td>'+
       '<td>'+statusBadge+'</td>'+
       '<td>'+(a.clicks||0)+'</td>'+
@@ -14171,7 +14359,7 @@ function _affRenderTable(){const _s=_L();
       '<td style="color:var(--g)">'+fmt(a.total_earned_xaf||0)+'</td>'+
       '<td style="color:'+(a.unpaid_xaf>0?'var(--r)':'var(--text2)')+'">'+fmt(a.unpaid_xaf||0)+'</td>'+
       '<td style="color:var(--text2);font-size:12px">'+(a.created_at||'').slice(0,10)+'</td>'+
-      '<td><div class="btn-row" style="flex-wrap:nowrap;gap:3px;justify-content:flex-end;white-space:nowrap">'+
+      '<td onclick="event.stopPropagation()"><div class="btn-row" style="flex-wrap:nowrap;gap:3px;justify-content:flex-end;white-space:nowrap">'+
         (a.status==='pending'?
           '<button class="btn btn-g btn-xs" style="background:var(--g);color:#fff;font-weight:700" onclick="_affApprove(\''+a.id+'\')" title="Approve this application">&#x2714; Approve</button>'
         :'')+
