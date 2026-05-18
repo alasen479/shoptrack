@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779117715");
+console.log("ShopTrack v2.7 - build:1779125711");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -83,6 +83,7 @@ function _ensureDArrays(){
   if(!Array.isArray(D.audit))             D.audit             = [];
   if(!Array.isArray(D.services))          D.services          = [];
   if(!Array.isArray(D.appointments))      D.appointments      = [];
+  if(!Array.isArray(D.quotes))            D.quotes            = [];
   if(!Array.isArray(D.adminBiz))          D.adminBiz          = [];
   if(!Array.isArray(D.adminBizUnverified))D.adminBizUnverified= [];
   if(!Array.isArray(D.invCats)||D.invCats.length===0)    D.invCats    = ['General','Clothing & Fashion','Electronics','Food & Beverages','Beauty & Health','Home & Furniture','Equipment & Tools','Raw Materials','Packaging','Accessories','Other'];
@@ -2074,6 +2075,7 @@ function _qaNav(pg,lbl){var _s=_L();
   // Navigate to page first, then open the creation modal
   switch(pg){
     case '_invoice':  mInvoiceNew(); return;
+    case '_quote':    mQuoteNew(); return;
     case '_payment':  mRecordPayment(null); return;
     case '_photos':   mPhotoUpload(); return;
     case 'inventory': nav('inventory'); setTimeout(()=>mAddItem(), 80); return;
@@ -4499,7 +4501,7 @@ function pgSales(){const _s=_L();const _ui=_s;
 <div class="ph">
   <div class="bc">ShopTrack / <span>${_ui.nav_sales}</span></div>
   <div class="ph-row"><h1>${_ui.nav_sales}</h1>
-    <div class="btn-row"><button class="btn btn-g btn-sm" onclick="mBulkImport('sales')">⬆ Import</button><button class="btn btn-s btn-sm" onclick="exportSalesCSV()">⬇ CSV</button><button class="btn btn-g btn-sm" onclick="exportSalesPDF()">⬇ PDF</button><button class="btn btn-p btn-sm" onclick="mCreateSale()">${_ui.btn_create_sale}</button></div>
+    <div class="btn-row"><button class="btn btn-g btn-sm" onclick="mBulkImport('sales')">⬆ Import</button><button class="btn btn-s btn-sm" onclick="exportSalesCSV()">⬇ CSV</button><button class="btn btn-g btn-sm" onclick="exportSalesPDF()">⬇ PDF</button><button class="btn btn-s btn-sm" onclick="mQuoteNew()" title="Create a price quote (pre-sale proposal)">📝 Quote</button><button class="btn btn-p btn-sm" onclick="mCreateSale()">${_ui.btn_create_sale}</button></div>
   </div>
   <p>${_ui.ph_sales}</p>
 </div>
@@ -4517,6 +4519,44 @@ ${D.sales.length===0?'<div style="background:var(--bg2);border:1px dashed var(--
   <select class="sel" id="sales-product-filter" onchange="filterSalesTable()"><option value="">${_s.sal_flt_prods}</option>${[...new Set(D.inv.map(i=>i.name))].sort().map(n=>`<option>${_esc(n)}</option>`).join('')}</select>
   <div class="dtabs"><button class="dtab" onclick="setSalesPeriod(this,'today')">${_ui.per_today}</button><button class="dtab" onclick="setSalesPeriod(this,'week')">${_ui.per_week}</button><button class="dtab" onclick="setSalesPeriod(this,'lastweek')">${_ui.per_lastweek}</button><button class="dtab" id="sales-period-month" onclick="setSalesPeriod(this,'month')">${_ui.per_month}</button><button class="dtab" onclick="setSalesPeriod(this,'lastmonth')">${_ui.per_lastmonth}</button><button class="dtab" onclick="setSalesPeriod(this,'quarter')">${_ui.per_quarter}</button><button class="dtab on" onclick="setSalesPeriod(this,'ytd')">${_ui.per_ytd}</button></div>
 </div>
+${(D.quotes && D.quotes.length) ? `
+<div class="card" style="margin-bottom:12px">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:13px;font-weight:700;color:var(--ink)">📝 Quotes</span>
+      <span style="font-size:11px;color:var(--text2)">(${D.quotes.length} on file — pending acceptance)</span>
+    </div>
+    <button class="btn btn-s btn-xs" onclick="mQuoteNew()">+ New Quote</button>
+  </div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>ID</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Deposit</th><th>Valid until</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>${D.quotes.map(q=>{
+      const stCol = q.st==='Accepted'?'g':q.st==='Rejected'?'r':q.st==='Expired'?'text3':q.st==='Sent'?'a':'o';
+      const stBg  = q.st==='Accepted'?'rgba(5,150,105,.12)':q.st==='Rejected'?'rgba(220,38,38,.12)':q.st==='Expired'?'var(--bg3)':q.st==='Sent'?'rgba(67,97,238,.12)':'rgba(245,158,11,.12)';
+      const isAccepted = q.st==='Accepted';
+      const isConverted = !!q.convertedSaleId;
+      return `<tr>
+        <td>${mono(q.id,'a')}</td>
+        <td style="color:var(--text2)">${q.dt}</td>
+        <td><strong style="color:var(--ink)">${_esc(q.cust)}</strong></td>
+        <td class="w" style="font-size:12px">${_esc(q.items||'')}</td>
+        <td>${mono(fmt(q.total||0))}</td>
+        <td>${(q.deposit||0)>0?mono(fmt(q.deposit),'p'):'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
+        <td style="color:var(--text2);font-size:11px">${q.validUntil||'—'}</td>
+        <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${stBg};color:var(--${stCol})">${q.st}${isConverted?' → '+q.convertedSaleId:''}</span></td>
+        <td><div class="btn-row" style="gap:3px;flex-wrap:nowrap;justify-content:flex-end">
+          <button class="btn btn-g btn-xs" onclick="genQuoteDoc('${q.id}')" title="View / Print PDF">📄</button>
+          ${q.st==='Draft' ? `<button class="btn btn-xs" style="background:rgba(67,97,238,.12);color:var(--a)" onclick="_quoteSetStatus('${q.id}','Sent')" title="Mark as Sent">📤</button>` : ''}
+          ${(q.st==='Draft'||q.st==='Sent') ? `<button class="btn btn-xs" style="background:var(--g);color:#fff;font-weight:700" onclick="_quoteConvertToInvoice('${q.id}')" title="Convert to Invoice (Sale)">✓ Invoice</button>` : ''}
+          ${(q.st==='Draft'||q.st==='Sent') ? `<button class="btn btn-xs" style="background:rgba(220,38,38,.12);color:var(--r)" onclick="_quoteSetStatus('${q.id}','Rejected')" title="Mark as Rejected">✕</button>` : ''}
+          ${isAccepted && !isConverted ? `<button class="btn btn-xs" style="background:var(--g);color:#fff;font-weight:700" onclick="_quoteConvertToInvoice('${q.id}')" title="Convert to Invoice">→ Invoice</button>` : ''}
+          ${isConverted ? `<button class="btn btn-g btn-xs" onclick="genInvoiceDoc('${q.convertedSaleId}')" title="View linked invoice">🔗</button>` : ''}
+          <button class="btn btn-d btn-xs" onclick="_quoteDelete('${q.id}')" title="Delete">🗑</button>
+        </div></td>
+      </tr>`;}).join('')}
+    </tbody>
+  </table></div>
+</div>` : ''}
 <div class="card">
   <div class="tbl-wrap"><table id="sales-table">
     <thead><tr><th>${_s.sal_col_id}</th><th>${_s.sal_col_date}</th><th>${_s.sal_col_cust}</th><th>${_s.sal_col_items}</th><th>${_s.sal_col_total}</th><th>${_s.sal_col_paid}</th><th>${_s.sal_col_bal}</th><th>${_s.sal_col_gp}</th><th>${_s.sal_col_status}</th><th>${_s.sal_col_actions}</th></tr></thead>
@@ -5453,6 +5493,361 @@ function _saveInvoice(){var _s=_L();
   setTimeout(function(){ genInvoiceDoc(newId); }, 150);
   nav('sales');
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// QUOTES (a.k.a. Estimates / Proformas)
+// ───────────────────────────────────────────────────────────────────
+// A Quote is a pre-sale proposal: line items, prices, totals, customer.
+// It does NOT affect revenue, AR, or inventory until accepted and
+// converted to an Invoice. Quote IDs use the prefix 'Q-'.
+// Statuses: Draft | Sent | Accepted | Rejected | Expired
+// Storage: D.quotes (IDB-backed; no Supabase table required initially)
+// ═══════════════════════════════════════════════════════════════════
+
+// Build the Create Quote modal — reuses the invoice line-row machinery
+// (_invAddRow / _invAddFromCatalogue / _invUpdateTotals / _invTypeChanged)
+// by sharing the same DOM IDs. Save handler differs (_saveQuote).
+function mQuoteNew(prefill){
+  var _s = _L();
+  var saleItems = D.inv.filter(function(i){return i.st==='For Sale'||i.st==='Both';})
+    .map(function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.sp||0)*CUR.rate)+'">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' — '+fmt(i.sp||0)+'</option>';}).join('');
+  var rentalItems = D.inv.filter(function(i){return i.st==='For Rent'||i.st==='Both';})
+    .map(function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.rp||0)*CUR.rate)+'">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' — '+fmt(i.rp||0)+'/day</option>';}).join('');
+  var svcItems = (D.services||[]).filter(function(s){return s.active!==false;})
+    .map(function(s){return '<option value="'+_esc(s.name)+'" data-price="'+Math.round((s.price||0)*CUR.rate)+'">'+_esc(s.name)+' — '+fmt(s.price||0)+'</option>';}).join('');
+
+  // Default valid-until = today + 14 days
+  var validUntil = new Date(); validUntil.setDate(validUntil.getDate()+14);
+  var validUntilStr = validUntil.toISOString().slice(0,10);
+
+  modal('📝 Create Quote',
+  '<div class="alrt alrt-y" style="margin-bottom:10px;padding:8px 12px;font-size:12px">'
+    +'A Quote is a proposal — it does not affect revenue or inventory until accepted and converted to an Invoice.'
+  +'</div>'
+  +'<div class="fg-2">'
+    +'<div class="fg"><label class="fl">'+(BIZ.language==='fr'?'Client *':'Customer *')+'</label>'
+      +'<div style="display:flex;gap:6px;align-items:center">'
+        +'<select class="fs" id="inv-cust" style="flex:1">'
+          +'<option value="">-- '+(BIZ.language==='fr'?'Sélectionner un client':'Select customer')+' --</option>'
+          +D.cust.map(function(c){return '<option value="'+_esc(c.name)+'">'+_esc(c.name)+'</option>';}).join('')
+        +'</select>'
+        +'<button type="button" class="btn btn-g btn-xs" style="white-space:nowrap;padding:0 10px;height:34px" onclick="var row=document.getElementById(\'inv-newcust-row\');row.style.display=row.style.display===\'none\'?\'flex\':\'none\';if(row.style.display===\'flex\') document.getElementById(\'inv-newcust-name\').focus();">+ '+(BIZ.language==='fr'?'Nouveau':'New')+'</button>'
+      +'</div>'
+      +'<div id="inv-newcust-row" style="display:none;gap:6px;margin-top:6px;align-items:center">'
+        +'<input class="fi" id="inv-newcust-name" placeholder="'+(BIZ.language==='fr'?'Nom du client':'Customer name')+'" style="flex:1;margin:0" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_invAddNewCust();}"/>'
+        +'<input class="fi" id="inv-newcust-phone" placeholder="'+(BIZ.language==='fr'?'Téléphone':'Phone')+'" style="width:130px;margin:0"/>'
+        +'<button type="button" class="btn btn-p btn-xs" style="white-space:nowrap;padding:0 12px;height:34px" onclick="_invAddNewCust()">Add</button>'
+        +'<button type="button" class="btn btn-s btn-xs" style="height:34px;padding:0 10px" onclick="document.getElementById(\'inv-newcust-row\').style.display=\'none\'">✕</button>'
+      +'</div>'
+    +'</div>'
+    +'<div class="fg"><label class="fl">Quote Date</label>'
+      +'<input class="fi" type="date" id="inv-date" value="'+localDateStr()+'"/>'
+    +'</div>'
+    +'<div class="fg"><label class="fl">Valid Until</label>'
+      +'<input class="fi" type="date" id="qt-valid" value="'+validUntilStr+'"/>'
+    +'</div>'
+    +'<div class="fg"><label class="fl">Type</label>'
+      +'<select class="fs" id="inv-type" onchange="_invTypeChanged()">'
+        +'<option value="Service">Service</option>'
+        +'<option value="Sale">Sale</option>'
+        +'<option value="Rental">Rental</option>'
+      +'</select>'
+    +'</div>'
+  +'</div>'
+  +'<div class="fg" id="inv-item-picker-wrap" style="margin-bottom:10px">'
+    +'<label class="fl">Add Item from Catalogue <span style="font-size:10px;color:var(--text2)">(optional)</span></label>'
+    +'<div style="display:flex;gap:6px">'
+      +'<select class="fs" id="inv-item-sel" style="flex:1">'
+        +'<option value="">-- Pick an item to add --</option>'
+        +svcItems
+      +'</select>'
+      +'<button type="button" class="btn btn-p btn-sm" onclick="_invAddFromCatalogue()" style="white-space:nowrap;flex-shrink:0">+ Add</button>'
+    +'</div>'
+    +'<div id="inv-item-hint" style="font-size:11px;color:var(--text2);margin-top:3px">Showing services — switch Type for sale items or rentals</div>'
+  +'</div>'
+  +'<div id="inv-opts-sale" style="display:none">'+saleItems+'</div>'
+  +'<div id="inv-opts-rental" style="display:none">'+rentalItems+'</div>'
+  +'<div id="inv-opts-service" style="display:none">'+svcItems+'</div>'
+  +'<div style="margin-bottom:14px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">'
+      +'<label class="fl" style="margin:0">Line items</label>'
+      +'<button type="button" class="btn btn-g btn-xs" onclick="_invAddRow()">+ Add Row</button>'
+    +'</div>'
+    +'<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);overflow:hidden">'
+      +'<table style="width:100%">'
+        +'<thead><tr style="border-bottom:1px solid var(--border)">'
+          +'<th style="padding:7px;font-size:11px;text-align:left;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Description</th>'
+          +'<th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Qty</th>'
+          +'<th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Unit</th>'
+          +'<th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Total</th>'
+          +'<th style="width:28px"></th>'
+        +'</tr></thead>'
+        +'<tbody id="inv-lines-body"></tbody>'
+      +'</table>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:flex-end;padding-top:8px;gap:16px;font-size:13px">'
+      +'<span style="color:var(--text2)">Subtotal:</span>'
+      +'<span id="inv-subtotal" style="font-family:var(--mono);font-weight:600;min-width:80px;text-align:right">0.00</span>'
+    +'</div>'
+  +'</div>'
+  +'<div class="fg-2">'
+    +'<div class="fg"><label class="fl">'+(BIZ.taxName&&BIZ.taxRate>0?BIZ.taxName+' ('+BIZ.taxRate+'%)':'Tax (%)')+'</label>'
+      +'<input class="fi" type="number" id="inv-tax" value="'+(BIZ.taxRate||0)+'" step="0.01" min="0" max="100" oninput="_invUpdateTotals()"/>'
+    +'</div>'
+    +'<div class="fg"><label class="fl">Discount <span style="font-size:10px;color:var(--text2)">('+CUR.symbol+')</span></label>'
+      +'<input class="fi" type="number" id="inv-discount" placeholder="0.00" step="any" min="0" oninput="_invUpdateTotals()"/>'
+    +'</div>'
+  +'</div>'
+  +'<div style="display:flex;justify-content:flex-end;gap:16px;font-size:13px;padding:8px 0;border-top:1px solid var(--border);margin-bottom:10px">'
+    +'<span style="color:var(--text2)">Total:</span>'
+    +'<span id="inv-total-display" style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--g);min-width:80px;text-align:right">0.00</span>'
+  +'</div>'
+  +'<div class="fg"><label class="fl">Deposit Required <span style="font-size:10px;color:var(--text2)">(typical: 30–50% of total)</span></label>'
+    +'<input class="fi" type="number" id="qt-deposit" placeholder="0.00" step="any" min="0"/>'
+    +'<div style="font-size:11px;color:var(--text2);margin-top:3px">Shown on the quote PDF. When converted to an invoice, this becomes the suggested initial payment.</div>'
+  +'</div>'
+  +'<div class="fg"><label class="fl">Notes / Terms</label>'
+    +'<textarea class="ft" id="inv-notes" placeholder="Scope of work, exclusions, payment terms…" style="min-height:60px"></textarea>'
+  +'</div>',
+  '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
+  +'<button class="btn btn-p" onclick="_saveQuote()">✅ Save Quote</button>',
+  'lg');
+
+  // Start with one empty row, default to Service catalog
+  setTimeout(function(){
+    _invTypeChanged();
+    _invAddRow();
+  }, 50);
+}
+
+function _saveQuote(){
+  var _s = _L();
+  var cust = document.getElementById('inv-cust')?.value?.trim();
+  if(!cust){ toast(_L().t_select_cust,'error'); return; }
+
+  var rows = document.querySelectorAll('#inv-lines-body .inv-line-row');
+  var lines = [];
+  rows.forEach(function(row){
+    var desc  = row.querySelector('.inv-desc')?.value?.trim()||'';
+    var qty   = parseFloat(row.querySelector('.inv-qty')?.value)||0;
+    var price = parseFloat(row.querySelector('.inv-price')?.value)||0;
+    if(desc || price>0) lines.push({desc:desc, qty:qty||1, price:price});
+  });
+  if(!lines.length){ toast(_L().t_add_line_price,'error'); return; }
+
+  var itemsStr = lines.map(function(l){return (l.qty>1?l.qty+'× ':'')+l.desc;}).filter(Boolean).join(', ') || 'Quote';
+  var rr = CUR.rate||1;
+  var sub = lines.reduce(function(a,l){return a+l.qty*l.price;},0) / rr;
+  var taxPct = parseFloat(document.getElementById('inv-tax')?.value)||0;
+  var disc   = (parseFloat(document.getElementById('inv-discount')?.value)||0) / rr;
+  var total  = Math.max(0, sub + sub*taxPct/100 - disc);
+  if(!total){ toast(_L().t_no_amount,'error'); return; }
+
+  var depositDisplay = parseFloat(document.getElementById('qt-deposit')?.value)||0;
+  var deposit = depositDisplay / rr;
+
+  // Generate Q-ID with max-based numbering, same scheme as sales
+  var maxN = (D.quotes||[]).reduce(function(m,q){var n=parseInt((q.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
+  var newId = 'Q-'+String(maxN+1).padStart(4,'0');
+
+  var custObj = D.cust.find(function(c){return c.name===cust;});
+
+  var newQuote = {
+    id: newId,
+    cust: cust,
+    custId: custObj?.id || '',
+    items: itemsStr,
+    lineItems: lines.map(function(l){return {name:l.desc, qty:l.qty, price:l.price};}),
+    dt: document.getElementById('inv-date')?.value || localDateStr(),
+    validUntil: document.getElementById('qt-valid')?.value || '',
+    amt: total,
+    total: total,
+    deposit: deposit,
+    cost: 0,
+    profit: total,
+    st: 'Draft',
+    taxes: taxPct>0 ? sub*taxPct/100 : 0,
+    freight: 0,
+    notes: document.getElementById('inv-notes')?.value || '',
+    createdAt: new Date().toISOString()
+  };
+
+  if(!Array.isArray(D.quotes)) D.quotes = [];
+  D.quotes.unshift(newQuote);
+  // Persist to IDB only (no Supabase quotes table yet — quotes are local-first)
+  if(typeof _idbSave === 'function' && SESSION.bizId){
+    _idbSave(SESSION.bizId, 'quotes', D.quotes).catch(function(){});
+  }
+  addAudit('Quote created', newId+' — '+cust+' — '+fmt(total));
+  closeModal();
+  toast('Quote '+newId+' created ✓','success');
+  setTimeout(function(){ genQuoteDoc(newId); }, 150);
+  nav('sales');
+}
+
+// View a quote's branded PDF in a new tab (reuses the invoice doc layout
+// with "QUOTE" branding instead of "INVOICE", deposit-due section, and
+// validity date).
+function genQuoteDoc(quoteId){
+  var q = (D.quotes||[]).find(function(x){return x.id===quoteId;});
+  if(!q){ toast('Quote not found','error'); return; }
+  var primary = BIZ.primaryColor || '#4361ee';
+  var accent  = BIZ.accentColor  || '#4cc9f0';
+  var total   = q.total || q.amt || 0;
+  var deposit = q.deposit || 0;
+  var balance = Math.max(0, total - deposit);
+
+  var stColor = q.st==='Accepted'?'#047857' : q.st==='Rejected'?'#dc2626' : q.st==='Expired'?'#6b7280' : q.st==='Sent'?'#2563eb' : '#a16207';
+  var stBg = q.st==='Accepted'?'#d1fae5' : q.st==='Rejected'?'#fee2e2' : q.st==='Expired'?'#f3f4f6' : q.st==='Sent'?'#dbeafe' : '#fef3c7';
+
+  var lineRowsHtml = (q.lineItems||[]).map(function(li){
+    return '<tr><td class="desc">'+_esc(li.name||li.desc||'Item')+'</td><td>'+(li.qty||1)+'</td><td class="num">'+fmtDoc(li.price||0)+'</td><td class="num" style="font-weight:700">'+fmtDoc((li.qty||1)*(li.price||0))+'</td></tr>';
+  }).join('');
+
+  var html = docStyles(primary, accent)
+    +'<div class="doc-header" style="background:'+primary+';padding:24px 28px 20px;display:flex;justify-content:space-between;align-items:flex-start">'
+      +'<div>'+bizLogo()
+        +'<div class="doc-biz-name" style="color:#fff;margin-top:8px">'+_esc(BIZ.name||'')+'</div>'
+        +(BIZ.tagline?'<div class="doc-biz-sub" style="color:rgba(255,255,255,.75)">'+_esc(BIZ.tagline)+'</div>':'')
+      +'</div>'
+      +'<div class="doc-title-block">'
+        +'<div class="doc-number">QUOTE</div>'
+        +'<div class="doc-number-val">'+q.id+'</div>'
+        +'<div class="doc-date">'
+          +'Date: '+q.dt+'<br>'
+          +'<span style="display:inline-block;margin-top:8px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:'+stBg+';color:'+stColor+'">'+q.st+'</span>'
+        +'</div>'
+      +'</div>'
+    +'</div>'
+    +'<div class="doc-body">'
+      +'<div class="doc-meta">'
+        +'<div>'
+          +'<div class="doc-label">QUOTE FOR</div>'
+          +'<div class="doc-value" style="font-size:15px">'+_esc(q.cust||'')+'</div>'
+        +'</div>'
+        +'<div style="text-align:right">'
+          +'<div style="display:inline-grid;grid-template-columns:auto auto;gap:4px 16px;text-align:left">'
+            +'<div class="doc-label">Quote #</div><div class="doc-value" style="font-family:var(--mono,monospace)">'+q.id+'</div>'
+            +'<div class="doc-label">Quote date</div><div class="doc-value">'+q.dt+'</div>'
+            +(q.validUntil?'<div class="doc-label">Valid until</div><div class="doc-value" style="color:'+primary+';font-weight:600">'+q.validUntil+'</div>':'')
+          +'</div>'
+        +'</div>'
+      +'</div>'
+      +'<table class="doc-items">'
+        +'<thead><tr><th style="width:50%">Description</th><th>Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>'
+        +'<tbody>'+lineRowsHtml+'</tbody>'
+      +'</table>'
+      +'<div class="doc-totals">'
+        +'<div class="doc-totals-box">'
+          +'<div class="doc-total-row"><span>Subtotal</span><span class="num">'+fmtDoc(total-(q.taxes||0))+'</span></div>'
+          +((q.taxes||0)>0?'<div class="doc-total-row"><span>Tax</span><span class="num">'+fmtDoc(q.taxes)+'</span></div>':'')
+          +'<div class="doc-total-row" style="border-top:1px solid #e5e7eb;padding-top:6px;margin-top:6px;font-weight:700;font-size:15px"><span>TOTAL</span><span class="num">'+fmtDoc(total)+'</span></div>'
+          +(deposit>0?'<div class="doc-total-row" style="color:'+primary+';font-weight:600"><span>Deposit due to start</span><span class="num">'+fmtDoc(deposit)+'</span></div>':'')
+          +(deposit>0?'<div class="doc-total-row" style="color:#64748b"><span>Balance on completion</span><span class="num">'+fmtDoc(balance)+'</span></div>':'')
+        +'</div>'
+      +'</div>'
+      +(q.notes?'<div style="margin-top:18px;padding:14px 16px;background:#f9fafb;border-left:3px solid '+primary+';border-radius:4px"><div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Notes &amp; Terms</div><div style="font-size:13px;line-height:1.6;color:#0f172a;white-space:pre-wrap">'+_esc(q.notes)+'</div></div>':'')
+      +'<div style="margin-top:24px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:11px;color:#64748b;text-align:center">'
+        +'This is a quote, not an invoice. Prices valid until '+(q.validUntil||'further notice')+'. To accept, please confirm in writing.'
+      +'</div>'
+    +'</div>';
+
+  var w = window.open('', '_blank');
+  if(!w){ toast('Popup blocked — allow popups to view the quote','error'); return; }
+  w.document.write('<!doctype html><html><head><title>Quote '+q.id+'</title></head><body>'+html+'</body></html>');
+  w.document.close();
+}
+
+// Set quote status — used by row actions (Sent/Accepted/Rejected/Expired)
+function _quoteSetStatus(id, newSt){
+  var q = (D.quotes||[]).find(function(x){return x.id===id;});
+  if(!q) return;
+  q.st = newSt;
+  if(SESSION.bizId) _idbSave(SESSION.bizId, 'quotes', D.quotes).catch(function(){});
+  addAudit('Quote status', id+' → '+newSt);
+  toast(id+' — '+newSt,'success');
+  nav('sales');
+}
+
+// Convert an Accepted quote into a real Invoice (Sale).
+// Clones line items, customer, totals into a new sale. Marks the quote
+// as Accepted (if not already) and links the new sale ID back.
+function _quoteConvertToInvoice(id){
+  var q = (D.quotes||[]).find(function(x){return x.id===id;});
+  if(!q){ toast('Quote not found','error'); return; }
+  if(q.convertedSaleId){
+    if(!confirm('This quote was already converted to invoice '+q.convertedSaleId+'. Create another invoice from it?')) return;
+  }
+
+  var rr = CUR.rate || 1;
+  var maxN = D.sales.reduce(function(m,s){var n=parseInt((s.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
+  var newId = 'S-'+String(maxN+1).padStart(4,'0');
+  var custObj = D.cust.find(function(c){return c.name===q.cust;});
+
+  var paid = q.deposit || 0; // If they paid the deposit, it's already in
+  var st = paid > 0 ? (paid >= q.total ? 'Paid' : 'Partial') : 'Unpaid';
+
+  var newSale = {
+    id: newId,
+    cust: q.cust,
+    custId: custObj?.id || q.custId || '',
+    items: q.items,
+    lineItems: q.lineItems || [],
+    dt: localDateStr(),
+    amt: q.total,
+    total: q.total,
+    paid: paid,
+    cost: 0,
+    profit: q.total - paid,
+    st: st,
+    method: 'Bank Transfer',
+    notes: 'Converted from quote '+q.id+(q.notes?'\n\n'+q.notes:''),
+    taxes: q.taxes || 0,
+    freight: 0
+  };
+
+  D.sales.unshift(newSale);
+  _dbSaveSale(newSale);
+
+  // Update customer rollups (mirrors the logic in _saveInvoice)
+  if(custObj){
+    if(paid < q.total) custObj.bal = (custObj.bal||0) + (q.total - paid);
+    custObj.spend = (custObj.spend||0) + q.total;
+    custObj.spent = custObj.spend;
+    custObj.orders = (custObj.orders||0) + 1;
+    custObj.last = localDateStr();
+    _dbSaveCust(custObj);
+  }
+
+  // Mark the quote as Accepted and link the new sale
+  q.st = 'Accepted';
+  q.convertedSaleId = newId;
+  q.convertedAt = new Date().toISOString();
+  if(SESSION.bizId) _idbSave(SESSION.bizId, 'quotes', D.quotes).catch(function(){});
+
+  refreshLiveKpis();
+  addAudit('Quote converted', q.id+' → invoice '+newId);
+  toast('Quote converted → '+newId+' ✓','success');
+  setTimeout(function(){ genInvoiceDoc(newId); }, 200);
+  nav('sales');
+}
+
+// Delete a quote — only allowed for Draft / Rejected / Expired (never an Accepted that became a sale)
+function _quoteDelete(id){
+  var q = (D.quotes||[]).find(function(x){return x.id===id;});
+  if(!q) return;
+  if(q.st === 'Accepted' && q.convertedSaleId){
+    if(!confirm('This quote was accepted and converted to invoice '+q.convertedSaleId+'. Deleting the quote will NOT delete the invoice. Continue?')) return;
+  } else {
+    if(!confirm('Delete quote '+id+'?')) return;
+  }
+  D.quotes = D.quotes.filter(function(x){return x.id!==id;});
+  if(SESSION.bizId) _idbSave(SESSION.bizId, 'quotes', D.quotes).catch(function(){});
+  addAudit('Quote deleted', id);
+  toast('Quote deleted','success');
+  nav('sales');
+}
+
 
 function mPhotoUpload(preselectedId, preselectedType){const _s=_L();
   // Build options for each category
@@ -14818,6 +15213,7 @@ async function _idbWriteAll(bizId){
       _idbSave(bizId, 'audit',     D.audit),
       _idbSave(bizId, 'services',  D.services),
       _idbSave(bizId, 'appts',     D.appointments),
+      _idbSave(bizId, 'quotes',    D.quotes),
       _idbSave(bizId, 'invCats',   D.invCats),
       _idbSave(bizId, 'expCats',   D.expCats),
       _idbSave(bizId, 'vendorCats',D.vendorCats),
@@ -14832,7 +15228,7 @@ async function _idbWriteAll(bizId){
 async function _idbRestoreAll(bizId){
   if(!bizId || bizId === 'BIZ-001' || bizId === 'BIZ-107') return false;
   try{
-    var [inv,cust,sales,rentals,exp,vendors,purchases,audit,services,appts,
+    var [inv,cust,sales,rentals,exp,vendors,purchases,audit,services,appts,blockedSlots,quotes,
          invCats,expCats,vendorCats,svcCats,biz] = await Promise.all([
       _idbLoad(bizId, 'inv'),
       _idbLoad(bizId, 'cust'),
@@ -14845,6 +15241,7 @@ async function _idbRestoreAll(bizId){
       _idbLoad(bizId, 'services'),
       _idbLoad(bizId, 'appts'),
       _idbLoad(bizId, 'blockedSlots'),
+      _idbLoad(bizId, 'quotes'),
       _idbLoad(bizId, 'invCats'),
       _idbLoad(bizId, 'expCats'),
       _idbLoad(bizId, 'vendorCats'),
@@ -14866,7 +15263,8 @@ async function _idbRestoreAll(bizId){
     if(audit)     D.audit        = audit;
     if(services)  D.services     = services;
     if(appts)     D.appointments = appts;
-    if(results[8])  D.blockedSlots = results[8]; // blockedSlots from IDB
+    if(blockedSlots) D.blockedSlots = blockedSlots;
+    if(quotes)    D.quotes       = quotes;
 
     // Restore categories
     if(invCats && invCats.length)    D.invCats    = invCats;
