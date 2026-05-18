@@ -80,6 +80,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .time-btn{padding:9px 4px;border:1.5px solid var(--border);border-radius:var(--r8);text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);transition:all .12s;background:var(--bg2)}
 .time-btn:hover{border-color:var(--a);color:var(--a);background:rgba(99,102,241,.04)}
 .time-btn.sel{background:var(--a);color:#fff;border-color:var(--a)}
+.time-btn.blocked{background:var(--bg3);color:var(--text3);border-style:dashed;border-color:var(--border);cursor:not-allowed;text-decoration:line-through;opacity:.55}
+.time-btn.blocked:hover{border-color:var(--border);color:var(--text3);background:var(--bg3)}
 .no-slots{text-align:center;padding:20px;color:var(--text3);font-size:13px}
 
 /* ── Form ── */
@@ -269,7 +271,7 @@ const RATES = {XAF:615,XOF:615,NGN:1620,GBP:0.79,EUR:0.92,USD:1,GHS:12,KES:130,Z
 const SYMS  = {XAF:'Frs',XOF:'Frs',USD:'$',EUR:'€',GBP:'£',NGN:'₦',GHS:'₵',KES:'KSh',ZAR:'R',ETB:'Br',TZS:'TSh',RWF:'RF',UGX:'USh'};
 
 // ── State ────────────────────────────────────────────────────
-let BIZ = {}, SERVICES = [], APPTS = [];
+let BIZ = {}, SERVICES = [], APPTS = [], BLOCKED = [];
 let selSvc = null, selDate = null, selTime = null, selTimeEnd = null;
 let calYear, calMonth;
 
@@ -313,15 +315,38 @@ async function init(){
 
   try{
     // Load business (no logo_data_url — too large, use initials)
-    const {data:biz, error:bErr} = await sb.from('businesses')
-      .select('id,name,tagline,email,phone,whatsapp,bookings_enabled,booking_note,currency,primary_color')
-      .eq('id', bizId).maybeSingle();
+    // Try to include blocked_slots; if the column doesn't exist on this
+    // schema, retry without it so the page still loads.
+    var biz = null, bErr = null;
+    try {
+      var r1 = await sb.from('businesses')
+        .select('id,name,tagline,email,phone,whatsapp,bookings_enabled,booking_note,currency,primary_color,blocked_slots')
+        .eq('id', bizId).maybeSingle();
+      biz = r1.data; bErr = r1.error;
+      if(bErr && /blocked_slots/.test(bErr.message||'')){
+        // Column missing — retry without it.
+        var r2 = await sb.from('businesses')
+          .select('id,name,tagline,email,phone,whatsapp,bookings_enabled,booking_note,currency,primary_color')
+          .eq('id', bizId).maybeSingle();
+        biz = r2.data; bErr = r2.error;
+      }
+    } catch(e){ bErr = e; }
 
     if(bErr){ console.error('Biz load error:', bErr.message); return showError('Could not load business.', bErr.message); }
     if(!biz){ return showError('Business not found.','Please check your booking link.'); }
     if(biz.bookings_enabled === false){ return showError('Bookings unavailable.','Online bookings are currently turned off. Please contact the business directly.'); }
 
     BIZ = biz;
+
+    // Parse blocked time ranges so the time-slot picker can grey them out.
+    // Shape: [{date:'YYYY-MM-DD', allDay:bool, startTime:'HH:MM', endTime:'HH:MM'}]
+    try {
+      var raw = biz.blocked_slots;
+      if(raw){
+        var parsed = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+        if(Array.isArray(parsed)) BLOCKED = parsed;
+      }
+    } catch(e){ console.warn('[booking] blocked_slots parse failed:', e.message); }
     applyBranding();
 
     // Load services
@@ -524,8 +549,13 @@ function renderCalendar(){
     const isPast  = dateStr < todayStr;
     const isToday = dateStr === todayStr;
     const isSel   = dateStr === selDate;
-    html += `<div class="day-btn${isPast?' past':''}${isToday?' today':''}${isSel?' sel':''}"
-      onclick="${isPast?'':'selectDay(\''+dateStr+'\')'}">${d}</div>`;
+    // If the business has set this day as fully unavailable, lock the cell.
+    const isFullyBlocked = (BLOCKED || []).some(b => b && b.date === dateStr && b.allDay);
+    const lockClick = isPast || isFullyBlocked;
+    const extraCls = isFullyBlocked ? ' past' : ''; // reuse 'past' styling for greyed-out look
+    html += `<div class="day-btn${isPast?' past':''}${extraCls}${isToday?' today':''}${isSel?' sel':''}"
+      ${isFullyBlocked ? 'title="Business unavailable on this day"' : ''}
+      onclick="${lockClick?'':'selectDay(\''+dateStr+'\')'}">${d}</div>`;
   }
   $('cal-grid').innerHTML = html;
 }
@@ -560,6 +590,16 @@ function renderTimeSlots(){
   const now  = new Date();
   const todayStr = today();
 
+  // Pre-compute blocked ranges for this date.
+  // Any all-day block = whole day off; otherwise normalize startTime/endTime.
+  const dayBlocks = (BLOCKED || []).filter(b => b && b.date === selDate);
+  const isWholeDayBlocked = dayBlocks.some(b => b.allDay);
+
+  if(isWholeDayBlocked){
+    $('time-slots').innerHTML = `<div class="no-slots">😔 The business is unavailable on this day.<br>Please choose another date.</div>`;
+    return;
+  }
+
   // Generate slots 8am–7pm in 30-min increments
   const slots = [];
   for(let h=8; h<19; h++){
@@ -577,13 +617,32 @@ function renderTimeSlots(){
     }
   }
 
-  // Filter booked slots
-  const dayAppts = APPTS.filter(a=>a.date===selDate);
-  const available = slots.filter(slot=>
-    !dayAppts.some(a=> a.start_time <= slot.start && a.end_time > slot.start)
-  );
+  // Helper: does this slot overlap with a blocked range?
+  // Two ranges overlap iff start < other.end AND end > other.start.
+  function isBlocked(slot){
+    return dayBlocks.some(function(b){
+      const bs = b.startTime || '00:00';
+      const be = b.endTime   || '23:59';
+      return slot.start < be && slot.end > bs;
+    });
+  }
 
-  if(!available.length){
+  // Helper: does this slot overlap an existing appointment?
+  const dayAppts = APPTS.filter(a=>a.date===selDate);
+  function isBooked(slot){
+    return dayAppts.some(a => a.start_time <= slot.start && a.end_time > slot.start);
+  }
+
+  // Build the full list with disabled flags for blocked slots — so the customer
+  // can SEE the slot but cannot select it (clearer than just hiding it,
+  // which can make a day look fully open when it's actually mostly blocked).
+  const display = slots
+    .filter(s => !isBooked(s))             // booked slots = hidden (existing behavior)
+    .map(s => ({ ...s, blocked: isBlocked(s) }));
+
+  const selectableCount = display.filter(s => !s.blocked).length;
+
+  if(!display.length || selectableCount === 0){
     $('time-slots').innerHTML = `<div class="no-slots">😔 No available slots on this day.<br>Please choose another date.</div>`;
     return;
   }
@@ -591,11 +650,10 @@ function renderTimeSlots(){
   $('time-slots').innerHTML = `
     <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Available Times</div>
     <div class="time-grid">
-      ${available.map(s=>`
-        <div class="time-btn${selTime===s.start?' sel':''}" onclick="pickTime('${s.start}','${s.end}')">
-          ${timeLabel(s.start)}
-        </div>
-      `).join('')}
+      ${display.map(s => s.blocked
+        ? `<div class="time-btn blocked" title="This time is not available" aria-disabled="true">${timeLabel(s.start)}</div>`
+        : `<div class="time-btn${selTime===s.start?' sel':''}" onclick="pickTime('${s.start}','${s.end}')">${timeLabel(s.start)}</div>`
+      ).join('')}
     </div>`;
 }
 

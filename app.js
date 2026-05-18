@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779127436");
+console.log("ShopTrack v2.7 - build:1779130934");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -15829,6 +15829,27 @@ async function _dbLoadBizProfile(bizId){
     }
     // Restore notification prefs from DB (overrides localStorage with server truth)
     if(data.notif_prefs) _restoreNotifPrefsFromDB(data.notif_prefs);
+    // Restore blocked_slots from DB (so blocks survive across devices and
+    // are visible to the public booking page). If the column doesn't exist
+    // yet, data.blocked_slots is just undefined — local IDB still works.
+    if(data.blocked_slots){
+      try {
+        var bs = (typeof data.blocked_slots === 'string') ? JSON.parse(data.blocked_slots) : data.blocked_slots;
+        if(Array.isArray(bs)){
+          D.blockedSlots = bs.map(function(b, i){
+            return {
+              id: b.id || ('BLK-srv-'+i),
+              date: b.date || '',
+              allDay: !!b.allDay,
+              startTime: b.startTime || '00:00',
+              endTime: b.endTime || '23:59',
+              reason: b.reason || 'Not Available',
+              notes: b.notes || ''
+            };
+          });
+        }
+      } catch(e){ console.warn('[blocked_slots] parse failed:', e.message); }
+    }
     // Cache API key locally so it survives refresh even before Supabase loads
     if(BIZ.aiKey){ try{ localStorage.setItem('st_ai_key_'+bizId, BIZ.aiKey); }catch(e){} }
     // Restore currency from DB (overrides localStorage for business-specific setting)
@@ -30767,12 +30788,42 @@ function _schedSave(){
     _schedSnapshot = null;
     closeModal();
     toast('✅ '+(fr?'Disponibilité enregistrée':'Availability saved'),'success');
+    // Push to Supabase so the public booking page can see blocks.
+    // Stored as a JSON column on the businesses row (gracefully degrades
+    // if the column doesn't exist yet — see SQL migration in repo docs).
+    _dbSaveBlockedSlots(SESSION.bizId).catch(function(){});
     // Re-render the appointments page so the main calendar reflects new blocks.
     if(typeof nav==='function' && (typeof CURRENT_NAV==='undefined' || CURRENT_NAV==='appointments')) nav('appointments');
   }).catch(function(e){
     console.error('[Availability Save] failed',e);
     toast('⚠ '+(fr?'Échec de l\'enregistrement':'Save failed'),'error');
   });
+}
+
+// Push D.blockedSlots to the businesses table so the public booking page can
+// see them. If the blocked_slots column doesn't exist yet (older schemas),
+// this silently fails — the local availability manager still works, but
+// blocks won't gate the public booking page until the column is added.
+async function _dbSaveBlockedSlots(bizId){
+  if(!bizId || !_sb || SESSION.isSuperAdmin) return;
+  try {
+    var payload = (D.blockedSlots || []).map(function(b){
+      return { date:b.date, allDay:!!b.allDay, startTime:b.startTime, endTime:b.endTime };
+    });
+    var { error } = await _sb.from('businesses')
+      .update({ blocked_slots: payload })
+      .eq('id', bizId);
+    if(error){
+      // Column probably doesn't exist yet — log once, don't toast.
+      if((error.code || '') === 'PGRST204' || /blocked_slots/.test(error.message||'')){
+        console.warn('[blocked_slots] Column not in schema yet. Run the migration SQL — until then, the Availability Manager works locally but the public booking page can\'t see blocks.');
+      } else {
+        console.warn('[blocked_slots] Save failed:', error.message);
+      }
+    }
+  } catch(e){
+    console.warn('[blocked_slots] Save error:', e.message);
+  }
 }
 
 // Cancel with confirm + revert to snapshot if dirty.
