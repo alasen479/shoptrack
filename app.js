@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1778945754");
+console.log("ShopTrack v2.7 - build:1779117715");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -11894,13 +11894,40 @@ function _mbResetLogin(bizId){const _s=_L();
     </div>
   </div>`,
   `<button class="btn btn-s" onclick="mManageBiz('${bizId}')">← Back</button>
-   <button class="btn btn-p" onclick="(function(){
-     var em='${_esc(ownerEmail)}';
-     if(AUTH_STORE[em]) AUTH_STORE[em].password='${newPass}';
-     if(_sb) _sb.from('platform_users').update({password_hash:'${newPass}'}).eq('biz_id','${bizId}').eq('level','owner');
-     addAudit('Owner password reset','${bizId} — ${_esc(b.name)}');
-     closeModal();toast(_L().t_pass_reset + _esc(b.name) + ' ✓','success');
-   })()">🔑 Reset Password</button>`);
+   <button class="btn btn-p" onclick="_saResetOwnerPwd('${_esc(ownerEmail)}','${bizId}','${_esc(b.name)}','${newPass}')">🔑 Reset Password</button>`);
+}
+
+// Super-Admin "Reset owner password" — hashes the password (so login can verify it)
+// AND honours _dbUpdatePassword's return value (so we don't claim success on a silent
+// Supabase failure).
+async function _saResetOwnerPwd(ownerEmail, bizId, bizName, newPass){
+  var _s = _L();
+  if(!ownerEmail){ toast('No owner email on file — cannot reset','error'); return; }
+  const normEmail = String(ownerEmail).trim().toLowerCase();
+
+  // Hash with SHA-256 (unsalted) — must match signup/login/reset format.
+  let newHash = newPass;
+  try {
+    const enc = new TextEncoder().encode(newPass);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    newHash = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  } catch(e){ /* SubtleCrypto unavailable */ }
+
+  // Sync offline/demo store
+  if(AUTH_STORE[normEmail]){
+    AUTH_STORE[normEmail].password = newHash;
+    AUTH_STORE[normEmail].mustChangePassword = true; // force user to change on next login
+  }
+
+  // Persist to Supabase via the hardened helper that returns {success, error, rowsAffected}
+  const result = await _dbUpdatePassword(normEmail, newHash);
+  if(!result.success){
+    toast('Reset failed: ' + (result.error || 'unknown'), 'error');
+    return;
+  }
+  addAudit('Owner password reset', bizId + ' — ' + bizName);
+  closeModal();
+  toast((_L().t_pass_reset || 'Password reset for ') + bizName + ' ✓','success');
 }
 
 // Keep adminBizAction for the delete (cancel) action only
@@ -16074,11 +16101,33 @@ async function _pwdMatch(entered, stored){
 }
 
 // ── Update password in DB ─────────────────────────────────────
+// Returns {success, error, rowsAffected}. Callers MUST check the return
+// value before telling the user "password updated" — otherwise they'll
+// claim victory on writes that silently failed (RLS, missing user, etc.)
 async function _dbUpdatePassword(email, newPassword){
-  if(!_sb) return;
-  await _sb.from('platform_users')
-    .update({password_hash:newPassword, must_change_password:false})
-    .eq('email', email);
+  if(!_sb) return {success:false, error:'No cloud connection', rowsAffected:0};
+  if(!email) return {success:false, error:'No email provided', rowsAffected:0};
+  // Normalize email — DB stores lowercase, but user input may be mixed case.
+  const normEmail = String(email).trim().toLowerCase();
+  try {
+    const {data, error} = await _sb.from('platform_users')
+      .update({password_hash:newPassword, must_change_password:false})
+      .eq('email', normEmail)
+      .select('id'); // Force a returning clause so we know how many rows matched
+    if(error){
+      console.error('[Password update] Supabase error:', error.message, error);
+      return {success:false, error:error.message, rowsAffected:0};
+    }
+    const rowsAffected = Array.isArray(data) ? data.length : 0;
+    if(rowsAffected === 0){
+      console.warn('[Password update] No rows matched email:', normEmail);
+      return {success:false, error:'No account found with this email', rowsAffected:0};
+    }
+    return {success:true, error:null, rowsAffected};
+  } catch(e){
+    console.error('[Password update] Network/exception:', e.message || e);
+    return {success:false, error: e.message || 'Network error', rowsAffected:0};
+  }
 }
 
 // ── Seed Super Admin to DB on first load ──────────────────────
@@ -16636,7 +16685,7 @@ function doLogin(){const _s=_L();
     // Force password change on first login
     if(cred.mustChangePassword){
       setTimeout(()=>{
-        const _email = email;
+        window._mustChangePwdEmail = email;
         modal('🔑 Set Your Password',`
   <div class="alrt alrt-y" style="margin-bottom:14px">
     <strong>You are using a temporary password.</strong><br>
@@ -16645,19 +16694,7 @@ function doLogin(){const _s=_L();
   <div class="fg"><label class="fl">${_s.adm_new_pass}</label><input class="fi" id="fp-new" type="password" placeholder="At least 8 characters" autofocus/></div>
   <div class="fg"><label class="fl">${_s.sa_confirm_new}</label><input class="fi" id="fp-conf" type="password" placeholder="${_s.sa_repeat}"/></div>
   <div style="margin-top:6px;font-size:11px;color:var(--text2)">Min 8 characters · at least 1 number · at least 1 special character (!@#$&…)</div>`,
-  `<button class="btn btn-p" style="width:100%" onclick="
-    const np=document.getElementById('fp-new')?.value||'';
-    const cf=document.getElementById('fp-conf')?.value||'';
-    if(np.length<8){toast(_L().t_pass_min8_2,'error');return;}
-    if(!/[0-9]/.test(np)){toast(_L().t_pass_num,'error');return;}
-    if(!/[^a-zA-Z0-9]/.test(np)){toast(_L().t_pass_special,'error');return;}
-    if(np!==cf){toast(_L().t_pass_no_match,'error');return;}
-    AUTH_STORE['${_email}'] && (AUTH_STORE['${_email}'].password=np);
-    AUTH_STORE['${_email}'] && (AUTH_STORE['${_email}'].mustChangePassword=false);
-    _dbUpdatePassword('${_email}', np);
-    toast(_L().t_pass_updated,'success');
-    closeModal();
-  ">Set New Password</button>`,'sm');
+  `<button class="btn btn-p" style="width:100%" onclick="_doMustChangePwd()">Set New Password</button>`,'sm');
       }, 500);
     }
 
@@ -16773,14 +16810,28 @@ async function doResetPwd(email, btn){
   }catch(e){ /* use plaintext if SubtleCrypto unavailable */ }
 
   // ── Persist to Supabase (real users) ──
-  await _dbUpdatePassword(email, newHash);
+  // Normalize email for consistent matching (DB stores lowercase).
+  const normEmail = String(email||'').trim().toLowerCase();
+  // Check the offline/demo store too — for purely-offline accounts there's
+  // nothing in Supabase to update. In that case we still consider the reset
+  // successful as long as we updated AUTH_STORE below.
+  const isOfflineAccount = !!AUTH_STORE[normEmail] && !_sb;
+  const result = await _dbUpdatePassword(normEmail, newHash);
+  if(!result.success && !isOfflineAccount){
+    showErr(result.error === 'No account found with this email'
+      ? 'No account found with this email address.'
+      : 'Could not save new password: ' + (result.error || 'unknown error') + '. Please try again.');
+    if(btn){ btn.textContent='Reset Password'; btn.disabled=false; }
+    return;
+  }
 
   // ── Keep AUTH_STORE in sync (demo/offline accounts) ──
-  if(AUTH_STORE[email]) AUTH_STORE[email].password = newHash;
-  const uid   = AUTH_STORE[email]?.userId;
+  if(AUTH_STORE[normEmail]) AUTH_STORE[normEmail].password = newHash;
+  const uid   = AUTH_STORE[normEmail]?.userId;
   const bUser = uid ? BIZ_USERS.find(u=>u.id===uid) : null;
   if(bUser) bUser.password = newHash;
 
+  addAudit('Password reset', normEmail);
   btn.closest('[style*="position:fixed"]').remove();
   showLoginError('');
   const errEl = document.getElementById('ln-error');
@@ -16923,11 +16974,20 @@ async function _doChangePassword(){var _s=_L();
   }catch(e){ /* SubtleCrypto unavailable, store plaintext */ }
 
   // Save to Supabase
-  await _dbUpdatePassword(userEmail, newHash);
+  const normEmail2 = String(userEmail||'').trim().toLowerCase();
+  const result2 = await _dbUpdatePassword(normEmail2, newHash);
+  if(!result2.success && _sb){
+    // Only error out if we have a cloud connection that failed.
+    // Pure offline accounts (no _sb) still succeed via AUTH_STORE.
+    toast((_L().t_pass_save_err || 'Could not save new password') + ': ' + (result2.error || 'unknown'), 'error');
+    if(btn){ btn.textContent='Update Password'; btn.disabled=false; }
+    return;
+  }
 
   // Keep AUTH_STORE in sync for demo accounts
-  if(AUTH_STORE[userEmail]) AUTH_STORE[userEmail].password = newHash;
+  if(AUTH_STORE[normEmail2]) AUTH_STORE[normEmail2].password = newHash;
 
+  addAudit('Password changed', normEmail2);
   toast(_L().t_pass_changed,'success');
   closeModal();
 }
@@ -20276,15 +20336,67 @@ function mResetUserPwd(uid){const _s=_L();
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_doResetUserPwd('${uid}')">🔑 Reset Password</button>`);
 }
-function _doResetUserPwd(uid){var _s=_L();
+// Handler for the "you must change your temporary password" modal on first login.
+// Hashes the new password with the same unsalted SHA-256 as signup/login/reset,
+// validates the write, and only closes the modal on actual success.
+async function _doMustChangePwd(){
+  var _s = _L();
+  const np = document.getElementById('fp-new')?.value || '';
+  const cf = document.getElementById('fp-conf')?.value || '';
+  if(np.length<8){ toast(_L().t_pass_min8_2,'error'); return; }
+  if(!/[0-9]/.test(np)){ toast(_L().t_pass_num,'error'); return; }
+  if(!/[^a-zA-Z0-9]/.test(np)){ toast(_L().t_pass_special,'error'); return; }
+  if(np !== cf){ toast(_L().t_pass_no_match,'error'); return; }
+  const email = (window._mustChangePwdEmail || '').toLowerCase();
+  if(!email){ toast('Session error — please log in again','error'); return; }
+
+  // Hash same as signup/login flow
+  let newHash = np;
+  try {
+    const enc = new TextEncoder().encode(np);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    newHash = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  } catch(e){ /* SubtleCrypto unavailable */ }
+
+  // Sync offline/demo store too
+  if(AUTH_STORE[email]){
+    AUTH_STORE[email].password = newHash;
+    AUTH_STORE[email].mustChangePassword = false;
+  }
+
+  const result = await _dbUpdatePassword(email, newHash);
+  if(!result.success && _sb){
+    toast('Could not save password: ' + (result.error || 'unknown') + '. Please retry.', 'error');
+    return;
+  }
+  addAudit('Password changed (forced)', email);
+  toast(_L().t_pass_updated,'success');
+  closeModal();
+}
+
+async function _doResetUserPwd(uid){var _s=_L();
   const np = document.getElementById('rp-new')?.value || '';
   const cf = document.getElementById('rp-conf')?.value || '';
   if(!np || np.length<8){ toast(_L().t_pass_min8_2,'error'); return; }
   if(np !== cf){ toast(_L().t_pass_no_match,'error'); return; }
   const u = BIZ_USERS.find(x=>x.id===uid); if(!u) return;
   const email = Object.keys(AUTH_STORE).find(k=>AUTH_STORE[k].userId===uid);
-  if(email && AUTH_STORE[email]) AUTH_STORE[email].password = np;
-  _dbUpdatePassword(u.email, np);
+
+  // Hash the new password — MUST match the signup/reset/login hash format
+  // (unsalted SHA-256 hex), otherwise the user can't log in afterwards.
+  let newHash = np;
+  try {
+    const enc = new TextEncoder().encode(np);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    newHash = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  } catch(e){ /* SubtleCrypto unavailable — store plaintext as last resort */ }
+
+  if(email && AUTH_STORE[email]) AUTH_STORE[email].password = newHash;
+  const result = await _dbUpdatePassword(u.email, newHash);
+  if(!result.success && _sb){
+    toast('Reset failed: ' + (result.error || 'unknown') + '. The user may not exist in the cloud yet.', 'error');
+    return;
+  }
   addAudit('Password reset', u.name+' ('+uid+') — changed by admin');
   closeModal();
   modal('✅ Password Reset',`
@@ -24022,23 +24134,18 @@ window.addEventListener('online', function(){
 });
 
 // ── Password hashing using Web Crypto (SHA-256) ──────────────────────────
-async function _hashPwd(password){
-  try {
-    const msgBuffer = new TextEncoder().encode(password + 'shoptrack_salt_2026');
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
-  } catch(e) {
-    // Fallback if crypto not available
-    return password;
-  }
-}
-// Verify password against stored hash
-async function _verifyPwd(password, stored){
-  if(!stored || stored.length < 32) return password === stored; // plain text fallback
-  const hashed = await _hashPwd(password);
-  return hashed === stored;
-}
+// ── NOTE ─────────────────────────────────────────────────────
+// Password hashing for ShopTrack is INTENTIONALLY unsalted SHA-256
+// (hex-encoded). All four paths must use this same format or login
+// will silently fail:
+//   1. Signup (line ~17580)
+//   2. Forgot-password reset (doResetPwd)
+//   3. In-app Change Password (line ~16955)
+//   4. Super-Admin/admin reset for another user
+// Helper: _dbUpdatePassword stores whatever string you pass — it does
+// NOT hash for you. Callers are responsible for hashing first.
+// _pwdMatch tolerates legacy plaintext for backward compatibility.
+// ─────────────────────────────────────────────────────────────
 
 // ── Plan expiry check — show warning banner ──────────────────────────────
 // ── Trial expiry enforcement — 3 states ──────────────────────
