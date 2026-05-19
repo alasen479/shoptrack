@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779189466");
+console.log("ShopTrack v2.7 - build:1779190723");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -19922,6 +19922,189 @@ function _doProjectPackGen(){
   genProjectPack(cid, { projectFilter: pf });
 }
 
+// ── iCalendar (.ics) helpers ──────────────────────────────────────────────
+// Per RFC 5545:
+//   - Lines use CRLF endings.
+//   - Lines longer than 75 octets must be folded with CRLF + single space.
+//   - In TEXT values: backslash, comma, semicolon need escaping; newlines → \n.
+//   - DTSTAMP is required on every VEVENT.
+//   - UID should be globally unique and stable, so re-importing updates
+//     instead of duplicating. We use 'appt-{id}@shoptrack.org'.
+//   - SEQUENCE bumps so calendar apps know the new copy supersedes the old.
+
+function _icsEscape(s){
+  if(s == null) return '';
+  return String(s)
+    .replace(/\\/g, '\\\\')
+    .replace(/\r\n/g, '\\n')
+    .replace(/\n/g,  '\\n')
+    .replace(/\r/g,  '\\n')
+    .replace(/,/g,   '\\,')
+    .replace(/;/g,   '\\;')
+    // Strip control characters that would break the file
+    .replace(/[\x00-\x08\x0B-\x1F\x7F]/g, '');
+}
+
+// Fold a single content line to <=75 octets per line, with each
+// continuation prefixed by a single space.
+function _icsFold(line){
+  if(line.length <= 75) return line;
+  var out = '', i = 0;
+  while(i < line.length){
+    var chunk;
+    if(i === 0){
+      chunk = line.slice(0, 75);
+      out += chunk;
+      i += 75;
+    } else {
+      chunk = line.slice(i, i + 74);
+      out += '\r\n ' + chunk;
+      i += 74;
+    }
+  }
+  return out;
+}
+
+// Build a YYYYMMDDTHHMMSS local-time stamp from date 'YYYY-MM-DD' + time 'HH:MM'.
+// Returned WITHOUT a TZ suffix → floating local time, which is what most
+// service businesses want (the calendar interprets it in the device TZ).
+function _icsLocalStamp(date, time){
+  if(!date) return '';
+  var d = String(date).replace(/-/g, '');
+  var t = String(time||'00:00').replace(/:/g, '') + '00'; // HH:MM → HHMM00
+  return d + 'T' + t;
+}
+
+function _icsUtcStamp(d){
+  d = d || new Date();
+  function pad(n){ return n < 10 ? '0'+n : ''+n; }
+  return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate())
+       + 'T' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + 'Z';
+}
+
+// Compute a stable SEQUENCE number for an appointment so calendar apps
+// recognise updates. Uses a low integer derived from the appointment's
+// modification timestamp (or 0 if none) so it monotonically rises.
+function _icsSequence(a){
+  // Best signal we have: total of edits is roughly the time since creation
+  // divided by an hour, plus a status-based bump. Bounded so it stays small.
+  try{
+    var created = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    if(!created) return 0;
+    var hours = Math.floor((Date.now() - created) / 3600000);
+    return Math.max(0, Math.min(hours, 9999));
+  }catch(e){ return 0; }
+}
+
+// Build the VEVENT block for one appointment.
+// Returns the full event as a CRLF-joined string (no surrounding VCALENDAR).
+function _apptToIcs(a){
+  if(!a || !a.date) return '';
+  var dtStart = _icsLocalStamp(a.date, a.startTime || '09:00');
+  // Default to 1-hour event if endTime missing
+  var endTime = a.endTime;
+  if(!endTime){
+    var sh = parseInt((a.startTime||'09:00').split(':')[0], 10) || 9;
+    var sm = parseInt((a.startTime||'09:00').split(':')[1], 10) || 0;
+    var eh = sh + 1;
+    if(eh >= 24){ eh = 23; sm = 59; }
+    endTime = (eh<10?'0':'') + eh + ':' + (sm<10?'0':'') + sm;
+  }
+  var dtEnd = _icsLocalStamp(a.date, endTime);
+
+  // Map ShopTrack status → iCal STATUS
+  var status = 'CONFIRMED';
+  if(a.st === 'Cancelled' || a.st === 'No-Show') status = 'CANCELLED';
+  else if(a.st === 'Reserved') status = 'TENTATIVE';
+
+  // Summary: 'Service — Customer'
+  var summary = (a.serviceName || 'Appointment')
+    + (a.custName ? ' — ' + a.custName : '');
+
+  // Description body builds a small block of context (status, staff, phone, notes)
+  var descLines = [];
+  if(a.custName)  descLines.push('Client: ' + a.custName);
+  if(a.custPhone) descLines.push('Phone: '  + a.custPhone);
+  if(a.staffName) descLines.push('Staff: '  + a.staffName);
+  if(a.totalAmt)  descLines.push('Amount: ' + fmt(a.totalAmt));
+  descLines.push('Status: '   + (a.st || ''));
+  descLines.push('Ref: '      + (a.id || ''));
+  if(a.notes)     descLines.push('', 'Notes:', a.notes);
+  if(BIZ.name)    descLines.push('', 'Booked with ' + BIZ.name);
+  var description = descLines.join('\n');
+
+  // Location: prefer the business address. If a customer has a recorded
+  // address (e.g. site visits for an interior designer), we could use that
+  // instead — for now keep it as the biz address, which is the common case.
+  var location = BIZ.address || '';
+
+  // Lines for the VEVENT block
+  var lines = [
+    'BEGIN:VEVENT',
+    'UID:appt-' + (a.id || ('x'+Date.now())) + '@shoptrack.org',
+    'DTSTAMP:' + _icsUtcStamp(),
+    'DTSTART:' + dtStart,
+    'DTEND:'   + dtEnd,
+    'SUMMARY:' + _icsEscape(summary),
+    'DESCRIPTION:' + _icsEscape(description),
+    location ? 'LOCATION:' + _icsEscape(location) : '',
+    'STATUS:' + status,
+    'SEQUENCE:' + _icsSequence(a),
+    'TRANSP:OPAQUE',
+    // 15-minute reminder by default
+    'BEGIN:VALARM',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Reminder',
+    'TRIGGER:-PT15M',
+    'END:VALARM',
+    'END:VEVENT'
+  ].filter(Boolean);
+
+  return lines.map(_icsFold).join('\r\n');
+}
+
+// Trigger a download of the .ics file for an appointment.
+// Works across browsers; on iOS opens the file directly in Calendar app;
+// on desktop with Google/Outlook installed it offers the right import.
+function _apptDownloadIcs(id){
+  var fr = BIZ.language==='fr';
+  var a = (D.appointments||[]).find(function(x){return x.id===id;});
+  if(!a){ toast(fr?'Rendez-vous introuvable':'Appointment not found','error'); return; }
+  var event = _apptToIcs(a);
+  if(!event){ toast(fr?'Donn\u00E9es de rendez-vous incompl\u00E8tes':'Appointment data incomplete','error'); return; }
+  var ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//ShopTrack//Appointments//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    event,
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  try{
+    var blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    // Filename: appointment-{id}.ics. Calendar apps key by UID so re-downloads
+    // update the entry rather than creating duplicates.
+    link.download = 'appointment-' + (a.id || 'event') + '.ics';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(function(){
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 200);
+    toast(fr?'\uD83D\uDCC5 Ajout\u00E9 au calendrier':'\uD83D\uDCC5 Calendar file downloaded','success');
+    addAudit('Appointment exported to calendar', a.id + ' — ' + (a.serviceName||''));
+  }catch(e){
+    console.error('[ics] download failed:', e);
+    toast(fr?'\u00C9chec du t\u00E9l\u00E9chargement':'Could not download .ics file','error');
+  }
+}
+
 function genReceiptDoc(saleId){
   const s = saleId ? D.sales.find(x=>x.id===saleId) : D.sales[0];
   if(!s) return;
@@ -31502,6 +31685,7 @@ function mViewAppt(id){const _s=_L();
     : '';
 
   var waBtn       = a.custPhone ? '<button class="btn btn-g btn-sm" onclick="_apptWA(\''+id+'\')">💬 WA</button>' : '';
+  var calBtn      = (a.st!=='Cancelled') ? '<button class="btn btn-s btn-sm" onclick="_apptDownloadIcs(\''+id+'\')" title="Download .ics file — opens in Google Calendar, Apple Calendar, Outlook, etc.">📅 Add to Calendar</button>' : '';
   var reschedBtn  = canEdit ? '<button class="btn btn-s btn-sm" onclick="closeModal();mRescheduleAppt(\''+id+'\')">🔄 Reschedule</button>' : '';
   var cancelBtn   = canEdit ? '<button class="btn btn-sm" style="background:var(--y-dim);color:var(--y)" onclick="closeModal();mCancelAppt(\''+id+'\')">✕ Cancel</button>' : '';
   var checkoutBtn = canCheckout ? '<button class="btn btn-p btn-sm" onclick="closeModal();_apptCheckout(\''+id+'\')">💳 Checkout</button>' : '';
@@ -31514,7 +31698,7 @@ function mViewAppt(id){const _s=_L();
   var confirmNotifyBtn = (a.st==='Reserved' && a.custPhone) ? '<button class="btn btn-sm" style="background:var(--g);color:#fff;font-weight:700" onclick="_apptConfirmAndNotify(\''+id+'\')">✓ Confirm &amp; Notify</button>' : '';
 
   var footer = '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:6px;flex-wrap:wrap">'
-    +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+waBtn+reschedBtn+cancelBtn+checkoutBtn+deleteBtn+'</div>'
+    +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+waBtn+calBtn+reschedBtn+cancelBtn+checkoutBtn+deleteBtn+'</div>'
     +'<div style="display:flex;gap:5px">'+confirmNotifyBtn+editBtn+editAmtBtn+invoiceBtn+saveBtn+'</div></div>';
 
   modal('📅 '+a.serviceName+' \u2014 '+a.custName, statusHtml+grid+notesHtml+photoStripHtml+statusRow, footer, 'sm');
