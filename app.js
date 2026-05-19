@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779156718");
+console.log("ShopTrack v2.7 - build:1779157716");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -7920,6 +7920,7 @@ function mViewCustomer(id){const _s=_L();
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mEditCustomer('${c.id}')">✏ Edit</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mCustomerStatement('${c.id}')">📄 Statement</button>
+   <button class="btn btn-g btn-sm" onclick="closeModal();genProjectPack('${c.id}')" title="Compile all appointments, quotes, invoices and purchases for this client into one branded PDF">📁 Project Pack</button>
    ${phone?`<button class="btn btn-g btn-sm" onclick="_arSendWA('${c.id}')">&#x1F4AC; WhatsApp</button>`:''}
    ${c.bal>0?`<button class="btn btn-p btn-sm" onclick="closeModal();mCollectBalance('${c.id}')">💰 Collect Balance</button>`:''}
    `,'lg');
@@ -10169,6 +10170,7 @@ function pgAI(){const _s=_L();
     {group:'🎨 Branded Documents',   items:[
       {id:'Branded Flyer',       icon:'🖼️', desc:'Full-color flyer with your logo & colors — save as PNG or PDF'},
       {id:'Email Campaign',      icon:'📧', desc:'Subject line + formatted email body ready to send'},
+      {id:'Project Pack',        icon:'📁', desc:'Compile all appointments (with photos), quotes, invoices, and purchases for one client into a branded PDF'},
     ]},
     {group:'🤖 AI Image Generation', items:[
       {id:'AI Product Photo',    icon:'🎨', desc:'Generate a professional product image with AI — no setup required'},
@@ -11424,6 +11426,11 @@ function genAI(){var _s=_L();
 
   // Route branded flyer to dedicated generator
   if(type === 'Branded Flyer') { _genAIFlyer(prod, ctx, btn, btnTxt, btnIco); return; }
+  // Route Project Pack — no AI call, just a structured document builder
+  if(type === 'Project Pack') {
+    genProjectPackPrompt();
+    return;
+  }
   // Route AI image generation to DALL-E handler
   if(type === 'AI Product Photo') { _genDALLEImage(prod, ctx, btn, btnTxt, btnIco); return; }
   // Route bulk calendar
@@ -19620,6 +19627,284 @@ function genInvoiceDoc(saleId){
   </div>
   <div class="doc-watermark">ShopTrack</div>`;
   openDoc(`${L.invoice} — ${s.id}`, html);
+}
+
+// ── Project Pack PDF ──────────────────────────────────────────────────────
+// Assembles every record linked to a customer (or a specific project) into
+// one branded PDF: cover → at-a-glance summary → appointments (with notes
+// AND attached photos) → quotes → invoices → purchases → totals.
+//
+// Designed for interior designers, contractors, event planners, and any
+// project-driven business that needs to send the client a single document
+// covering "everything we did" or "everything we plan to do".
+//
+// Args:
+//   custId — required, the customer to scope the pack to
+//   opts   — optional, { projectFilter: 'string' }; if provided, only
+//            includes records whose notes contain that string (e.g. a
+//            project handle like "Mensah Bonapriso Living Room 2026")
+function genProjectPack(custId, opts){
+  var c = (D.cust||[]).find(function(x){return x.id===custId;});
+  if(!c){ toast('Customer not found','error'); return; }
+  opts = opts || {};
+  var pf = (opts.projectFilter||'').trim().toLowerCase();
+  var primary = BIZ.primaryColor || '#4361ee';
+  var accent  = BIZ.accentColor  || '#4cc9f0';
+
+  // Helper: does a record match the optional project filter?
+  function matchProject(rec){
+    if(!pf) return true;
+    var hay = ((rec.notes||'')+' '+(rec.items||'')+' '+(rec.serviceName||'')+' '+(rec.cust||'')+' '+(rec.custName||'')).toLowerCase();
+    return hay.indexOf(pf) !== -1;
+  }
+
+  // Gather all linked records, sorted oldest → newest by date
+  var appts  = (D.appointments||[]).filter(function(a){return (a.custId===custId || a.custName===c.name) && matchProject(a);})
+                  .sort(function(x,y){return (x.date||'').localeCompare(y.date||'') || (x.startTime||'').localeCompare(y.startTime||'');});
+  var quotes = (D.quotes||[]).filter(function(q){return (q.custId===custId || q.cust===c.name) && matchProject(q);})
+                  .sort(function(x,y){return (x.dt||'').localeCompare(y.dt||'');});
+  var sales  = (D.sales||[]).filter(function(s){return (s.custId===custId || s.cust===c.name) && matchProject(s);})
+                  .sort(function(x,y){return (x.dt||'').localeCompare(y.dt||'');});
+  var purchases = (D.purchases||[]).filter(function(p){return matchProject(p);})
+                  .sort(function(x,y){return (x.dt||'').localeCompare(y.dt||'');});
+
+  // Roll up totals
+  var totalInvoiced  = sales.reduce(function(a,s){return a + (s.total||s.amt||0);}, 0);
+  var totalPaid      = sales.reduce(function(a,s){return a + (s.paid||0);}, 0);
+  var totalQuoted    = quotes.reduce(function(a,q){return a + (q.total||q.amt||0);}, 0);
+  var totalPurchased = purchases.reduce(function(a,p){return a + (p.total||p.amt||0);}, 0);
+  var grossMargin    = totalPaid - totalPurchased;
+
+  // Section: cover header
+  var coverHtml = '<div class="doc-header" style="background:'+primary+';padding:32px 28px 26px;display:flex;justify-content:space-between;align-items:flex-start">'
+    +'<div>'+bizLogo()
+      +'<div class="doc-biz-name" style="color:#fff;margin-top:10px">'+_esc(BIZ.name||'')+'</div>'
+      +(BIZ.tagline?'<div class="doc-biz-sub" style="color:rgba(255,255,255,.75);margin-top:2px">'+_esc(BIZ.tagline)+'</div>':'')
+    +'</div>'
+    +'<div class="doc-title-block">'
+      +'<div class="doc-number">PROJECT PACK</div>'
+      +'<div class="doc-number-val" style="font-size:18px">'+_esc(c.name)+'</div>'
+      +'<div class="doc-date">Generated: '+localDateStr()
+      +(pf?'<br><span style="font-size:10px;color:rgba(255,255,255,.7)">Project filter: \u201C'+_esc(opts.projectFilter)+'\u201D</span>':'')
+      +'</div>'
+    +'</div>'
+  +'</div>';
+
+  // Section: at-a-glance summary card
+  var stats = [
+    {lbl:'Appointments',  val:appts.length,    color:primary},
+    {lbl:'Quotes',        val:quotes.length,   color:primary},
+    {lbl:'Invoices',      val:sales.length,    color:primary},
+    {lbl:'Purchases',     val:purchases.length,color:primary},
+  ];
+  var summaryHtml = '<div style="padding:24px 28px 8px">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#64748b;margin-bottom:12px">At a glance</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">'
+      + stats.map(function(s){return '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;text-align:left">'
+          +'<div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">'+s.lbl+'</div>'
+          +'<div style="font-size:24px;font-weight:800;color:'+s.color+';line-height:1">'+s.val+'</div>'
+        +'</div>';}).join('')
+    +'</div>'
+    // Financial summary
+    +'<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px">'
+      +'<div style="display:grid;grid-template-columns:auto auto;gap:6px 24px;font-size:12.5px">'
+        +'<div style="color:#64748b">Total quoted</div><div style="font-family:var(--mono,monospace);text-align:right;font-weight:600">'+fmtDoc(totalQuoted)+'</div>'
+        +'<div style="color:#64748b">Total invoiced</div><div style="font-family:var(--mono,monospace);text-align:right;font-weight:600">'+fmtDoc(totalInvoiced)+'</div>'
+        +'<div style="color:#64748b">Paid to date</div><div style="font-family:var(--mono,monospace);text-align:right;font-weight:600;color:#047857">'+fmtDoc(totalPaid)+'</div>'
+        +(totalInvoiced - totalPaid > 0 ? '<div style="color:#64748b">Outstanding balance</div><div style="font-family:var(--mono,monospace);text-align:right;font-weight:700;color:#dc2626">'+fmtDoc(totalInvoiced - totalPaid)+'</div>' : '')
+        + (purchases.length ? '<div style="color:#64748b">Project purchases (COGS)</div><div style="font-family:var(--mono,monospace);text-align:right;font-weight:600">'+fmtDoc(totalPurchased)+'</div>' : '')
+        + (purchases.length && totalPaid>0 ? '<div style="color:#64748b;border-top:1px solid #e5e7eb;padding-top:6px;margin-top:2px">Gross margin to date</div><div style="font-family:var(--mono,monospace);text-align:right;font-weight:800;color:'+(grossMargin>=0?'#047857':'#dc2626')+';border-top:1px solid #e5e7eb;padding-top:6px;margin-top:2px">'+fmtDoc(grossMargin)+'</div>' : '')
+      +'</div>'
+    +'</div>'
+    // Client info card
+    +'<div style="margin-top:14px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;margin-bottom:6px">Client</div>'
+      +'<div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:4px">'+_esc(c.name)+'</div>'
+      +(c.phone?'<div style="font-size:12px;color:#475569">\uD83D\uDCDE '+_esc(c.phone)+'</div>':'')
+      +(c.email?'<div style="font-size:12px;color:#475569">\uD83D\uDCE7 '+_esc(c.email)+'</div>':'')
+      +(c.addr?'<div style="font-size:12px;color:#475569">\uD83D\uDCCD '+_esc(c.addr)+'</div>':'')
+    +'</div>'
+  +'</div>';
+
+  // Section helper
+  function sectionTitle(label, count){
+    return '<div style="padding:20px 28px 8px;margin-top:8px">'
+      +'<div style="display:flex;align-items:center;gap:10px;padding-bottom:8px;border-bottom:2px solid '+primary+'">'
+        +'<div style="font-size:16px;font-weight:800;color:#0f172a">'+label+'</div>'
+        +'<div style="font-size:11px;color:'+primary+';background:'+primary+'15;padding:2px 8px;border-radius:10px;font-weight:700">'+count+'</div>'
+      +'</div>'
+    +'</div>';
+  }
+
+  // Section: appointments (with notes + photos)
+  var apptsHtml = '';
+  if(appts.length){
+    apptsHtml = sectionTitle('Appointments & site visits', appts.length)
+      +'<div style="padding:0 28px">'
+      + appts.map(function(a){
+          var photoStrip = (a.photos && a.photos.length)
+            ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">'
+              + a.photos.map(function(p){
+                  var cap = (p.caption||'').replace(/"/g,'&quot;');
+                  return '<div style="position:relative;width:120px;height:120px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;background:#f8fafc">'
+                    +'<img loading="lazy" src="'+p.dataUrl+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"'+(cap?' title="'+cap+'"':'')+'/>'
+                    +(cap?'<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:3px 5px;text-align:center;line-height:1.2">'+_esc(cap)+'</div>':'')
+                  +'</div>';
+                }).join('')
+            +'</div>'
+            : '';
+          var stColor = a.st==='Completed' ? '#047857' : a.st==='Cancelled' ? '#dc2626' : a.st==='In Progress' ? '#2563eb' : '#a16207';
+          var stBg    = a.st==='Completed' ? '#d1fae5' : a.st==='Cancelled' ? '#fee2e2' : a.st==='In Progress' ? '#dbeafe' : '#fef3c7';
+          return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">'
+              +'<div>'
+                +'<div style="font-size:14px;font-weight:700;color:#0f172a">'+_esc(a.serviceName||'Appointment')+'</div>'
+                +'<div style="font-size:11px;color:#64748b">'+_esc(a.date||'')+(a.startTime?' \u00B7 '+_esc(a.startTime):'')+(a.staffName?' \u00B7 '+_esc(a.staffName):'')+'</div>'
+              +'</div>'
+              +'<span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;background:'+stBg+';color:'+stColor+';white-space:nowrap">'+_esc(a.st||'')+'</span>'
+            +'</div>'
+            + (a.notes?'<div style="font-size:12px;color:#334155;line-height:1.6;margin-top:6px;padding:8px 10px;background:#f8fafc;border-left:3px solid '+primary+';border-radius:4px;white-space:pre-wrap">'+_esc(a.notes)+'</div>':'')
+            + photoStrip
+          +'</div>';
+        }).join('')
+      +'</div>';
+  }
+
+  // Section: quotes
+  var quotesHtml = '';
+  if(quotes.length){
+    quotesHtml = sectionTitle('Quotes', quotes.length)
+      +'<div style="padding:0 28px">'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">'
+        +'<thead><tr style="background:#f8fafc"><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">#</th><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Date</th><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Items</th><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Status</th><th style="text-align:right;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Total</th></tr></thead>'
+        +'<tbody>'
+        + quotes.map(function(q){
+            return '<tr style="border-top:1px solid #f1f5f9">'
+              +'<td style="padding:8px 12px;font-family:var(--mono,monospace);color:'+primary+';font-weight:600">'+_esc(q.id)+'</td>'
+              +'<td style="padding:8px 12px;color:#475569">'+_esc(q.dt||'')+'</td>'
+              +'<td style="padding:8px 12px;color:#334155;max-width:280px;word-break:break-word">'+_esc((q.items||'').slice(0,90))+((q.items||'').length>90?'\u2026':'')+'</td>'
+              +'<td style="padding:8px 12px"><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:#475569">'+_esc(q.st||'')+'</span></td>'
+              +'<td style="padding:8px 12px;text-align:right;font-family:var(--mono,monospace);font-weight:700;color:#0f172a">'+fmtDoc(q.total||q.amt||0)+'</td>'
+            +'</tr>';
+          }).join('')
+        +'</tbody>'
+      +'</table></div>';
+  }
+
+  // Section: invoices / sales
+  var salesHtml = '';
+  if(sales.length){
+    salesHtml = sectionTitle('Invoices', sales.length)
+      +'<div style="padding:0 28px">'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">'
+        +'<thead><tr style="background:#f8fafc"><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">#</th><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Date</th><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Items</th><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Status</th><th style="text-align:right;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Paid / Total</th></tr></thead>'
+        +'<tbody>'
+        + sales.map(function(s){
+            var stColor = s.st==='Paid'?'#047857':s.st==='Partial'?'#a16207':'#dc2626';
+            var stBg    = s.st==='Paid'?'#d1fae5':s.st==='Partial'?'#fef3c7':'#fee2e2';
+            return '<tr style="border-top:1px solid #f1f5f9">'
+              +'<td style="padding:8px 12px;font-family:var(--mono,monospace);color:'+primary+';font-weight:600">'+_esc(s.id)+'</td>'
+              +'<td style="padding:8px 12px;color:#475569">'+_esc(s.dt||'')+'</td>'
+              +'<td style="padding:8px 12px;color:#334155;max-width:260px;word-break:break-word">'+_esc((s.items||'').slice(0,90))+((s.items||'').length>90?'\u2026':'')+'</td>'
+              +'<td style="padding:8px 12px"><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:'+stBg+';color:'+stColor+'">'+_esc(s.st||'')+'</span></td>'
+              +'<td style="padding:8px 12px;text-align:right;font-family:var(--mono,monospace);font-weight:700;color:#0f172a">'+fmtDoc(s.paid||0)+' / '+fmtDoc(s.total||s.amt||0)+'</td>'
+            +'</tr>';
+          }).join('')
+        +'</tbody>'
+      +'</table></div>';
+  }
+
+  // Section: purchases
+  var purchasesHtml = '';
+  if(purchases.length){
+    purchasesHtml = sectionTitle('Project purchases', purchases.length)
+      +'<div style="padding:0 28px">'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">'
+        +'<thead><tr style="background:#f8fafc"><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">#</th><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Date</th><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Vendor</th><th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Items</th><th style="text-align:right;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Cost</th></tr></thead>'
+        +'<tbody>'
+        + purchases.map(function(p){
+            return '<tr style="border-top:1px solid #f1f5f9">'
+              +'<td style="padding:8px 12px;font-family:var(--mono,monospace);color:'+primary+';font-weight:600">'+_esc(p.id)+'</td>'
+              +'<td style="padding:8px 12px;color:#475569">'+_esc(p.dt||'')+'</td>'
+              +'<td style="padding:8px 12px;color:#334155">'+_esc(p.vendor||'')+'</td>'
+              +'<td style="padding:8px 12px;color:#334155;max-width:240px;word-break:break-word">'+_esc((p.items||'').slice(0,80))+((p.items||'').length>80?'\u2026':'')+'</td>'
+              +'<td style="padding:8px 12px;text-align:right;font-family:var(--mono,monospace);font-weight:600;color:#0f172a">'+fmtDoc(p.total||p.amt||0)+'</td>'
+            +'</tr>';
+          }).join('')
+        +'</tbody>'
+      +'</table></div>';
+  }
+
+  // Empty state — if NOTHING matched
+  var emptyHtml = '';
+  if(!appts.length && !quotes.length && !sales.length && !purchases.length){
+    emptyHtml = '<div style="padding:60px 28px;text-align:center;color:#64748b">'
+      +'<div style="font-size:36px;margin-bottom:12px">\uD83D\uDCC2</div>'
+      +'<div style="font-size:14px;font-weight:600">No records found for this client'+(pf?' matching \u201C'+_esc(opts.projectFilter)+'\u201D':'')+'.</div>'
+      +'<div style="font-size:12px;margin-top:8px">Add an appointment, quote, or invoice and try again.</div>'
+    +'</div>';
+  }
+
+  // Footer
+  var footerHtml = '<div class="doc-footer">'
+    +'<div class="doc-footer-note">'
+      +'<strong style="display:block;margin-bottom:4px;font-size:12px">Confidential project document</strong>'
+      +'<div style="font-size:11px;color:#94a3b8">This pack is a snapshot of records linked to '+_esc(c.name)+' as of '+localDateStr()+'. Figures may update as the project progresses.</div>'
+      +(BIZ.email?'<div style="margin-top:6px">\uD83D\uDCE7 '+_esc(BIZ.email)+'</div>':'')
+      +(BIZ.phone?'<div>\uD83D\uDCDE '+_esc(BIZ.phone)+'</div>':'')
+    +'</div>'
+    +'<div class="doc-footer-biz">'
+      +'<strong>'+_esc(BIZ.name||'')+'</strong>'
+      +(BIZ.address?'<div>'+_esc(BIZ.address)+'</div>':'')
+      +(BIZ.website?'<div style="color:'+primary+'">'+_esc(BIZ.website)+'</div>':'')
+    +'</div>'
+  +'</div>';
+
+  var html = docStyles(primary, accent)
+    + coverHtml
+    + '<div class="doc-body" style="padding:0">'
+      + summaryHtml
+      + (emptyHtml || (apptsHtml + quotesHtml + salesHtml + purchasesHtml))
+    + '</div>'
+    + footerHtml
+    + '<div class="doc-watermark">ShopTrack</div>';
+
+  openDoc('Project Pack \u2014 '+c.name, html);
+  addAudit('Project Pack generated', c.name + (pf?' (filter: '+opts.projectFilter+')':''));
+}
+
+// Prompt-driven wrapper for the AI Studio entry — asks for the customer
+// and an optional project filter, then calls genProjectPack.
+function genProjectPackPrompt(){
+  var fr = BIZ.language==='fr';
+  if(!D.cust || !D.cust.length){
+    toast(fr?'Aucun client \u2014 ajoutez-en un d\'abord':'No customers yet \u2014 add one first','info');
+    return;
+  }
+  var custOpts = D.cust.slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');})
+    .map(function(c){return '<option value="'+c.id+'">'+_esc(c.name)+'</option>';}).join('');
+  modal((fr?'\uD83D\uDCC1 G\u00E9n\u00E9rer le pack projet':'\uD83D\uDCC1 Generate Project Pack'),
+    '<p style="font-size:13px;color:var(--text2);margin:0 0 14px">'+(fr?'Assemble toutes les appointments (avec photos &amp; notes), devis, factures et achats li\u00E9s \u00E0 un client en un seul PDF de marque \u2014 pr\u00EAt \u00E0 envoyer.':'Compiles every appointment (with photos &amp; notes), quote, invoice, and purchase linked to a client into a single branded PDF \u2014 ready to send.')+'</p>'
+    +'<div class="fg"><label class="fl">'+(fr?'Client':'Client')+'</label>'
+      +'<select class="fs" id="pp-cust"><option value="">'+(fr?'\u2014 S\u00E9lectionner \u2014':'\u2014 Select \u2014')+'</option>'+custOpts+'</select>'
+    +'</div>'
+    +'<div class="fg"><label class="fl">'+(fr?'Filtre projet (optionnel)':'Project filter (optional)')+'</label>'
+      +'<input class="fi" id="pp-filter" placeholder="'+(fr?'ex. Bonapriso Salon 2026':'e.g. Bonapriso Living Room 2026')+'"/>'
+      +'<div style="font-size:10px;color:var(--text2);margin-top:4px">'+(fr?'Si le client a plusieurs projets, tapez un mot-cl\u00E9 pr\u00E9sent dans les notes / descriptions \u2014 seuls les enregistrements correspondants seront inclus.':'If the client has multiple projects, type a keyword that appears in the notes / item descriptions \u2014 only matching records will be included.')+'</div>'
+    +'</div>',
+    '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Annuler':'Cancel')+'</button>'
+    +'<button class="btn btn-p" onclick="_doProjectPackGen()">'+(fr?'\u2192 G\u00E9n\u00E9rer':'\u2192 Generate')+'</button>',
+    'sm');
+}
+
+// Handler triggered by the "Generate" button on the Project Pack prompt
+function _doProjectPackGen(){
+  var fr = BIZ.language==='fr';
+  var cid = (document.getElementById('pp-cust')||{}).value || '';
+  var pf  = ((document.getElementById('pp-filter')||{}).value || '').trim();
+  if(!cid){ toast(fr?'S\u00E9lectionnez un client':'Pick a client','error'); return; }
+  closeModal();
+  genProjectPack(cid, { projectFilter: pf });
 }
 
 function genReceiptDoc(saleId){
