@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779137815");
+console.log("ShopTrack v2.7 - build:1779152992");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5243,11 +5243,11 @@ function _saveRecordPayment(){var _s=_L();
 function mInvoiceNew(){const _s=_L();
   // Pre-build option lists for each invoice type
   const saleItems = D.inv.filter(i=>i.st==='For Sale'||i.st==='Both')
-    .map(i=>`<option value="${_esc(i.name)}" data-price="${Math.round((i.sp||0)*CUR.rate)}">${_esc(i.name)}${i.sku?' ('+i.sku+')':''} — ${fmt(i.sp||0)}</option>`).join('');
+    .map(i=>`<option value="${_esc(i.name)}" data-price="${Math.round((i.sp||0)*CUR.rate)}" data-unit="each">${_esc(i.name)}${i.sku?' ('+i.sku+')':''} — ${fmt(i.sp||0)}</option>`).join('');
   const rentalItems = D.inv.filter(i=>i.st==='For Rent'||i.st==='Both')
-    .map(i=>`<option value="${_esc(i.name)}" data-price="${Math.round((i.rp||0)*CUR.rate)}">${_esc(i.name)}${i.sku?' ('+i.sku+')':''} — ${fmt(i.rp||0)}/day</option>`).join('');
+    .map(i=>`<option value="${_esc(i.name)}" data-price="${Math.round((i.rp||0)*CUR.rate)}" data-unit="per day">${_esc(i.name)}${i.sku?' ('+i.sku+')':''} — ${fmt(i.rp||0)}/day</option>`).join('');
   const svcItems = (D.services||[]).filter(s=>s.active!==false)
-    .map(s=>`<option value="${_esc(s.name)}" data-price="${Math.round((s.price||0)*CUR.rate)}">${_esc(s.name)} — ${fmt(s.price||0)}</option>`).join('');
+    .map(s=>{const u=_ptUnit(s.priceType||'flat');return `<option value="${_esc(s.name)}" data-price="${Math.round((s.price||0)*CUR.rate)}" data-unit="${_esc(u)}">${_esc(s.name)} — ${fmt(s.price||0)}${u!=='each'?' '+u:''}</option>`;}).join('');
 
   modal('📄 Create Invoice',`
   <div class="fg-2">
@@ -5314,6 +5314,7 @@ function mInvoiceNew(){const _s=_L();
         <thead><tr style="border-bottom:1px solid var(--border)">
           <th style="padding:7px;font-size:11px;text-align:left;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">${_s.ui_description}</th>
           <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Qty</th>
+          <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Unit</th>
           <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">${_s.inv_modal_unit}</th>
           <th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">${_s.ui_total}</th>
           <th style="width:28px"></th>
@@ -5405,23 +5406,30 @@ function _invAddFromCatalogue(){var _s=_L();
   if(!opt||!opt.value){ toast(_L().t_select_item2,'info'); return; }
   const name  = opt.value;
   const price = parseFloat(opt.dataset.price)||0;
-  _invAddRow(name, price);
+  const unit  = opt.dataset.unit || '';
+  _invAddRow(name, price, unit);
   sel.selectedIndex=0; // reset picker
 }
 
 
 // ── Add a new line row to the invoice ──────────────────────────
-function _invAddRow(name, price){const _s=_L();
+// `unit` (optional) is a free-text unit-of-measure label (e.g. "per hour",
+// "per m²", "per head", "per visit"). When a service is added from the
+// catalogue, this is pre-filled from the service's priceType. For manual
+// rows it starts empty; users can type anything.
+function _invAddRow(name, price, unit){const _s=_L();
   const tbody = document.getElementById('inv-lines-body'); if(!tbody) return;
   const tr = document.createElement('tr');
   tr.className = 'inv-line-row';
   const descVal  = name  ? String(name).replace(/"/g,'&quot;')  : '';
   const priceVal = price ? (price/CUR.rate).toFixed(2) : '';
+  const unitVal  = unit ? String(unit).replace(/"/g,'&quot;') : '';
   tr.innerHTML = '<td style="padding:5px 7px"><input class="fi inv-desc" style="font-size:12px;margin:0" placeholder="'+_s.inv_modal_desc+'" value="'+descVal+'"/></td>'
-    +'<td style="padding:5px 7px"><input class="fi inv-qty" type="number" value="1" min="1" style="width:60px;margin:0;text-align:center" oninput="_invUpdateRow(this)"/></td>'
+    +'<td style="padding:5px 7px"><input class="fi inv-qty" type="number" value="1" min="0" step="any" style="width:64px;margin:0;text-align:center" oninput="_invUpdateRow(this)"/></td>'
+    +'<td style="padding:5px 7px"><input class="fi inv-unit" placeholder="each / per hr / per m\u00B2" style="width:100px;margin:0;font-size:12px" value="'+unitVal+'" title="Unit of measure shown on the document (free-text). Examples: each, per hour, per m\u00B2, per head, per visit, per day."/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-price" type="number" placeholder="0.00" step="any" style="width:90px;margin:0" value="'+priceVal+'" oninput="_invUpdateRow(this)"/></td>'
-    +'<td style="padding:5px 7px;font-family:var(--mono);color:var(--g);min-width:70px" class="inv-row-total">'+(priceVal?fmt(parseFloat(priceVal)||0):'—')+'</td>'
-    +'<td style="padding:5px 3px"><button type="button" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px" onclick="this.closest(\'tr\').remove();_invUpdateTotals()" title="'+_s.photo_remove_row+'">✕</button></td>';
+    +'<td style="padding:5px 7px;font-family:var(--mono);color:var(--g);min-width:70px" class="inv-row-total">'+(priceVal?fmt(parseFloat(priceVal)||0):'\u2014')+'</td>'
+    +'<td style="padding:5px 3px"><button type="button" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px" onclick="this.closest(\'tr\').remove();_invUpdateTotals()" title="'+_s.photo_remove_row+'">\u2715</button></td>';
   tbody.appendChild(tr);
   if(!name) tr.querySelector('.inv-desc').focus();
   _invUpdateTotals();
@@ -5504,12 +5512,17 @@ function _saveInvoice(){var _s=_L();
   rows.forEach(function(row){
     const desc  = row.querySelector('.inv-desc')?.value?.trim()||'';
     const qty   = parseFloat(row.querySelector('.inv-qty')?.value)||0;
+    const unit  = row.querySelector('.inv-unit')?.value?.trim()||'';
     const price = parseFloat(row.querySelector('.inv-price')?.value)||0;
-    if(desc||price>0) lines.push({desc, qty:qty||1, price});
+    if(desc||price>0) lines.push({desc, qty:qty||1, unit, price});
   });
   if(!lines.length){ toast(_L().t_add_line_price,'error'); return; }
 
-  const itemsStr = lines.map(function(l){ return (l.qty>1?l.qty+'× ':'')+l.desc; }).filter(Boolean).join(', ') || 'Invoice';
+  // Build a readable items string that includes the unit when it's non-trivial
+  const itemsStr = lines.map(function(l){
+    var u = l.unit && l.unit.toLowerCase()!=='each' ? ' '+l.unit : '';
+    return (l.qty!==1 ? l.qty+u+' × ' : '') + l.desc;
+  }).filter(Boolean).join(', ') || 'Invoice';
   const rr = CUR.rate||1;
   const sub = lines.reduce(function(a,l){return a+l.qty*l.price;},0) / rr;
   const taxPct = parseFloat(document.getElementById('inv-tax')?.value)||0;
@@ -5530,7 +5543,11 @@ function _saveInvoice(){var _s=_L();
 
   const newSale = {
     id:newId, cust, custId:custObj?.id||'',
-    items:itemsStr, dt:document.getElementById('inv-date')?.value||localDateStr(),
+    items:itemsStr,
+    // Persist structured lineItems so the invoice PDF can show qty + unit
+    // and Quote→Invoice conversions can re-render with full fidelity.
+    lineItems: lines.map(function(l){return {name:l.desc, qty:l.qty, unit:l.unit||'', price:l.price};}),
+    dt:document.getElementById('inv-date')?.value||localDateStr(),
     amt:total, total, paid, cost:0, profit:total-paid,
     st, method:document.getElementById('inv-method')?.value||'Cash',
     notes:document.getElementById('inv-notes')?.value||'',
@@ -5580,11 +5597,11 @@ function _saveInvoice(){var _s=_L();
 function mQuoteNew(prefill){
   var _s = _L();
   var saleItems = D.inv.filter(function(i){return i.st==='For Sale'||i.st==='Both';})
-    .map(function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.sp||0)*CUR.rate)+'">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' — '+fmt(i.sp||0)+'</option>';}).join('');
+    .map(function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.sp||0)*CUR.rate)+'" data-unit="each">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' — '+fmt(i.sp||0)+'</option>';}).join('');
   var rentalItems = D.inv.filter(function(i){return i.st==='For Rent'||i.st==='Both';})
-    .map(function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.rp||0)*CUR.rate)+'">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' — '+fmt(i.rp||0)+'/day</option>';}).join('');
+    .map(function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.rp||0)*CUR.rate)+'" data-unit="per day">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' — '+fmt(i.rp||0)+'/day</option>';}).join('');
   var svcItems = (D.services||[]).filter(function(s){return s.active!==false;})
-    .map(function(s){return '<option value="'+_esc(s.name)+'" data-price="'+Math.round((s.price||0)*CUR.rate)+'">'+_esc(s.name)+' — '+fmt(s.price||0)+'</option>';}).join('');
+    .map(function(s){var u=_ptUnit(s.priceType||'flat');return '<option value="'+_esc(s.name)+'" data-price="'+Math.round((s.price||0)*CUR.rate)+'" data-unit="'+_esc(u)+'">'+_esc(s.name)+' — '+fmt(s.price||0)+(u!=='each'?' '+u:'')+'</option>';}).join('');
 
   // Default valid-until = today + 14 days
   var validUntil = new Date(); validUntil.setDate(validUntil.getDate()+14);
@@ -5649,6 +5666,7 @@ function mQuoteNew(prefill){
           +'<th style="padding:7px;font-size:11px;text-align:left;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Description</th>'
           +'<th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Qty</th>'
           +'<th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Unit</th>'
+          +'<th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Unit Price</th>'
           +'<th style="padding:7px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Total</th>'
           +'<th style="width:28px"></th>'
         +'</tr></thead>'
@@ -5700,12 +5718,16 @@ function _saveQuote(){
   rows.forEach(function(row){
     var desc  = row.querySelector('.inv-desc')?.value?.trim()||'';
     var qty   = parseFloat(row.querySelector('.inv-qty')?.value)||0;
+    var unit  = row.querySelector('.inv-unit')?.value?.trim()||'';
     var price = parseFloat(row.querySelector('.inv-price')?.value)||0;
-    if(desc || price>0) lines.push({desc:desc, qty:qty||1, price:price});
+    if(desc || price>0) lines.push({desc:desc, qty:qty||1, unit:unit, price:price});
   });
   if(!lines.length){ toast(_L().t_add_line_price,'error'); return; }
 
-  var itemsStr = lines.map(function(l){return (l.qty>1?l.qty+'× ':'')+l.desc;}).filter(Boolean).join(', ') || 'Quote';
+  var itemsStr = lines.map(function(l){
+    var u = l.unit && l.unit.toLowerCase()!=='each' ? ' '+l.unit : '';
+    return (l.qty!==1 ? l.qty+u+' × ' : '') + l.desc;
+  }).filter(Boolean).join(', ') || 'Quote';
   var rr = CUR.rate||1;
   var sub = lines.reduce(function(a,l){return a+l.qty*l.price;},0) / rr;
   var taxPct = parseFloat(document.getElementById('inv-tax')?.value)||0;
@@ -5727,7 +5749,7 @@ function _saveQuote(){
     cust: cust,
     custId: custObj?.id || '',
     items: itemsStr,
-    lineItems: lines.map(function(l){return {name:l.desc, qty:l.qty, price:l.price};}),
+    lineItems: lines.map(function(l){return {name:l.desc, qty:l.qty, unit:l.unit||'', price:l.price};}),
     dt: document.getElementById('inv-date')?.value || localDateStr(),
     validUntil: document.getElementById('qt-valid')?.value || '',
     amt: total,
@@ -5771,7 +5793,9 @@ function genQuoteDoc(quoteId){
   var stBg = q.st==='Accepted'?'#d1fae5' : q.st==='Rejected'?'#fee2e2' : q.st==='Expired'?'#f3f4f6' : q.st==='Sent'?'#dbeafe' : '#fef3c7';
 
   var lineRowsHtml = (q.lineItems||[]).map(function(li){
-    return '<tr><td class="desc">'+_esc(li.name||li.desc||'Item')+'</td><td>'+(li.qty||1)+'</td><td class="num">'+fmtDoc(li.price||0)+'</td><td class="num" style="font-weight:700">'+fmtDoc((li.qty||1)*(li.price||0))+'</td></tr>';
+    var name = _esc(li.name||li.desc||'Item');
+    var unit = li.unit ? ' <span style="color:#94a3b8;font-weight:400">'+_esc(li.unit)+'</span>' : '';
+    return '<tr><td class="desc">'+name+'</td><td>'+(li.qty||1)+unit+'</td><td class="num">'+fmtDoc(li.price||0)+'</td><td class="num" style="font-weight:700">'+fmtDoc((li.qty||1)*(li.price||0))+'</td></tr>';
   }).join('');
 
   var html = docStyles(primary, accent)
@@ -19506,7 +19530,7 @@ function genInvoiceDoc(saleId){
     <table class="doc-items">
       <thead><tr><th style="width:50%">${L.description}</th><th>${L.qty}</th><th class="num">${L.unitPrice}</th><th class="num">${L.amount}</th></tr></thead>
       <tbody>
-        ${(s.lineItems&&s.lineItems.length?s.lineItems:null) ? s.lineItems.map(li=>`<tr><td class="desc">${_esc(li.name||li.item||li.desc||'Item')}</td><td>${li.qty||1}</td><td class="num">${fmtDoc((li.price||0))}</td><td class="num" style="font-weight:700">${fmtDoc((li.qty||1)*(li.price||0))}</td></tr>`).join('') : `<tr><td class="desc">${_esc(s.items)}</td><td>1</td><td class="num">${fmtDoc(s.total||s.amt)}</td><td class="num" style="font-weight:700">${fmtDoc(s.total||s.amt)}</td></tr>`}
+        ${(s.lineItems&&s.lineItems.length?s.lineItems:null) ? s.lineItems.map(li=>{const u=li.unit?` <span style="color:#94a3b8;font-weight:400">${_esc(li.unit)}</span>`:'';return `<tr><td class="desc">${_esc(li.name||li.item||li.desc||'Item')}</td><td>${li.qty||1}${u}</td><td class="num">${fmtDoc((li.price||0))}</td><td class="num" style="font-weight:700">${fmtDoc((li.qty||1)*(li.price||0))}</td></tr>`;}).join('') : `<tr><td class="desc">${_esc(s.items)}</td><td>1</td><td class="num">${fmtDoc(s.total||s.amt)}</td><td class="num" style="font-weight:700">${fmtDoc(s.total||s.amt)}</td></tr>`}
         ${s.freight>0?`<tr><td class="desc" style="color:#64748b">${L.freight}</td><td>—</td><td class="num">${fmtDoc(s.freight)}</td><td class="num">${fmtDoc(s.freight)}</td></tr>`:''}
       </tbody>
     </table>
@@ -25307,6 +25331,26 @@ var _PRICE_TYPES = [
 ];
 function _ptLabel(pt){ var t=_PRICE_TYPES.find(function(x){return x.value===pt;}); return t?t.label:'Flat Rate'; }
 function _ptHint(pt){  var t=_PRICE_TYPES.find(function(x){return x.value===pt;}); return t?t.hint:''; }
+
+// Convert a service's priceType into a human-readable unit label that
+// appears in the Unit column of quote/invoice line items. The user can
+// override the value freely once a row is added; this is just the default.
+// Examples for an interior designer:
+//   Site Visit (priceType=flat)        → 'each'  (user might change to 'per visit')
+//   Painting   (priceType=per_hour)    → 'per hour' (or 'per m²' for tiling)
+//   Project Mgmt (priceType=per_day)   → 'per day'
+function _ptUnit(pt){
+  switch(pt){
+    case 'per_hour':    return 'per hour';
+    case 'per_min':     return 'per minute';
+    case 'per_day':     return 'per day';
+    case 'per_week':    return 'per week';
+    case 'per_session': return 'per session';
+    case 'starting':    return 'each';
+    case 'flat':
+    default:            return 'each';
+  }
+}
 
 // Compute the appointment total given a service's price, priceType, and duration in minutes
 function _computeSvcTotal(price, priceType, durationMins){
