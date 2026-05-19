@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779152992");
+console.log("ShopTrack v2.7 - build:1779153714");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5546,7 +5546,9 @@ function _saveInvoice(){var _s=_L();
     items:itemsStr,
     // Persist structured lineItems so the invoice PDF can show qty + unit
     // and Quote→Invoice conversions can re-render with full fidelity.
-    lineItems: lines.map(function(l){return {name:l.desc, qty:l.qty, unit:l.unit||'', price:l.price};}),
+    // PRICE IS STORED IN BASE CURRENCY (USD): divide raw input by rr so that
+    // fmtDoc() in the PDF can multiply by rate to display correctly.
+    lineItems: lines.map(function(l){return {name:l.desc, qty:l.qty, unit:l.unit||'', price:(l.price||0)/rr};}),
     dt:document.getElementById('inv-date')?.value||localDateStr(),
     amt:total, total, paid, cost:0, profit:total-paid,
     st, method:document.getElementById('inv-method')?.value||'Cash',
@@ -5749,7 +5751,9 @@ function _saveQuote(){
     cust: cust,
     custId: custObj?.id || '',
     items: itemsStr,
-    lineItems: lines.map(function(l){return {name:l.desc, qty:l.qty, unit:l.unit||'', price:l.price};}),
+    // Store lineItem price in BASE currency (USD), so the PDF generator's
+    // fmtDoc() can multiply by CUR.rate to display in the user's currency.
+    lineItems: lines.map(function(l){return {name:l.desc, qty:l.qty, unit:l.unit||'', price:(l.price||0)/rr};}),
     dt: document.getElementById('inv-date')?.value || localDateStr(),
     validUntil: document.getElementById('qt-valid')?.value || '',
     amt: total,
@@ -5780,6 +5784,12 @@ function _saveQuote(){
 // View a quote's branded PDF in a new tab (reuses the invoice doc layout
 // with "QUOTE" branding instead of "INVOICE", deposit-due section, and
 // validity date).
+// View a quote's branded PDF — full invoice-style layout with biz logo,
+// address, payment methods, bank details, sign/stamp, footer. Differences
+// vs. genInvoiceDoc: 'QUOTE' header instead of 'INVOICE', validity-date
+// row instead of payment-terms, deposit-due block at the bottom of totals,
+// status badge (Draft/Sent/Accepted/Rejected/Expired), and a closing line
+// clarifying this is a proposal, not a payable invoice.
 function genQuoteDoc(quoteId){
   var q = (D.quotes||[]).find(function(x){return x.id===quoteId;});
   if(!q){ toast('Quote not found','error'); return; }
@@ -5788,15 +5798,39 @@ function genQuoteDoc(quoteId){
   var total   = q.total || q.amt || 0;
   var deposit = q.deposit || 0;
   var balance = Math.max(0, total - deposit);
+  var taxes   = q.taxes || 0;
+  var subtotal = total - taxes;
+  var L = _L();
 
+  // Status badge styling
   var stColor = q.st==='Accepted'?'#047857' : q.st==='Rejected'?'#dc2626' : q.st==='Expired'?'#6b7280' : q.st==='Sent'?'#2563eb' : '#a16207';
-  var stBg = q.st==='Accepted'?'#d1fae5' : q.st==='Rejected'?'#fee2e2' : q.st==='Expired'?'#f3f4f6' : q.st==='Sent'?'#dbeafe' : '#fef3c7';
+  var stBg    = q.st==='Accepted'?'#d1fae5' : q.st==='Rejected'?'#fee2e2' : q.st==='Expired'?'#f3f4f6' : q.st==='Sent'?'#dbeafe' : '#fef3c7';
 
+  // Find customer record for phone/email
+  var custObj = (D.cust||[]).find(function(c){return c.id===q.custId || c.name===q.cust;}) || {};
+  var custPhone = q.custPhone || custObj.phone || '';
+  var custEmail = custObj.email || '';
+
+  // Line items
   var lineRowsHtml = (q.lineItems||[]).map(function(li){
     var name = _esc(li.name||li.desc||'Item');
     var unit = li.unit ? ' <span style="color:#94a3b8;font-weight:400">'+_esc(li.unit)+'</span>' : '';
     return '<tr><td class="desc">'+name+'</td><td>'+(li.qty||1)+unit+'</td><td class="num">'+fmtDoc(li.price||0)+'</td><td class="num" style="font-weight:700">'+fmtDoc((li.qty||1)*(li.price||0))+'</td></tr>';
   }).join('');
+
+  // Payment methods pills (only show if the business has them configured)
+  var payMethodsHtml = '';
+  if(BIZ.paymentMethods){
+    payMethodsHtml = '<div class="doc-section-title">Payment methods we accept</div>'
+      +'<div class="doc-pay-methods">'+(BIZ.paymentMethods||'').split(',').map(function(m){return m.trim();}).filter(Boolean).map(function(m){return '<span class="doc-pay-pill">'+_esc(m)+'</span>';}).join('')+'</div>';
+  }
+
+  // Bank details
+  var bankDetailsHtml = '';
+  if(BIZ.bankDetails){
+    bankDetailsHtml = '<div class="doc-section-title" style="margin-top:14px">Bank / Mobile money details for deposit</div>'
+      +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;font-size:11px;line-height:1.8;color:#374151;white-space:pre-line;margin-bottom:16px">'+_esc(BIZ.bankDetails)+'</div>';
+  }
 
   var html = docStyles(primary, accent)
     +'<div class="doc-header" style="background:'+primary+';padding:24px 28px 20px;display:flex;justify-content:space-between;align-items:flex-start">'
@@ -5818,12 +5852,15 @@ function genQuoteDoc(quoteId){
         +'<div>'
           +'<div class="doc-label">QUOTE FOR</div>'
           +'<div class="doc-value" style="font-size:15px">'+_esc(q.cust||'')+'</div>'
+          +(custPhone?'<div class="doc-value-sub">'+_esc(custPhone)+'</div>':'')
+          +(custEmail?'<div class="doc-value-sub">'+_esc(custEmail)+'</div>':'')
         +'</div>'
         +'<div style="text-align:right">'
           +'<div style="display:inline-grid;grid-template-columns:auto auto;gap:4px 16px;text-align:left">'
             +'<div class="doc-label">Quote #</div><div class="doc-value" style="font-family:var(--mono,monospace)">'+q.id+'</div>'
             +'<div class="doc-label">Quote date</div><div class="doc-value">'+q.dt+'</div>'
             +(q.validUntil?'<div class="doc-label">Valid until</div><div class="doc-value" style="color:'+primary+';font-weight:600">'+q.validUntil+'</div>':'')
+            +(BIZ.taxRate>0?'<div class="doc-label">Tax ID</div><div class="doc-value">'+_esc(BIZ.taxId||BIZ.taxRegNumber||'\u2014')+'</div>':'')
           +'</div>'
         +'</div>'
       +'</div>'
@@ -5833,23 +5870,44 @@ function genQuoteDoc(quoteId){
       +'</table>'
       +'<div class="doc-totals">'
         +'<div class="doc-totals-box">'
-          +'<div class="doc-total-row"><span>Subtotal</span><span class="num">'+fmtDoc(total-(q.taxes||0))+'</span></div>'
-          +((q.taxes||0)>0?'<div class="doc-total-row"><span>Tax</span><span class="num">'+fmtDoc(q.taxes)+'</span></div>':'')
-          +'<div class="doc-total-row" style="border-top:1px solid #e5e7eb;padding-top:6px;margin-top:6px;font-weight:700;font-size:15px"><span>TOTAL</span><span class="num">'+fmtDoc(total)+'</span></div>'
-          +(deposit>0?'<div class="doc-total-row" style="color:'+primary+';font-weight:600"><span>Deposit due to start</span><span class="num">'+fmtDoc(deposit)+'</span></div>':'')
+          +'<div class="doc-total-row"><span>Subtotal</span><span class="num">'+fmtDoc(subtotal)+'</span></div>'
+          +(taxes>0?'<div class="doc-total-row"><span>Tax'+(BIZ.taxName?' ('+_esc(BIZ.taxName)+')':'')+'</span><span class="num">'+fmtDoc(taxes)+'</span></div>':'')
+          +'<div class="doc-total-final"><span>TOTAL</span><span class="num">'+fmtDoc(total)+'</span></div>'
+          +(deposit>0?'<div class="doc-total-row" style="color:'+primary+';font-weight:600;margin-top:6px"><span>Deposit due to start</span><span class="num">'+fmtDoc(deposit)+'</span></div>':'')
           +(deposit>0?'<div class="doc-total-row" style="color:#64748b"><span>Balance on completion</span><span class="num">'+fmtDoc(balance)+'</span></div>':'')
         +'</div>'
       +'</div>'
+      +payMethodsHtml
+      +bankDetailsHtml
       +(q.notes?'<div style="margin-top:18px;padding:14px 16px;background:#f9fafb;border-left:3px solid '+primary+';border-radius:4px"><div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Notes &amp; Terms</div><div style="font-size:13px;line-height:1.6;color:#0f172a;white-space:pre-wrap">'+_esc(q.notes)+'</div></div>':'')
-      +'<div style="margin-top:24px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:11px;color:#64748b;text-align:center">'
-        +'This is a quote, not an invoice. Prices valid until '+(q.validUntil||'further notice')+'. To accept, please confirm in writing.'
+      +docSignStamp()
+    +'</div>'
+    +'<div class="doc-footer">'
+      +'<div class="doc-footer-note">'
+        +'<strong style="display:block;margin-bottom:4px;font-size:12px">'+(BIZ.invoiceNote?_esc(BIZ.invoiceNote):'Thank you for considering us.')+'</strong>'
+        +'<div style="margin-top:4px;font-size:10.5px;color:#94a3b8;font-style:italic">This is a quote, not an invoice. Prices valid until '+(q.validUntil||'further notice')+'. To accept, please confirm in writing.</div>'
+        +(BIZ.email?'<div style="margin-top:6px">\uD83D\uDCE7 '+_esc(BIZ.email)+'</div>':'')
+        +(BIZ.phone?'<div>\uD83D\uDCDE '+_esc(BIZ.phone)+'</div>':'')
       +'</div>'
-    +'</div>';
+      +'<div class="doc-footer-biz">'
+        +'<strong>'+_esc(BIZ.name||'')+'</strong>'
+        +(BIZ.address?'<div>'+_esc(BIZ.address)+'</div>':'')
+        +(BIZ.website?'<div style="color:'+primary+'">'+_esc(BIZ.website)+'</div>':'')
+      +'</div>'
+    +'</div>'
+    +'<div class="doc-watermark">ShopTrack</div>';
 
-  var w = window.open('', '_blank');
-  if(!w){ toast('Popup blocked — allow popups to view the quote','error'); return; }
-  w.document.write('<!doctype html><html><head><title>Quote '+q.id+'</title></head><body>'+html+'</body></html>');
-  w.document.close();
+  // Render in the in-app document viewer overlay (same as invoices) — gives
+  // the user PDF download + share buttons. Falls back to window.open if the
+  // overlay isn't present.
+  if(typeof openDoc === 'function' && document.getElementById('doc-overlay')){
+    openDoc('Quote \u2014 '+q.id, html);
+  } else {
+    var w = window.open('', '_blank');
+    if(!w){ toast('Popup blocked \u2014 allow popups to view the quote','error'); return; }
+    w.document.write('<!doctype html><html><head><title>Quote '+q.id+'</title></head><body>'+html+'</body></html>');
+    w.document.close();
+  }
 }
 
 // Set quote status — used by row actions (Sent/Accepted/Rejected/Expired)
