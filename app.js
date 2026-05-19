@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779157716");
+console.log("ShopTrack v2.7 - build:1779189466");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -2165,12 +2165,25 @@ function _qaNav(pg,lbl){var _s=_L();
 const _DASH_DEFAULT = {
   kpis: ['rev','saleRev','rentRev','apptRev','gp','np','ar','ap','invVal'],
   sections: ['quickActions','recentSales','recentRentals','recentAppointments','overdueRentals','topProducts','plSummary','lowStock','recentActivity'],
-  actions: ['inv','sale','rental','expense','invoice','payment','photos','ai','appt']
+  actions: ['inv','sale','rental','expense','invoice','quote','payment','photos','ai','appt']
 };
 function _getDashConfig(){
   try{
     const saved = localStorage.getItem('st_dash_config');
-    if(saved) return Object.assign({},_DASH_DEFAULT,JSON.parse(saved));
+    if(saved){
+      const cfg = Object.assign({},_DASH_DEFAULT,JSON.parse(saved));
+      // Backfill any new action keys added since the user last saved their
+      // dashboard config. Without this, existing users wouldn't see new
+      // quick-action tiles after upgrades.
+      try{
+        if(Array.isArray(cfg.actions)){
+          (_DASH_DEFAULT.actions||[]).forEach(function(k){
+            if(cfg.actions.indexOf(k)===-1) cfg.actions.push(k);
+          });
+        }
+      }catch(e){}
+      return cfg;
+    }
   }catch(e){}
   return Object.assign({},_DASH_DEFAULT);
 }
@@ -2192,8 +2205,9 @@ function mCustomizeDash(){var _s=_L();
   ];
   const actionOptions = [
     ['inv','📦 Add Inventory'],['sale','💳 Create Sale'],['rental','🕐 Create Rental'],
-    ['expense','💸 Record Expense'],['invoice','📄 Create Invoice'],['payment','💰 Record Payment'],
-    ['photos','📷 Upload Photos'],['ai','✨ AI Studio'],['appt','📅 Book Appointment']
+    ['expense','💸 Record Expense'],['invoice','📄 Create Invoice'],['quote','📝 Create Quote'],
+    ['payment','💰 Record Payment'],['photos','📷 Upload Photos'],['ai','✨ AI Studio'],
+    ['appt','📅 Book Appointment']
   ];
 
   modal('⚙ Customise Dashboard',`
@@ -2232,7 +2246,7 @@ function _dashConfigSave(){var _s=_L();
   const cfg = {
     kpis: ['rev','saleRev','rentRev','apptRev','gp','np','ar','ap','invVal'].filter(k=>document.getElementById('dc-kpi-'+k)?.checked),
     sections: ['quickActions','recentSales','recentRentals','recentAppointments','overdueRentals','topProducts','plSummary','lowStock','recentActivity'].filter(k=>document.getElementById('dc-sec-'+k)?.checked),
-    actions: ['inv','sale','rental','expense','invoice','payment','photos','ai','appt'].filter(k=>document.getElementById('dc-act-'+k)?.checked)
+    actions: ['inv','sale','rental','expense','invoice','quote','payment','photos','ai','appt'].filter(k=>document.getElementById('dc-act-'+k)?.checked)
   };
   _saveDashConfig(cfg);
   closeModal();
@@ -2253,6 +2267,7 @@ function _buildDashQA(DC){
     ['🕐',_L().qa_create_rent,_L().qa_create_rent_sub,'rentals','linear-gradient(135deg,#38bdf8,#0284c7)','rental'],
     ['💸',_L().qa_record_exp,_L().qa_record_exp_sub,'expenses','linear-gradient(135deg,#ff5f7a,#dc2626)','expense'],
     ['📄',_L().qa_invoice,_L().qa_invoice_sub,'_invoice','linear-gradient(135deg,#9f7aea,#7c3aed)','invoice'],
+    ['📝',_L().qa_quote,_L().qa_quote_sub,'_quote','linear-gradient(135deg,#a78bfa,#6d28d9)','quote'],
     ['💰',_L().qa_payment,_L().qa_payment_sub,'_payment','linear-gradient(135deg,#f5c842,#d97706)','payment'],
     ['📷',_L().qa_photos,_L().qa_photos_sub,'_photos','linear-gradient(135deg,#fb923c,#ea580c)','photos'],
     ['✨',_L().qa_ai,_L().qa_ai_sub,'ai-studio','linear-gradient(135deg,#e879f9,#a21caf)','ai'],
@@ -27987,6 +28002,8 @@ function _L(){
     qa_record_exp_sub: fr ? 'Saisir un coût'             : 'Log a cost',
     qa_invoice:        fr ? 'Créer une facture'          : 'Create Invoice',
     qa_invoice_sub:    fr ? 'Facturer un client'         : 'Bill customer',
+    qa_quote:          fr ? 'Créer un devis'             : 'Create Quote',
+    qa_quote_sub:      fr ? 'Proposition de prix'        : 'Price proposal',
     qa_payment:        fr ? 'Encaisser un paiement'      : 'Record Payment',
     qa_payment_sub:    fr ? 'Enregistrer une recette'    : 'Log receipt',
     qa_photos:         fr ? 'Téléverser des photos'      : 'Upload Photos',
