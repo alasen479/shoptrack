@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779153714");
+console.log("ShopTrack v2.7 - build:1779156718");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -25269,9 +25269,9 @@ function filterLedger(el, type){
 
 // ── DB helpers ──────────────────────────────────────────────
 function _dbToService(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,bookable:r.bookable!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null,costLines:r.cost_lines?JSON.parse(r.cost_lines):null}; }
-function _dbToAppt(r){ return {id:r.id,serviceId:r.service_id||'',serviceName:r.service_name||'',custId:r.customer_id||'',custName:r.customer_name||'',custPhone:r.customer_phone||'',staffId:r.staff_id||'',staffName:r.staff_name||'',date:r.date||'',startTime:r.start_time||'',endTime:r.end_time||'',st:r.status||'Reserved',notes:r.notes||'',walkIn:r.walk_in||false,totalAmt:r.total_amount||0,payMethod:r.pay_method||'Cash',saleId:r.sale_id||'',createdAt:r.created_at||''}; }
+function _dbToAppt(r){ return {id:r.id,serviceId:r.service_id||'',serviceName:r.service_name||'',custId:r.customer_id||'',custName:r.customer_name||'',custPhone:r.customer_phone||'',staffId:r.staff_id||'',staffName:r.staff_name||'',date:r.date||'',startTime:r.start_time||'',endTime:r.end_time||'',st:r.status||'Reserved',notes:r.notes||'',walkIn:r.walk_in||false,totalAmt:r.total_amount||0,payMethod:r.pay_method||'Cash',saleId:r.sale_id||'',createdAt:r.created_at||'',photos:Array.isArray(r.photos)?r.photos:(r.photos?(function(){try{return JSON.parse(r.photos);}catch(e){return [];}})():[])}; }
 function _serviceDB(s,bizId){ return {id:s.id,biz_id:bizId,name:s.name,duration_mins:s.duration,price:s.price||0,price_type:s.priceType||'flat',category:s.cat||'',color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,bookable:s.bookable!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null,cost_lines:s.costLines?JSON.stringify(s.costLines):null}; }
-function _apptDB(a,bizId){ return {id:a.id,biz_id:bizId,service_id:a.serviceId,service_name:a.serviceName,customer_id:a.custId,customer_name:a.custName,customer_phone:a.custPhone,staff_id:a.staffId,staff_name:a.staffName,date:a.date,start_time:a.startTime,end_time:a.endTime,status:a.st,notes:a.notes,walk_in:a.walkIn,total_amount:a.totalAmt,pay_method:a.payMethod||'',sale_id:a.saleId||''}; }
+function _apptDB(a,bizId){ return {id:a.id,biz_id:bizId,service_id:a.serviceId,service_name:a.serviceName,customer_id:a.custId,customer_name:a.custName,customer_phone:a.custPhone,staff_id:a.staffId,staff_name:a.staffName,date:a.date,start_time:a.startTime,end_time:a.endTime,status:a.st,notes:a.notes,walk_in:a.walkIn,total_amount:a.totalAmt,pay_method:a.payMethod||'',sale_id:a.saleId||'',photos:a.photos||[]}; }
 async function _dbSaveService(s){
   if(!SESSION.bizId) return;
   // Update IDB cache immediately
@@ -25329,6 +25329,18 @@ async function _dbSaveAppt(a){
     await _sb.from('appointments').upsert(_apptDB(a,SESSION.bizId));
     _showSaved();
   }catch(e){
+    // If the photos column doesn't exist yet on this schema, retry without it.
+    // Local-only photos are preserved in IDB and will sync once the migration runs.
+    if(e && e.message && /photos/.test(e.message)){
+      console.warn('[appointments] photos column not yet in schema; saving without it.');
+      try{
+        var base = _apptDB(a, SESSION.bizId);
+        delete base.photos;
+        await _sb.from('appointments').upsert(base);
+        _showSaved();
+        return;
+      }catch(e2){ e = e2; }
+    }
     if(!navigator.onLine||(e.message||'').includes('fetch')){
       await _queueEnqueue(SESSION.bizId,'appointments',_apptDB(a,SESSION.bizId)).catch(function(){});
       var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
@@ -26754,11 +26766,22 @@ function mEditAppt(id){const _s=_L();
     +'<div class="fg"><label class="fl">Amount ('+CUR.symbol+')</label><input class="fi" id="ea-amt" type="number" value="'+Math.round((a.totalAmt||0)*CUR.rate*100)/100+'" step="0.01" oninput="this._t=true"/></div>'
     +'<div class="fg"><label class="fl">'+_s.ui_status+'</label><select class="fs" id="ea-status">'+stList+'</select></div>'
     +'</div>'
+    +'<div class="fg"><label class="fl">'+(BIZ.language==='fr'?'\uD83D\uDCF7 Photos':'\uD83D\uDCF7 Photos')+' <span style="font-size:10px;color:var(--text2);font-weight:400">('+(BIZ.language==='fr'?'visite, avant/après, plans \u2014 max 6':'site visits, before/after, sketches \u2014 max 6')+')</span></label>'
+    +'<div id="ea-photos"></div></div>'
     +'<div class="fg"><label class="fl">'+_s.ui_notes+'</label><textarea class="ft" id="ea-notes" rows="2">'+(a.notes||'')+'</textarea></div>',
     '<button class="btn btn-d btn-sm" onclick="confirmDo(\'Delete this appointment?\',function(){_delAppt(\''+id+'\');})">&#128465;</button>'
     +' <button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +' <button class="btn btn-p" onclick="_saveEditAppt(\''+id+'\')">&#128190; Save</button>');
-  setTimeout(_eaSync,60);
+  setTimeout(function(){
+    _eaSync();
+    // Seed the photo grid with existing photos, then render
+    var grid = document.getElementById('ea-photos');
+    if(grid){
+      // Deep-clone so we can cancel without mutating the live record
+      grid._photos = JSON.parse(JSON.stringify(a.photos||[]));
+      _apptPhotoRender('ea-photos');
+    }
+  },60);
 }
 function _eaSync(){const _s=_L();
   var sel=document.getElementById('ea-svc');
@@ -26791,6 +26814,11 @@ function _saveEditAppt(id){const _s=_L();
   a.totalAmt=(parseFloat((document.getElementById('ea-amt')||{}).value)||0)/CUR.rate;
   a.st=(document.getElementById('ea-status')||{}).value||a.st;
   a.notes=(document.getElementById('ea-notes')||{}).value||'';
+  // Persist photo array from the in-modal working copy
+  var photoGrid = document.getElementById('ea-photos');
+  if(photoGrid && Array.isArray(photoGrid._photos)){
+    a.photos = photoGrid._photos.slice();
+  }
   _dbSaveAppt(a);
   refreshLiveKpis(); _updateApptBadge();
   addAudit('Appt edited',id+' \u2014 '+a.custName+' '+a.date);
@@ -27132,6 +27160,185 @@ function _svcImgPreview(input){var _s=_L();
   };
   reader.readAsDataURL(file);
 }
+
+// ── APPOINTMENT PHOTOS ────────────────────────────────────────────────────
+// Photos are stored on each appointment as an array of objects:
+//   [{id, dataUrl, caption, addedAt}]
+// They survive offline (IDB) and sync to the 'photos' JSONB column on the
+// appointments row. The Supabase save path gracefully degrades if the column
+// hasn't been added yet.
+//
+// Constraints:
+//   - Max 6 photos per appointment (more than this is a sign you should use
+//     a real cloud storage path — and is a soft cap to keep row sizes
+//     reasonable since data-URLs are base64).
+//   - Max 2 MB per file before compression.
+//   - Aggressive client-side compression: max 1280px on longest edge,
+//     JPEG quality 0.78 → typical output 80–180 KB per photo.
+
+var APPT_PHOTO_MAX = 6;
+var APPT_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+var APPT_PHOTO_MAX_DIM = 1280;
+var APPT_PHOTO_QUALITY = 0.78;
+
+// Compress a File object to a smaller JPEG data-URL using canvas.
+function _apptCompressPhoto(file){
+  return new Promise(function(resolve, reject){
+    if(!file){ reject(new Error('No file')); return; }
+    if(file.size > APPT_PHOTO_MAX_BYTES){ reject(new Error('File too large (max 2 MB).')); return; }
+    var reader = new FileReader();
+    reader.onerror = function(){ reject(new Error('Could not read file.')); };
+    reader.onload = function(e){
+      var img = new Image();
+      img.onerror = function(){ reject(new Error('Could not decode image.')); };
+      img.onload = function(){
+        var maxDim = APPT_PHOTO_MAX_DIM;
+        var w = img.width, h = img.height;
+        if(w > maxDim || h > maxDim){
+          if(w > h){ h = Math.round(h * maxDim / w); w = maxDim; }
+          else     { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); // flatten transparency
+        ctx.drawImage(img, 0, 0, w, h);
+        try{
+          var dataUrl = canvas.toDataURL('image/jpeg', APPT_PHOTO_QUALITY);
+          resolve(dataUrl);
+        }catch(err){ reject(err); }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Handle file input change in the appointment-edit photo grid.
+// The grid stores the working photo array as a property on the file input's
+// parent element to survive between renders.
+async function _apptPhotoAdd(input, gridId){
+  var fr = BIZ.language==='fr';
+  var files = input.files;
+  if(!files || !files.length) return;
+  var grid = document.getElementById(gridId);
+  if(!grid) return;
+  if(!grid._photos) grid._photos = [];
+  var remaining = APPT_PHOTO_MAX - grid._photos.length;
+  if(remaining <= 0){
+    toast(fr?'Maximum '+APPT_PHOTO_MAX+' photos':'Maximum '+APPT_PHOTO_MAX+' photos reached','error');
+    input.value=''; return;
+  }
+  // Process up to "remaining" files
+  var toProcess = Array.prototype.slice.call(files, 0, remaining);
+  // Indicate work in progress
+  var btn = grid.querySelector('.appt-photo-add-btn');
+  if(btn){ btn.dataset.orig = btn.textContent; btn.textContent = fr?'Compression…':'Compressing…'; btn.style.opacity='.6'; }
+  for(var i=0; i<toProcess.length; i++){
+    try{
+      var dataUrl = await _apptCompressPhoto(toProcess[i]);
+      grid._photos.push({
+        id: 'ph_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+        dataUrl: dataUrl,
+        caption: '',
+        addedAt: new Date().toISOString()
+      });
+    }catch(err){
+      toast((err && err.message)||'Image could not be processed','error');
+    }
+  }
+  if(btn){ btn.textContent = btn.dataset.orig || (fr?'+ Ajouter photo':'+ Add photo'); btn.style.opacity=''; }
+  input.value='';
+  _apptPhotoRender(gridId);
+}
+
+// Re-render the thumbnail grid from grid._photos.
+function _apptPhotoRender(gridId){
+  var grid = document.getElementById(gridId); if(!grid) return;
+  var photos = grid._photos || [];
+  var fr = BIZ.language==='fr';
+  var thumbsHtml = photos.map(function(p, idx){
+    var cap = (p.caption||'').replace(/"/g,'&quot;');
+    return '<div class="appt-photo-thumb" style="position:relative;width:88px;height:88px;border-radius:8px;overflow:hidden;border:1px solid var(--border2);flex-shrink:0;background:var(--bg3)">'
+      +  '<img src="'+p.dataUrl+'" alt="" onclick="_apptPhotoView(\''+gridId+'\','+idx+')" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block"/>'
+      +  '<button type="button" onclick="_apptPhotoDelete(\''+gridId+'\','+idx+')" title="'+(fr?'Supprimer':'Remove')+'" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.65);border:none;color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">\u2715</button>'
+      +  (cap?'<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:9px;padding:2px 4px;text-align:center;line-height:1.2" title="'+cap+'">'+(cap.length>22?cap.slice(0,22)+'\u2026':cap)+'</div>':'')
+      +'</div>';
+  }).join('');
+  var canAdd = photos.length < APPT_PHOTO_MAX;
+  var addBtnHtml = canAdd
+    ? '<label class="appt-photo-add-btn" style="width:88px;height:88px;border-radius:8px;border:2px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);font-size:11px;gap:4px;flex-shrink:0;text-align:center;line-height:1.2;padding:6px" onmouseover="this.style.borderColor=\'var(--a)\';this.style.color=\'var(--a)\'" onmouseout="this.style.borderColor=\'var(--border2)\';this.style.color=\'var(--text2)\'">'
+        +'<span style="font-size:20px">\uD83D\uDCF7</span>'
+        +'<span>'+(fr?'+ Ajouter':'+ Add photo')+'</span>'
+        +'<input type="file" accept="image/*" multiple style="display:none" onchange="_apptPhotoAdd(this,\''+gridId+'\')"/>'
+      +'</label>'
+    : '<div style="font-size:11px;color:var(--text3);align-self:center;padding:0 8px">'+(fr?'Maximum '+APPT_PHOTO_MAX+' photos':APPT_PHOTO_MAX+' photo limit')+'</div>';
+  var caption = canAdd
+    ? (fr?'Glissez ou cliquez pour ajouter. '+photos.length+'/'+APPT_PHOTO_MAX+' \u2014 compressées automatiquement.':'Click + Add to choose photos. '+photos.length+'/'+APPT_PHOTO_MAX+' \u2014 auto-compressed.')
+    : (fr?'Limite atteinte.':'Limit reached. Remove a photo to add another.');
+  grid.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+thumbsHtml+addBtnHtml+'</div>'
+    + '<div style="font-size:10px;color:var(--text3);margin-top:6px">'+caption+'</div>';
+}
+
+// Open a single photo in a lightbox with caption-edit input.
+function _apptPhotoView(gridId, idx){
+  var grid = document.getElementById(gridId); if(!grid) return;
+  var p = (grid._photos||[])[idx]; if(!p) return;
+  var fr = BIZ.language==='fr';
+  var body = '<div style="text-align:center"><img src="'+p.dataUrl+'" alt="" style="max-width:100%;max-height:60vh;border-radius:8px;background:#000"/></div>'
+    +'<div class="fg" style="margin-top:14px"><label class="fl">'+(fr?'Légende':'Caption')+'</label>'
+    +'<input class="fi" id="appt-photo-cap-inp" value="'+_esc(p.caption||'').replace(/"/g,'&quot;')+'" placeholder="'+(fr?'ex. Mur du salon, sud':'e.g. Living room south wall')+'"/>'
+    +'</div>';
+  var footer = '<button class="btn btn-d btn-sm" onclick="_apptPhotoDelete(\''+gridId+'\','+idx+');closeModal();">\uD83D\uDDD1 '+(fr?'Supprimer':'Remove')+'</button>'
+    +'<button class="btn btn-s" onclick="closeModal()">'+(fr?'Annuler':'Cancel')+'</button>'
+    +'<button class="btn btn-p" onclick="_apptPhotoSaveCaption(\''+gridId+'\','+idx+')">'+(fr?'\u2713 Enregistrer':'\u2713 Save')+'</button>';
+  modal((fr?'Photo':'Photo')+' \u2014 '+(idx+1)+'/'+(grid._photos.length), body, footer, 'sm');
+}
+
+function _apptPhotoSaveCaption(gridId, idx){
+  var grid = document.getElementById(gridId); if(!grid) return;
+  var p = (grid._photos||[])[idx]; if(!p) return;
+  var inp = document.getElementById('appt-photo-cap-inp');
+  p.caption = (inp && inp.value || '').trim().slice(0, 120);
+  closeModal();
+  _apptPhotoRender(gridId);
+}
+
+function _apptPhotoDelete(gridId, idx){
+  var grid = document.getElementById(gridId); if(!grid) return;
+  if(!grid._photos || !grid._photos[idx]) return;
+  grid._photos.splice(idx, 1);
+  _apptPhotoRender(gridId);
+}
+
+// Render a read-only photo strip (used in the appointment detail view).
+function _apptPhotoStripHTML(photos, gridId){
+  if(!photos || !photos.length) return '';
+  var fr = BIZ.language==='fr';
+  return '<div style="margin:12px 0"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:6px">\uD83D\uDCF7 '+(fr?'Photos':'Photos')+' ('+photos.length+')</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px" id="'+(gridId||'va-photo-strip')+'">'
+    + photos.map(function(p, idx){
+        var cap = (p.caption||'').replace(/"/g,'&quot;');
+        return '<div style="position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1px solid var(--border2);flex-shrink:0;background:var(--bg3)">'
+          +'<img src="'+p.dataUrl+'" alt="" onclick="_apptPhotoViewReadonly(\''+(gridId||'va-photo-strip')+'\','+idx+')" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block"'+(cap?' title="'+cap+'"':'')+'/>'
+          +(cap?'<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:8px;padding:1px 3px;text-align:center;line-height:1.1">'+(cap.length>16?cap.slice(0,16)+'\u2026':cap)+'</div>':'')
+        +'</div>';
+      }).join('')
+    +'</div></div>';
+}
+
+// Read-only photo viewer for the appointment detail modal.
+// Stores photos on a hidden element attribute via window._apptPhotosCache.
+function _apptPhotoViewReadonly(gridId, idx){
+  var photos = (window._apptPhotosCache || {})[gridId] || [];
+  var p = photos[idx]; if(!p) return;
+  var fr = BIZ.language==='fr';
+  var body = '<div style="text-align:center"><img src="'+p.dataUrl+'" alt="" style="max-width:100%;max-height:65vh;border-radius:8px;background:#000"/></div>'
+    + (p.caption ? '<div style="margin-top:14px;padding:10px 14px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--ink);text-align:center">'+_esc(p.caption)+'</div>' : '');
+  modal((fr?'Photo':'Photo')+' \u2014 '+(idx+1)+'/'+photos.length, body,
+    '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>', 'sm');
+}
+
 // Pricing model UI helpers (modal)
 function _svPtChange(){
   var pt = document.getElementById('sv-pt')?.value || 'flat';
@@ -30976,6 +31183,14 @@ function mViewAppt(id){const _s=_L();
 
   var notesHtml = a.notes ? '<div style="background:var(--bg3);border-radius:var(--r8);padding:10px 12px;margin-bottom:12px;font-size:12px">\uD83D\uDCDD '+a.notes+'</div>' : '';
 
+  // Read-only photo strip. Stash the photo array in a window-level cache
+  // keyed by the strip's DOM id so the lightbox can find it without
+  // re-querying the appointment record.
+  var photoStripId = 'va-photos-'+a.id;
+  if(!window._apptPhotosCache) window._apptPhotosCache = {};
+  window._apptPhotosCache[photoStripId] = a.photos || [];
+  var photoStripHtml = _apptPhotoStripHTML(a.photos, photoStripId);
+
   var statusRow = canEdit
     ? '<div class="fg-2"><div class="fg"><label class="fl">'+_L().appt_update_status+'</label>'
       +'<select class="fs" id="va-st">'
@@ -31000,7 +31215,7 @@ function mViewAppt(id){const _s=_L();
     +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+waBtn+reschedBtn+cancelBtn+checkoutBtn+deleteBtn+'</div>'
     +'<div style="display:flex;gap:5px">'+confirmNotifyBtn+editBtn+editAmtBtn+invoiceBtn+saveBtn+'</div></div>';
 
-  modal('📅 '+a.serviceName+' \u2014 '+a.custName, statusHtml+grid+notesHtml+statusRow, footer, 'sm');
+  modal('📅 '+a.serviceName+' \u2014 '+a.custName, statusHtml+grid+notesHtml+photoStripHtml+statusRow, footer, 'sm');
 }
 
 
