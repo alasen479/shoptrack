@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779489069");
+console.log("ShopTrack v2.7 - build:1779489358");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -17660,6 +17660,23 @@ async function _dbLogin(email, password){
       return null;
     }
 
+    // ── Account-status gate ──────────────────────────────────
+    // Block users whose account has been deactivated, suspended, or
+    // marked otherwise non-active. The password matched, but the
+    // status disqualifies them. We check this AFTER the password match
+    // so a wrong-password attempt still looks like a generic auth
+    // failure (no info disclosure about whether the account exists).
+    if(data.status === 'Inactive'){
+      console.log('[ShopTrack] Inactive user blocked at login:', email);
+      showLoginError('Your account has been deactivated by the business owner. Please contact them if this is a mistake.');
+      return null;
+    }
+    if(data.status === 'Suspended'){
+      console.log('[ShopTrack] Suspended user blocked at login:', email);
+      showLoginError('Your account is currently suspended. Please contact support@shoptrack.work.');
+      return null;
+    }
+
     return data;
 
   } catch(e){
@@ -18123,6 +18140,17 @@ function doLogin(){const _s=_L();
             const {data:sbUser} = await _sb.from('platform_users')
               .select('id,biz_id,level,name,status').eq('email',email).maybeSingle();
             if(sbUser){
+              // Block inactive/suspended users even on the AUTH_STORE path
+              if(sbUser.status === 'Inactive'){
+                console.log('[ShopTrack] Inactive user blocked at login (AUTH_STORE path):', email);
+                showLoginError('Your account has been deactivated by the business owner. Please contact them if this is a mistake.');
+                return;
+              }
+              if(sbUser.status === 'Suspended'){
+                console.log('[ShopTrack] Suspended user blocked at login (AUTH_STORE path):', email);
+                showLoginError('Your account is currently suspended. Please contact support@shoptrack.work.');
+                return;
+              }
               stored.userId = sbUser.id;
               stored.bizId  = sbUser.biz_id;
               stored.level  = sbUser.level;
@@ -21166,21 +21194,38 @@ function pgSettings(){
       +'<button type="button" onclick="_delExpCat('+i+')" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" title="'+_s.set_delete_cat+'">\u2715</button>'
       +'</div>';
   }).join('');
-  var userRows = BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId;}).map(function(u){
+  var _allBizUsers = BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId;});
+  var _activeUsers   = _allBizUsers.filter(function(u){return u.st!=='Inactive';});
+  var _inactiveUsers = _allBizUsers.filter(function(u){return u.st==='Inactive';});
+
+  function _renderUserRow(u, isInactive){
     var lvl = USER_LEVEL_LABELS[u.level]||u.level;
-    var bc  = u.st==='Active'?'badge-g':'badge-r';
-    return '<tr>'
-      +'<td><strong>'+u.name+'</strong></td>'
-      +'<td style="color:var(--text2);font-size:12px">'+u.email+'</td>'
+    var bc  = u.st==='Active'?'badge-g':(u.st==='Inactive'?'badge-n':'badge-r');
+    var rowStyle = isInactive ? ' style="opacity:.55"' : '';
+    var actions = '';
+    if(isInactive){
+      // Inactive user: Restore + permanently Delete
+      actions = (u.id!==SESSION.userId
+        ? '<button class="btn btn-g btn-xs" onclick="_restoreUser(\''+u.id+'\')" title="Reactivate this user">\u21BA Restore</button>'
+        + ' <button class="btn btn-d btn-xs" onclick="mDeleteUserPermanent(\''+u.id+'\')" title="Delete permanently">\uD83D\uDDD1 Delete</button>'
+        : '');
+    } else {
+      actions = '<button class="btn btn-s btn-xs" onclick="mEditBizUser(\''+u.id+'\')">\u270F Edit</button>'
+        + ' <button class="btn btn-s btn-xs" onclick="mResetBizUserPwd(\''+u.id+'\')" title="Reset password">\uD83D\uDD11</button>'
+        + (u.id!==SESSION.userId?' <button class="btn btn-d btn-xs" onclick="mRemoveUser(\''+u.id+'\')">\u26AB Remove</button>':'');
+    }
+    return '<tr'+rowStyle+'>'
+      +'<td><strong>'+_esc(u.name)+'</strong></td>'
+      +'<td style="color:var(--text2);font-size:12px">'+_esc(u.email)+'</td>'
       +'<td><span class="badge" style="background:var(--a-dim);color:var(--a)">'+lvl+'</span></td>'
-      +'<td><span class="badge '+bc+'">'+u.st+'</span></td>'
+      +'<td><span class="badge '+bc+'">'+(u.st||'')+'</span></td>'
       +'<td style="color:var(--text2);font-size:12px">'+(u.last||'Never')+'</td>'
-      +'<td>'
-        +'<button class="btn btn-s btn-xs" onclick="mEditBizUser(\''+u.id+'\')">&#9999; Edit</button> '
-        +'<button class="btn btn-xs" style="background:var(--y-dim);color:var(--y)" onclick="mResetUserPwd(\''+u.id+'\')">&#128273;</button> '
-        +(u.id!==SESSION.userId?'<button class="btn btn-d btn-xs" onclick="mRemoveUser(\''+u.id+'\')">\u26ab Remove</button>':'')
-      +'</td></tr>';
-  }).join('');
+      +'<td>'+actions+'</td>'
+    +'</tr>';
+  }
+
+  var userRows = _activeUsers.map(function(u){ return _renderUserRow(u, false); }).join('');
+  var inactiveRows = _inactiveUsers.map(function(u){ return _renderUserRow(u, true); }).join('');
 
   var curOpts = [
     {cd:'XAF',label:'XAF — CFA Franc (Frs)',flag:'🇨🇲'},
@@ -21531,8 +21576,21 @@ function pgSettings(){
   <div class="card-hd"><div class="card-ttl">${_s.set_users_title}</div><button class="btn btn-p btn-sm" onclick="mAddBizUser()">${_s.set_add_user}</button></div>
   <div style="overflow-x:auto"><table class="tbl">
     <thead><tr><th>${_s.set_col_name}</th><th>${_s.set_col_email}</th><th>${_s.set_col_role}</th><th>${_s.set_col_status}</th><th>${_s.set_col_last}</th><th>${_s.set_col_actions}</th></tr></thead>
-    <tbody>${userRows}</tbody>
+    <tbody>${userRows||'<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text2);font-size:12px">No active users</td></tr>'}</tbody>
   </table></div>
+  ${_inactiveUsers.length ? `
+  <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+    <button class="btn btn-s btn-sm" onclick="_toggleInactiveUsers()" id="show-inactive-btn" style="font-size:12px">
+      ${BIZ.language==='fr'?'\u23F7 Afficher les utilisateurs inactifs':'\u23F7 Show inactive users'} (${_inactiveUsers.length})
+    </button>
+    <div id="inactive-users-block" style="display:none;margin-top:12px">
+      <p style="font-size:11px;color:var(--text2);margin:0 0 8px;line-height:1.5">${BIZ.language==='fr'?'Les utilisateurs supprimés sont désactivés et ne peuvent plus se connecter. Vous pouvez les restaurer ou les supprimer définitivement.':'Removed users are deactivated and can no longer log in. You can restore them or delete them permanently.'}</p>
+      <div style="overflow-x:auto"><table class="tbl">
+        <thead><tr><th>${_s.set_col_name}</th><th>${_s.set_col_email}</th><th>${_s.set_col_role}</th><th>${_s.set_col_status}</th><th>${_s.set_col_last}</th><th>${_s.set_col_actions}</th></tr></thead>
+        <tbody>${inactiveRows}</tbody>
+      </table></div>
+    </div>
+  </div>` : ''}
 </div>
 </div>
 
@@ -23253,6 +23311,80 @@ async function _doRemoveUser(uid){const _s=_L();
   toast(u.name+' removed from account','success');
   setTimeout(function(){ nav('settings'); },300);
 }
+
+// Toggle the inactive-users sub-table inside the Users tab.
+function _toggleInactiveUsers(){
+  var block = document.getElementById('inactive-users-block');
+  var btn   = document.getElementById('show-inactive-btn');
+  if(!block) return;
+  var hidden = block.style.display === 'none';
+  block.style.display = hidden ? '' : 'none';
+  if(btn){
+    var fr = BIZ.language==='fr';
+    var inactiveCount = (BIZ_USERS||[]).filter(function(u){return u.bizId===SESSION.bizId && u.st==='Inactive';}).length;
+    btn.innerHTML = hidden
+      ? (fr?'\u23F6 Masquer les utilisateurs inactifs':'\u23F6 Hide inactive users') + ' ('+inactiveCount+')'
+      : (fr?'\u23F7 Afficher les utilisateurs inactifs':'\u23F7 Show inactive users') + ' ('+inactiveCount+')';
+  }
+}
+
+// Reactivate a previously removed user. They can log in again with their
+// existing password as soon as the status flips back to 'Active'.
+async function _restoreUser(uid){
+  var u = BIZ_USERS.find(function(x){return x.id===uid;});
+  if(!u) return;
+  var fr = BIZ.language==='fr';
+  if(!confirm((fr
+    ? 'Restaurer '+u.name+' \u2014 ils pourront se reconnecter avec leur mot de passe existant.'
+    : 'Restore '+u.name+' \u2014 they will be able to log back in with their existing password.')))
+    return;
+  if(_sb){
+    var r = await _sb.from('platform_users').update({status:'Active'}).eq('id', uid);
+    if(r && r.error){ toast('Could not restore: '+r.error.message,'error'); return; }
+  }
+  u.st = 'Active';
+  addAudit('User restored', u.name+' ('+u.email+')');
+  toast((fr?'\u2713 ':'\u2713 ')+u.name+(fr?' restauré':' restored'),'success');
+  setTimeout(function(){ nav('settings'); },300);
+}
+
+// Permanently delete a user (hard delete from platform_users). Only allowed
+// for users already Inactive — prevents accidental hard-delete on a clean
+// Remove flow. Audit trail loses the row, so we log the act before deleting.
+function mDeleteUserPermanent(uid){
+  var u = BIZ_USERS.find(function(x){return x.id===uid;});
+  if(!u){ return; }
+  if(u.st !== 'Inactive'){
+    toast('Only inactive users can be permanently deleted. Remove them first.','error');
+    return;
+  }
+  var fr = BIZ.language==='fr';
+  modal((fr?'\uD83D\uDDD1 Suppression définitive':'\uD83D\uDDD1 Permanent Delete'),
+    '<div class="alrt alrt-r" style="margin-bottom:12px"><strong>'+(fr?'Cette action est irréversible.':'This action cannot be undone.')+'</strong><br>'+(fr?'Supprimer définitivement ':'Permanently delete ')+'<strong>'+_esc(u.name)+'</strong> ('+_esc(u.email)+')'+(fr?' ?':'?')+'</div>'
+    +'<p style="font-size:12px;color:var(--text2);line-height:1.6">'+(fr
+      ? 'L\u2019enregistrement de l\u2019utilisateur sera supprimé de la base de données. L\u2019historique d\u2019audit sera conservé mais les références futures à cet utilisateur n\u2019afficheront pas son nom.'
+      : 'The user record will be deleted from the database. Audit history is preserved but future references to this user won\u2019t show their name.')+'</p>',
+    '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Annuler':'Cancel')+'</button>'
+    +'<button class="btn btn-d" onclick="closeModal();_doDeleteUserPermanent(\''+uid+'\')">\uD83D\uDDD1 '+(fr?'Supprimer définitivement':'Delete Permanently')+'</button>'
+  );
+}
+
+async function _doDeleteUserPermanent(uid){
+  var u = BIZ_USERS.find(function(x){return x.id===uid;});
+  if(!u) return;
+  // Audit FIRST so we capture who was deleted before the row disappears
+  addAudit('User permanently deleted', u.name+' ('+u.email+')');
+  if(_sb){
+    var r = await _sb.from('platform_users').delete().eq('id', uid);
+    if(r && r.error){ toast('Delete failed: '+r.error.message,'error'); return; }
+  }
+  // Remove from in-memory caches
+  var idx = BIZ_USERS.findIndex(function(x){return x.id===uid;});
+  if(idx>=0) BIZ_USERS.splice(idx, 1);
+  toast('\u2713 User permanently deleted','success');
+  setTimeout(function(){ nav('settings'); },300);
+}
+
 function switchSession(uid){const _s=_L();
   const u=BIZ_USERS.find(x=>x.id===uid);if(!u)return;
   SESSION.userId=u.id;SESSION.level=u.level;SESSION.name=u.name;SESSION.isSuperAdmin=false;
