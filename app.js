@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779465420");
+console.log("ShopTrack v2.7 - build:1779468486");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -12000,6 +12000,8 @@ function pgAdminBiz(){const _s=_L();
   <div class="ph-row">
     <h1>${_s.adm_businesses}</h1>
     <div class="btn-row">
+      <button class="btn btn-p btn-sm" onclick="mBroadcast()" title="Send a message to many businesses at once">📣 Broadcast</button>
+      <button class="btn btn-s btn-sm" onclick="mMessageLog()" title="See sent messages and delivery status">📋 Message Log</button>
       <button class="btn btn-s btn-sm" onclick="mBillingRunReminders()">💬 Reminders</button>
       <button class="btn btn-s btn-sm" onclick="mBillingChargeAll()">📱 Charge Due</button>
       <button class="btn btn-s btn-sm" onclick="_exportBizListCSV()">⬇ Export CSV</button>
@@ -13943,7 +13945,12 @@ async function _brSend(bizId){
     if(!ph){ errors.push('WhatsApp: no phone number'); }
     else {
       var r = await _sendWA(ph, ms, {template:'payment_reminder', variables:window._waTemplateVars||{}});
-      if(r && r.success){ waSent = true; addAudit('WhatsApp reminder sent', b.name); }
+      if(r && r.success){
+        waSent = true;
+        addAudit('WhatsApp reminder sent', b.name);
+        try{ _msgLogAdd({biz_id:b.id, biz_name:b.name, channel:'wa', kind:'reminder',
+          to:ph, status:'queued', messageId:r.messageId||'', sentBy:'SA Reminder'}); }catch(e){}
+      }
       else if(r && r.fallback){ waSent = true; /* wa.me opened — counts as best-effort sent */ }
       else { errors.push('WhatsApp: send failed'); }
     }
@@ -13962,9 +13969,13 @@ async function _brSend(bizId){
       if(er && er.success){
         emailSent = true;
         addAudit('Email reminder sent', b.name + ' \u2014 ' + em);
+        try{ _msgLogAdd({biz_id:b.id, biz_name:b.name, channel:'email', kind:'reminder',
+          to:em, subject:sub, status:'sent', messageId:er.messageId||'', sentBy:'SA Reminder'}); }catch(e){}
         toast('\uD83D\uDCE7 Email sent to ' + em, 'success');
       } else {
         errors.push('Email: ' + (er.error||'send failed'));
+        try{ _msgLogAdd({biz_id:b.id, biz_name:b.name, channel:'email', kind:'reminder',
+          to:em, subject:sub, status:'failed', error:er.error||'', sentBy:'SA Reminder'}); }catch(e){}
       }
     }
   }
@@ -14025,6 +14036,561 @@ function mBillingExtend(bizId){const _s=_L();
        }
      }catch(e){ toast(e.message,'error'); }
    })()">⏱ Extend</button>`);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ║  SA BROADCAST + MESSAGE LOG                                          ║
+// ════════════════════════════════════════════════════════════════════════
+//
+// Phase 1: Broadcast modal — send a single message to many businesses
+// at once via Email, WhatsApp, or both. Recipients can be filtered by
+// status / plan / has-channel. Sends are throttled to avoid rate-limits.
+//
+// Phase 2: Message log — list of every message ShopTrack has sent
+// (broadcasts + per-business reminders), with on-demand 'Check status'
+// against Twilio's API for live delivery state.
+//
+// Storage: D.msgLog (capped at the most recent 500 entries). Each entry:
+//   { id, ts, biz_id, biz_name, channel, kind, to, subject, status,
+//     messageId, error, sentBy }
+// Persisted to localStorage as 'sa_msg_log' so it survives reload — this
+// is intentionally a CLIENT-SIDE log (SA-only), not a Supabase table,
+// because broadcast volume is low and a single-device record is fine.
+
+if(!Array.isArray(D.msgLog)) D.msgLog = [];
+
+function _msgLogLoad(){
+  try{
+    var raw = localStorage.getItem('sa_msg_log');
+    if(raw){ D.msgLog = JSON.parse(raw) || []; }
+  }catch(e){ D.msgLog = []; }
+}
+function _msgLogSave(){
+  try{
+    // Cap at 500 most recent
+    if(D.msgLog.length > 500) D.msgLog = D.msgLog.slice(-500);
+    localStorage.setItem('sa_msg_log', JSON.stringify(D.msgLog));
+  }catch(e){ /* quota — ignore */ }
+}
+function _msgLogAdd(entry){
+  if(!Array.isArray(D.msgLog)) D.msgLog = [];
+  entry.id = entry.id || ('msg_'+Date.now()+'_'+Math.random().toString(36).slice(2,6));
+  entry.ts = entry.ts || new Date().toISOString();
+  D.msgLog.push(entry);
+  _msgLogSave();
+}
+
+// Load log on startup so the count is accurate
+_msgLogLoad();
+
+// ── mBroadcast — compose & send a message to many businesses ─────────────
+function mBroadcast(){var _s=_L();
+  if(!SESSION.isSuperAdmin){ toast('Super Admin only','error'); return; }
+  // Default selection: Active businesses with email on file
+  // Initial recipient filter state stored on window (modal-scoped)
+  window._bcFilter = { status:'Active', plan:'', channel:'email' };
+
+  modal('\uD83D\uDCE3 Broadcast Message',
+    '<div class="alrt alrt-b" style="font-size:12px;line-height:1.6;margin-bottom:14px">'
+      +'<strong>How this works:</strong> compose once, send to many. Tokens <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{owner_name}</code> and <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{business_name}</code> are replaced per recipient. Email goes through Brevo; WhatsApp uses your existing Twilio integration.'
+    +'</div>'
+
+    // CHANNEL
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:6px">Channel</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:18px">'
+      +'<label style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:2px solid var(--a);background:var(--a-dim);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600" data-bc-ch="email"><input type="radio" name="bc-ch" value="email" checked onchange="_bcChange()" style="margin:0;accent-color:var(--a)"/>\uD83D\uDCE7 Email</label>'
+      +'<label style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:2px solid var(--border);background:var(--bg2);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600" data-bc-ch="wa"><input type="radio" name="bc-ch" value="wa" onchange="_bcChange()" style="margin:0;accent-color:var(--a)"/>\uD83D\uDCF1 WhatsApp</label>'
+      +'<label style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:2px solid var(--border);background:var(--bg2);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600" data-bc-ch="both"><input type="radio" name="bc-ch" value="both" onchange="_bcChange()" style="margin:0;accent-color:var(--a)"/>\uD83D\uDCAC Both</label>'
+    +'</div>'
+
+    // FILTERS
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:6px">Recipients</div>'
+    +'<div class="fg-2" style="margin-bottom:6px">'
+      +'<div class="fg"><label class="fl">Account status</label>'
+        +'<select class="fs" id="bc-status" onchange="_bcRecount()">'
+          +'<option value="Active" selected>Active only (recommended)</option>'
+          +'<option value="">All accounts</option>'
+          +'<option value="Suspended">Suspended only</option>'
+          +'<option value="Pending">Pending only</option>'
+        +'</select>'
+      +'</div>'
+      +'<div class="fg"><label class="fl">Plan filter</label>'
+        +'<select class="fs" id="bc-plan" onchange="_bcRecount()">'
+          +'<option value="" selected>All plans</option>'
+          +'<option value="trial">Trial only</option>'
+          +'<option value="premium">Premium / paying only</option>'
+          +'<option value="free">Free only</option>'
+        +'</select>'
+      +'</div>'
+    +'</div>'
+    +'<div id="bc-recipient-count" style="font-size:12px;color:var(--text2);margin-bottom:18px;padding:8px 12px;background:var(--bg3);border-radius:6px;font-weight:500"></div>'
+
+    // EMAIL FIELDS (default visible)
+    +'<div id="bc-email-block" style="display:block">'
+      +'<div class="fg"><label class="fl">Email subject</label>'
+        +'<input class="fi" id="bc-subject" placeholder="e.g. You\u2019re invited: ShopTrack training &amp; Q&amp;A session" maxlength="120"/>'
+        +'<div style="font-size:10px;color:var(--text2);margin-top:3px">Tokens accepted in subject too: <code style="background:var(--bg3);padding:0 3px;border-radius:2px">{business_name}</code></div>'
+      +'</div>'
+      +'<div class="fg"><label class="fl">Email body</label>'
+        +'<textarea class="ft" id="bc-email-body" rows="10" style="min-height:220px;font-family:inherit;font-size:13px;line-height:1.6" placeholder="Hi {owner_name},\n\nA quick note from ShopTrack \u2014 we\u2019re running a free training session..."></textarea>'
+      +'</div>'
+    +'</div>'
+
+    // WA FIELDS
+    +'<div id="bc-wa-block" style="display:none">'
+      +'<div class="fg"><label class="fl">WhatsApp message</label>'
+        +'<textarea class="ft" id="bc-wa-body" rows="8" style="min-height:180px;font-family:inherit;font-size:13px;line-height:1.6" placeholder="Hi {owner_name} \uD83D\uDC4B\n\nA quick note from *ShopTrack*..."></textarea>'
+        +'<div style="font-size:10px;color:var(--text2);margin-top:3px">WhatsApp formatting: *bold*, _italic_, ~strike~. Use \u2014 instead of &mdash;.</div>'
+      +'</div>'
+      +'<div class="alrt alrt-y" style="font-size:11px;line-height:1.5;margin-bottom:14px">'
+        +'<strong>\u26A0 WhatsApp delivery caveat:</strong> Twilio will only deliver free-text messages to recipients within their 24-hour conversation window. For broadcasts to recipients OUTSIDE that window, an approved template is required \u2014 freeform sends will be rejected by Meta. Email is more reliable for broadcasts to most recipients.'
+      +'</div>'
+    +'</div>'
+
+    +'<div class="alrt alrt-g" style="font-size:11px;line-height:1.5;margin-top:8px">'
+      +'<strong>Personalization tokens:</strong> '
+      +'<code style="background:rgba(0,0,0,.08);padding:1px 5px;border-radius:3px">{owner_name}</code> \u2192 first name of the business owner \u00B7 '
+      +'<code style="background:rgba(0,0,0,.08);padding:1px 5px;border-radius:3px">{business_name}</code> \u2192 the business name \u00B7 '
+      +'<code style="background:rgba(0,0,0,.08);padding:1px 5px;border-radius:3px">{plan}</code> \u2192 their current plan'
+    +'</div>'
+    ,
+
+    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    +'<button class="btn btn-p" id="bc-send-btn" onclick="_bcConfirm()">\u2192 Preview &amp; Send</button>'
+    ,'lg');
+
+  setTimeout(_bcRecount, 40);
+}
+
+// Compute the filtered recipient list based on the current selectors.
+// Returns { recipients, emailCount, waCount, missingEmail, missingWa }.
+function _bcRecipients(){
+  var status = (document.getElementById('bc-status')||{}).value || '';
+  var plan   = ((document.getElementById('bc-plan')||{}).value || '').toLowerCase();
+  var ch     = (document.querySelector('input[name="bc-ch"]:checked')||{}).value || 'email';
+
+  var all = (D.adminBiz||[]).filter(function(b){ return b.st !== 'Deleted'; });
+  var filtered = all.filter(function(b){
+    if(status && b.st !== status) return false;
+    if(plan){
+      var p = (b.plan||'').toLowerCase();
+      if(plan === 'trial' && !p.includes('trial')) return false;
+      if(plan === 'premium' && (p.includes('trial') || p.includes('free') || !p)) return false;
+      if(plan === 'free' && !p.includes('free') && p) return false;
+    }
+    return true;
+  });
+
+  var emailEligible = filtered.filter(function(b){ return b.email && b.email.includes('@'); });
+  var waEligible    = filtered.filter(function(b){
+    var phone = b.whatsapp || b.phone || '';
+    return phone && String(phone).replace(/\D/g,'').length >= 7;
+  });
+
+  // Recipients per chosen channel
+  var recipients;
+  if(ch === 'email')      recipients = emailEligible;
+  else if(ch === 'wa')    recipients = waEligible;
+  else /* both */         recipients = filtered.filter(function(b){
+    var hasE = b.email && b.email.includes('@');
+    var hasW = (b.whatsapp || b.phone || '');
+    return hasE || hasW; // at least one
+  });
+
+  return {
+    recipients: recipients,
+    total: filtered.length,
+    emailCount: emailEligible.length,
+    waCount: waEligible.length,
+    missingEmail: filtered.length - emailEligible.length,
+    missingWa: filtered.length - waEligible.length,
+    channel: ch
+  };
+}
+
+function _bcRecount(){
+  var info = _bcRecipients();
+  var el = document.getElementById('bc-recipient-count'); if(!el) return;
+  var primary = info.recipients.length;
+  if(info.channel === 'email'){
+    el.innerHTML = '\uD83D\uDCE7 Will send to <strong>'+primary+'</strong> business'+(primary===1?'':'es')
+      +' with email on file'
+      +(info.missingEmail>0 ? ' \u00B7 <span style="color:var(--y)">'+info.missingEmail+' skipped (no email)</span>' : '');
+  } else if(info.channel === 'wa'){
+    el.innerHTML = '\uD83D\uDCF1 Will send to <strong>'+primary+'</strong> business'+(primary===1?'':'es')
+      +' with WhatsApp on file'
+      +(info.missingWa>0 ? ' \u00B7 <span style="color:var(--y)">'+info.missingWa+' skipped (no WhatsApp)</span>' : '');
+  } else {
+    el.innerHTML = '\uD83D\uDCAC Will send to <strong>'+primary+'</strong> business'+(primary===1?'':'es')
+      +' (email + WA, where each is available) \u00B7 '
+      +'<span style="color:var(--text2)">'+info.emailCount+' email, '+info.waCount+' WA</span>';
+  }
+}
+
+function _bcChange(){
+  var ch = (document.querySelector('input[name="bc-ch"]:checked')||{}).value || 'email';
+  var eb = document.getElementById('bc-email-block');
+  var wb = document.getElementById('bc-wa-block');
+  if(eb) eb.style.display = (ch === 'wa') ? 'none' : 'block';
+  if(wb) wb.style.display = (ch === 'email') ? 'none' : 'block';
+  // Tab highlights
+  document.querySelectorAll('[data-bc-ch]').forEach(function(el){
+    var v = el.getAttribute('data-bc-ch');
+    el.style.borderColor = (v === ch) ? 'var(--a)' : 'var(--border)';
+    el.style.background  = (v === ch) ? 'var(--a-dim)' : 'var(--bg2)';
+  });
+  _bcRecount();
+}
+
+// Replace {owner_name} / {business_name} / {plan} tokens for a recipient.
+function _bcInterpolate(template, biz){
+  if(!template) return '';
+  var ownerFirst = (biz.owner || 'there').split(' ')[0];
+  return String(template)
+    .replace(/\{owner_name\}/gi, ownerFirst)
+    .replace(/\{business_name\}/gi, biz.name || '')
+    .replace(/\{plan\}/gi, biz.plan || 'Free');
+}
+
+// Preview screen → confirmation. The user sees a sample interpolated
+// message + final recipient count, then must click Send to actually fire.
+function _bcConfirm(){
+  var ch = (document.querySelector('input[name="bc-ch"]:checked')||{}).value || 'email';
+  var subject = (document.getElementById('bc-subject')||{}).value || '';
+  var emailBody = (document.getElementById('bc-email-body')||{}).value || '';
+  var waBody    = (document.getElementById('bc-wa-body')||{}).value || '';
+  var info = _bcRecipients();
+
+  if(!info.recipients.length){
+    toast('No recipients match these filters','error'); return;
+  }
+  if(ch !== 'wa' && (!subject.trim() || !emailBody.trim())){
+    toast('Subject and email body required for email broadcasts','error'); return;
+  }
+  if(ch !== 'email' && !waBody.trim()){
+    toast('WhatsApp message required','error'); return;
+  }
+
+  // Sample interpolation using the first recipient
+  var sample = info.recipients[0];
+  var sampleSubj = _bcInterpolate(subject, sample);
+  var sampleEmail = _bcInterpolate(emailBody, sample);
+  var sampleWA = _bcInterpolate(waBody, sample);
+
+  var body = '<div style="font-size:13px;color:var(--text);margin-bottom:14px">'
+    +'About to send to <strong>'+info.recipients.length+'</strong> business'+(info.recipients.length===1?'':'es')+'. '
+    +'Preview below uses <strong>'+_esc(sample.name)+'</strong> as a sample \u2014 each recipient gets their own personalized version.'
+    +'</div>';
+
+  if(ch !== 'wa'){
+    body += '<div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;background:var(--bg2)">'
+      +'<div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">\uD83D\uDCE7 Email preview</div>'
+      +'<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">Subject: '+_esc(sampleSubj)+'</div>'
+      +'<div style="font-size:12px;line-height:1.6;color:var(--text);white-space:pre-wrap">'+_esc(sampleEmail)+'</div>'
+    +'</div>';
+  }
+  if(ch !== 'email'){
+    body += '<div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;background:var(--bg2)">'
+      +'<div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">\uD83D\uDCF1 WhatsApp preview</div>'
+      +'<div style="font-size:12px;line-height:1.6;color:var(--text);white-space:pre-wrap;font-family:var(--mono);background:#dcf8c6;color:#0f172a;padding:10px;border-radius:6px">'+_esc(sampleWA)+'</div>'
+    +'</div>';
+  }
+
+  body += '<div class="alrt alrt-y" style="font-size:11px;line-height:1.5">'
+    +'<strong>Final check.</strong> Once you click Send, messages start firing immediately. There is no undo. Throttled at ~5 sends/second to avoid rate limits, so '+info.recipients.length+' recipients will take ~'+Math.ceil(info.recipients.length/5)+' second'+(Math.ceil(info.recipients.length/5)>1?'s':'')+'.'
+    +'</div>';
+
+  // Stash state on window so the next button can read it without re-reading the form
+  window._bcQueued = {
+    ch: ch, subject: subject, emailBody: emailBody, waBody: waBody,
+    recipients: info.recipients
+  };
+
+  modal('Confirm broadcast', body,
+    '<button class="btn btn-s" onclick="closeModal();mBroadcast()">\u2190 Back to edit</button>'
+    +'<button class="btn btn-p" onclick="_bcRun()">\uD83D\uDCE4 Send to '+info.recipients.length+' business'+(info.recipients.length===1?'':'es')+'</button>'
+    ,'lg');
+}
+
+// Actually fire the broadcast. Replaces the modal with a live progress log.
+async function _bcRun(){
+  var q = window._bcQueued; if(!q || !q.recipients || !q.recipients.length){ toast('Broadcast queue empty','error'); return; }
+
+  // Replace modal content with progress UI
+  var body = '<div id="bc-progress-summary" style="font-size:13px;font-weight:600;margin-bottom:14px">Starting broadcast to '+q.recipients.length+' recipients\u2026</div>'
+    +'<div style="background:var(--bg3);border-radius:6px;overflow:hidden;height:8px;margin-bottom:14px"><div id="bc-progress-bar" style="height:100%;background:var(--a);width:0%;transition:width .2s"></div></div>'
+    +'<div id="bc-progress-log" style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;font-family:var(--mono);background:var(--bg2);line-height:1.7"></div>';
+  modal('Broadcasting\u2026', body,
+    '<button class="btn btn-s" id="bc-progress-close" disabled style="opacity:.5">Close (sending\u2026)</button>'
+    ,'lg');
+
+  var n = q.recipients.length;
+  var ok = 0, fail = 0;
+  var startedAt = Date.now();
+  var logEl = function(){ return document.getElementById('bc-progress-log'); };
+  var barEl = function(){ return document.getElementById('bc-progress-bar'); };
+  var sumEl = function(){ return document.getElementById('bc-progress-summary'); };
+
+  function append(html){
+    var el = logEl(); if(!el) return;
+    el.insertAdjacentHTML('beforeend', html);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  for(var i = 0; i < n; i++){
+    var b = q.recipients[i];
+    var ownerFirst = (b.owner || 'there').split(' ')[0];
+    var rowLines = [];
+
+    // EMAIL leg
+    if(q.ch === 'email' || q.ch === 'both'){
+      if(b.email && b.email.includes('@')){
+        var subj = _bcInterpolate(q.subject, b);
+        var bodyText = _bcInterpolate(q.emailBody, b);
+        try{
+          var r = await _saSendBillingEmail(b.email, b.owner||'', b.name||'', subj, bodyText);
+          if(r && r.success){
+            ok++;
+            _msgLogAdd({ biz_id:b.id, biz_name:b.name, channel:'email', kind:'broadcast',
+              to:b.email, subject:subj, status:'sent', messageId:r.messageId||'', sentBy:'SA Broadcast' });
+            rowLines.push('<span style="color:var(--g)">\u2713 email</span>');
+          } else {
+            fail++;
+            _msgLogAdd({ biz_id:b.id, biz_name:b.name, channel:'email', kind:'broadcast',
+              to:b.email, subject:subj, status:'failed', error:r.error||'unknown', sentBy:'SA Broadcast' });
+            rowLines.push('<span style="color:var(--r)">\u2717 email: '+_esc(r.error||'failed')+'</span>');
+          }
+        }catch(e){
+          fail++;
+          _msgLogAdd({ biz_id:b.id, biz_name:b.name, channel:'email', kind:'broadcast',
+            to:b.email, subject:subj, status:'failed', error:e.message||'exception', sentBy:'SA Broadcast' });
+          rowLines.push('<span style="color:var(--r)">\u2717 email: '+_esc(e.message||'error')+'</span>');
+        }
+      } else if(q.ch === 'email'){
+        // Pure email broadcast with a recipient lacking email — shouldn't happen because _bcRecipients filters them out, but defend anyway
+        rowLines.push('<span style="color:var(--y)">\u26A0 no email</span>');
+      }
+    }
+
+    // WA leg
+    if(q.ch === 'wa' || q.ch === 'both'){
+      var ph = b.whatsapp || b.phone || '';
+      if(ph && String(ph).replace(/\D/g,'').length >= 7){
+        var waBody = _bcInterpolate(q.waBody, b);
+        try{
+          var wr = await _sendWA(ph, waBody);
+          if(wr && wr.success){
+            ok++;
+            _msgLogAdd({ biz_id:b.id, biz_name:b.name, channel:'wa', kind:'broadcast',
+              to:ph, status:'queued', messageId:wr.messageId||'', sentBy:'SA Broadcast' });
+            rowLines.push('<span style="color:var(--g)">\u2713 WA</span>');
+          } else if(wr && wr.fallback){
+            // wa.me fallback opened in a new tab — counts as best-effort; not tracked
+            rowLines.push('<span style="color:var(--y)">\u26A0 WA: opened wa.me (template not approved)</span>');
+          } else {
+            fail++;
+            _msgLogAdd({ biz_id:b.id, biz_name:b.name, channel:'wa', kind:'broadcast',
+              to:ph, status:'failed', error:(wr&&wr.error)||'unknown', sentBy:'SA Broadcast' });
+            rowLines.push('<span style="color:var(--r)">\u2717 WA</span>');
+          }
+        }catch(e){
+          fail++;
+          _msgLogAdd({ biz_id:b.id, biz_name:b.name, channel:'wa', kind:'broadcast',
+            to:ph, status:'failed', error:e.message||'exception', sentBy:'SA Broadcast' });
+          rowLines.push('<span style="color:var(--r)">\u2717 WA: '+_esc(e.message||'error')+'</span>');
+        }
+      }
+    }
+
+    var pct = Math.round(((i+1)/n)*100);
+    if(barEl()) barEl().style.width = pct+'%';
+    if(sumEl()) sumEl.call(null).textContent = 'Sending\u2026 '+(i+1)+'/'+n+' \u00B7 '+ok+' ok, '+fail+' failed';
+    append('<div>['+(i+1)+'/'+n+'] '+_esc(b.name||'?')+' \u2014 '+rowLines.join(' \u00B7 ')+'</div>');
+
+    // Throttle: ~5 sends/second = 200ms gap
+    if(i < n - 1) await new Promise(function(res){ setTimeout(res, 200); });
+  }
+
+  var elapsed = Math.round((Date.now() - startedAt)/100)/10;
+  if(sumEl()) sumEl().innerHTML = '\u2705 Broadcast complete \u2014 <strong>'+ok+'</strong> sent, <strong style="color:'+(fail?'var(--r)':'var(--text2)')+'">'+fail+'</strong> failed \u00B7 '+elapsed+'s';
+  append('<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--text2)">Done. See Message Log for details and delivery status.</div>');
+  addAudit('Broadcast sent', n+' recipients \u00B7 '+ok+' ok \u00B7 '+fail+' failed');
+
+  var closeBtn = document.getElementById('bc-progress-close');
+  if(closeBtn){ closeBtn.disabled = false; closeBtn.style.opacity = '1'; closeBtn.textContent = 'Close'; closeBtn.onclick = closeModal; }
+  window._bcQueued = null;
+}
+
+// ── mMessageLog — view all sent messages, refresh delivery status ────────
+function mMessageLog(){var _s=_L();
+  if(!SESSION.isSuperAdmin){ toast('Super Admin only','error'); return; }
+  _msgLogLoad();
+  var entries = D.msgLog.slice().reverse(); // newest first
+
+  if(!entries.length){
+    modal('\uD83D\uDCCB Message Log',
+      '<div style="text-align:center;padding:30px 20px;color:var(--text2)">'
+      +'<div style="font-size:36px;margin-bottom:10px">\uD83D\uDCED</div>'
+      +'<div style="font-size:14px;font-weight:600;margin-bottom:6px">No messages sent yet</div>'
+      +'<div style="font-size:12px">Send a broadcast or a billing reminder, and you\u2019ll see delivery details here.</div>'
+      +'</div>',
+      '<button class="btn btn-s" onclick="closeModal()">Close</button>'
+      ,'lg');
+    return;
+  }
+
+  function statusBadge(s){
+    var color = '#64748b', bg='#f1f5f9', label = s||'?';
+    if(s==='delivered' || s==='read'){ color='#047857'; bg='#d1fae5'; }
+    else if(s==='sent' || s==='queued'){ color='#2563eb'; bg='#dbeafe'; }
+    else if(s==='failed' || s==='undelivered'){ color='#dc2626'; bg='#fee2e2'; }
+    else if(s==='sending'){ color='#a16207'; bg='#fef3c7'; }
+    return '<span style="display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;background:'+bg+';color:'+color+'">'+label+'</span>';
+  }
+
+  function rowHtml(e){
+    var when = e.ts ? new Date(e.ts).toLocaleString() : '\u2014';
+    var chIco = e.channel==='wa' ? '\uD83D\uDCF1' : e.channel==='email' ? '\uD83D\uDCE7' : '\u2014';
+    var kindIco = e.kind==='broadcast' ? '\uD83D\uDCE3 ' : '';
+    var subjectOrTo = e.subject || e.to || '';
+    var canCheck = e.channel==='wa' && e.messageId;
+    var checkBtn = canCheck
+      ? '<button class="btn btn-s btn-xs" onclick="_msgRefresh(\''+e.id+'\')" title="Fetch latest delivery status from Twilio">\u21BB</button>'
+      : '';
+    var errCell = e.error ? '<div style="font-size:10px;color:var(--r);margin-top:2px">'+_esc(e.error)+'</div>' : '';
+    return '<tr id="msg-row-'+e.id+'" data-msg-status="'+(e.status||'')+'">'
+      +'<td style="font-size:11px;color:var(--text2);white-space:nowrap">'+_esc(when)+'</td>'
+      +'<td>'+chIco+' <strong>'+_esc(e.biz_name||e.biz_id||'?')+'</strong>'
+        +'<div style="font-size:10px;color:var(--text2);font-family:var(--mono)">'+_esc(e.to||'')+'</div>'
+      +'</td>'
+      +'<td style="font-size:11px;max-width:280px">'+kindIco+_esc(subjectOrTo)+errCell+'</td>'
+      +'<td class="msg-status-cell">'+statusBadge(e.status)+'</td>'
+      +'<td>'+checkBtn+'</td>'
+    +'</tr>';
+  }
+
+  // Stats
+  var byChannel = { email:0, wa:0 };
+  var byStatus = {};
+  entries.forEach(function(e){
+    if(e.channel) byChannel[e.channel] = (byChannel[e.channel]||0) + 1;
+    if(e.status) byStatus[e.status] = (byStatus[e.status]||0) + 1;
+  });
+
+  modal('\uD83D\uDCCB Message Log',
+    '<div style="display:flex;gap:8px;margin-bottom:14px;font-size:11px;flex-wrap:wrap">'
+      +'<span style="padding:4px 10px;background:var(--bg3);border-radius:10px"><strong>'+entries.length+'</strong> total</span>'
+      +'<span style="padding:4px 10px;background:#dbeafe;color:#1d4ed8;border-radius:10px">\uD83D\uDCE7 '+(byChannel.email||0)+'</span>'
+      +'<span style="padding:4px 10px;background:#d1fae5;color:#047857;border-radius:10px">\uD83D\uDCF1 '+(byChannel.wa||0)+'</span>'
+      +Object.keys(byStatus).map(function(s){return '<span style="padding:4px 10px;background:var(--bg3);border-radius:10px">'+s+': '+byStatus[s]+'</span>';}).join('')
+    +'</div>'
+
+    +'<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">'
+      +'<button class="btn btn-s btn-xs" onclick="_msgRefreshAll()" title="Re-query Twilio for every WA message status">\u21BB Refresh all WA statuses</button>'
+      +'<button class="btn btn-s btn-xs" onclick="_msgExportCSV()">\u2B07 Export CSV</button>'
+      +'<button class="btn btn-d btn-xs" onclick="if(confirm(\'Clear all '+entries.length+' log entries? This cannot be undone.\')){D.msgLog=[];_msgLogSave();closeModal();mMessageLog();}">\uD83D\uDDD1 Clear log</button>'
+    +'</div>'
+
+    +'<div class="tbl-wrap" style="max-height:520px;overflow-y:auto"><table style="font-size:12px">'
+      +'<thead style="position:sticky;top:0;background:var(--bg);z-index:1">'
+        +'<tr><th>When</th><th>Recipient</th><th>Subject / Details</th><th>Status</th><th></th></tr>'
+      +'</thead>'
+      +'<tbody>'+entries.map(rowHtml).join('')+'</tbody>'
+    +'</table></div>'
+    ,
+    '<button class="btn btn-s" onclick="closeModal()">Close</button>'
+    ,'lg');
+}
+
+// Refresh status for one entry by re-querying Twilio
+async function _msgRefresh(entryId){
+  var entry = (D.msgLog||[]).find(function(x){return x.id===entryId;});
+  if(!entry || !entry.messageId){ toast('No Twilio messageId to check','error'); return; }
+  var row = document.getElementById('msg-row-'+entryId);
+  var cell = row ? row.querySelector('.msg-status-cell') : null;
+  if(cell) cell.innerHTML = '<span style="font-size:10px;color:var(--text2)">checking\u2026</span>';
+  try{
+    var secret = (window.SA_FN_SECRET || localStorage.getItem('sa_fn_secret') || '').trim();
+    if(!secret){
+      var entered = prompt('Paste your SA function secret (same one used for billing reminders):');
+      if(!entered || entered.trim().length < 16){ toast('Secret required','error'); return; }
+      secret = entered.trim();
+      try{ localStorage.setItem('sa_fn_secret', secret); }catch(e){}
+      window.SA_FN_SECRET = secret;
+    }
+    var resp = await fetch('/.netlify/functions/twilio-message-status', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ secret: secret, messageId: entry.messageId })
+    });
+    var data = await resp.json().catch(function(){return {};});
+    if(data && data.success){
+      entry.status = data.status || entry.status;
+      if(data.error_code) entry.error = 'code '+data.error_code+': '+(data.error_message||'');
+      entry.lastChecked = new Date().toISOString();
+      _msgLogSave();
+      // Re-render the row in place
+      if(row){
+        var statusBadge = function(s){
+          var color = '#64748b', bg='#f1f5f9';
+          if(s==='delivered' || s==='read'){ color='#047857'; bg='#d1fae5'; }
+          else if(s==='sent' || s==='queued'){ color='#2563eb'; bg='#dbeafe'; }
+          else if(s==='failed' || s==='undelivered'){ color='#dc2626'; bg='#fee2e2'; }
+          return '<span style="display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;background:'+bg+';color:'+color+'">'+(s||'?')+'</span>';
+        };
+        if(cell) cell.innerHTML = statusBadge(entry.status);
+      }
+    } else {
+      if(cell) cell.innerHTML = '<span style="font-size:10px;color:var(--r)">err</span>';
+      toast(data && data.error || 'Status check failed','error');
+    }
+  }catch(e){
+    if(cell) cell.innerHTML = '<span style="font-size:10px;color:var(--r)">err</span>';
+    toast(e.message || 'Network error','error');
+  }
+}
+
+// Refresh status for ALL pending WA messages in the log (last 24h)
+async function _msgRefreshAll(){
+  var cutoff = Date.now() - 24*3600*1000;
+  var pending = (D.msgLog||[]).filter(function(e){
+    return e.channel==='wa' && e.messageId && new Date(e.ts).getTime() > cutoff
+        && e.status !== 'delivered' && e.status !== 'read' && e.status !== 'failed';
+  });
+  if(!pending.length){ toast('No pending WA messages to check','info'); return; }
+  toast('Refreshing '+pending.length+' WA statuses\u2026','info');
+  for(var i=0; i<pending.length; i++){
+    await _msgRefresh(pending[i].id);
+    await new Promise(function(r){setTimeout(r, 250);});
+  }
+  toast('\u2713 Status refresh complete','success');
+}
+
+// Export message log to CSV
+function _msgExportCSV(){
+  var entries = D.msgLog || [];
+  if(!entries.length){ toast('Log is empty','info'); return; }
+  var rows = [['Timestamp','Business','Channel','Kind','To','Subject','Status','Twilio MessageID','Error','Sent By']];
+  entries.forEach(function(e){
+    rows.push([
+      e.ts || '', e.biz_name || '', e.channel || '', e.kind || '',
+      e.to || '', e.subject || '', e.status || '', e.messageId || '',
+      e.error || '', e.sentBy || ''
+    ]);
+  });
+  var csv = rows.map(function(r){
+    return r.map(function(c){
+      var s = String(c||'').replace(/"/g,'""');
+      return /[,"\n]/.test(s) ? '"'+s+'"' : s;
+    }).join(',');
+  }).join('\r\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'message-log-'+localDateStr()+'.csv';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+  toast('\uD83D\uDCC4 CSV downloaded','success');
 }
 
 // ── mBillingRunReminders — send WhatsApp reminders to all expiring businesses ──
