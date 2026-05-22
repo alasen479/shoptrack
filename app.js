@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779489358");
+console.log("ShopTrack v2.7 - build:1779489997");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -28156,7 +28156,7 @@ function mEditAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a){toast(_L().t_not_found,'error');return;}
   var svcOpts=D.services.filter(function(s){return s.active;}).map(function(s){var pt=s.priceType||'flat';var totalDisp=_computeSvcTotal(s.price,pt,s.duration)*CUR.rate;return '<option value="'+s.id+'" data-dur="'+s.duration+'" data-p="'+s.price+'" data-pt="'+pt+'"'+(s.id===a.serviceId?' selected':'')+'>'+s.name+' ('+s.duration+'min · '+fmt(s.price)+'/'+_ptLabel(pt)+')</option>';}).join('');
   var custOpts=D.cust.map(function(c){return '<option value="'+c.id+'" data-ph="'+(c.phone||c.whatsapp||'')+'"'+(c.id===a.custId?' selected':'')+'>'+c.name+'</option>';}).join('');
-  var stfOpts=BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId;}).map(function(u){return '<option value="'+u.id+'"'+(u.id===a.staffId?' selected':'')+'>'+u.name+'</option>';}).join('');
+  var stfOpts=BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId && (u.st!=='Inactive' || u.id===a.staffId);}).map(function(u){var inactive=u.st==='Inactive';return '<option value="'+u.id+'"'+(u.id===a.staffId?' selected':'')+'>'+u.name+(inactive?' (removed)':'')+'</option>';}).join('');
   var stList=['Reserved','Confirmed','In Progress','Completed','No-Show','Cancelled'].map(function(s){return '<option'+(s===a.st?' selected':'')+'>'+s+'</option>';}).join('');
   modal('\u270F Edit \u2014 '+a.id,
     '<div class="fg-2">'
@@ -28257,7 +28257,7 @@ function mCancelAppt(id){const _s=_L();
 // ── RESCHEDULE ───────────────────────────────────────────────
 function mRescheduleAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a) return;
-  var stfOpts=BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId;}).map(function(u){return '<option value="'+u.id+'"'+(u.id===a.staffId?' selected':'')+'>'+u.name+'</option>';}).join('');
+  var stfOpts=BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId && (u.st!=='Inactive' || u.id===a.staffId);}).map(function(u){var inactive=u.st==='Inactive';return '<option value="'+u.id+'"'+(u.id===a.staffId?' selected':'')+'>'+u.name+(inactive?' (removed)':'')+'</option>';}).join('');
   modal('\uD83D\uDD04 Reschedule \u2014 '+a.custName,
     '<div class="alrt alrt-b" style="margin-bottom:12px">Currently: <strong>'+a.date+'</strong> at <strong>'+_timeLabel(a.startTime)+'</strong></div>'
     +'<div class="fg-2">'
@@ -28432,7 +28432,7 @@ function _custTypeAddInline(selectId){
 async function mNewService(){const _s=_L();
   await _syncCatsFromDB();
   window._svcImgData = undefined; window._svcExistingImg = undefined; // fresh modal
-  const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId).map(u=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="${u.id}" style="accent-color:var(--a)"/> ${u.name}</label>`).join('');
+  const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId && u.st!=='Inactive').map(u=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="${u.id}" style="accent-color:var(--a)"/> ${u.name}</label>`).join('');
   const ptOpts=_PRICE_TYPES.map(pt=>`<option value="${pt.value}">${pt.label}</option>`).join('');
   if(!D.svcCats||!D.svcCats.length) D.svcCats=['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
   modal('🛠 New Service',`
@@ -28495,7 +28495,11 @@ async function mEditSvc(id){const _s=_L();
   // Track existing photo so _getSvcData can preserve it if user doesn't upload a new one
   window._svcImgData = undefined; // reset any previous upload
   window._svcExistingImg = s.imgDataUrl || null;
-  const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId).map(u=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="${u.id}" ${(s.staffIds||[]).includes(u.id)?'checked':''} style="accent-color:var(--a)"/> ${u.name}</label>`).join('');
+  const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId && (u.st!=='Inactive' || (s.staffIds||[]).includes(u.id))).map(u=>{
+    var isInactive = u.st==='Inactive';
+    var marker = isInactive ? ' <span style="font-size:10px;color:var(--text3);font-style:italic">(removed)</span>' : '';
+    return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer${isInactive?';opacity:.55':''}"><input type="checkbox" value="${u.id}" ${(s.staffIds||[]).includes(u.id)?'checked':''} style="accent-color:var(--a)"/> ${u.name}${marker}</label>`;
+  }).join('');
   const pt=s.priceType||'flat';
   const ptOpts=_PRICE_TYPES.map(p=>`<option value="${p.value}"${p.value===pt?' selected':''}>${p.label}</option>`).join('');
   const sCat=s.cat||'';
@@ -32959,7 +32963,7 @@ function mNewAppt(date){const _s=_L();
   const td=date||localDateStr();
   const so=D.services.filter(s=>s.active).map(s=>{const pt=s.priceType||'flat';return `<option value="${s.id}" data-dur="${s.duration}" data-p="${s.price}" data-pt="${pt}">${s.name} (${s.duration}min · ${fmt(s.price)}/${_ptLabel(pt)})</option>`;}).join('');
   const co=D.cust.map(c=>`<option value="${c.id}" data-ph="${c.phone||c.whatsapp||''}">${c.name}</option>`).join('');
-  const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId).map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+  const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId && u.st!=='Inactive').map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
   modal('📅 New Appointment',`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.appt_service}</label>
