@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779190723");
+console.log("ShopTrack v2.7 - build:1779465420");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -12202,6 +12202,7 @@ function mManageBiz(bizId){const _s=_L();
       </div>
       <div class="fg"><label class="fl">WhatsApp / Phone</label>
         <input class="fi" id="mb-phone" value="${_esc(b.phone||b.whatsapp||'')}" type="tel" placeholder="237XXXXXXXXX"/>
+        ${!b.phone && !b.whatsapp ? '<div style="font-size:11px;color:var(--y);margin-top:4px">\u26A0 No WhatsApp on file \u2014 reminders will only go via email</div>' : ''}
       </div>
       <div class="fg"><label class="fl">${_s.ui_country}</label>
         <input class="fi" id="mb-country" value="${_esc(b.country||'')}"/>
@@ -12267,7 +12268,7 @@ function mManageBiz(bizId){const _s=_L();
         📱 Charge — ${billingAmt.toLocaleString()} XAF
       </button>
       <button type="button" class="btn btn-b btn-sm" onclick="_mbSave('${bizId}');setTimeout(function(){mBillingRemind('${bizId}');},400)">
-        💬 WhatsApp Reminder
+        💬 Send Reminder
       </button>
       <div style="font-size:11px;color:var(--text2);margin-left:4px">
         Quick reminders:
@@ -13627,6 +13628,83 @@ function _billingWAMsg(biz, daysLeft){
   return msg;
 }
 
+// Email version of the billing reminder. No WhatsApp formatting (no asterisks
+// for bold, no emojis used as headers — they're allowed for tone but the
+// structure is plain text since email clients render the asterisks literally).
+function _billingEmailMsg(biz, daysLeft){
+  const amt   = _billingAmtXAF(biz).toLocaleString();
+  const plan  = biz.plan||'Free';
+  const expiry= biz.subExpires || biz.trialEnd || '';
+  let msg = '';
+  if(daysLeft > 0){
+    msg += 'Your ShopTrack '+plan+' Plan expires in '+daysLeft+' day'+(daysLeft>1?'s':'')+
+           ' on '+expiry+'.\n\n';
+  } else if(daysLeft === 0){
+    msg += 'Your ShopTrack '+plan+' Plan expires today.\n\n';
+  } else {
+    msg += 'Your ShopTrack '+plan+' Plan expired '+Math.abs(daysLeft)+' day'+
+           (Math.abs(daysLeft)>1?'s':'')+' ago on '+expiry+'.\n\n';
+    msg += 'Your access will be suspended if payment is not received within the next few days.\n\n';
+  }
+  msg += 'Amount due: '+amt+' XAF\n';
+  msg += 'Business:   '+biz.name+'\n\n';
+  msg += 'To renew, log in at shoptrack.org and approve the Mobile Money payment request you will receive — or reply to this email if you need help.\n\n';
+  msg += 'Thank you for being a ShopTrack customer.';
+  return msg;
+}
+
+function _billingEmailSubject(biz, daysLeft){
+  if(daysLeft > 0) return 'Reminder: your ShopTrack subscription expires in '+daysLeft+' day'+(daysLeft>1?'s':'');
+  if(daysLeft === 0) return 'Today: your ShopTrack subscription expires';
+  return 'Action required: your ShopTrack subscription is overdue';
+}
+
+// Call the Netlify function to send a billing reminder email via Brevo.
+// The shared secret SA_FN_SECRET (matching the Netlify env var) is
+// cached in localStorage. On first use the SA is prompted to paste it;
+// subsequent calls reuse the cached value with no friction.
+async function _saSendBillingEmail(toEmail, toName, bizName, subject, bodyText){
+  try{
+    var secret = (window.SA_FN_SECRET || localStorage.getItem('sa_fn_secret') || '').trim();
+    if(!secret){
+      var entered = prompt('First-time setup: paste your SA function secret (set as SA_FN_SECRET in Netlify env vars). It will be remembered on this device.');
+      if(entered && entered.trim().length >= 16){
+        secret = entered.trim();
+        try{ localStorage.setItem('sa_fn_secret', secret); }catch(e){}
+        window.SA_FN_SECRET = secret;
+      } else if(entered !== null){
+        return { success:false, error:'Secret too short (need 16+ characters)' };
+      } else {
+        return { success:false, error:'Cancelled — no secret entered' };
+      }
+    }
+    const resp = await fetch('/.netlify/functions/sa-billing-reminder', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        secret: secret,
+        to_email: toEmail,
+        to_name: toName || '',
+        biz_name: bizName || '',
+        subject: subject,
+        body_text: bodyText,
+      })
+    });
+    const data = await resp.json().catch(function(){ return {}; });
+    if(resp.ok && data.success){
+      return { success:true, messageId: data.messageId };
+    }
+    // If the secret was wrong, clear it so the next attempt re-prompts.
+    if(resp.status === 401){
+      try{ localStorage.removeItem('sa_fn_secret'); }catch(e){}
+      window.SA_FN_SECRET = '';
+    }
+    return { success:false, error: data.error || ('HTTP '+resp.status) };
+  }catch(e){
+    return { success:false, error: e.message || 'Network error' };
+  }
+}
+
 // ── WhatsApp: real API send via Netlify function ─────────────
 // Falls back to wa.me link if the function fails or is unconfigured.
 async function _sendWA(phone, message, opts){var _s=_L();
@@ -13747,37 +13825,165 @@ async function mBillingCharge(bizId){const _s=_L();
    })()">📱 Send Payment Request</button>`);
 }
 
+// ── mBillingRemind ───────────────────────────────────────────────────────
+// Send a billing reminder to a business owner via WhatsApp, email, or both.
+// Handles three common states:
+//   1. Both phone + email present     → default 'Both' channel, all fields prefilled
+//   2. Only email present              → default 'Email' channel, WA option greyed out
+//   3. Only phone present              → default 'WhatsApp' channel (existing behavior)
+//   4. Neither                         → friendly alert + 'Open profile to add contact' shortcut
 function mBillingRemind(bizId, daysOverride){const _s=_L();
   const b = D.adminBiz.find(x=>x.id===bizId); if(!b) return;
-  const phone = b.phone||b.whatsapp;
+  const phone = b.whatsapp || b.phone || '';
+  const email = b.email || '';
+  const hasPhone = !!(phone && String(phone).replace(/\D/g,'').length >= 7);
+  const hasEmail = !!(email && email.includes('@'));
   const dLeft = daysOverride !== undefined ? daysOverride : (_billingDaysLeft(b)||0);
-  const msg   = _billingWAMsg(b, dLeft);
-  // Pre-build template variables for the onclick (avoids quote/escape issues in inline JS)
+  const waMsg    = _billingWAMsg(b, dLeft);
+  const emailMsg = _billingEmailMsg(b, dLeft);
+  const emailSubj= _billingEmailSubject(b, dLeft);
+
+  // Pre-build WA template variables (used when the Twilio template path fires)
   var _tvName = ((b.owner||'').split(' ')[0]||'there').replace(/[^a-zA-Z0-9À-ÿ ]/g,'');
   var _tvPlan = (b.plan||'Premium').replace(/[^a-zA-Z0-9() ]/g,'');
   var _tvExp = dLeft<=0?'expired '+Math.abs(dLeft)+' day'+(Math.abs(dLeft)>1?'s':'')+' ago on '+(b.subExpires||b.trialEnd||''):'expires in '+dLeft+' day'+(dLeft>1?'s':'')+' on '+(b.subExpires||b.trialEnd||'');
   var _tvAmt = String(_billingAmtXAF(b));
-  // Store on window so the onclick can access them
   window._waTemplateVars = {'1':_tvName,'2':_tvPlan,'3':_tvExp,'4':_tvAmt};
-  
-  modal('💬 WhatsApp Reminder — '+_esc(b.name),`
-  <div class="fg"><label class="fl">${_s.vend_phone}</label>
-    <input class="fi" id="br-phone" value="${_esc(phone||'')}" placeholder="237XXXXXXXXX"/>
-  </div>
-  <div class="fg"><label class="fl">${_s.adm_msg_preview}</label>
-    <textarea class="ft" id="br-msg" style="min-height:220px;font-size:12px;line-height:1.6">${_esc(msg)}</textarea>
-  </div>
-  <div class="alrt alrt-b" style="margin-top:8px;font-size:11px">
-    Clicking Send opens WhatsApp with this message pre-filled. You send it manually.
-  </div>`,
-  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
-   <button class="btn btn-p" onclick="(async function(){
-     var ph=document.getElementById('br-phone').value;
-     var ms=document.getElementById('br-msg').value;
-     var r=await _sendWA(ph,ms,{template:'payment_reminder',variables:window._waTemplateVars||{}});
-     addAudit('WhatsApp reminder '+(r.success?'sent':'fallback'),'reminder sent');
-     if(!r.fallback) closeModal();
-   })()">💬 Send WhatsApp</button>`);
+
+  // No contact at all → bail with a useful nudge
+  if(!hasPhone && !hasEmail){
+    modal('💬 Send Reminder — '+_esc(b.name),
+      '<div class="alrt alrt-y" style="font-size:13px;line-height:1.6"><strong>No contact channels on file.</strong><br>'
+      +'This business owner doesn\u2019t have a WhatsApp number or email saved. Open their profile to add at least one before sending a reminder.</div>',
+      '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_close+'</button>'
+      +'<button class="btn btn-p" onclick="closeModal();mManageBiz(\''+bizId+'\')">\u2699 Open Profile</button>');
+    return;
+  }
+
+  // Decide the default channel based on what's available
+  var defaultChannel = (hasPhone && hasEmail) ? 'both' : hasEmail ? 'email' : 'wa';
+
+  function chTab(value, label, disabled, hint){
+    var dis = disabled ? ' opacity:.45;cursor:not-allowed;pointer-events:none;' : '';
+    var disAttr = disabled ? ' disabled' : '';
+    return '<label style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 8px;border:2px solid var(--border);border-radius:8px;cursor:pointer;background:var(--bg2);font-size:13px;font-weight:600;'+dis+'" data-ch-label="'+value+'" title="'+(hint||'')+'">'
+      +'<input type="radio" name="br-ch" value="'+value+'" '+(defaultChannel===value?'checked':'')+disAttr+' onchange="_brChannelChange()" style="margin:0;accent-color:var(--a)"/>'
+      +label
+    +'</label>';
+  }
+
+  // Missing-contact warnings inline
+  var phoneNote = hasPhone ? '' : '<div style="font-size:11px;color:var(--y);margin-top:4px">\u26A0 No WhatsApp on file</div>';
+  var emailNote = hasEmail ? '' : '<div style="font-size:11px;color:var(--y);margin-top:4px">\u26A0 No email on file</div>';
+
+  var body =
+    '<div style="display:flex;gap:8px;margin-bottom:14px">'
+      + chTab('wa',    '\uD83D\uDCF1 WhatsApp',  !hasPhone, hasPhone?'Send via WhatsApp':'No phone on file')
+      + chTab('email', '\uD83D\uDCE7 Email',     !hasEmail, hasEmail?'Send via Email':'No email on file')
+      + chTab('both',  '\uD83D\uDCAC Both',      !(hasPhone && hasEmail), (hasPhone&&hasEmail)?'Send to both channels':'Both channels required')
+    +'</div>'
+
+    +'<div id="br-wa-block" style="display:'+(defaultChannel==='email'?'none':'block')+'">'
+      +'<div class="fg"><label class="fl">WhatsApp number</label>'
+        +'<input class="fi" id="br-phone" value="'+_esc(phone||'')+'" placeholder="237XXXXXXXXX"/>'
+        +phoneNote
+      +'</div>'
+      +'<div class="fg"><label class="fl">WhatsApp message</label>'
+        +'<textarea class="ft" id="br-msg" style="min-height:180px;font-size:12px;line-height:1.6">'+_esc(waMsg)+'</textarea>'
+      +'</div>'
+    +'</div>'
+
+    +'<div id="br-email-block" style="display:'+(defaultChannel==='wa'?'none':'block')+'">'
+      +'<div class="fg"><label class="fl">Email address</label>'
+        +'<input class="fi" id="br-email" type="email" value="'+_esc(email||'')+'" placeholder="owner@example.com"/>'
+        +emailNote
+      +'</div>'
+      +'<div class="fg"><label class="fl">Subject</label>'
+        +'<input class="fi" id="br-subject" value="'+_esc(emailSubj)+'"/>'
+      +'</div>'
+      +'<div class="fg"><label class="fl">Email body</label>'
+        +'<textarea class="ft" id="br-email-msg" style="min-height:200px;font-size:12px;line-height:1.6">'+_esc(emailMsg)+'</textarea>'
+      +'</div>'
+    +'</div>'
+
+    +'<div class="alrt alrt-b" style="margin-top:8px;font-size:11px;line-height:1.6">'
+      +'<strong>How sending works:</strong> WhatsApp opens with the message pre-filled \u2014 you tap Send manually. Email is sent immediately through ShopTrack\u2019s mail service to the address shown.'
+    +'</div>';
+
+  modal('\uD83D\uDCAC Send Reminder \u2014 '+_esc(b.name), body,
+    '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
+    +'<button class="btn btn-p" onclick="_brSend(\''+bizId+'\')">\u2192 Send</button>');
+}
+
+// Channel-tab change handler — shows/hides the appropriate field blocks.
+function _brChannelChange(){
+  var ch = (document.querySelector('input[name="br-ch"]:checked')||{}).value || 'wa';
+  var waBlock = document.getElementById('br-wa-block');
+  var emBlock = document.getElementById('br-email-block');
+  if(waBlock) waBlock.style.display = (ch==='email') ? 'none' : 'block';
+  if(emBlock) emBlock.style.display = (ch==='wa')    ? 'none' : 'block';
+  // Visual selected state on labels
+  document.querySelectorAll('[data-ch-label]').forEach(function(el){
+    var v = el.getAttribute('data-ch-label');
+    el.style.borderColor = (v === ch) ? 'var(--a)' : 'var(--border)';
+    el.style.background  = (v === ch) ? 'var(--a-dim)' : 'var(--bg2)';
+  });
+}
+
+// Send the reminder via whichever channel(s) the SA picked.
+async function _brSend(bizId){
+  var b = D.adminBiz.find(function(x){return x.id===bizId;}); if(!b) return;
+  var ch = (document.querySelector('input[name="br-ch"]:checked')||{}).value || 'wa';
+  var waSent = false, emailSent = false, errors = [];
+
+  // WhatsApp leg
+  if(ch === 'wa' || ch === 'both'){
+    var ph = (document.getElementById('br-phone')||{}).value || '';
+    var ms = (document.getElementById('br-msg')||{}).value || '';
+    if(!ph){ errors.push('WhatsApp: no phone number'); }
+    else {
+      var r = await _sendWA(ph, ms, {template:'payment_reminder', variables:window._waTemplateVars||{}});
+      if(r && r.success){ waSent = true; addAudit('WhatsApp reminder sent', b.name); }
+      else if(r && r.fallback){ waSent = true; /* wa.me opened — counts as best-effort sent */ }
+      else { errors.push('WhatsApp: send failed'); }
+    }
+  }
+
+  // Email leg
+  if(ch === 'email' || ch === 'both'){
+    var em = (document.getElementById('br-email')||{}).value || '';
+    var sub = (document.getElementById('br-subject')||{}).value || '';
+    var bodyTxt = (document.getElementById('br-email-msg')||{}).value || '';
+    if(!em || !em.includes('@')){ errors.push('Email: invalid address'); }
+    else if(!sub.trim()){ errors.push('Email: subject is empty'); }
+    else if(!bodyTxt.trim()){ errors.push('Email: body is empty'); }
+    else {
+      var er = await _saSendBillingEmail(em, b.owner||'', b.name||'', sub, bodyTxt);
+      if(er && er.success){
+        emailSent = true;
+        addAudit('Email reminder sent', b.name + ' \u2014 ' + em);
+        toast('\uD83D\uDCE7 Email sent to ' + em, 'success');
+      } else {
+        errors.push('Email: ' + (er.error||'send failed'));
+      }
+    }
+  }
+
+  // Final feedback
+  if(errors.length && !waSent && !emailSent){
+    toast('\u274C ' + errors.join(' \u00B7 '), 'error');
+    return;
+  }
+  if(errors.length){
+    toast('\u26A0\uFE0F Partial: ' + errors.join(' \u00B7 '), 'info');
+  } else if(ch === 'both' && waSent && emailSent){
+    toast('\u2705 Reminder sent via WhatsApp + Email', 'success');
+  }
+  // Close modal only if at least one channel succeeded and there's no
+  // wa.me popup still pending (the WA fallback opens a new tab — closing
+  // the modal while the user reaches for the WhatsApp Send button is
+  // annoying, but they can re-open it anyway).
+  if(waSent || emailSent) setTimeout(closeModal, 300);
 }
 
 function mBillingExtend(bizId){const _s=_L();
