@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779468486");
+console.log("ShopTrack v2.7 - build:1779489069");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -3092,19 +3092,19 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
 <div class="g2" style="margin-bottom:14px">
   ${DC.sections.includes('plSummary')?`<div class="card">
     <div class="card-hd"><div class="card-ttl">${_s.dash_pl}</div><button class="btn btn-g btn-sm" onclick="nav('accounting')">${_s.dash_pl_full}</button></div>
-    ${[[_s.dash_pl_rev,k.rev,'b'],[_s.dash_pl_cogs,k.cogs,'r'],[_s.dash_pl_gp,k.gp,'g'],[_s.dash_pl_oh,k.oh,'y'],[_s.dash_pl_np,k.np,'p']].map(function(row){var lbl=row[0],val=row[1],col=row[2];return`
+    ${[[_s.dash_pl_rev,k.rev,'b','rev'],[_s.dash_pl_cogs,k.cogs,'r','cogs'],[_s.dash_pl_gp,k.gp,'g','gp'],[_s.dash_pl_oh,k.oh,'y','oh'],[_s.dash_pl_np,k.np,'p','np']].map(function(row){var lbl=row[0],val=row[1],col=row[2],key=row[3];return`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:13px;color:var(--text)">${lbl}</span>
-      <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--${col})">${fmt(val)}</span>
+      <span class="dash-pl-val" data-pl="${key}" style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--${col})">${fmt(val)}</span>
     </div>`;}).join('')}
     <div style="margin-top:10px;display:flex;gap:8px">
       <div style="flex:1;background:var(--g-dim);border-radius:6px;padding:8px 10px;text-align:center">
         <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">${_s.dash_margin_gross}</div>
-        <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--g)">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</div>
+        <div id="dash-pl-margin-gross" style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--g)">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</div>
       </div>
       <div style="flex:1;background:var(--p-dim);border-radius:6px;padding:8px 10px;text-align:center">
         <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">${_s.dash_margin_net}</div>
-        <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--p)">${k.rev>0?Math.round(k.np/k.rev*100):0}%</div>
+        <div id="dash-pl-margin-net" style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--p)">${k.rev>0?Math.round(k.np/k.rev*100):0}%</div>
       </div>
     </div>
   </div>`:'<div></div>'}
@@ -24411,6 +24411,9 @@ function setDashPeriod(el, period){
   // Update charts with filtered data
   _updateDashCharts(k, period);
 
+  // Update P&L summary card (if visible in this user's dashboard config)
+  _updateDashPL(k);
+
   // Rebuild Top Products for the selected period
   var topBody = document.getElementById('dash-top-products-body');
   if(topBody) topBody.innerHTML = _buildTopProducts(range);
@@ -24427,6 +24430,22 @@ function _setKpiVal(id, txt){
 function _setKpiSub(id, txt){
   const el = document.getElementById(id);
   if(el) el.textContent = txt;
+}
+
+// Refresh the P&L summary card on the dashboard to reflect the active period.
+// The card is built into the page only if the user's dashboard config includes
+// plSummary; if it's not present, this helper is a no-op (guarded querySelector).
+function _updateDashPL(k){
+  if(!k) return;
+  const map = { rev:k.rev, cogs:k.cogs, gp:k.gp, oh:k.oh, np:k.np };
+  document.querySelectorAll('.dash-pl-val[data-pl]').forEach(function(el){
+    const key = el.getAttribute('data-pl');
+    if(key in map) el.textContent = fmt(map[key]);
+  });
+  const gm = document.getElementById('dash-pl-margin-gross');
+  if(gm) gm.textContent = (k.rev>0 ? Math.round(k.gp/k.rev*100) : 0) + '%';
+  const nm = document.getElementById('dash-pl-margin-net');
+  if(nm) nm.textContent = (k.rev>0 ? Math.round(k.np/k.rev*100) : 0) + '%';
 }
 
 function _updateDashCharts(k, period){
