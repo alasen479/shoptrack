@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779572549");
+console.log("ShopTrack v2.7 - build:1779574069");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1642,7 +1642,23 @@ function _poPaidChange(){
 }
 
 function _epRecalcTotal(){
-  var sub  = parseFloat(document.getElementById('ep-sub')?.value)||0;
+  // Sum line rows if present (the rebuilt Edit Purchase modal now lets
+  // the user edit per-line qty + unit cost directly). Falls back to the
+  // ep-sub field for legacy code paths.
+  var sub = 0;
+  var lineRows = document.querySelectorAll('#ep-line-rows .ep-line-row');
+  if(lineRows.length){
+    lineRows.forEach(function(row){
+      var qty = parseFloat(row.querySelector('.ep-line-qty')?.value)||0;
+      var uc  = parseFloat(row.querySelector('.ep-line-uc')?.value)||0;
+      sub += qty * uc;
+    });
+    // Reflect the live subtotal in the (readonly) ep-sub field
+    var subEl = document.getElementById('ep-sub');
+    if(subEl) subEl.value = Math.round(sub*100)/100;
+  } else {
+    sub = parseFloat(document.getElementById('ep-sub')?.value)||0;
+  }
   var fr   = parseFloat(document.getElementById('ep-freight')?.value)||0;
   var du   = parseFloat(document.getElementById('ep-duties')?.value)||0;
   var tx   = parseFloat(document.getElementById('ep-taxes')?.value)||0;
@@ -10180,10 +10196,19 @@ function pgAccounting(){const _s=_L();const _ui=_s;
     D.rentals.filter(r=>inRange(r.start,rng)&&(r.st==='Returned'||r.st==='Checked Out'||r.st==='Overdue')).forEach(r=>lines.push({dt:r.start,type:'Rental',cls:'bx-c',ref:r.id,desc:r.cust+' — '+r.item,dr:null,cr:r.fee}));
     (D.appointments||[]).filter(a=>a.st==='Completed'&&(a.totalAmt||0)>0&&inRange(a.date,rng)).forEach(a=>lines.push({dt:a.date,type:'Service',cls:'bx-p',ref:a.id,desc:(a.custName||'Client')+' — '+(a.serviceName||'Service'),dr:null,cr:a.totalAmt}));
     D.exp.filter(e=>inRange(e.dt,rng)&&e.cat!=='Vendor Payment').forEach(e=>lines.push({dt:e.dt,type:'Expense',cls:'bx-r',ref:e.id,desc:e.cat+' — '+(e.payee||''),dr:e.amt,cr:null}));
-    // Paid/Received purchases appear as cash outflows in the ledger
+    // Paid/Received purchases appear as full cash outflows
     D.purchases.filter(p=>(p.st==='Paid'||p.st==='Received')&&inRange(p.dt,rng)).forEach(p=>lines.push({dt:p.dt,type:'Purchase',cls:'bx-y',ref:p.id,desc:p.vendor+' — '+p.items,dr:p.total,cr:null}));
-    // Pending/Partial POs appear as AP liabilities (credit — money owed but not yet paid)
-    D.purchases.filter(p=>(p.st==='Pending'||p.st==='Partial'||p.st==='Unpaid')&&inRange(p.dt,rng)).forEach(p=>lines.push({dt:p.dt,type:'PO (AP)',cls:'bx-o',ref:p.id,desc:'[AP] '+p.vendor+' — '+p.items,dr:null,cr:null,ap:p.total}));
+    // Pending/Partial POs: any portion already paid = cash outflow; remainder = AP liability
+    D.purchases.filter(p=>(p.st==='Pending'||p.st==='Partial'||p.st==='Unpaid')&&inRange(p.dt,rng)).forEach(function(p){
+      var paidPart = p.paid||0;
+      var unpaidPart = Math.max(0, (p.total||0) - paidPart);
+      if(paidPart > 0.01){
+        lines.push({dt:p.dt,type:'Purchase (Partial)',cls:'bx-y',ref:p.id,desc:p.vendor+' — '+p.items+' [paid portion]',dr:paidPart,cr:null});
+      }
+      if(unpaidPart > 0.01){
+        lines.push({dt:p.dt,type:'PO (AP)',cls:'bx-o',ref:p.id,desc:'[AP] '+p.vendor+' — '+p.items,dr:null,cr:null,ap:unpaidPart});
+      }
+    });
     lines.sort((a,b)=>b.dt.localeCompare(a.dt));
     if(!lines.length) return '<div style="color:var(--text2);font-size:13px;padding:24px;text-align:center">No transactions in '+rng.label+'</div>';
     const totDr=lines.reduce((a,l)=>a+(l.dr||0),0);
@@ -18195,6 +18220,16 @@ function _dbToPurchase(r){ return {
   total:r.total||0,
   paid: r.paid != null ? r.paid : (r.status==='Paid' || r.status==='Payé' ? (r.total||0) : 0),
   bal:  r.bal  != null ? r.bal  : Math.max(0, (r.total||0) - (r.paid != null ? r.paid : (r.status==='Paid' || r.status==='Payé' ? (r.total||0) : 0))),
+  payments: r.payments
+    ? (typeof r.payments === 'string'
+        ? (function(){ try{return JSON.parse(r.payments);}catch(e){return [];} })()
+        : r.payments)
+    : [],
+  linesReceived: r.lines_received
+    ? (typeof r.lines_received === 'string'
+        ? (function(){ try{return JSON.parse(r.lines_received);}catch(e){return [];} })()
+        : r.lines_received)
+    : [],
   invId:r.inv_id||'',
   delivery:r.delivery_date||'',
   method:r.method||'Cash',
@@ -18379,6 +18414,8 @@ function _purchaseToDB(p, bizId){ return {
   total:p.total||0,
   paid: p.paid||0,
   bal:  p.bal != null ? p.bal : Math.max(0,(p.total||0) - (p.paid||0)),
+  payments:       p.payments      ? JSON.stringify(p.payments)      : null,
+  lines_received: p.linesReceived ? JSON.stringify(p.linesReceived) : null,
   inv_id:p.invId||'',
   delivery_date:p.delivery||'',
   method:p.method||'',
@@ -18426,16 +18463,34 @@ function _reconcileCustomerTotals(){
 }
 
 function _reconcileVendorTotals(){
-  // Recompute AP (vendor balances) from purchases
-  // AP = sum of unpaid purchases per vendor
+  // Recompute AP (vendor balances) from purchases.
+  //   AP per vendor = Σ (PO total) − Σ (PO actual paid)
+  // Previously this only counted PO totals when status was 'Paid' — partial
+  // payments contributed zero, so a 240,000-Frs PO with 200,000 already
+  // paid showed the full 240,000 as outstanding. Now we read p.paid (which
+  // can be any value 0…total) and any 'Paid' status without an explicit
+  // p.paid is treated as fully paid for backwards compatibility with
+  // pre-paid-field records.
   if(!D.vendors||!D.vendors.length) return;
-  const poMap  = {}; // vendorId → total ordered
-  const paidMap= {}; // vendorId → total paid
+  const poMap   = {}; // vendorId → total ordered
+  const paidMap = {}; // vendorId → total actually paid (partial-aware)
   D.purchases.forEach(function(p){
     const vid = p.vendorId || p.vendor;
     if(!vid) return;
-    poMap[vid]   = (poMap[vid]   ||0) + (p.total||0);
-    if(p.st==='Paid') paidMap[vid] = (paidMap[vid]||0) + (p.total||0);
+    poMap[vid] = (poMap[vid] || 0) + (p.total || 0);
+    // Use explicit p.paid if present. Fall back to inferring from status:
+    //   Paid → assume full
+    //   Partial → conservatively assume 0 (no field, no info)
+    //   anything else → 0
+    var actualPaid;
+    if(typeof p.paid === 'number' && !isNaN(p.paid)){
+      actualPaid = p.paid;
+    } else if(p.st === 'Paid'){
+      actualPaid = p.total || 0;
+    } else {
+      actualPaid = 0;
+    }
+    paidMap[vid] = (paidMap[vid] || 0) + actualPaid;
   });
   D.vendors.forEach(function(v){
     const vid = v.id;
@@ -18720,13 +18775,16 @@ async function _dbSavePurchase(p){
   var result = await _safeUpsert('purchases', _purchaseToDB(p, SESSION.bizId), 'savePurchase');
   if(result && !result.ok){
     var errMsg = (result.error && (result.error.message || result.error.code)) || '';
-    // If the schema doesn't have the paid/bal columns yet, retry without
-    // them. Local copy keeps the values, syncs once migration runs.
-    if(/\b(paid|bal)\b/i.test(errMsg)){
-      console.warn('[savePurchase] paid/bal columns not yet in schema; retrying without them.');
+    // If the schema doesn't have the paid/bal/payments/lines_received columns
+    // yet, retry without them. Local copy keeps the values, syncs once the
+    // migration runs.
+    if(/\b(paid|bal|payments|lines_received)\b/i.test(errMsg)){
+      console.warn('[savePurchase] paid/bal/payments/lines_received columns not yet in schema; retrying without them.');
       var payload = _purchaseToDB(p, SESSION.bizId);
       delete payload.paid;
       delete payload.bal;
+      delete payload.payments;
+      delete payload.lines_received;
       var retry = await _safeUpsert('purchases', payload, 'savePurchase');
       if(retry && retry.ok) return;
       if(retry) console.error('[savePurchase] retry FAILED for '+p.id+':', retry.error);
@@ -24955,12 +25013,41 @@ function mEditPurchase(id){const _s=_L();
   if(!requireRight('edit_purchases','Edit Purchases')) return;
   const p=D.purchases.find(x=>x.id===id);if(!p)return;
   const r=CUR.rate, sym=CUR.symbol;
+  const fr = BIZ.language==='fr';
   const v=(n)=>Math.round((p[n]||0)*r*100)/100;
   const vOpts = D.vendors.map(v2=>`<option value="${_esc(v2.name)}"${v2.name===p.vendor?' selected':''}>${_esc(v2.name)}</option>`).join('');
-  const stOpts = ['Pending','Partial','Paid','Received','Unpaid']
+  const stOpts = ['Pending','Partial','Paid','Received']
     .map(s=>`<option${s===p.st?' selected':''}>${s}</option>`).join('');
   const methodOpts = ['Bank Transfer','Cash','Mobile Money (MTN)','Orange Money','Credit Card','Direct Debit','Sweat Equity','Barter / In-Kind']
     .map(m=>`<option${m===p.method?' selected':''}>${m}</option>`).join('');
+
+  // Build inventory options for each line's "linked item" select
+  const invOptsForLine = function(currentInvId){
+    return '<option value="">'+(fr?'-- Personnalisé / non lié --':'-- Custom / unlinked --')+'</option>'
+      + D.inv.map(function(i){
+          var sel = i.id===currentInvId ? ' selected' : '';
+          return '<option value="'+i.id+'"'+sel+'>'+_esc(i.name)+(i.sku?' ('+_esc(i.sku)+')':'')+'</option>';
+        }).join('');
+  };
+
+  // Per-line editor rows. For legacy POs without structured lines, we
+  // synthesise a single row so the user can correct qty/cost going forward.
+  const linesToShow = (p.lines && p.lines.length)
+    ? p.lines
+    : [{invId:p.invId||'', qty:p.qty||1, uc: p.qty ? Math.round((p.sub/p.qty)*r) : 0, name:p.items||''}];
+
+  const lineRowsHTML = linesToShow.map(function(li, idx){
+    return '<div class="ep-line-row" data-idx="'+idx+'" style="display:grid;grid-template-columns:1fr 70px 100px 30px;gap:6px;margin-bottom:6px;align-items:center">'
+      +'<select class="fs ep-line-inv" onchange="_epLineChange(this)">'+invOptsForLine(li.invId||'')+'</select>'
+      +'<input class="fi ep-line-qty" type="number" step="any" min="0" value="'+(li.qty||1)+'" style="font-size:12px;text-align:center" oninput="_epRecalcTotal()"/>'
+      +'<input class="fi ep-line-uc" type="number" step="any" min="0" value="'+(li.uc||0)+'" style="font-size:12px;text-align:right" placeholder="'+(fr?'Coût/unité':'Cost/unit')+'" oninput="_epRecalcTotal()"/>'
+      +'<button type="button" class="btn btn-d btn-xs" onclick="_epRemoveLine(this)" style="padding:6px 8px">\u2715</button>'
+    +'</div>';
+  }).join('');
+
+  // Paid amount input — initial value comes from p.paid (partial-aware) or
+  // inferred from status for legacy records
+  const initPaidDisplay = Math.round(((p.paid||0) + ((p.paid==null && p.st==='Paid')?(p.total||0):0)) * r);
 
   modal(`✏️ Edit PO — ${p.id}`,`
   <div class="fg-2">
@@ -24968,9 +25055,23 @@ function mEditPurchase(id){const _s=_L();
     <div class="fg"><label class="fl">${_s.po_edit_delivery}</label><input class="fi" type="date" id="ep-delivery" value="${p.delivery||''}"/></div>
     <div class="fg"><label class="fl">${_s.ui_vendor}</label><select class="fs" id="ep-vendor">${vOpts}</select></div>
     <div class="fg"><label class="fl">${_s.po_pay_status}</label><select class="fs" id="ep-st">${stOpts}</select></div>
-    <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="ep-method">${methodOpts}</select></div>
-    <div class="fg"><label class="fl">Unit Cost×Qty <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
-      <input class="fi" type="number" id="ep-sub" value="${v('sub')}" step="any" oninput="_epRecalcTotal()"/></div>
+  </div>
+
+  <div class="fg" style="margin-top:6px">
+    <label class="fl" style="margin-bottom:6px">${fr?'Articles':'Line Items'}</label>
+    <div style="display:grid;grid-template-columns:1fr 70px 100px 30px;gap:6px;align-items:center;padding:0 2px;margin-bottom:4px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">${fr?'Article':'Item'}</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);text-align:center">${fr?'Qté':'Qty'}</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);text-align:right">${fr?'Coût/unité':'Unit Cost'} (${sym})</div>
+      <div></div>
+    </div>
+    <div id="ep-line-rows">${lineRowsHTML}</div>
+    <button type="button" class="btn btn-s btn-xs" onclick="_epAddLine()" style="margin-top:4px">+ ${fr?'Ajouter Ligne':'Add Line'}</button>
+  </div>
+
+  <div class="fg-2" style="margin-top:8px">
+    <div class="fg"><label class="fl">${fr?'Sous-total':'Subtotal'} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+      <input class="fi" type="number" id="ep-sub" value="${v('sub')}" step="any" readonly style="background:var(--bg3);cursor:default"/></div>
     <div class="fg"><label class="fl">Freight <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="ep-freight" value="${v('freight')}" step="any" oninput="_epRecalcTotal()"/></div>
     <div class="fg"><label class="fl">Import Duties <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
@@ -24979,9 +25080,13 @@ function mEditPurchase(id){const _s=_L();
       <input class="fi" type="number" id="ep-taxes" value="${v('taxes')}" step="any" oninput="_epRecalcTotal()"/></div>
     <div class="fg"><label class="fl">Other Costs <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="ep-other" value="${v('other')}" step="any" oninput="_epRecalcTotal()"/></div>
-    <div class="fg"><label class="fl" style="color:var(--g);font-weight:700">Total Landed Cost <span style="font-size:10px;color:var(--text2);font-weight:400">(${sym})</span></label>
+    <div class="fg"><label class="fl" style="color:var(--g);font-weight:700">${fr?'Coût Total Rendu':'Total Landed Cost'} <span style="font-size:10px;color:var(--text2);font-weight:400">(${sym})</span></label>
       <input class="fi" type="number" id="ep-total-display" value="${v('total')}" readonly style="background:var(--a-dim);color:var(--g);font-weight:700;cursor:default"/></div>
+    <div class="fg"><label class="fl">${fr?'Montant Payé':'Amount Paid'} <span style="font-size:10px;color:var(--text2)">(${sym}) <span id="ep-paid-hint" style="color:var(--text3)">${fr?'— ajuste le statut automatiquement':'— adjusts status automatically'}</span></span></label>
+      <input class="fi" type="number" id="ep-paid" value="${initPaidDisplay}" step="any" min="0" oninput="_epPaidChange()"/></div>
+    <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="ep-method">${methodOpts}</select></div>
   </div>
+
   <div class="fg"><label class="fl">${_s.po_items_desc}</label><textarea class="ft" id="ep-items" style="min-height:55px">${_esc(p.items||'')}</textarea></div>
   <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ep-notes" style="min-height:42px">${_esc(p.notes||'')}</textarea></div>`,
   `<button class="btn btn-d btn-sm" onclick="closeModal();deletePurchase('${id}')">🗑 Delete</button>
@@ -24989,64 +25094,203 @@ function mEditPurchase(id){const _s=_L();
    <button class="btn btn-p" onclick="saveEditPurchase('${id}')">💾 Save</button>`);
 }
 
+// Helpers for the line-item editor in Edit Purchase modal
+function _epAddLine(){
+  var rows = document.getElementById('ep-line-rows'); if(!rows) return;
+  var fr = BIZ.language==='fr';
+  var idx = rows.querySelectorAll('.ep-line-row').length;
+  var invOpts = '<option value="">'+(fr?'-- Personnalisé / non lié --':'-- Custom / unlinked --')+'</option>'
+    + D.inv.map(function(i){
+        return '<option value="'+i.id+'">'+_esc(i.name)+(i.sku?' ('+_esc(i.sku)+')':'')+'</option>';
+      }).join('');
+  var row = document.createElement('div');
+  row.className = 'ep-line-row';
+  row.dataset.idx = idx;
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 70px 100px 30px;gap:6px;margin-bottom:6px;align-items:center';
+  row.innerHTML = '<select class="fs ep-line-inv" onchange="_epLineChange(this)">'+invOpts+'</select>'
+    +'<input class="fi ep-line-qty" type="number" step="any" min="0" value="1" style="font-size:12px;text-align:center" oninput="_epRecalcTotal()"/>'
+    +'<input class="fi ep-line-uc" type="number" step="any" min="0" value="0" style="font-size:12px;text-align:right" oninput="_epRecalcTotal()"/>'
+    +'<button type="button" class="btn btn-d btn-xs" onclick="_epRemoveLine(this)" style="padding:6px 8px">\u2715</button>';
+  rows.appendChild(row);
+}
+function _epRemoveLine(btn){
+  var row = btn.closest('.ep-line-row');
+  var rows = document.getElementById('ep-line-rows');
+  if(rows && rows.querySelectorAll('.ep-line-row').length > 1){
+    row.remove();
+  } else {
+    // Clear instead of removing the only row
+    row.querySelector('.ep-line-inv').value='';
+    row.querySelector('.ep-line-qty').value='1';
+    row.querySelector('.ep-line-uc').value='0';
+  }
+  _epRecalcTotal();
+}
+function _epLineChange(sel){
+  // When the user picks an inventory item, auto-fill the unit cost from
+  // the item's current cost basis (helpful for re-orders).
+  var row = sel.closest('.ep-line-row');
+  if(!row) return;
+  var invId = sel.value;
+  if(!invId) return;
+  var inv = D.inv.find(function(x){return x.id===invId;});
+  if(!inv) return;
+  var uc = row.querySelector('.ep-line-uc');
+  if(uc && (!uc.value || uc.value === '0')){
+    uc.value = Math.round((inv.cost||0) * CUR.rate);
+  }
+  _epRecalcTotal();
+}
+function _epPaidChange(){
+  // Auto-correct status from typed paid amount, same pattern as the
+  // Record Purchase modal.
+  var stEl = document.getElementById('ep-st');
+  var paidEl = document.getElementById('ep-paid');
+  var totEl  = document.getElementById('ep-total-display');
+  if(!stEl || !paidEl || !totEl) return;
+  var paid = parseFloat(paidEl.value) || 0;
+  var tot  = parseFloat(totEl.value)  || 0;
+  if(!tot) return;
+  var newSt;
+  if(paid >= tot - 0.01) newSt = stEl.value === 'Received' ? 'Paid' : 'Paid';
+  else if(paid > 0)       newSt = stEl.value === 'Received' ? 'Received' : 'Partial';
+  else                    newSt = stEl.value === 'Received' ? 'Received' : 'Pending';
+  // Only flip the dropdown if the change is meaningful
+  if(stEl.value !== newSt && Array.from(stEl.options).some(function(o){return o.value===newSt;})){
+    stEl.value = newSt;
+  }
+}
+
 function saveEditPurchase(id){var _s=_L();
   const p=D.purchases.find(x=>x.id===id);if(!p)return;
   const rr=CUR.rate;
   const oldSt  = p.st;
   const oldTotal = p.total||0;
+  const oldPaid  = p.paid||0;
+  // Snapshot old line qtys for inventory diff math below
+  const oldLinesQtyByInv = {};
+  if(p.lines && p.lines.length){
+    p.lines.forEach(function(li){
+      if(li.invId && li.invId!=='__custom__'){
+        oldLinesQtyByInv[li.invId] = (oldLinesQtyByInv[li.invId]||0) + (li.qty||0);
+      }
+    });
+  }
+  // Track whether the previous state had stock already added to inventory
+  // (Received or Paid status means stock was added). New state: same rule.
+  const oldStockAdded = oldSt==='Received' || oldSt==='Paid';
 
   p.dt       = document.getElementById('ep-dt')?.value||p.dt;
   p.delivery = document.getElementById('ep-delivery')?.value||p.delivery;
   p.vendor   = document.getElementById('ep-vendor')?.value||p.vendor;
   const newSt  = document.getElementById('ep-st')?.value||p.st;
   p.method   = document.getElementById('ep-method')?.value||p.method;
-  p.sub      = Math.round(((parseFloat(document.getElementById('ep-sub')?.value)||0)/rr)*10000)/10000;
+
+  // Read line rows (qty + unit cost per line). If the user removed all
+  // lines (every row empty), fall back to legacy single-row interpretation.
+  const fr = BIZ.language==='fr';
+  const newLines = [];
+  document.querySelectorAll('#ep-line-rows .ep-line-row').forEach(function(row){
+    var invId = row.querySelector('.ep-line-inv')?.value || '';
+    var qty   = parseFloat(row.querySelector('.ep-line-qty')?.value) || 0;
+    var uc    = parseFloat(row.querySelector('.ep-line-uc')?.value)  || 0;
+    if(qty <= 0 && uc <= 0 && !invId) return; // skip empty rows
+    var name = '';
+    if(invId){
+      var inv = D.inv.find(function(x){return x.id===invId;});
+      if(inv) name = inv.name + (inv.sku?' ('+inv.sku+')':'');
+    }
+    newLines.push({invId:invId, qty:qty, uc:uc, name:name||'Custom'});
+  });
+  if(newLines.length){
+    p.lines = newLines;
+    // qty + sub derived from lines
+    p.qty = newLines.reduce(function(a,li){return a+(li.qty||0);}, 0) || 1;
+    p.sub = newLines.reduce(function(a,li){return a + (li.qty||0)*(li.uc||0)/rr;}, 0);
+    p.sub = Math.round(p.sub*10000)/10000;
+    // First inventory-linked line is the primary invId for legacy queries
+    var primary = newLines.find(function(li){return li.invId && li.invId!=='__custom__';});
+    p.invId = primary ? primary.invId : '';
+  } else {
+    // No line rows entered — read the (still readonly-displayed) sub field
+    p.sub = Math.round(((parseFloat(document.getElementById('ep-sub')?.value)||0)/rr)*10000)/10000;
+  }
   p.freight  = Math.round(((parseFloat(document.getElementById('ep-freight')?.value)||0)/rr)*10000)/10000;
   p.duties   = Math.round(((parseFloat(document.getElementById('ep-duties')?.value)||0)/rr)*10000)/10000;
   p.taxes    = Math.round(((parseFloat(document.getElementById('ep-taxes')?.value)||0)/rr)*10000)/10000;
   p.other    = Math.round(((parseFloat(document.getElementById('ep-other')?.value)||0)/rr)*10000)/10000;
   p.total    = p.sub+p.freight+p.duties+p.taxes+p.other;
+
+  // Paid amount — explicit. Allow value to drive status if user changed
+  // amount but not the status select (or vice versa, status drives auto-fill).
+  var newPaidDisplay = parseFloat(document.getElementById('ep-paid')?.value);
+  var newPaid;
+  if(!isNaN(newPaidDisplay) && newPaidDisplay >= 0){
+    newPaid = newPaidDisplay / rr;
+  } else if(newSt === 'Paid'){
+    newPaid = p.total;
+  } else if(newSt === 'Received'){
+    // Received doesn't imply paid — keep whatever was there
+    newPaid = oldPaid;
+  } else {
+    newPaid = oldPaid;
+  }
+  p.paid = newPaid;
+  p.bal  = Math.max(0, p.total - p.paid);
+  // Reconcile status with paid amount — paid amount wins over the dropdown
+  // when they disagree, mirroring the create-PO behaviour. EXCEPT: if status
+  // is Received, preserve it (Received means goods arrived; payment is a
+  // separate axis).
+  if(newSt === 'Received' && p.paid < p.total - 0.01){
+    p.st = 'Received'; // received but not fully paid — keep
+  } else if(p.paid >= p.total - 0.01){
+    p.st = newSt === 'Received' ? 'Paid' : 'Paid';
+  } else if(p.paid > 0){
+    p.st = newSt === 'Received' ? 'Received' : 'Partial';
+  } else {
+    p.st = newSt === 'Received' ? 'Received' : 'Pending';
+  }
+
   p.items    = document.getElementById('ep-items')?.value||p.items;
   p.notes    = document.getElementById('ep-notes')?.value??p.notes;
-  p.st       = newSt;
 
-    // \u2500\u2500 Persist inventory: add stock if newly transitioned to Received/Paid
-    if(wasUnpaid && nowPaid && p.lines && p.lines.length){
-      var _rr=CUR.rate;
-      p.lines.forEach(function(li){
-        if(li.invId && li.invId!=='__custom__'){
-          var _inv=D.inv.find(function(x){return x.id===li.invId;});
-          if(_inv){
-            var _poQty=li.qty||1;
-            _inv.qty=(_inv.qty||0)+_poQty;
-            if(li.uc) _inv.cost=Math.round((li.uc/_rr)*10000)/10000;
-            _dbSaveInv(_inv,+_poQty);
-          }
-        }
-      });
-    }
-  // ── Fix vendor AP when status changes ──────────────────────
-  // If transitioning FROM an unpaid state TO paid/received → reduce AP
-  const wasUnpaid = oldSt==='Pending'||oldSt==='Partial'||oldSt==='Unpaid';
-  const nowPaid   = newSt==='Paid'||newSt==='Received';
-  const wasP      = oldSt==='Paid'||oldSt==='Received';
-  const nowUnpaid = newSt==='Pending'||newSt==='Partial'||newSt==='Unpaid';
-  const vendorObj = D.vendors.find(v=>v.name===p.vendor||v.id===p.vendorId);
-  if(vendorObj){
-    if(wasUnpaid && nowPaid){
-      // Clear AP for this PO amount
-      vendorObj.bal = Math.max(0, (vendorObj.bal||0) - oldTotal);
-      _dbSaveVendor(vendorObj);
-    } else if(wasP && nowUnpaid){
-      // Re-add AP (e.g. payment reversal)
-      vendorObj.bal = (vendorObj.bal||0) + p.total;
-      _dbSaveVendor(vendorObj);
-    }
+  // ── Inventory diff: handle qty changes per line ────────────────────────
+  // If stock was already added (old status was Received/Paid), compute the
+  // delta between old per-inv qty and new per-inv qty. If stock wasn't
+  // added before but now is (transitioning into Received/Paid), add full
+  // new qtys. If stock was added but now status reverts to Pending/Partial,
+  // remove the previously-added stock (rare; user is reversing a receipt).
+  const newStockAdded = p.st==='Received' || p.st==='Paid';
+  const newLinesQtyByInv = {};
+  if(p.lines && p.lines.length){
+    p.lines.forEach(function(li){
+      if(li.invId && li.invId!=='__custom__'){
+        newLinesQtyByInv[li.invId] = (newLinesQtyByInv[li.invId]||0) + (li.qty||0);
+      }
+    });
   }
+  // Build the union of all invIds touched
+  const allInvIds = new Set([
+    ...Object.keys(oldLinesQtyByInv),
+    ...Object.keys(newLinesQtyByInv),
+  ]);
+  allInvIds.forEach(function(invId){
+    var inv = D.inv.find(function(x){return x.id===invId;});
+    if(!inv) return;
+    var oldQty = oldStockAdded ? (oldLinesQtyByInv[invId]||0) : 0;
+    var newQty = newStockAdded ? (newLinesQtyByInv[invId]||0) : 0;
+    var delta = newQty - oldQty;
+    if(Math.abs(delta) < 0.001) return;
+    inv.qty = Math.max(0, (inv.qty||0) + delta);
+    _dbSaveInv(inv, delta);
+  });
+  // (Cost re-computation on edit is intentionally not done here — too easy
+  // to corrupt history. The original receipt's WMA blend stands. To revise
+  // a cost basis, delete and re-create the PO.)
 
   _dbSavePurchase(p);
   refreshLiveKpis();
-  addAudit('PO edited', id+' — '+p.vendor+' — '+p.st+' — '+fmt(p.total));
+  addAudit('PO edited', id+' — '+p.vendor+' — '+p.st+' — '+fmt(p.total)+(p.paid?' (paid '+fmt(p.paid)+')':''));
   closeModal();
   toast(_L().t_po_updated,'success');
   nav('purchases');
@@ -25298,12 +25542,16 @@ function computeKPIs(range){
     _arMap[cid] = (_arMap[cid]||0) + ((s.total||s.amt||0)-(s.paid||0));
   });
   const ar = Object.values(_arMap).filter(v=>v>0.01).reduce((a,v)=>a+v,0);
-  // AP: recompute live from unpaid purchases
+  // AP: recompute live from unpaid purchases.
+  // Partial-payment aware: outstanding per PO = total − paid. A 240k PO
+  // with 200k paid contributes only 40k to AP, not the full 240k.
   const _apMap = {};
   D.purchases.forEach(function(p){
     if(p.st==='Paid') return;
     const vid=p.vendorId||p.vendor; if(!vid) return;
-    _apMap[vid] = (_apMap[vid]||0) + (p.total||0);
+    var outstanding = (p.total||0) - (p.paid||0);
+    if(outstanding < 0.01) return;
+    _apMap[vid] = (_apMap[vid]||0) + outstanding;
   });
   const ap = Object.values(_apMap).filter(v=>v>0.01).reduce((a,v)=>a+v,0);
 
@@ -25313,10 +25561,16 @@ function computeKPIs(range){
   const saleCashIn  = sales.reduce((a,s)=>a+(s.paid||0), 0);
   const rentCashIn  = earnedRentals.reduce((a,r)=>a+(r.paid||r.fee||0), 0);
   const cashIn      = saleCashIn + rentCashIn + apptRev;
-  // Cash out = expenses paid + purchases paid in the period
+  // Cash out = expenses paid + purchases paid in the period (full or partial)
+  // For Paid POs: full total counts as cash gone.
+  // For Pending/Partial POs: only the actually-paid portion counts.
   const paidPurchases = D.purchases
-    .filter(p=>p.st==='Paid' && inRange(p.dt, range))
-    .reduce((a,p)=>a+(p.total||0), 0);
+    .filter(p=>inRange(p.dt, range))
+    .reduce(function(a, p){
+      if(p.st==='Paid') return a + (p.total||0);
+      // Partial / Pending — use whatever was already paid
+      return a + (p.paid||0);
+    }, 0);
   const cashOut     = oh + paidPurchases;
 
   const invVal   = D.inv.reduce(function(a,i){return a+(i.cost||0)*(i.qty||0);},0);
@@ -26857,8 +27111,96 @@ function _calNewRental(dateStr){const _s=_L();
 // ============================================================
 function mViewPurchase(id){const _s=_L();
   const p=D.purchases.find(x=>x.id===id);if(!p)return;
+  const fr = BIZ.language==='fr';
   const landedCosts = (p.freight||0)+(p.duties||0)+(p.taxes||0)+(p.other||0);
   const landedPct   = p.sub>0 ? Math.round(landedCosts/p.sub*100) : 0;
+  // Payment derived values (partial-aware)
+  const paid = p.paid || (p.st==='Paid' ? (p.total||0) : 0);
+  const bal  = Math.max(0, (p.total||0) - paid);
+  // Receipt state — p.linesReceived[i] is qty received for p.lines[i].
+  // Treat fully-received POs as having every line fully received; legacy
+  // POs without lines/linesReceived fall back to status inference.
+  const isFullyReceived = p.st==='Received' || p.st==='Paid';
+  const linesReceived = p.linesReceived || (isFullyReceived && p.lines
+    ? p.lines.map(function(l){return l.qty||1;})
+    : []);
+  const anyOutstanding = p.lines && p.lines.length
+    ? p.lines.some(function(l, i){ return (l.qty||1) > (linesReceived[i]||0); })
+    : !isFullyReceived;
+
+  // Line items table — shows ordered qty vs received qty per line so
+  // the user can see at a glance which items are still pending delivery.
+  var linesTableHTML = '';
+  if(p.lines && p.lines.length){
+    var rowsHTML = p.lines.map(function(li, idx){
+      var name = li.name || (li.invId && li.invId!=='__custom__'
+        ? (D.inv.find(function(i){return i.id===li.invId;})||{}).name || 'Item'
+        : 'Item');
+      var ordered = li.qty||1;
+      var recvd   = linesReceived[idx] || 0;
+      var statusBadge;
+      if(recvd >= ordered)      statusBadge = '<span style="font-size:10px;color:var(--g);font-weight:700">\u2713 '+(fr?'Reçu':'Received')+'</span>';
+      else if(recvd > 0)         statusBadge = '<span style="font-size:10px;color:var(--y);font-weight:700">'+recvd+'/'+ordered+' '+(fr?'reçu':'received')+'</span>';
+      else                       statusBadge = '<span style="font-size:10px;color:var(--text2)">'+(fr?'en attente':'pending')+'</span>';
+      var ucDisplay = (li.uc||0); // already display currency
+      return '<tr>'
+        +'<td style="padding:7px 10px;font-size:12px">'+_esc(name)+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+ordered+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+fmt(ucDisplay/CUR.rate)+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-weight:600;font-size:12px">'+fmt((ucDisplay*ordered)/CUR.rate)+'</td>'
+        +'<td style="padding:7px 10px;text-align:right">'+statusBadge+'</td>'
+      +'</tr>';
+    }).join('');
+    linesTableHTML = '<div class="fl" style="margin:14px 0 6px">'+(fr?'Articles':'Line items')+'</div>'
+      +'<div style="border:1px solid var(--border2);border-radius:8px;overflow:hidden;overflow-x:auto">'
+        +'<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:480px">'
+          +'<thead><tr style="background:var(--bg3);border-bottom:1px solid var(--border)">'
+            +'<th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Article':'Item')+'</th>'
+            +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Qté':'Qty')+'</th>'
+            +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Coût Unit.':'Unit Cost')+'</th>'
+            +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Sous-total':'Subtotal')+'</th>'
+            +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Statut':'Status')+'</th>'
+          +'</tr></thead>'
+          +'<tbody>'+rowsHTML+'</tbody>'
+        +'</table>'
+      +'</div>';
+  }
+
+  // Payment summary block (only when there's payment activity worth showing)
+  var paymentBlockHTML = '';
+  if(paid > 0 || bal > 0){
+    paymentBlockHTML = '<div class="fl" style="margin:14px 0 6px">'+(fr?'Paiement':'Payment')+'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
+        +'<div style="padding:10px 12px;background:var(--bg3);border-radius:8px">'
+          +'<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">'+(fr?'Total':'Total')+'</div>'
+          +'<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);margin-top:2px">'+fmt(p.total)+'</div>'
+        +'</div>'
+        +'<div style="padding:10px 12px;background:var(--g-dim);border-radius:8px">'
+          +'<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">'+(fr?'Payé':'Paid')+'</div>'
+          +'<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--g);margin-top:2px">'+fmt(paid)+'</div>'
+        +'</div>'
+        +'<div style="padding:10px 12px;background:'+(bal>0?'var(--r-dim)':'var(--bg3)')+';border-radius:8px">'
+          +'<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">'+(fr?'Solde Dû':'Balance Due')+'</div>'
+          +'<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:'+(bal>0?'var(--r)':'var(--g)')+';margin-top:2px">'+fmt(bal)+'</div>'
+        +'</div>'
+      +'</div>';
+  }
+
+  // Payment history list — shown if the PO has recorded payments
+  var paymentHistoryHTML = '';
+  if(p.payments && p.payments.length){
+    paymentHistoryHTML = '<div class="fl" style="margin:14px 0 6px">'+(fr?'Historique des Paiements':'Payment History')+'</div>'
+      +'<div style="border:1px solid var(--border2);border-radius:8px;overflow:hidden">'
+        + p.payments.map(function(py, idx){
+          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;'
+            +(idx>0?'border-top:1px solid var(--border)':'')+';font-size:12px">'
+            +'<div><span style="color:var(--text2)">'+_esc(py.dt||'')+'</span> · <span style="font-weight:600">'+_esc(py.method||'—')+'</span>'
+            +(py.note?' · <span style="color:var(--text3);font-style:italic">'+_esc(py.note)+'</span>':'')+'</div>'
+            +'<div style="font-family:var(--mono);font-weight:700;color:var(--g)">'+fmt(py.amount||0)+'</div>'
+          +'</div>';
+        }).join('')
+      +'</div>';
+  }
 
   modal(`📦 Purchase Order — ${p.id}`,`
   <!-- Cost summary tiles -->
@@ -26884,73 +27226,306 @@ function mViewPurchase(id){const _s=_L();
     ${p.taxes>0?`<div><div class="fl">${_s.po_view_taxes}</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.taxes)}</div></div>`:''}
     ${p.other>0?`<div><div class="fl">${_s.po_view_other}</div><div style="font-family:var(--mono);color:var(--text)">${fmt(p.other)}</div></div>`:''}
   </div>
-  <div class="fl" style="margin-bottom:6px">${_s.po_view_items}</div>
-  <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);padding:12px;font-size:13px;color:var(--text);white-space:pre-line;line-height:1.6;margin-bottom:${p.notes?'12px':'0'}">${_esc(p.items||'—')}</div>
+  ${linesTableHTML}
+  ${paymentBlockHTML}
+  ${paymentHistoryHTML}
+  ${!p.lines||!p.lines.length?`<div class="fl" style="margin-bottom:6px;margin-top:14px">${_s.po_view_items}</div>
+  <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);padding:12px;font-size:13px;color:var(--text);white-space:pre-line;line-height:1.6">${_esc(p.items||'—')}</div>`:''}
   ${p.notes?`<div class="fl" style="margin-bottom:4px;margin-top:10px">${_s.ui_notes}</div><div style="font-size:12px;color:var(--text2)">${_esc(p.notes)}</div>`:''}`,
 
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mEditPurchase('${p.id}')">✏ Edit</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();genPODoc('${p.id}')">🖨 Print PO</button>
-   ${p.st==='Pending'||p.st==='Partial'?`<button class="btn btn-p btn-sm" id="po-recv-btn">✅ Mark Received</button>`:''}
-   ${(p.st==='Pending'||p.st==='Partial')&&p.st!=='Paid'?`<button class="btn btn-b btn-sm" id="po-paid-btn">💳 Mark Paid</button>`:''}`);
+   ${bal > 0.01 ? `<button class="btn btn-b btn-sm" onclick="closeModal();mRecordPOPayment('${p.id}')">\uD83D\uDCB0 ${fr?'Enregistrer Paiement':'Record Payment'}</button>` : ''}
+   ${anyOutstanding && p.lines && p.lines.length ? `<button class="btn btn-p btn-sm" onclick="closeModal();mReceiveItems('${p.id}')">\uD83D\uDCE6 ${fr?'Recevoir Articles':'Receive Items'}</button>` : ''}
+   ${anyOutstanding && (!p.lines||!p.lines.length) ? `<button class="btn btn-p btn-sm" id="po-recv-btn">\u2705 ${fr?'Marquer Reçu':'Mark Received'}</button>` : ''}
+   ${bal > 0.01 ? `<button class="btn btn-b btn-sm" id="po-paid-btn">\uD83D\uDCB3 ${fr?'Marquer Payé':'Mark Paid in Full'}</button>` : ''}`);
 
   setTimeout(function(){
-    // Mark Received — updates stock for inventory-linked lines
+    // Mark Received — legacy fallback for POs without structured lines.
+    // For POs WITH lines, the new "Receive Items" modal handles partial
+    // receipts properly. This branch only runs when there's no per-line
+    // detail to work with.
     var recvBtn=document.getElementById('po-recv-btn');
     if(recvBtn) recvBtn.onclick=function(){
       p.st='Received';
-      // Update inventory: only use lines that have an invId linked.
-      // Apply true landed cost via WMA — same logic as savePO above.
-      if(p.lines&&p.lines.length){
-        var _ovh = (p.freight||0) + (p.duties||0) + (p.taxes||0) + (p.other||0); // base USD
-        var _linesSub = p.lines.reduce(function(a, r){ return a + (r.qty||1) * (r.uc||0); }, 0); // r.uc was stored in display currency at save
-        // r.uc was stored in display currency — convert per-line for the share math
-        var rr2 = CUR.rate;
-        var _linesSubBase = _linesSub / rr2;
-        p.lines.forEach(function(li){
-          if(li.invId&&li.invId!=='__custom__'){
-            var inv=D.inv.find(function(i){return i.id===li.invId;});
-            if(inv){
-              var addQty = li.qty || 1;
-              var lineSubBase = ((li.uc||0) / rr2) * addQty;
-              var ohShare = _linesSubBase > 0 ? _ovh * (lineSubBase / _linesSubBase) : 0;
-              var newUnitLanded = addQty > 0 ? (lineSubBase + ohShare) / addQty : ((li.uc||0) / rr2);
-              var oldQty = inv.qty || 0;
-              var oldCost = inv.cost || 0;
-              var newQty = oldQty + addQty;
-              var blended = newQty > 0
-                ? ((oldQty * oldCost) + (addQty * newUnitLanded)) / newQty
-                : newUnitLanded;
-              inv.qty = newQty;
-              inv.cost = Math.round(blended * 10000) / 10000;
-              _dbSaveInv(inv, +addQty);
-            }
-          }
-        });
-      }
-      // refreshLiveKpis calls _reconcileVendorTotals which recomputes v.bal from purchases
-      // No direct v.bal mutation needed — reconcile handles it correctly
+      // refreshLiveKpis calls _reconcileVendorTotals which recomputes v.bal
       _dbSavePurchase(p); refreshLiveKpis();
-      addAudit('PO received',p.id+' — '+(p.vendor||''));
-      // Build restock summary
-      var _restockSummary='';
-      if(p.lines&&p.lines.length){
-        var _updated=p.lines.filter(function(li){return li.invId&&li.invId!=='__custom__';});
-        if(_updated.length) _restockSummary=' · '+_updated.length+' item'+ (_updated.length!==1?'s':'')+' restocked';
-      }
-      closeModal(); toast(_L().t_po_received+_restockSummary,'success'); nav('purchases');
+      addAudit('PO received', p.id+' — '+(p.vendor||''));
+      closeModal(); toast(_L().t_po_received, 'success'); nav('purchases');
     };
 
-    // Mark Paid — clears AP without receiving stock
+    // Mark Paid in Full — closes AP for the entire PO. The Record Payment
+    // button is preferred for any amount less than full.
     var paidBtn=document.getElementById('po-paid-btn');
     if(paidBtn) paidBtn.onclick=function(){
-      var oldSt=p.st; p.st='Paid';
-      // refreshLiveKpis calls _reconcileVendorTotals which recomputes v.bal from purchases
+      // Record a payment for the full outstanding balance, then flip status
+      var outstanding = (p.total||0) - (p.paid||0);
+      if(outstanding > 0.01){
+        if(!p.payments) p.payments = [];
+        p.payments.push({
+          dt: localDateStr(),
+          amount: outstanding,
+          method: p.method||'',
+          note: (BIZ.language==='fr'?'Solde payé':'Balance paid'),
+        });
+        p.paid = (p.paid||0) + outstanding;
+      }
+      p.st = 'Paid';
+      p.bal = 0;
       _dbSavePurchase(p); refreshLiveKpis();
-      addAudit('PO paid',p.id+' — '+(p.vendor||''));
-      closeModal(); toast(_L().t_po_paid,'success'); nav('purchases');
+      addAudit('PO paid', p.id+' — '+(p.vendor||''));
+      closeModal(); toast(_L().t_po_paid, 'success'); nav('purchases');
     };
   },30);
+}
+
+// ============================================================
+// RECORD PARTIAL PAYMENT MODAL
+// ============================================================
+// Lets the owner log a specific payment amount against an open PO,
+// rather than the binary "mark fully paid". Each call appends to the
+// PO's payments[] history (audit trail), updates p.paid (running total),
+// and lets _reconcileVendorTotals recompute AP automatically.
+function mRecordPOPayment(id){const _s=_L();
+  const p=D.purchases.find(x=>x.id===id);if(!p)return;
+  const fr = BIZ.language==='fr';
+  const paid = p.paid||0;
+  const outstanding = Math.max(0, (p.total||0) - paid);
+  const today = localDateStr();
+  const methodOpts = ['Bank Transfer','Cash','Mobile Money (MTN)','Orange Money','Credit Card','Direct Debit']
+    .map(function(m){return '<option'+(m===p.method?' selected':'')+'>'+m+'</option>';}).join('');
+
+  modal((fr?'\uD83D\uDCB0 Enregistrer un Paiement':'\uD83D\uDCB0 Record Payment')+' — '+p.id,
+    '<div class="fg-2" style="margin-bottom:14px">'
+      +'<div style="padding:10px 12px;background:var(--bg3);border-radius:8px">'
+        +'<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">'+(fr?'Total PO':'PO Total')+'</div>'
+        +'<div style="font-family:var(--mono);font-size:14px;font-weight:700">'+fmt(p.total)+'</div>'
+      +'</div>'
+      +'<div style="padding:10px 12px;background:var(--g-dim);border-radius:8px">'
+        +'<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">'+(fr?'Déjà Payé':'Already Paid')+'</div>'
+        +'<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--g)">'+fmt(paid)+'</div>'
+      +'</div>'
+      +'<div style="padding:10px 12px;background:var(--r-dim);border-radius:8px;grid-column:span 2">'
+        +'<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">'+(fr?'Solde Restant':'Outstanding Balance')+'</div>'
+        +'<div style="font-family:var(--mono);font-size:16px;font-weight:800;color:var(--r)">'+fmt(outstanding)+'</div>'
+      +'</div>'
+    +'</div>'
+    +'<div class="fg-2">'
+      +'<div class="fg"><label class="fl">'+(fr?'Montant du Paiement':'Payment Amount')+' ('+CUR.symbol+') *</label>'
+        +'<input class="fi" type="number" id="ppm-amount" step="any" min="0.01" value="'+Math.round(outstanding*CUR.rate)+'"/>'
+        +'<div style="font-size:10px;color:var(--text2);margin-top:4px">'
+          +'<a href="#" onclick="document.getElementById(\'ppm-amount\').value='+Math.round(outstanding*CUR.rate)+';return false" style="color:var(--a);text-decoration:none">'+(fr?'Solde complet':'Full balance')+'</a>'
+          +' · '
+          +'<a href="#" onclick="document.getElementById(\'ppm-amount\').value='+Math.round((outstanding*CUR.rate)/2)+';return false" style="color:var(--a);text-decoration:none">'+(fr?'Moitié':'Half')+'</a>'
+        +'</div>'
+      +'</div>'
+      +'<div class="fg"><label class="fl">'+(fr?'Date du Paiement':'Payment Date')+'</label>'
+        +'<input class="fi" type="date" id="ppm-dt" value="'+today+'"/>'
+      +'</div>'
+      +'<div class="fg"><label class="fl">'+(fr?'Méthode':'Method')+'</label>'
+        +'<select class="fs" id="ppm-method">'+methodOpts+'</select>'
+      +'</div>'
+      +'<div class="fg"><label class="fl">'+(fr?'Note (optionnel)':'Note (optional)')+'</label>'
+        +'<input class="fi" id="ppm-note" placeholder="'+(fr?'ex: virement bancaire ref. ABC123':'e.g. bank transfer ref ABC123')+'"/>'
+      +'</div>'
+    +'</div>',
+    '<button class="btn btn-s" onclick="closeModal();mViewPurchase(\''+id+'\')">'+(fr?'Annuler':'Cancel')+'</button>'
+    +'<button class="btn btn-p" onclick="_savePOPayment(\''+id+'\')">\u2713 '+(fr?'Enregistrer':'Save Payment')+'</button>'
+  );
+  setTimeout(function(){ document.getElementById('ppm-amount')?.focus(); },50);
+}
+
+function _savePOPayment(id){const _s=_L();
+  const p=D.purchases.find(x=>x.id===id);if(!p)return;
+  const fr = BIZ.language==='fr';
+  const rr = CUR.rate;
+  const rawAmt = parseFloat(document.getElementById('ppm-amount')?.value);
+  if(!rawAmt || rawAmt<=0){
+    toast(fr?'Saisir un montant valide':'Enter a valid amount', 'error');
+    return;
+  }
+  const amtBase = rawAmt / rr;
+  const outstanding = (p.total||0) - (p.paid||0);
+  // Allow over-payment (e.g. accidental double-pay) — flagged via toast,
+  // but don't block. The user can correct later by recording a negative
+  // adjustment if they want.
+  if(amtBase > outstanding + 0.01){
+    toast(fr?'⚠ Paiement dépasse le solde — vérifier':'⚠ Payment exceeds balance — please verify', 'info');
+  }
+  const dt = document.getElementById('ppm-dt')?.value || localDateStr();
+  const method = document.getElementById('ppm-method')?.value || p.method || '';
+  const note = (document.getElementById('ppm-note')?.value || '').trim();
+
+  if(!p.payments) p.payments = [];
+  p.payments.push({dt:dt, amount:amtBase, method:method, note:note});
+  p.paid = (p.paid||0) + amtBase;
+  p.bal  = Math.max(0, (p.total||0) - p.paid);
+  // Status: flip to Partial if some paid; to Paid if fully covered; stay
+  // Received-style if already received (paid status is a separate axis).
+  if(p.paid >= (p.total||0) - 0.01){
+    if(p.st==='Received') p.st = 'Paid'; // received AND paid
+    else                   p.st = 'Paid';
+  } else if(p.paid > 0){
+    if(p.st==='Pending') p.st = 'Partial';
+    // If already Partial or Received with partial pay, leave as is
+  }
+  // Persist method on the PO (so subsequent reminders default to it)
+  p.method = method;
+  _dbSavePurchase(p); refreshLiveKpis();
+  addAudit('PO payment recorded', p.id+' — '+fmt(amtBase)+' via '+method);
+  closeModal();
+  toast((fr?'Paiement de ':'Payment of ')+fmt(amtBase)+(fr?' enregistré':' recorded')+' \u2713', 'success');
+  if(curPage==='purchases') nav('purchases');
+  // Re-open the view modal so the user sees the updated state
+  setTimeout(function(){ mViewPurchase(id); }, 200);
+}
+
+// ============================================================
+// RECEIVE ITEMS MODAL
+// ============================================================
+// Lets the owner record partial deliveries — receive 3 of 8 today, then
+// 5 more next week. Per-line "Received now" inputs default to what's
+// still outstanding. Inventory is updated (with true landed cost) for
+// the amounts received in this transaction.
+function mReceiveItems(id){const _s=_L();
+  const p=D.purchases.find(x=>x.id===id);if(!p)return;
+  if(!p.lines || !p.lines.length){
+    toast(BIZ.language==='fr'?'Pas d\'articles à recevoir':'No line items to receive','info');
+    return;
+  }
+  const fr = BIZ.language==='fr';
+  if(!p.linesReceived) p.linesReceived = p.lines.map(function(){return 0;});
+
+  const today = localDateStr();
+  const rowsHTML = p.lines.map(function(li, idx){
+    var name = li.name || (li.invId && li.invId!=='__custom__'
+      ? (D.inv.find(function(i){return i.id===li.invId;})||{}).name || 'Item'
+      : 'Item');
+    var ordered = li.qty||1;
+    var alreadyRecvd = p.linesReceived[idx]||0;
+    var stillOpen = Math.max(0, ordered - alreadyRecvd);
+    return '<tr data-idx="'+idx+'">'
+      +'<td style="padding:8px 10px;font-size:12px">'+_esc(name)+'</td>'
+      +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+ordered+'</td>'
+      +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--g)">'+alreadyRecvd+'</td>'
+      +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--text2)">'+stillOpen+'</td>'
+      +'<td style="padding:6px 10px"><input class="fi ri-now" type="number" min="0" max="'+stillOpen+'" step="any" value="'+stillOpen+'" data-idx="'+idx+'" data-still-open="'+stillOpen+'" style="width:70px;font-family:var(--mono);font-size:12px;text-align:right;padding:5px"/></td>'
+    +'</tr>';
+  }).join('');
+
+  modal('\uD83D\uDCE6 '+(fr?'Recevoir Articles':'Receive Items')+' — '+p.id,
+    '<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg3);border-radius:8px;font-size:12px;line-height:1.5">'
+      +'<strong>'+_esc(p.vendor)+'</strong> · '+(fr?'commandé le':'ordered')+' '+_esc(p.dt)
+      +(p.delivery?' · '+(fr?'attendu le':'expected')+' '+_esc(p.delivery):'')
+    +'</div>'
+    +'<div class="fg"><label class="fl">'+(fr?'Date de Réception':'Receipt Date')+'</label>'
+      +'<input class="fi" type="date" id="ri-dt" value="'+today+'" style="max-width:200px"/>'
+    +'</div>'
+    +'<div style="border:1px solid var(--border2);border-radius:8px;overflow:hidden;overflow-x:auto;margin-top:8px">'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:520px">'
+        +'<thead><tr style="background:var(--bg3);border-bottom:1px solid var(--border)">'
+          +'<th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Article':'Item')+'</th>'
+          +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Commandé':'Ordered')+'</th>'
+          +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Déjà Reçu':'Already Recvd')+'</th>'
+          +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Encore Dû':'Still Open')+'</th>'
+          +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Reçu Maintenant':'Receiving Now')+'</th>'
+        +'</tr></thead>'
+        +'<tbody>'+rowsHTML+'</tbody>'
+      +'</table>'
+    +'</div>'
+    +'<div style="margin-top:10px;font-size:11px;color:var(--text2);line-height:1.5">'
+      +'\uD83D\uDCA1 '+(fr
+        ? 'Les quantités saisies seront ajoutées à l\'inventaire avec le coût de revient réel (incluant fret/douane/taxes au prorata).'
+        : 'Quantities entered will be added to inventory at true landed cost (with freight/duties/taxes apportioned proportionally).')
+    +'</div>',
+    '<button class="btn btn-s" onclick="closeModal();mViewPurchase(\''+id+'\')">'+(fr?'Annuler':'Cancel')+'</button>'
+    +'<button class="btn btn-p" onclick="_saveReceiveItems(\''+id+'\')">\u2713 '+(fr?'Confirmer Réception':'Confirm Receipt')+'</button>'
+  );
+}
+
+function _saveReceiveItems(id){
+  const p=D.purchases.find(x=>x.id===id);if(!p)return;
+  const fr = BIZ.language==='fr';
+  const dt = document.getElementById('ri-dt')?.value || localDateStr();
+  if(!p.linesReceived) p.linesReceived = p.lines.map(function(){return 0;});
+
+  // Read each row's "Receiving Now" input
+  var receivingNow = [];
+  var hasAny = false;
+  document.querySelectorAll('.ri-now').forEach(function(inp){
+    var idx = parseInt(inp.dataset.idx, 10);
+    var stillOpen = parseFloat(inp.dataset.stillOpen) || 0;
+    var val = parseFloat(inp.value) || 0;
+    if(val < 0) val = 0;
+    if(val > stillOpen) val = stillOpen; // cap at what's outstanding
+    receivingNow[idx] = val;
+    if(val > 0) hasAny = true;
+  });
+  if(!hasAny){
+    toast(fr?'Saisir au moins une quantité reçue':'Enter at least one received qty', 'error');
+    return;
+  }
+
+  // Compute true landed cost per line — share the PO's overhead pool
+  // (freight + duties + taxes + other) by each line's subtotal share.
+  // Inventory is increased by receivingNow[i] for each line, with cost
+  // basis blended via Weighted Moving Average.
+  const rr = CUR.rate;
+  const overhead = (p.freight||0) + (p.duties||0) + (p.taxes||0) + (p.other||0);
+  const totalLinesSub = p.lines.reduce(function(a, l){ return a + ((l.uc||0) * (l.qty||1)) / rr; }, 0);
+
+  p.lines.forEach(function(li, idx){
+    var addQty = receivingNow[idx] || 0;
+    if(addQty <= 0) return;
+    p.linesReceived[idx] = (p.linesReceived[idx]||0) + addQty;
+    if(!li.invId || li.invId==='__custom__') return; // no inventory link
+    var invObj = D.inv.find(function(x){return x.id===li.invId;});
+    if(!invObj) return;
+    var lineSubBase = ((li.uc||0) * (li.qty||1)) / rr; // line's full ordered sub
+    var ohShare = totalLinesSub > 0 ? overhead * (lineSubBase / totalLinesSub) : 0;
+    // landed unit cost reflects the ordered qty — we paid the overhead for
+    // the whole line whether we receive it all today or in batches
+    var landedUnit = (li.qty||1) > 0
+      ? (lineSubBase + ohShare) / (li.qty||1)
+      : (li.uc||0) / rr;
+    // WMA blend with existing stock
+    var oldQty = invObj.qty || 0;
+    var oldCost = invObj.cost || 0;
+    var newQty = oldQty + addQty;
+    var blended = newQty > 0
+      ? ((oldQty * oldCost) + (addQty * landedUnit)) / newQty
+      : landedUnit;
+    invObj.qty = newQty;
+    invObj.cost = Math.round(blended * 10000) / 10000;
+    _dbSaveInv(invObj, +addQty);
+  });
+
+  // Update PO status: Received if everything's in, else stays Pending/Partial
+  var allReceived = p.lines.every(function(li, i){
+    return (p.linesReceived[i]||0) >= (li.qty||1);
+  });
+  var anyReceived = p.lines.some(function(li, i){ return (p.linesReceived[i]||0) > 0; });
+  if(allReceived){
+    // If also fully paid → Paid (received+paid). Else Received.
+    if((p.paid||0) >= (p.total||0) - 0.01) p.st = 'Paid';
+    else                                    p.st = 'Received';
+  } else if(anyReceived){
+    // Keep status as Partial / Pending — receipt-axis is separate from
+    // payment-axis. Use existing status, do nothing.
+  }
+
+  // Audit + persist
+  var recvSummary = receivingNow.map(function(v, i){
+    if(!v) return null;
+    return v+'× '+(p.lines[i].name||'item');
+  }).filter(Boolean).join(', ');
+  _dbSavePurchase(p); refreshLiveKpis();
+  addAudit('PO partial receipt', p.id+' — '+recvSummary+(dt!==localDateStr()?' on '+dt:''));
+  closeModal();
+  toast((fr?'Réception enregistrée: ':'Received: ')+recvSummary, 'success');
+  if(curPage==='purchases') nav('purchases');
+  setTimeout(function(){ mViewPurchase(id); }, 200);
 }
 function genPODoc(id){
   const p=D.purchases.find(x=>x.id===id);if(!p)return;
