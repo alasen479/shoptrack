@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779566787");
+console.log("ShopTrack v2.7 - build:1779571561");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1546,6 +1546,99 @@ function _poRecalcTotal(){
   var tot  = Math.round((sub + fr + du + tx + ot)*100)/100;
   var el   = document.getElementById('po-total');
   if(el) el.value = tot||'';
+  // If status is "Paid" and the user hasn't manually overridden the Paid
+  // field, keep it synced to the total. Status "Pending" forces 0 (nothing
+  // paid yet). "Partial" leaves the field alone — the user enters a
+  // specific amount themselves.
+  _poSyncPaidFromStatus();
+}
+
+// Auto-set the Paid amount based on Status, unless the user typed in it.
+//   Pending  → 0 (nothing paid)
+//   Paid     → full total (everything paid)
+//   Partial  → leave field alone (user enters specific amount)
+function _poSyncPaidFromStatus(){
+  var stEl   = document.getElementById('po-st');
+  var paidEl = document.getElementById('po-paid');
+  var totEl  = document.getElementById('po-total');
+  if(!stEl || !paidEl || !totEl) return;
+  if(paidEl.dataset.touched === '1') return; // user override wins
+  var st = stEl.value;
+  var tot = parseFloat(totEl.value) || 0;
+  if(st === _L().ui_st_paid || /paid|payé/i.test(st)){
+    paidEl.value = tot;
+  } else if(st === _L().ui_st_pending || /pending|attente/i.test(st)){
+    paidEl.value = 0;
+  }
+  // Partial: leave whatever's there
+}
+
+// Called when the Payment Status dropdown changes. Re-syncs the Paid
+// field. The status change clears the user-touched flag so the auto-fill
+// logic can do its job — picking "Paid" should always populate the full
+// amount, even if the user previously typed something.
+function _poStChange(){
+  var paidEl = document.getElementById('po-paid');
+  if(paidEl) delete paidEl.dataset.touched;
+  _poSyncPaidFromStatus();
+  // Help text: if "Partial", hint that the user should fill the amount
+  var stEl = document.getElementById('po-st');
+  var hint = document.getElementById('po-paid-hint');
+  if(hint && stEl){
+    var st = stEl.value;
+    var fr = BIZ.language==='fr';
+    if(/partial|partiel/i.test(st)){
+      hint.textContent = fr ? '— saisir le montant déjà payé' : '— enter how much has been paid';
+      hint.style.color = 'var(--y)';
+    } else if(/paid|payé/i.test(st)){
+      hint.textContent = fr ? '— montant complet (auto)' : '— full amount (auto)';
+      hint.style.color = 'var(--g)';
+    } else {
+      hint.textContent = fr ? '— rien payé encore' : '— nothing paid yet';
+      hint.style.color = 'var(--text3)';
+    }
+  }
+}
+
+// Called when the Paid amount changes. If the user types a value that
+// doesn't match the total OR zero, auto-adjust the status to match
+// (Partial). Helps the owner stay consistent: typing "5000 paid" on a
+// 12000-Frs order should flip the status to Partial automatically.
+function _poPaidChange(){
+  var stEl   = document.getElementById('po-st');
+  var paidEl = document.getElementById('po-paid');
+  var totEl  = document.getElementById('po-total');
+  if(!stEl || !paidEl || !totEl) return;
+  var paid = parseFloat(paidEl.value) || 0;
+  var tot  = parseFloat(totEl.value)  || 0;
+  if(!tot) return;
+  var s = _L();
+  var newSt;
+  if(paid >= tot)       newSt = s.ui_st_paid;
+  else if(paid > 0)     newSt = s.ui_st_partial;
+  else                  newSt = s.ui_st_pending;
+  // Only flip the dropdown if the current value would now misrepresent
+  // the paid amount. Don't fight the user's explicit status choice
+  // unless the math really doesn't add up.
+  if(stEl.value !== newSt){
+    stEl.value = newSt;
+    // Also refresh the hint label
+    _poStChange.call ? null : null; // (defensive — call below directly)
+    var hint = document.getElementById('po-paid-hint');
+    if(hint){
+      var fr = BIZ.language==='fr';
+      if(/partial|partiel/i.test(newSt)){
+        hint.textContent = fr ? '— saisir le montant déjà payé' : '— enter how much has been paid';
+        hint.style.color = 'var(--y)';
+      } else if(/paid|payé/i.test(newSt)){
+        hint.textContent = fr ? '— montant complet (auto)' : '— full amount (auto)';
+        hint.style.color = 'var(--g)';
+      } else {
+        hint.textContent = fr ? '— rien payé encore' : '— nothing paid yet';
+        hint.style.color = 'var(--text3)';
+      }
+    }
+  }
 }
 
 function _epRecalcTotal(){
@@ -8473,7 +8566,10 @@ function mRecordPurchase(){const _s=_L();
       <input class="fi" type="number" id="po-total" placeholder="0" readonly style="background:var(--a-dim);color:var(--g);font-weight:700;cursor:default"/>
     </div>
     <div class="fg"><label class="fl">${_s.po_pay_status}</label>
-      <select class="fs" id="po-st"><option>${_s.ui_st_pending}</option><option>${_s.ui_st_partial}</option><option>${_s.ui_st_paid}</option></select>
+      <select class="fs" id="po-st" onchange="_poStChange()"><option>${_s.ui_st_pending}</option><option>${_s.ui_st_partial}</option><option>${_s.ui_st_paid}</option></select>
+    </div>
+    <div class="fg"><label class="fl">${BIZ.language==='fr'?'Montant Payé':'Amount Paid'} <span style="font-size:10px;color:var(--text2)">(${sym}) <span id="po-paid-hint" style="color:var(--text3)">— ${BIZ.language==='fr'?'auto si "Payé"':'auto if "Paid"'}</span></span></label>
+      <input class="fi" type="number" id="po-paid" placeholder="0" step="any" oninput="this.dataset.touched='1';_poPaidChange()"/>
     </div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
       <select class="fs" id="po-method"><option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option><option>${_s.ui_credit_card}</option></select>
@@ -8513,6 +8609,26 @@ function savePO(){var _s=_L();
   var vendorObj=D.vendors.find(function(x){return x.id===vendorId;});
   var vendor=vendorObj?vendorObj.name:vendorId;
   var poSt=document.getElementById('po-st').value;
+  // Amount paid — explicit field added so Partial status carries the
+  // actual paid amount (was previously lost). Vendor AP balance below
+  // is computed from (total - paid), so this directly affects what's
+  // owed to the vendor.
+  var paidRaw = document.getElementById('po-paid')?.value;
+  var paid = parseFloat(paidRaw);
+  if(isNaN(paid) || paid < 0){
+    // Sensible default based on status when field left blank
+    if(/paid|payé/i.test(poSt))    paid = total;
+    else                            paid = 0;
+  } else {
+    paid = paid / rr; // user typed in display currency → store in base
+  }
+  // If the explicit paid amount doesn't agree with the chosen status,
+  // trust the paid amount (more specific data) and silently correct
+  // the status. Prevents inconsistent records like "Pending but paid
+  // 5000 Frs" or "Paid but only 5000 of 12000 logged".
+  if(paid >= total)      poSt = _s.ui_st_paid;
+  else if(paid > 0)      poSt = _s.ui_st_partial;
+  else                   poSt = _s.ui_st_pending;
   var poRef=document.getElementById('po-ref').value.trim();
   var _mxPN=D.purchases.reduce(function(m,p){var n=parseInt((p.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0);
   var newId=poRef||('P-'+String(_mxPN+1).padStart(4,'0'));
@@ -8533,7 +8649,7 @@ function savePO(){var _s=_L();
   var invId=(poLines.find(function(r){return r.invId&&r.invId!=='__custom__';})||{invId:''}).invId;
   var qty=totalQty;
   if(vendorObj){vendorObj.orders=(vendorObj.orders||0)+1;vendorObj.total=(vendorObj.total||0)+total;} // v.bal recomputed by _reconcileVendorTotals in refreshLiveKpis
-  D.purchases.unshift({id:newId,vendor,vendorId,items,qty,dt:document.getElementById('po-dt').value,delivery:document.getElementById('po-delivery').value,sub,freight,duties,taxes,other,total,invId,lines:poLines,st:poSt,method:document.getElementById('po-method').value,notes:document.getElementById('po-notes').value,docs:[]});
+  D.purchases.unshift({id:newId,vendor,vendorId,items,qty,dt:document.getElementById('po-dt').value,delivery:document.getElementById('po-delivery').value,sub,freight,duties,taxes,other,total,paid,bal:total-paid,invId,lines:poLines,st:poSt,method:document.getElementById('po-method').value,notes:document.getElementById('po-notes').value,docs:[]});
   _dbSavePurchase(D.purchases[0]);
   refreshLiveKpis();
   addAudit('PO created',newId+' - '+vendor+' - '+fmt(total));
@@ -18032,6 +18148,8 @@ function _dbToPurchase(r){ return {
   sub:r.subtotal||0, freight:r.freight||0,
   duties:r.duties||0, taxes:r.taxes||0, other:r.other||0,
   total:r.total||0,
+  paid: r.paid != null ? r.paid : (r.status==='Paid' || r.status==='Payé' ? (r.total||0) : 0),
+  bal:  r.bal  != null ? r.bal  : Math.max(0, (r.total||0) - (r.paid != null ? r.paid : (r.status==='Paid' || r.status==='Payé' ? (r.total||0) : 0))),
   invId:r.inv_id||'',
   delivery:r.delivery_date||'',
   method:r.method||'Cash',
@@ -18214,6 +18332,8 @@ function _purchaseToDB(p, bizId){ return {
   subtotal:p.sub||0, freight:p.freight||0,
   duties:p.duties||0, taxes:p.taxes||0, other:p.other||0,
   total:p.total||0,
+  paid: p.paid||0,
+  bal:  p.bal != null ? p.bal : Math.max(0,(p.total||0) - (p.paid||0)),
   inv_id:p.invId||'',
   delivery_date:p.delivery||'',
   method:p.method||'',
@@ -18552,7 +18672,23 @@ async function _dbSavePurchase(p){
   if(_idx>=0) D.purchases[_idx]=p; else D.purchases.unshift(p);
   _idbSave(SESSION.bizId,'purchases',D.purchases).catch(function(){});
   if(!_sb||!navigator.onLine) return;
-  await _safeUpsert('purchases', _purchaseToDB(p, SESSION.bizId), 'savePurchase');
+  var result = await _safeUpsert('purchases', _purchaseToDB(p, SESSION.bizId), 'savePurchase');
+  if(result && !result.ok){
+    var errMsg = (result.error && (result.error.message || result.error.code)) || '';
+    // If the schema doesn't have the paid/bal columns yet, retry without
+    // them. Local copy keeps the values, syncs once migration runs.
+    if(/\b(paid|bal)\b/i.test(errMsg)){
+      console.warn('[savePurchase] paid/bal columns not yet in schema; retrying without them.');
+      var payload = _purchaseToDB(p, SESSION.bizId);
+      delete payload.paid;
+      delete payload.bal;
+      var retry = await _safeUpsert('purchases', payload, 'savePurchase');
+      if(retry && retry.ok) return;
+      if(retry) console.error('[savePurchase] retry FAILED for '+p.id+':', retry.error);
+      return;
+    }
+    console.error('[savePurchase] FAILED for '+p.id+':', result.error);
+  }
 }
 async function _dbDelPurchase(id){
   if(!SESSION.bizId) return;
@@ -19839,8 +19975,18 @@ function _inlineSaveNewVendor(prefix){var _s=_L();
   _dbSaveVendor(D.vendors[0]);
   addAudit('Vendor added', newId+' — '+name);
 
-  // Inject into vendor selects in modal
-  document.querySelectorAll('.mo-box select, .modal-box select').forEach(sel => {
+  // Inject into vendor selects in the current modal.
+  // CRITICAL: only target selects that are actually vendor pickers.
+  // The previous selector ('.mo-box select, .modal-box select') matched
+  // EVERY select in the modal — including Payment Method, Status, and
+  // inventory line-item dropdowns — and silently appended the new vendor
+  // as an option to all of them. Result: a freshly-created vendor "ABC
+  // Distributors" appeared in the Payment Method dropdown of the same PO
+  // modal, in the Status dropdown, and as a pickable inventory line.
+  // We now match only selects whose id ends in -vendor(-sel)? or -v(-sel)?
+  document.querySelectorAll('#mc select').forEach(sel => {
+    var isVendorSelect = /(?:^|-)v(?:endor)?(?:-sel)?$/.test(sel.id);
+    if(!isVendorSelect) return;
     const existing = sel.querySelector(`option[value="${newId}"]`);
     if(!existing){
       const opt = document.createElement('option');
@@ -19848,6 +19994,20 @@ function _inlineSaveNewVendor(prefix){var _s=_L();
       sel.appendChild(opt);
     }
   });
+
+  // Also handle the searchable vendor dropdown widget (po-vendor-wrap) if
+  // present — same rebuild pattern as the customer fix.
+  var wrapId = prefix+'-vendor-wrap';
+  var hiddenId = prefix+'-vendor';
+  var wrapEl = document.getElementById(wrapId);
+  var hiddenEl = document.getElementById(hiddenId);
+  if(wrapEl){
+    var vOpts = [{val:'',label:'-- Select vendor --'}]
+      .concat(D.vendors.map(function(v){ return {val:v.id, label:v.name+(v.phone?' ('+v.phone+')':'')}; }));
+    _mkSearchSelect(wrapId, vOpts, newId, function(val){
+      if(hiddenEl) hiddenEl.value = val;
+    });
+  }
 
   const vendSel = document.getElementById(prefix+'-vendor');
   if(vendSel){ vendSel.value = newId; vendSel.dispatchEvent(new Event('change')); }
