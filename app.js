@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779549295");
+console.log("ShopTrack v2.7 - build:1779557066");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -61,7 +61,7 @@ function itemPhoto(type, color1, color2, accent){
 const D = {
   kpis:{rev:0,saleRev:0,rentRev:0,cogs:0,gp:0,np:0,ar:0,ap:0,invVal:0,oh:0,cashIn:0,cashOut:0},
   inv:[], cust:[], rentals:[], sales:[], exp:[], vendors:[],
-  purchases:[], audit:[],
+  purchases:[], batches:[], audit:[],
   invCats:['General','Clothing & Fashion','Electronics','Food & Beverages','Beauty & Health','Home & Furniture','Equipment & Tools','Raw Materials','Packaging','Accessories','Other'],
   vendorCats:['Supplier','Distributor','Manufacturer','Wholesaler','Service Provider','Other'],
   expCats:['Rent & Lease','Salaries & Wages','Utilities','Internet & Phone','Marketing & Advertising','Transport & Fuel','Packaging & Supplies','Repairs & Maintenance','Insurance','Staff Bonus','Cleaning','Photography','Bank Charges','Taxes & Duties','Miscellaneous','Other'],
@@ -80,6 +80,7 @@ function _ensureDArrays(){
   if(!Array.isArray(D.exp))               D.exp               = [];
   if(!Array.isArray(D.vendors))           D.vendors           = [];
   if(!Array.isArray(D.purchases))         D.purchases         = [];
+  if(!Array.isArray(D.batches))           D.batches           = [];
   if(!Array.isArray(D.audit))             D.audit             = [];
   if(!Array.isArray(D.services))          D.services          = [];
   if(!Array.isArray(D.appointments))      D.appointments      = [];
@@ -1568,7 +1569,7 @@ function _mPopAndSelect(selectId,newId,newLabel){
 // ROUTING
 // ============================================================
 let curPage='dashboard';
-const pageMap={'dashboard':'pgDash','inventory':'pgInv','sales':'pgSales','rentals':'pgRentals','purchases':'pgPurchases','customers':'pgCust','vendors':'pgVendors','expenses':'pgExp','accounting':'pgAccounting','reports':'pgReports','catalog':'pgCatalog','ai-studio':'pgAI','auditlog':'pgAudit','settings':'pgSettings','admin-biz':'pgAdminBiz','admin-users':'pgAdminUsers','admin-analytics':'pgAdminAnalytics','admin-affiliates':'pgAdminAffiliates','appointments':'pgAppointments','services':'pgServices','booking-settings':'pgBookingSettings'};
+const pageMap={'dashboard':'pgDash','inventory':'pgInv','sales':'pgSales','rentals':'pgRentals','purchases':'pgPurchases','production':'pgProduction','customers':'pgCust','vendors':'pgVendors','expenses':'pgExp','accounting':'pgAccounting','reports':'pgReports','catalog':'pgCatalog','ai-studio':'pgAI','auditlog':'pgAudit','settings':'pgSettings','admin-biz':'pgAdminBiz','admin-users':'pgAdminUsers','admin-analytics':'pgAdminAnalytics','admin-affiliates':'pgAdminAffiliates','appointments':'pgAppointments','services':'pgServices','booking-settings':'pgBookingSettings'};
 
 // Pages Super Admin may visit — everything else is off-limits (privacy wall)
 const ADMIN_ONLY_PAGES = new Set(['admin-biz','admin-users','admin-analytics','admin-affiliates']);
@@ -4020,6 +4021,186 @@ function _cbReadLines(prefix){const _s=_L();
   return lines;
 }
 
+// ============================================================
+// RECIPE / BILL OF MATERIALS (manufacturing)
+// ============================================================
+// A recipe is an array of { ingredientId, qty, unit } objects referencing
+// real inventory items used as raw materials. When the owner logs a
+// production batch, ShopTrack:
+//   - decrements each ingredient's qty by recipe[i].qty × batchMultiplier
+//   - increments the finished product's qty by batchMultiplier
+//   - records the consumed cost as the batch's total cost
+//
+// Stored on the inventory item as `it.recipe` (JSONB column `recipe`).
+// Like cost breakdown, the panel is collapsible. Shown only on edit (not
+// initial Add Inventory) — easier to pick ingredients once they exist.
+
+function _recipeHTML(prefix, existingLines, currentItemId){const _s=_L();
+  var lines = existingLines && existingLines.length ? existingLines : [];
+  var hasLines = lines.length > 0;
+  // Pre-compute the batch cost (sum of qty × ingredient.cost in display currency)
+  var batchCost = lines.reduce(function(s,l){
+    var ing = D.inv.find(function(x){return x.id===l.ingredientId;});
+    return s + ((parseFloat(l.qty)||0) * (ing ? (ing.cost||0)*CUR.rate : 0));
+  }, 0);
+
+  // Build the ingredient dropdown options — every inventory item EXCEPT the
+  // current product itself (a product can't be its own ingredient — that
+  // would create an infinite loop).
+  var ingredients = (D.inv||[]).filter(function(x){return x.id !== currentItemId;})
+    .sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+  var ingOpts = '<option value="">— Pick ingredient —</option>'
+    + ingredients.map(function(x){
+        var u = x.sz || '';
+        var cost = x.cost ? ' · '+fmt(x.cost) : '';
+        return '<option value="'+x.id+'"'+(u?' data-unit="'+_esc(u)+'"':'')+'>'+_esc(x.name)+(u?' ['+_esc(u)+']':'')+cost+'</option>';
+      }).join('');
+
+  var existingRowsHTML = lines.map(function(l,i){
+    return _recipeRowHTML(prefix, i, l, ingOpts);
+  }).join('');
+
+  var costPill = hasLines
+    ? '<span style="font-family:var(--mono);font-size:13px;font-weight:800;color:var(--p)">'+fmt(batchCost/CUR.rate)+'</span>'
+    : '<span style="font-size:12px;color:var(--text3)">No ingredients yet</span>';
+
+  return ''
+    +'<div id="'+prefix+'-rcp-wrap" style="margin-top:4px;border:1px solid var(--border2);border-radius:var(--r10);overflow:hidden">'
+    +'<div onclick="_rcpToggle(\''+prefix+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer;background:var(--bg3);user-select:none;transition:background .15s" onmouseover="this.style.background=\'var(--bg4)\'" onmouseout="this.style.background=\'var(--bg3)\'">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:15px">\uD83E\uDDD1\u200D\uD83C\uDF73</span>'
+        +'<div>'
+          +'<div style="font-size:12px;font-weight:700;color:var(--ink)">Recipe <span style="font-size:10px;font-weight:500;color:var(--text3)">(for manufactured / batch products)</span></div>'
+          +'<div style="font-size:11px;color:var(--text2);margin-top:1px">List the raw materials this product is made from. Logging a Production batch will deduct these from inventory.</div>'
+        +'</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<div id="'+prefix+'-rcp-cost-pill" style="font-size:11px;background:var(--bg5);padding:3px 9px;border-radius:10px;border:1px solid var(--border2)" title="Estimated cost per batch (sum of ingredient qty × current cost)">'+costPill+'</div>'
+        +'<svg id="'+prefix+'-rcp-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:16px;height:16px;transition:transform .2s;transform:rotate('+(hasLines?'180':'0')+'deg);flex-shrink:0;color:var(--text2)" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>'
+      +'</div>'
+    +'</div>'
+
+    +'<div id="'+prefix+'-rcp-body" style="display:'+(hasLines?'block':'none')+';padding:14px;background:var(--bg)">'
+
+      // Column headers
+      +'<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:1fr 80px 80px 30px;gap:6px;align-items:center;margin-bottom:8px;padding:0 2px;min-width:420px">'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Ingredient</div>'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Qty</div>'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Unit</div>'
+        +'<div></div>'
+      +'</div>'
+
+      +'<div id="'+prefix+'-rcp-rows" style="min-width:420px">'+existingRowsHTML+'</div></div>'
+
+      // Action buttons
+      +'<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
+        +'<button type="button" class="btn btn-g btn-xs" onclick="_rcpAddLine(\''+prefix+'\',\''+(currentItemId||'')+'\')">+ Add Ingredient</button>'
+      +'</div>'
+
+      // Live cost summary inside body
+      +'<div style="margin-top:12px;padding:10px 12px;background:var(--p-dim);border-radius:8px;display:flex;justify-content:space-between;align-items:center">'
+        +'<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">Cost per batch</div>'
+        +'<div id="'+prefix+'-rcp-cost-body" style="font-family:var(--mono);font-size:14px;font-weight:800;color:var(--p)">'+fmt(batchCost/CUR.rate)+'</div>'
+      +'</div>'
+    +'</div>'
+    +'</div>';
+}
+
+// One row inside the recipe panel — current ingredient + qty + unit + remove
+function _recipeRowHTML(prefix, idx, line, ingOpts){
+  line = line || {};
+  // Mark the selected option
+  var optsWithSel = ingOpts.replace(
+    new RegExp('value="'+(line.ingredientId||'__none__')+'"', 'g'),
+    'value="'+(line.ingredientId||'__none__')+'" selected'
+  );
+  return '<div class="rcp-row" data-idx="'+idx+'" style="display:grid;grid-template-columns:1fr 80px 80px 30px;gap:6px;margin-bottom:6px;align-items:center;min-width:420px">'
+    +'<select class="fs rcp-ing" style="font-size:12px;padding:6px" onchange="_rcpRowChange(this,\''+prefix+'\')">'+optsWithSel+'</select>'
+    +'<input class="fi rcp-qty" type="number" step="any" min="0" placeholder="0" value="'+(line.qty||'')+'" style="font-size:12px;padding:6px;text-align:right" oninput="_rcpRecalc(\''+prefix+'\')"/>'
+    +'<input class="fi rcp-unit" placeholder="g / ml / each" value="'+_esc(line.unit||'')+'" style="font-size:12px;padding:6px"/>'
+    +'<button type="button" class="btn btn-d btn-xs" onclick="_rcpRemoveLine(this,\''+prefix+'\')" style="padding:4px 6px">\u2715</button>'
+  +'</div>';
+}
+
+function _rcpToggle(prefix){
+  var body    = document.getElementById(prefix+'-rcp-body');
+  var chev    = document.getElementById(prefix+'-rcp-chevron');
+  if(!body || !chev) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  chev.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+function _rcpAddLine(prefix, currentItemId){
+  var rows = document.getElementById(prefix+'-rcp-rows');
+  if(!rows) return;
+  // Rebuild the ingredient options fresh each click (in case inventory changed)
+  var ingredients = (D.inv||[]).filter(function(x){return x.id !== currentItemId;})
+    .sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+  var ingOpts = '<option value="">— Pick ingredient —</option>'
+    + ingredients.map(function(x){
+        var u = x.sz || '';
+        var cost = x.cost ? ' · '+fmt(x.cost) : '';
+        return '<option value="'+x.id+'"'+(u?' data-unit="'+_esc(u)+'"':'')+'>'+_esc(x.name)+(u?' ['+_esc(u)+']':'')+cost+'</option>';
+      }).join('');
+  var idx = rows.querySelectorAll('.rcp-row').length;
+  rows.insertAdjacentHTML('beforeend', _recipeRowHTML(prefix, idx, {}, ingOpts));
+  // Auto-focus the new ingredient select
+  var newRow = rows.querySelector('.rcp-row:last-child .rcp-ing');
+  if(newRow) newRow.focus();
+}
+
+function _rcpRowChange(sel, prefix){
+  // When the user picks an ingredient, auto-fill the unit field from the
+  // ingredient's tracked size/unit (if any). User can override.
+  var row = sel.closest('.rcp-row');
+  if(!row) return;
+  var opt = sel.options[sel.selectedIndex];
+  var unitInp = row.querySelector('.rcp-unit');
+  if(unitInp && !unitInp.value && opt && opt.dataset.unit){
+    unitInp.value = opt.dataset.unit;
+  }
+  _rcpRecalc(prefix);
+}
+
+function _rcpRemoveLine(btn, prefix){
+  var row = btn.closest('.rcp-row');
+  if(row) row.remove();
+  _rcpRecalc(prefix);
+}
+
+function _rcpRecalc(prefix){
+  var rows = document.getElementById(prefix+'-rcp-rows');
+  if(!rows) return;
+  var totalDisplay = 0; // in display currency
+  rows.querySelectorAll('.rcp-row').forEach(function(row){
+    var ingId = row.querySelector('.rcp-ing')?.value || '';
+    var qty   = parseFloat(row.querySelector('.rcp-qty')?.value) || 0;
+    var ing   = D.inv.find(function(x){return x.id===ingId;});
+    if(ing) totalDisplay += qty * ((ing.cost||0) * CUR.rate);
+  });
+  // Update both the body and the collapsed-header pill
+  var bodyEl = document.getElementById(prefix+'-rcp-cost-body');
+  if(bodyEl) bodyEl.textContent = fmt(totalDisplay/CUR.rate);
+  var pillEl = document.getElementById(prefix+'-rcp-cost-pill');
+  if(pillEl) pillEl.innerHTML = '<span style="font-family:var(--mono);font-size:13px;font-weight:800;color:var(--p)">'+fmt(totalDisplay/CUR.rate)+'</span>';
+}
+
+function _rcpReadLines(prefix){
+  var rows = document.getElementById(prefix+'-rcp-rows');
+  if(!rows) return [];
+  var lines = [];
+  rows.querySelectorAll('.rcp-row').forEach(function(row){
+    var ingredientId = row.querySelector('.rcp-ing')?.value || '';
+    var qty = parseFloat(row.querySelector('.rcp-qty')?.value) || 0;
+    var unit = row.querySelector('.rcp-unit')?.value || '';
+    if(ingredientId && qty > 0){
+      lines.push({ ingredientId: ingredientId, qty: qty, unit: unit });
+    }
+  });
+  return lines;
+}
+
 // ── Sync categories from Supabase into D.xCats — merges DB + local defaults ──
 // Always call before opening any form that uses categories
 async function _syncCatsFromDB(){const _s=_L();
@@ -4260,6 +4441,7 @@ async function mEditItem(id){const _s=_L();
   </div>
   <div class="fg"><label class="fl">${_s.ui_description}</label><textarea class="ft" id="ei-desc">${it.desc||''}</textarea></div>
   ${editCost ? `<div class="fg">${_costBreakdownHTML('cei', it.costLines||[])}</div>` : ''}
+  <div class="fg">${_recipeHTML('rei', it.recipe||[], it.id)}</div>
   <div class="fg">
     <label class="fl" style="margin-bottom:8px">Product Photos</label>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px" id="ei-photo-grid">
@@ -4365,6 +4547,9 @@ function saveEditItem(id){
   // Save cost breakdown lines if panel was shown (editCost permission)
   var ceiLines = _cbReadLines('cei');
   if(ceiLines.length) it.costLines = ceiLines;
+  // Save recipe (manufacturing). Always read — empty array means user
+  // intentionally cleared it. Stored as an array of {ingredientId, qty, unit}.
+  it.recipe = _rcpReadLines('rei');
   // Save photos — wait for all FileReaders to finish (max 1500ms)
   const pending = window._pendingPhotos && window._pendingPhotos[id];
   const expectedCount = pending ? (pending._expectedCount || pending.length) : 0;
@@ -7631,6 +7816,446 @@ function pgPurchases(){const _s=_L();const _ui=_s;
     </div>
   </div>
 </div>`;
+}
+
+
+// ============================================================
+// PRODUCTION (manufacturing batches)
+// ============================================================
+// Page renders a table of all production batches. Each row shows: batch
+// ID · date · product · qty produced · cost · who logged it. Empty state
+// guides the owner through setup: first add ingredients in Inventory,
+// then add a Recipe to a finished product, then return here.
+function pgProduction(){const _s=_L();
+  // Find products that have a recipe — only those can be produced.
+  var recipeProducts = (D.inv||[]).filter(function(x){
+    return Array.isArray(x.recipe) && x.recipe.length > 0;
+  });
+
+  // No recipe-bearing products yet → guidance state
+  if(!recipeProducts.length){
+    return '<div class="bc">ShopTrack / <span>Production</span></div>'
+      +'<div class="ph-row"><h1>\uD83C\uDFED Production</h1></div>'
+      +'<div class="card" style="text-align:center;padding:50px 30px;max-width:680px;margin:30px auto">'
+        +'<div style="font-size:46px;margin-bottom:14px">\uD83E\uDDD1\u200D\uD83C\uDF73</div>'
+        +'<div style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:10px">Set up a recipe to start logging batches</div>'
+        +'<p style="font-size:13px;color:var(--text2);line-height:1.7;max-width:520px;margin:0 auto 22px">'
+          +'Production tracks <strong>batches</strong> you make from raw ingredients. A bakery making bread, an ice-cream maker churning a 5L tub, a restaurant pre-prepping a pot of sauce \u2014 each one is a batch.'
+        +'</p>'
+        +'<div style="text-align:left;max-width:480px;margin:0 auto 24px;background:var(--bg3);border-radius:10px;padding:16px 20px">'
+          +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Three steps to get going</div>'
+          +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px"><div style="background:var(--a);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">1</div><div style="font-size:12.5px;color:var(--ink);line-height:1.5">Add raw ingredients as inventory items (e.g. \u201CHeavy cream\u201D, \u201CVanilla beans\u201D, \u201CSugar\u201D) with current stock &amp; unit cost.</div></div>'
+          +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px"><div style="background:var(--a);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">2</div><div style="font-size:12.5px;color:var(--ink);line-height:1.5">Add the finished product as its own inventory item (e.g. \u201CVanilla Ice Cream \u2014 5L\u201D), then Edit it and open the <strong>Recipe</strong> panel to list the ingredients used per batch.</div></div>'
+          +'<div style="display:flex;gap:12px;align-items:flex-start"><div style="background:var(--a);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">3</div><div style="font-size:12.5px;color:var(--ink);line-height:1.5">Come back here and click <strong>\u201C+ New Batch\u201D</strong> \u2014 ShopTrack auto-deducts ingredients and adds the finished product to your stock.</div></div>'
+        +'</div>'
+        +'<button class="btn btn-p" onclick="nav(\'inventory\')">\u2192 Open Inventory</button>'
+      +'</div>';
+  }
+
+  // Stats roll-up across all batches
+  var batches = (D.batches||[]).slice().sort(function(a,b){
+    return (b.producedAt||'').localeCompare(a.producedAt||'');
+  });
+  var totalBatches = batches.length;
+  var totalCost    = batches.reduce(function(s,b){return s+(b.cost||0);}, 0);
+  // Batches this month
+  var monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+  var monthCount = batches.filter(function(b){
+    return b.producedAt && new Date(b.producedAt) >= monthStart;
+  }).length;
+
+  var rowsHtml = batches.map(function(b){
+    var d = b.producedAt ? new Date(b.producedAt) : null;
+    var dateStr = d ? d.toLocaleDateString() : '—';
+    var timeStr = d ? d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+    var ingCount = (b.ingredients||[]).length;
+    return '<tr onclick="mViewBatch(\''+b.id+'\')" style="cursor:pointer" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'\'">'
+      +'<td><span style="font-family:var(--mono);font-size:11px;color:var(--a);font-weight:600">'+_esc(b.id)+'</span></td>'
+      +'<td>'+dateStr+' <span style="color:var(--text3);font-size:11px">'+timeStr+'</span></td>'
+      +'<td><strong>'+_esc(b.productName||'—')+'</strong></td>'
+      +'<td style="text-align:right;font-family:var(--mono)">'+(b.qtyProduced||b.multiplier||1)+'</td>'
+      +'<td style="text-align:right;color:var(--text2);font-size:11px">'+ingCount+' ingredient'+(ingCount===1?'':'s')+'</td>'
+      +'<td style="text-align:right;font-family:var(--mono);font-weight:600;color:var(--p)">'+fmt(b.cost||0)+'</td>'
+      +'<td style="color:var(--text2);font-size:11px">'+_esc(b.producedBy||'—')+'</td>'
+      +'<td><button class="btn btn-d btn-xs" onclick="event.stopPropagation();_batchDeleteConfirm(\''+b.id+'\')" title="Delete this batch (restores stock)">\uD83D\uDDD1</button></td>'
+    +'</tr>';
+  }).join('');
+
+  return ''
+    +'<div class="bc">ShopTrack / <span>Production</span></div>'
+    +'<div class="ph-row"><h1>\uD83C\uDFED Production</h1>'
+      +'<div class="btn-row">'
+        +'<button class="btn btn-p btn-sm" onclick="mNewBatch()">+ New Batch</button>'
+      +'</div>'
+    +'</div>'
+
+    // KPI strip
+    +'<div class="kpi-grid" style="margin-bottom:16px">'
+      +'<div class="kpi"><div class="kpi-lbl">Total batches</div><div class="kpi-val">'+totalBatches+'</div></div>'
+      +'<div class="kpi"><div class="kpi-lbl">This month</div><div class="kpi-val">'+monthCount+'</div></div>'
+      +'<div class="kpi"><div class="kpi-lbl">Total cost (all batches)</div><div class="kpi-val p">'+fmt(totalCost)+'</div></div>'
+      +'<div class="kpi"><div class="kpi-lbl">Recipes available</div><div class="kpi-val">'+recipeProducts.length+'</div></div>'
+    +'</div>'
+
+    +'<div class="card">'
+      +'<div class="card-hd"><div class="card-ttl">Batch history</div>'
+        +(batches.length?'<span style="font-size:11px;color:var(--text2)">'+batches.length+' batch'+(batches.length===1?'':'es')+' \u2014 click a row for details</span>':'')
+      +'</div>'
+      +(batches.length
+        ? '<div style="overflow-x:auto"><table class="tbl">'
+          +'<thead><tr>'
+            +'<th>Batch ID</th><th>Date</th><th>Product</th>'
+            +'<th style="text-align:right">Qty produced</th>'
+            +'<th style="text-align:right">Ingredients</th>'
+            +'<th style="text-align:right">Cost</th>'
+            +'<th>By</th><th></th>'
+          +'</tr></thead>'
+          +'<tbody>'+rowsHtml+'</tbody>'
+        +'</table></div>'
+        : '<div style="text-align:center;padding:40px 20px;color:var(--text2)">'
+          +'<div style="font-size:32px;margin-bottom:10px">\uD83C\uDF66</div>'
+          +'<div style="font-weight:600;color:var(--ink);margin-bottom:6px">No batches logged yet</div>'
+          +'<div style="font-size:12px;line-height:1.6">You have '+recipeProducts.length+' product'+(recipeProducts.length===1?'':'s')+' with a recipe ready to go. Click <strong>+ New Batch</strong> to log your first production run.</div>'
+        +'</div>'
+      )
+    +'</div>';
+}
+
+// ============================================================
+// NEW BATCH MODAL
+// ============================================================
+// Workflow: pick a recipe-bearing product → enter batch multiplier → live
+// preview of (a) ingredient deductions with stock-availability check,
+// (b) finished product output, (c) total batch cost. Confirm = apply.
+function mNewBatch(prefillProductId){const _s=_L();
+  var recipeProducts = (D.inv||[]).filter(function(x){
+    return Array.isArray(x.recipe) && x.recipe.length > 0;
+  }).sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+
+  if(!recipeProducts.length){
+    toast('No products have a recipe yet \u2014 add one first via Edit Inventory \u2192 Recipe panel.', 'info');
+    return;
+  }
+
+  var defaultId = prefillProductId && recipeProducts.find(function(x){return x.id===prefillProductId;})
+    ? prefillProductId : recipeProducts[0].id;
+
+  var prodOpts = recipeProducts.map(function(p){
+    var ingCount = (p.recipe||[]).length;
+    return '<option value="'+p.id+'"'+(p.id===defaultId?' selected':'')+'>'+_esc(p.name)+' \u00B7 '+ingCount+' ingredient'+(ingCount===1?'':'s')+'</option>';
+  }).join('');
+
+  modal('\uD83C\uDFED New Production Batch',
+    '<div class="fg-2">'
+      +'<div class="fg"><label class="fl">Product to produce</label>'
+        +'<select class="fs" id="nb-prod" onchange="_nbPreview()">'+prodOpts+'</select>'
+      +'</div>'
+      +'<div class="fg"><label class="fl">Batch multiplier <span style="font-size:10px;color:var(--text2);font-weight:400">(1\u00D7 = one batch of the recipe)</span></label>'
+        +'<input class="fi" id="nb-mult" type="number" value="1" min="0.01" step="any" oninput="_nbPreview()"/>'
+      +'</div>'
+    +'</div>'
+    +'<div class="fg"><label class="fl">Date &amp; time</label>'
+      +'<input class="fi" id="nb-date" type="datetime-local" value="'+(function(){var d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);})()+'"/>'
+    +'</div>'
+    +'<div id="nb-preview-wrap" style="margin-top:8px"></div>'
+    +'<div class="fg"><label class="fl">Notes (optional)</label>'
+      +'<textarea class="ft" id="nb-notes" rows="2" placeholder="Variations from the recipe, quality observations, who helped, etc."></textarea>'
+    +'</div>',
+    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    +'<button class="btn btn-p" id="nb-save-btn" onclick="_saveBatch()">\u2713 Log batch</button>');
+
+  setTimeout(_nbPreview, 50);
+}
+
+// Refresh the live preview block under the modal — runs on product change
+// and on multiplier input. Reads the picked recipe, computes ingredient
+// deductions, checks stock, displays a preview table + summary + warning.
+function _nbPreview(){
+  var prodId = (document.getElementById('nb-prod')||{}).value || '';
+  var mult   = parseFloat((document.getElementById('nb-mult')||{}).value) || 0;
+  var wrap   = document.getElementById('nb-preview-wrap');
+  var saveBtn = document.getElementById('nb-save-btn');
+  if(!wrap) return;
+  var product = D.inv.find(function(x){return x.id===prodId;});
+  if(!product){ wrap.innerHTML=''; if(saveBtn) saveBtn.disabled = true; return; }
+  if(mult <= 0){
+    wrap.innerHTML = '<div class="alrt alrt-y" style="margin-top:4px"><strong>Enter a batch multiplier greater than 0.</strong></div>';
+    if(saveBtn) saveBtn.disabled = true;
+    return;
+  }
+
+  var recipe = product.recipe || [];
+  var rows = [];
+  var totalCostUSD = 0;
+  var shortages = [];
+
+  recipe.forEach(function(line){
+    var ing = D.inv.find(function(x){return x.id===line.ingredientId;});
+    if(!ing){
+      // Ingredient was deleted from inventory after the recipe was saved
+      rows.push({
+        name: '(missing — id '+line.ingredientId+')',
+        needed: (line.qty||0) * mult,
+        unit: line.unit||'',
+        onHand: 0,
+        deficit: (line.qty||0) * mult,
+        cost: 0,
+        missing: true
+      });
+      shortages.push({name:'(missing ingredient)', deficit:(line.qty||0)*mult, unit:line.unit||''});
+      return;
+    }
+    var needed = (line.qty||0) * mult;
+    var onHand = ing.qty || 0;
+    var deficit = Math.max(0, needed - onHand);
+    var ingCostUSD = (ing.cost || 0) * needed;
+    totalCostUSD += ingCostUSD;
+    rows.push({
+      name: ing.name,
+      needed: needed,
+      unit: line.unit || ing.sz || '',
+      onHand: onHand,
+      deficit: deficit,
+      cost: ingCostUSD,
+      missing: false
+    });
+    if(deficit > 0){
+      shortages.push({name: ing.name, deficit: deficit, unit: line.unit || ing.sz || ''});
+    }
+  });
+
+  var canProduce = shortages.length === 0;
+
+  var rowsHtml = rows.map(function(r){
+    var rowStyle = r.missing ? 'background:var(--r-dim);color:var(--r)'
+      : r.deficit > 0 ? 'background:var(--y-dim)' : '';
+    var statusBadge = r.missing
+      ? '<span style="font-size:10px;color:var(--r);font-weight:700">MISSING</span>'
+      : r.deficit > 0
+        ? '<span style="font-size:10px;color:var(--y);font-weight:700">SHORT BY '+_fmtNum(r.deficit)+(r.unit?' '+_esc(r.unit):'')+'</span>'
+        : '<span style="font-size:10px;color:var(--g);font-weight:700">\u2713 OK</span>';
+    return '<tr style="'+rowStyle+'">'
+      +'<td style="padding:7px 10px;font-size:12px">'+_esc(r.name)+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+_fmtNum(r.needed)+(r.unit?' <span style="font-size:10px;color:var(--text2)">'+_esc(r.unit)+'</span>':'')+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--text2)">'+_fmtNum(r.onHand)+'</td>'
+      +'<td style="padding:7px 10px;text-align:right">'+statusBadge+'</td>'
+    +'</tr>';
+  }).join('');
+
+  // Warning callout for shortages
+  var warningHtml = '';
+  if(shortages.length){
+    warningHtml = '<div class="alrt alrt-r" style="margin-top:10px">'
+      +'<strong>Cannot produce this batch \u2014 insufficient stock:</strong><ul style="margin:6px 0 0;padding-left:18px;font-size:12px;line-height:1.6">'
+      + shortages.map(function(s){return '<li>'+_esc(s.name)+' \u2014 short by <strong>'+_fmtNum(s.deficit)+(s.unit?' '+_esc(s.unit):'')+'</strong></li>';}).join('')
+      +'</ul><div style="font-size:11px;margin-top:8px;color:var(--text2)">Adjust the multiplier, or restock the missing ingredient(s) first.</div></div>';
+  }
+
+  wrap.innerHTML = ''
+    +'<div style="border:1px solid var(--border2);border-radius:8px;overflow:hidden">'
+      +'<div style="padding:10px 14px;background:var(--bg3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);display:flex;justify-content:space-between;align-items:center">'
+        +'<span>Will consume</span>'
+        +'<span style="font-size:11px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--text2)">From inventory \u2192 stock decreases</span>'
+      +'</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+        +'<thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Ingredient</th><th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Needed</th><th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">On hand</th><th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Status</th></tr></thead>'
+        +'<tbody>'+rowsHtml+'</tbody>'
+      +'</table>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 14px;background:var(--g-dim);border-radius:8px">'
+      +'<div>'
+        +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);font-weight:700">Will produce</div>'
+        +'<div style="font-size:14px;font-weight:700;color:var(--ink);margin-top:2px">'+_fmtNum(mult)+' \u00D7 <strong style="color:var(--g)">'+_esc(product.name)+'</strong></div>'
+      +'</div>'
+      +'<div style="text-align:right">'
+        +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);font-weight:700">Batch cost</div>'
+        +'<div style="font-size:14px;font-family:var(--mono);font-weight:800;color:var(--p);margin-top:2px">'+fmt(totalCostUSD)+'</div>'
+      +'</div>'
+    +'</div>'
+    + warningHtml;
+
+  if(saveBtn){
+    saveBtn.disabled = !canProduce;
+    saveBtn.style.opacity = canProduce ? '' : '.5';
+    saveBtn.style.cursor  = canProduce ? '' : 'not-allowed';
+  }
+}
+
+// Small helper: format a number with trimmed trailing zeros — used for
+// recipe quantities which can be either whole (3 vanilla beans) or
+// fractional (0.5 kg sugar). Avoid forcing decimals.
+function _fmtNum(n){
+  if(n == null) return '0';
+  var num = Number(n);
+  if(!isFinite(num)) return '0';
+  // Up to 3 decimals, then strip trailing zeros
+  return parseFloat(num.toFixed(3)).toString();
+}
+
+// Apply the batch: deduct ingredients, increment finished product, save batch.
+async function _saveBatch(){
+  var prodId = (document.getElementById('nb-prod')||{}).value || '';
+  var mult   = parseFloat((document.getElementById('nb-mult')||{}).value) || 0;
+  var dt     = (document.getElementById('nb-date')||{}).value || '';
+  var notes  = (document.getElementById('nb-notes')||{}).value || '';
+  var product = D.inv.find(function(x){return x.id===prodId;});
+  if(!product || mult<=0){ toast('Pick a product and a multiplier > 0', 'error'); return; }
+  var recipe = product.recipe || [];
+  if(!recipe.length){ toast('That product has no recipe', 'error'); return; }
+
+  // Re-verify stock at save time (someone may have edited inventory since
+  // the preview rendered). Build the actual deduction plan AND check.
+  var deductions = [];
+  var totalCostUSD = 0;
+  var shortages = [];
+
+  recipe.forEach(function(line){
+    var ing = D.inv.find(function(x){return x.id===line.ingredientId;});
+    if(!ing){
+      shortages.push({name:'(missing ingredient id '+line.ingredientId+')'});
+      return;
+    }
+    var needed = (line.qty||0) * mult;
+    if((ing.qty||0) < needed){
+      shortages.push({name: ing.name, needed: needed, onHand: ing.qty||0});
+      return;
+    }
+    deductions.push({
+      ingredient: ing,
+      qty: needed,
+      unit: line.unit || ing.sz || '',
+      unitCostUSD: ing.cost || 0
+    });
+    totalCostUSD += (ing.cost||0) * needed;
+  });
+
+  if(shortages.length){
+    toast('Stock changed since preview \u2014 cannot produce. Refresh and check.', 'error');
+    _nbPreview(); // refresh the preview to show the new state
+    return;
+  }
+
+  // ── Apply: decrement ingredients, increment product, save batch ──
+  // Generate batch ID: BATCH-YYMMDD-NNN
+  var maxN = (D.batches||[]).reduce(function(m,b){
+    var n = parseInt((b.id||'').replace(/\D/g,'').slice(-4), 10) || 0;
+    return n > m ? n : m;
+  }, 0);
+  var batchId = 'BATCH-'+String(maxN+1).padStart(4,'0');
+
+  var ingredientsConsumed = deductions.map(function(d){
+    return {
+      ingredientId: d.ingredient.id,
+      ingredientName: d.ingredient.name,
+      qty: d.qty,
+      unit: d.unit,
+      unitCost: d.unitCostUSD,        // base USD
+      lineCost: d.unitCostUSD * d.qty  // base USD
+    };
+  });
+
+  var producedAtISO = dt ? new Date(dt).toISOString() : new Date().toISOString();
+  var batch = {
+    id: batchId,
+    productId: product.id,
+    productName: product.name,
+    multiplier: mult,
+    qtyProduced: mult,        // one "1×" produces 1 unit of the finished product
+    cost: totalCostUSD,
+    ingredients: ingredientsConsumed,
+    producedBy: (SESSION.userName || SESSION.email || '').split('@')[0],
+    producedAt: producedAtISO,
+    notes: notes
+  };
+
+  // Decrement each ingredient, save each
+  deductions.forEach(function(d){
+    d.ingredient.qty = Math.max(0, (d.ingredient.qty||0) - d.qty);
+    _dbSaveInv(d.ingredient).catch(function(){});
+  });
+
+  // Increment finished product
+  product.qty = (product.qty||0) + mult;
+  // Update finished-product cost = batch cost / qty produced (latest-batch basis).
+  // This keeps COGS accurate when the product is sold.
+  if(mult > 0) product.cost = totalCostUSD / mult;
+  await _dbSaveInv(product);
+
+  // Save the batch
+  await _dbSaveBatch(batch);
+
+  addAudit('Batch produced', batch.id+' \u2014 '+mult+' \u00D7 '+product.name+' (cost '+fmt(totalCostUSD)+')');
+  toast('\u2713 Batch '+batchId+' logged \u2014 '+mult+' \u00D7 '+product.name+' added to stock', 'success');
+  closeModal();
+  if(curPage==='production') nav('production');
+}
+
+// View a batch's full breakdown (read-only).
+function mViewBatch(id){const _s=_L();
+  var b = (D.batches||[]).find(function(x){return x.id===id;});
+  if(!b){ toast('Batch not found','error'); return; }
+  var d = b.producedAt ? new Date(b.producedAt) : null;
+  var dateStr = d ? d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
+
+  var ingredientsHtml = (b.ingredients||[]).map(function(li){
+    return '<tr>'
+      +'<td style="padding:6px 10px">'+_esc(li.ingredientName||'')+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono)">'+_fmtNum(li.qty||0)+(li.unit?' <span style="font-size:10px;color:var(--text2)">'+_esc(li.unit)+'</span>':'')+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--text2)">'+fmt(li.unitCost||0)+'/unit</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-weight:600">'+fmt(li.lineCost||0)+'</td>'
+    +'</tr>';
+  }).join('');
+
+  modal('\uD83C\uDFED Batch '+b.id,
+    '<div class="fg-2">'
+      +'<div><div class="fl">Product</div><div style="font-size:14px;font-weight:700">'+_esc(b.productName||'—')+'</div></div>'
+      +'<div><div class="fl">Qty produced</div><div style="font-size:14px;font-weight:700;font-family:var(--mono)">'+_fmtNum(b.qtyProduced||b.multiplier||1)+'</div></div>'
+      +'<div><div class="fl">Produced at</div><div style="font-size:13px">'+dateStr+'</div></div>'
+      +'<div><div class="fl">By</div><div style="font-size:13px">'+_esc(b.producedBy||'—')+'</div></div>'
+    +'</div>'
+    +'<div style="margin-top:14px;border:1px solid var(--border2);border-radius:8px;overflow:hidden">'
+      +'<div style="padding:8px 12px;background:var(--bg3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)">Ingredients consumed</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+        +'<thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Ingredient</th><th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Qty</th><th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Unit cost</th><th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Line cost</th></tr></thead>'
+        +'<tbody>'+(ingredientsHtml||'<tr><td colspan="4" style="padding:14px;text-align:center;color:var(--text2);font-size:12px">No ingredient data on this batch</td></tr>')+'</tbody>'
+        +'<tfoot><tr style="border-top:2px solid var(--border)"><td colspan="3" style="padding:8px 10px;text-align:right;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)">Total batch cost</td><td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-weight:800;color:var(--p)">'+fmt(b.cost||0)+'</td></tr></tfoot>'
+      +'</table>'
+    +'</div>'
+    +(b.notes?'<div class="fg" style="margin-top:14px"><div class="fl">Notes</div><div style="background:var(--bg3);border-radius:8px;padding:10px 14px;font-size:13px;line-height:1.6;color:var(--ink);white-space:pre-wrap">'+_esc(b.notes)+'</div></div>':''),
+    '<button class="btn btn-d btn-sm" onclick="_batchDeleteConfirm(\''+b.id+'\')">\uD83D\uDDD1 Delete batch</button>'
+    +'<button class="btn btn-s" onclick="closeModal()">Close</button>');
+}
+
+// Delete a batch with stock-restore.
+function _batchDeleteConfirm(id){
+  var b = (D.batches||[]).find(function(x){return x.id===id;}); if(!b) return;
+  confirmDo(
+    'Delete batch '+b.id+'? This will RESTORE the consumed ingredients back to inventory and REMOVE the produced qty from the finished product.',
+    function(){ _doBatchDelete(id); }
+  );
+}
+
+async function _doBatchDelete(id){
+  var b = (D.batches||[]).find(function(x){return x.id===id;}); if(!b) return;
+  // Restore each consumed ingredient
+  (b.ingredients||[]).forEach(function(li){
+    var ing = D.inv.find(function(x){return x.id===li.ingredientId;});
+    if(ing){
+      ing.qty = (ing.qty||0) + (li.qty||0);
+      _dbSaveInv(ing).catch(function(){});
+    }
+  });
+  // Remove the produced qty from the finished product
+  var product = D.inv.find(function(x){return x.id===b.productId;});
+  if(product){
+    product.qty = Math.max(0, (product.qty||0) - (b.qtyProduced||b.multiplier||1));
+    _dbSaveInv(product).catch(function(){});
+  }
+  await _dbDelBatch(id);
+  addAudit('Batch deleted', b.id+' \u2014 stock restored');
+  toast('\u2713 Batch '+b.id+' deleted, stock restored', 'success');
+  closeModal();
+  if(curPage==='production') nav('production');
 }
 
 
@@ -15863,6 +16488,20 @@ async function _dbLoadBizData(bizId){
     if(!vendors.error && (!_is107 || (vendors.data||[]).length))   D.vendors   = _mergeData(D.vendors, (vendors.data||[]).map(_dbToVendor));
     if(!purchases.error && (!_is107 || (purchases.data||[]).length)) D.purchases = _mergeData(D.purchases, (purchases.data||[]).map(_dbToPurchase));
     if(!audit.error && (!_is107 || (audit.data||[]).length))     D.audit     = (audit.data||[]).map(_dbToAudit);
+
+    // ── Batches (manufacturing) ──────────────────────────────
+    // Loaded separately so a missing `batches` table doesn't break the
+    // entire load. Graceful: if the table is missing, the catch silently
+    // leaves D.batches at its IDB-cached value.
+    try {
+      var batchRes = await _sb.from('batches').select('*').eq('biz_id', bizId).order('produced_at', {ascending:false}).limit(2000);
+      if(!batchRes.error && (!_is107 || (batchRes.data||[]).length)){
+        D.batches = (batchRes.data||[]).map(_dbToBatch);
+      } else if(batchRes.error && !/relation .* does not exist|could not find the table/i.test(batchRes.error.message||'')){
+        console.warn('[DB] batches load error:', batchRes.error.message);
+      }
+    } catch(be){ console.warn('[DB] batches table not available yet:', be.message); }
+
     // Services and appointments — always load from Supabase for real businesses
     if(!_is107 || (_svcResult.data||[]).length){
       if(_svcResult.error) console.error('Services load error:', _svcResult.error.message);
@@ -16526,6 +17165,7 @@ async function _idbWriteAll(bizId){
       _idbSave(bizId, 'exp',       D.exp),
       _idbSave(bizId, 'vendors',   D.vendors),
       _idbSave(bizId, 'purchases', D.purchases),
+      _idbSave(bizId, 'batches',   D.batches),
       _idbSave(bizId, 'audit',     D.audit),
       _idbSave(bizId, 'services',  D.services),
       _idbSave(bizId, 'appts',     D.appointments),
@@ -16545,7 +17185,7 @@ async function _idbWriteAll(bizId){
 async function _idbRestoreAll(bizId){
   if(!bizId || bizId === 'BIZ-001' || bizId === 'BIZ-107') return false;
   try{
-    var [inv,cust,sales,rentals,exp,vendors,purchases,audit,services,appts,blockedSlots,quotes,
+    var [inv,cust,sales,rentals,exp,vendors,purchases,batches,audit,services,appts,blockedSlots,quotes,
          invCats,expCats,vendorCats,svcCats,custTypes,biz] = await Promise.all([
       _idbLoad(bizId, 'inv'),
       _idbLoad(bizId, 'cust'),
@@ -16554,6 +17194,7 @@ async function _idbRestoreAll(bizId){
       _idbLoad(bizId, 'exp'),
       _idbLoad(bizId, 'vendors'),
       _idbLoad(bizId, 'purchases'),
+      _idbLoad(bizId, 'batches'),
       _idbLoad(bizId, 'audit'),
       _idbLoad(bizId, 'services'),
       _idbLoad(bizId, 'appts'),
@@ -16578,6 +17219,7 @@ async function _idbRestoreAll(bizId){
     if(exp)       D.exp          = exp;
     if(vendors)   D.vendors      = vendors;
     if(purchases) D.purchases    = purchases;
+    if(batches)   D.batches      = batches;
     if(audit)     D.audit        = audit;
     if(services)  D.services     = services;
     if(appts)     D.appointments = appts;
@@ -17166,6 +17808,11 @@ function _dbToInv(r){ return {
   minSp:r.min_sp||0, minStock:r.min_stock||0,
   qty:r.qty||0, color:r.color||'', sz:r.size||'', desc:r.description||'',
   vendorId:r.vendor_id||'',
+  recipe: r.recipe
+    ? (typeof r.recipe === 'string'
+        ? (function(){ try{return JSON.parse(r.recipe);}catch(e){return [];} })()
+        : (Array.isArray(r.recipe) ? r.recipe : []))
+    : [],
   rented:r.rented||0, img:r.img||'gown-aline',
   imgC:r.img_color||['#a8b4c8','#c8b4a0','#e0d4bc'],
   imgDataUrl:r.img_data_url||null,
@@ -17234,6 +17881,76 @@ function _dbToAudit(r){ return {
   user:r.user_name, role:r.user_role
 }; }
 
+// ── Manufacturing batches ─────────────────────────────────────
+// A batch is one production run of a recipe-bearing product. Records what
+// was consumed (from raw-material inventory) and what was produced (qty of
+// finished product). Used for: audit trail, batch-cost reporting, future
+// expiry/traceability features.
+function _dbToBatch(r){ return {
+  id: r.id,
+  productId: r.product_id || '',
+  productName: r.product_name || '',
+  multiplier: r.batch_multiplier || 1,
+  qtyProduced: r.qty_produced || 0,
+  cost: r.total_cost || 0,
+  ingredients: r.ingredients_consumed
+    ? (typeof r.ingredients_consumed === 'string'
+        ? (function(){ try{return JSON.parse(r.ingredients_consumed);}catch(e){return [];} })()
+        : r.ingredients_consumed)
+    : [],
+  producedBy: r.produced_by || '',
+  producedAt: r.produced_at || r.created_at || '',
+  notes: r.notes || ''
+}; }
+function _batchToDB(b, bizId){ return {
+  id: b.id,
+  biz_id: bizId,
+  product_id: b.productId,
+  product_name: b.productName || '',
+  batch_multiplier: b.multiplier || 1,
+  qty_produced: b.qtyProduced || 0,
+  total_cost: b.cost || 0,
+  ingredients_consumed: b.ingredients ? JSON.stringify(b.ingredients) : '[]',
+  produced_by: b.producedBy || '',
+  produced_at: b.producedAt || new Date().toISOString(),
+  notes: b.notes || ''
+}; }
+
+// Persist a batch to Supabase + IDB. Gracefully degrades if the batches
+// table hasn't been created yet — local-only batches are preserved in IDB
+// and will sync once the table exists.
+async function _dbSaveBatch(b){
+  if(!SESSION.bizId || SESSION.isSuperAdmin) return;
+  var idx = D.batches.findIndex(function(x){return x.id===b.id;});
+  if(idx>=0) D.batches[idx] = b; else D.batches.unshift(b);
+  _idbSave(SESSION.bizId, 'batches', D.batches).catch(function(){});
+
+  if(!_sb || !navigator.onLine){
+    try{ await _queueEnqueue(SESSION.bizId, 'batches', _batchToDB(b, SESSION.bizId)); }catch(e){}
+    return;
+  }
+  try{
+    var { error } = await _sb.from('batches').upsert(_batchToDB(b, SESSION.bizId));
+    if(error){
+      if(/relation .* does not exist|could not find the table/i.test(error.message||'')){
+        console.warn('[saveBatch] batches table not yet created in Supabase; saved locally only.');
+        return;
+      }
+      console.error('[saveBatch] error:', error.message);
+    }
+  } catch(e){ console.error('[saveBatch] exception:', e.message); }
+}
+
+async function _dbDelBatch(id){
+  if(!SESSION.bizId || SESSION.isSuperAdmin) return;
+  D.batches = D.batches.filter(function(b){return b.id!==id;});
+  _idbSave(SESSION.bizId, 'batches', D.batches).catch(function(){});
+  if(!_sb || !navigator.onLine) return;
+  try{
+    await _sb.from('batches').delete().eq('id', id).eq('biz_id', SESSION.bizId);
+  }catch(e){ console.warn('[delBatch]', e.message); }
+}
+
 // ── Row mappers: app → DB format ──────────────────────────────
 function _invToDB(item, bizId){
   // Safely serialize img_color — it may already be a JSON string from DB
@@ -17260,6 +17977,7 @@ function _invToDB(item, bizId){
     min_stock:item.minStock||0, qty:item.qty||0,
     color:item.color||'', size:item.sz||'', description:item.desc||'',
     vendor_id:item.vendorId||null,
+    recipe: item.recipe && item.recipe.length ? JSON.stringify(item.recipe) : null,
     rented:item.rented||0, img:item.img||'gown-aline',
     img_color:imgColor,
     img_data_url:item.imgDataUrl||(item.photoDataUrls&&item.photoDataUrls[0])||null,
@@ -17418,14 +18136,15 @@ async function _dbSaveInv(item, qtyDelta){
   }
   var result = await _safeUpsert('inventory', _invToDB(item, SESSION.bizId), 'saveInv');
   if(result && !result.ok){
-    // If the vendor_id column hasn't been added to the schema yet, retry
-    // without it. Local-only vendor link is preserved in IDB and will
+    // If the vendor_id or recipe column hasn't been added to the schema yet,
+    // retry without them. Local-only fields are preserved in IDB and will
     // sync once the migration runs.
     var errMsg = (result.error && (result.error.message || result.error.code)) || '';
-    if(/vendor_id/i.test(errMsg)){
-      console.warn('[saveInv] vendor_id column not yet in schema; retrying without it.');
+    if(/vendor_id|recipe/i.test(errMsg)){
+      console.warn('[saveInv] vendor_id/recipe column not yet in schema; retrying without them.');
       var payload = _invToDB(item, SESSION.bizId);
       delete payload.vendor_id;
+      delete payload.recipe;
       var retry = await _safeUpsert('inventory', payload, 'saveInv');
       if(retry && retry.ok) return;
       if(retry) console.error('[saveInv] retry FAILED for '+item.id+':', retry.error);
@@ -18120,7 +18839,7 @@ function updateSidebarForRole(){
     const _Lnav = _L();
     const _sbMap = {
       'dashboard':'nav_dashboard','inventory':'nav_inventory','sales':'nav_sales',
-      'rentals':'nav_rentals','purchases':'nav_purchases','customers':'nav_customers',
+      'rentals':'nav_rentals','purchases':'nav_purchases','production':'nav_production','customers':'nav_customers',
       'vendors':'nav_vendors','expenses':'nav_expenses','accounting':'nav_accounting',
       'reports':'nav_reports','appointments':'nav_appointments','services':'nav_services',
       'booking-settings':'nav_booking','catalog':'nav_catalog','ai-studio':'nav_ai',
@@ -29170,6 +29889,7 @@ function _L(){
     nav_sales:         fr ? 'Ventes'                     : 'Sales',
     nav_rentals:       fr ? 'Locations'                  : 'Rentals',
     nav_purchases:     fr ? 'Achats'                     : 'Purchases',
+    nav_production:    fr ? 'Production'                  : 'Production',
     nav_customers:     fr ? 'Clients'                    : 'Customers',
     nav_vendors:       fr ? 'Fournisseurs'               : 'Vendors',
     nav_expenses:      fr ? 'Dépenses'                   : 'Expenses',
