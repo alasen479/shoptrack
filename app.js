@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779574069");
+console.log("ShopTrack v2.7 - build:1779574994");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -7944,8 +7944,20 @@ function pgPurchases(){const _s=_L();const _ui=_s;
   const vis   = D.purchases.filter(p => inRange(p.dt, monthRange));
   const totalSpent = vis.reduce((a,p)=>a+(p.total||0), 0);
   const apOut      = D.vendors.filter(v=>v.bal>0).reduce((a,v)=>a+v.bal, 0);
-  const pending    = vis.filter(p=>p.st==='Pending'||p.st==='Partial').length;
-  const paid       = vis.filter(p=>p.st==='Paid'||p.st==='Received').length;
+  // "Awaiting delivery" = POs with at least one line not yet fully received.
+  // This is about goods arriving, not money paid — keeps the KPI honest
+  // even when an order is paid in advance but the shipment is still in
+  // transit (very common with international suppliers).
+  function _poHasUnreceived(p){
+    if(p.st==='Received' || p.st==='Paid') return false;
+    if(!p.lines || !p.lines.length) return p.st!=='Received';
+    var lr = p.linesReceived || [];
+    return p.lines.some(function(l, i){ return (l.qty||1) > (lr[i]||0); });
+  }
+  const pending    = vis.filter(_poHasUnreceived).length;
+  // "Completed" = fully received POs. Payment status is tracked separately
+  // by the AP Outstanding KPI to the left.
+  const paid       = vis.filter(function(p){ return !_poHasUnreceived(p); }).length;
 
   // Vendor breakdown for this month
   const vMap = {};
@@ -7977,6 +7989,20 @@ function pgPurchases(){const _s=_L();const _ui=_s;
       : '';
     const statusBadge = badge(p.st);
     const isUnpaid = p.st==='Pending'||p.st==='Partial'||p.st==='Unpaid';
+    // Partial-aware outstanding for the AP sub-label. Was showing the full
+    // PO total even after a partial payment — fixed to compute total-paid.
+    const _outstanding = Math.max(0, (p.total||0) - (p.paid||0));
+    // Quick-action visibility — only show buttons when the action is
+    // actually applicable. Keeps the row tight when a PO is fully closed.
+    const showPay  = _outstanding > 0.01;
+    const _linesReceived = p.linesReceived || (p.st==='Received' || p.st==='Paid'
+      ? (p.lines||[]).map(function(l){return l.qty||1;})
+      : []);
+    const hasUnreceived = p.lines && p.lines.length
+      ? p.lines.some(function(l, i){ return (l.qty||1) > (_linesReceived[i]||0); })
+      : (p.st!=='Received' && p.st!=='Paid');
+    const showReceive = hasUnreceived;
+    const fr = BIZ.language==='fr';
     return '<tr data-date="'+p.dt+'" data-vendor="'+_esc(p.vendor)+'" data-st="'+(p.st||'')+'"'
       +' class="po-row" style="cursor:pointer" onclick="mViewPurchase(\''+p.id+'\')">'
       +'<td>'+mono(p.id,'a')+'</td>'
@@ -7986,13 +8012,19 @@ function pgPurchases(){const _s=_L();const _ui=_s;
         +' title="'+_esc(p.items||'')+'">'+_esc((p.items||'').slice(0,60))+(p.items&&p.items.length>60?'…':'')+'</td>'
       +'<td>'+mono(fmt(p.sub),'a')+costBreak+'</td>'
       +'<td>'+mono(fmt(p.total),'b')+'</td>'
-      +'<td>'+statusBadge+(isUnpaid?'<span style="display:block;font-size:10px;color:var(--r);margin-top:1px">AP '+fmt(p.total)+'</span>':'')+'</td>'
+      +'<td>'+statusBadge+(isUnpaid && _outstanding>0.01?'<span style="display:block;font-size:10px;color:var(--r);margin-top:1px">AP '+fmt(_outstanding)+'</span>':'')+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+_esc(p.method||'—')+'</td>'
       +'<td onclick="event.stopPropagation()">'
-        +'<div class="btn-row">'
-          +'<button class="btn btn-g btn-xs" onclick="mEditPurchase(\''+p.id+'\')" title="'+_s.ui_edit+'">✏</button>'
-          +'<button class="btn btn-g btn-xs" onclick="genPODoc(\''+p.id+'\')" title="'+_s.po_print+'">🖨</button>'
-          +'<button class="btn btn-d btn-xs" onclick="deletePurchase(\''+p.id+'\')" title="Delete">🗑</button>'
+        +'<div class="btn-row" style="flex-wrap:nowrap">'
+        + (showPay
+            ? '<button class="btn btn-b btn-xs" onclick="mRecordPOPayment(\''+p.id+'\')" title="'+(fr?'Enregistrer paiement':'Record payment')+'">\uD83D\uDCB0</button>'
+            : '')
+        + (showReceive
+            ? '<button class="btn btn-p btn-xs" onclick="mReceiveItems(\''+p.id+'\')" title="'+(fr?'Recevoir articles':'Receive items')+'">\uD83D\uDCE6</button>'
+            : '')
+          +'<button class="btn btn-g btn-xs" onclick="mEditPurchase(\''+p.id+'\')" title="'+_s.ui_edit+'">\u270F</button>'
+          +'<button class="btn btn-g btn-xs" onclick="genPODoc(\''+p.id+'\')" title="'+_s.po_print+'">\uD83D\uDDA8</button>'
+          +'<button class="btn btn-d btn-xs" onclick="deletePurchase(\''+p.id+'\')" title="Delete">\uD83D\uDDD1</button>'
         +'</div>'
       +'</td>'
     +'</tr>';
@@ -8658,9 +8690,19 @@ function savePO(){var _s=_L();
   var poRef=document.getElementById('po-ref').value.trim();
   var _mxPN=D.purchases.reduce(function(m,p){var n=parseInt((p.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0);
   var newId=poRef||('P-'+String(_mxPN+1).padStart(4,'0'));
-  // Update inventory stock only when PO is marked Received or Paid
-  // Pending/Partial POs do NOT increment stock — goods not yet received
-  if(poSt==='Received'||poSt==='Paid'){
+  // Update inventory stock only when PO is explicitly marked Received.
+  // Payment status (Pending/Partial/Paid) is the MONEY axis. Receipt
+  // status (Pending/Received) is the GOODS axis. They are independent —
+  // paying upfront for goods that haven't arrived yet (very common with
+  // international suppliers) shouldn't pretend the stock is on hand.
+  // Use the new "Receive Items" modal on the View PO screen to record
+  // actual deliveries (full or partial).
+  //
+  // (Old behaviour: stock was added when status was either Received OR
+  // Paid. That conflated the two axes and overstated stock-on-hand for
+  // any PO paid in advance.)
+  var _linesReceived = poLines.map(function(){return 0;}); // default: nothing received
+  if(poSt==='Received'){
     // TRUE LANDED COST: spread freight/duties/taxes/other proportionally
     // across each inventory-linked line by its subtotal share. Without
     // this, sales reports would overstate margin — a wig bought at
@@ -8672,7 +8714,8 @@ function savePO(){var _s=_L();
     // Use Weighted Moving Average (WMA) when restocking — never set cost
     // directly. Mixing a 1000-Frs old batch with a 2000-Frs new batch
     // should yield an average cost, not overwrite the old basis.
-    poLines.forEach(function(li){
+    poLines.forEach(function(li, idx){
+      _linesReceived[idx] = li.qty || 0; // mark this line as fully received
       if(li.invId&&li.invId!=='__custom__'){
         var invObj=D.inv.find(function(x){return x.id===li.invId;});
         if(invObj){
@@ -8710,7 +8753,7 @@ function savePO(){var _s=_L();
       if(entry) _docs.push({name:entry.name||'doc', _key:key, dataUrl:entry.dataUrl, type:entry.type||''});
     });
   }
-  D.purchases.unshift({id:newId,vendor,vendorId,items,qty,dt:document.getElementById('po-dt').value,delivery:document.getElementById('po-delivery').value,sub,freight,duties,taxes,other,total,paid,bal:total-paid,invId,lines:poLines,st:poSt,method:document.getElementById('po-method').value,notes:document.getElementById('po-notes').value,docs:_docs});
+  D.purchases.unshift({id:newId,vendor,vendorId,items,qty,dt:document.getElementById('po-dt').value,delivery:document.getElementById('po-delivery').value,sub,freight,duties,taxes,other,total,paid,bal:total-paid,invId,lines:poLines,linesReceived:_linesReceived,st:poSt,method:document.getElementById('po-method').value,notes:document.getElementById('po-notes').value,docs:_docs});
   _dbSavePurchase(D.purchases[0]);
   refreshLiveKpis();
   addAudit('PO created',newId+' - '+vendor+' - '+fmt(total));
