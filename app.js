@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779576792");
+console.log("ShopTrack v2.7 - build:1779577886");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -7124,14 +7124,19 @@ function _crFillPhone(){
 function _crAddLine(){
   var row=document.createElement('div');
   row.className='cr-line-row';
-  row.style.cssText='display:grid;grid-template-columns:1fr auto;gap:6px;margin-bottom:6px;align-items:center';
+  row.style.cssText='display:grid;grid-template-columns:1fr 70px auto;gap:6px;margin-bottom:6px;align-items:center';
   var rentable=D.inv.filter(function(i){return (i.st==='For Rent'||i.st==='Both')&&((i.qty||0)-(i.rented||0))>0;});
   var opts=rentable.map(function(i){
-    return '<option value="'+i.id+'" data-rp="'+Math.round((i.rp||0)*CUR.rate)+'" data-dep="'+Math.round((i.dep||0)*CUR.rate)+'" data-name="'+i.name+'">'
-      +i.name+' ('+((i.qty||0)-(i.rented||0))+' avail)'+(i.rp?' — '+fmt(i.rp)+'/day':'')+' </option>';
+    var avail = (i.qty||0)-(i.rented||0);
+    return '<option value="'+i.id+'" data-avail="'+avail+'" data-rp="'+Math.round((i.rp||0)*CUR.rate)+'" data-dep="'+Math.round((i.dep||0)*CUR.rate)+'" data-name="'+i.name+'">'
+      +i.name+' ('+avail+' avail)'+(i.rp?' — '+fmt(i.rp)+' /'+_crPeriodSingular((document.getElementById('cr-period')||{value:'day'}).value):'')+' </option>';
   }).join('');
+  // Per-line qty: defaults to 1, capped to available stock via max attr
+  // set when the user picks an item (data-avail). The fee recompute reads
+  // qty from this input on every change.
   row.innerHTML='<select class="fs cr-item-sel" onchange="_crLineChange(this)"><option value="">-- Select Item --</option>'+opts+'</select>'
-    +'<button type="button" class="btn btn-d btn-xs" onclick="_crRemoveLine(this)" style="padding:6px 8px">✕</button>';
+    +'<input class="fi cr-line-qty" type="number" min="1" step="1" value="1" style="text-align:center" oninput="_crUpdateFee()" title="Qty"/>'
+    +'<button type="button" class="btn btn-d btn-xs" onclick="_crRemoveLine(this)" style="padding:6px 8px">\u2715</button>';
   var c=document.getElementById('cr-line-rows');if(c)c.appendChild(row);
 }
 function _crRemoveLine(btn){const _s=_L();
@@ -7143,18 +7148,183 @@ function _crRemoveLine(btn){const _s=_L();
 function _crLineChange(sel){
   _crUpdateFee();
 }
+// Recalculate the total rental fee whenever item, qty, period, or
+// duration changes. The fee equation is:
+//   total = Σ (rp × qty)  ×  duration  (in chosen period units)
+// where rp is the per-period rate stored on the inventory item.
+// Period unit display label & multiplier are kept simple — all rates
+// are treated as "per period unit" regardless of whether that unit is
+// a day, hour, week, or month. The "Custom" period unit lets the user
+// type a flat total and skip duration math entirely.
 function _crUpdateFee(){const _s=_L();
-  // Sum fees and max deposit across all selected rental items
-  var totalFee=0, maxDep=0;
-  document.querySelectorAll('#cr-line-rows .cr-item-sel').forEach(function(s){
-    if(!s.value) return;
-    var opt=s.options[s.selectedIndex];
-    totalFee+=parseFloat(opt.dataset.rp)||0;
-    maxDep=Math.max(maxDep, parseFloat(opt.dataset.dep)||0);
+  var periodEl = document.getElementById('cr-period');
+  var unitsEl  = document.getElementById('cr-units');
+  var feeEl    = document.getElementById('cr-fee');
+  var depEl    = document.getElementById('cr-dep');
+  var summaryEl= document.getElementById('cr-fee-summary');
+  if(!periodEl || !unitsEl || !feeEl) return;
+  var period = periodEl.value;
+  var units  = parseFloat(unitsEl.value) || 0;
+  var fr     = BIZ.language==='fr';
+
+  // Sum per-period rate × qty across all selected lines
+  var perPeriodTotal = 0, maxDep = 0, lineCount = 0;
+  document.querySelectorAll('#cr-line-rows .cr-line-row').forEach(function(row){
+    var s = row.querySelector('.cr-item-sel');
+    var q = parseFloat(row.querySelector('.cr-line-qty')?.value) || 1;
+    if(!s || !s.value) return;
+    var opt = s.options[s.selectedIndex];
+    var rp = parseFloat(opt.dataset.rp) || 0;
+    var dp = parseFloat(opt.dataset.dep) || 0;
+    perPeriodTotal += rp * q;
+    maxDep = Math.max(maxDep, dp * q);
+    lineCount++;
   });
-  var feeEl=document.getElementById('cr-fee'); if(feeEl&&totalFee) feeEl.value=totalFee;
-  var depEl=document.getElementById('cr-dep'); if(depEl&&maxDep) depEl.value=maxDep;
+
+  // Custom period = flat fee, user types it themselves. Skip auto-fee.
+  // (Useful for: a 2-week minimum that's quoted as a flat 250k, or any
+  // non-standard arrangement the rate card can't express.)
+  if(period === 'custom'){
+    if(summaryEl){
+      summaryEl.textContent = lineCount > 0
+        ? (fr ? '— tarif personnalisé · saisir le montant total' : '— custom rate · enter total amount')
+        : '';
+      summaryEl.style.color = 'var(--text3)';
+    }
+    if(depEl && maxDep && !depEl.dataset.touched) depEl.value = Math.round(maxDep);
+    return;
+  }
+
+  var total = perPeriodTotal * units;
+  // Only auto-fill the fee field if the user hasn't manually typed in it
+  if(feeEl && !feeEl.dataset.touched){
+    feeEl.value = total > 0 ? Math.round(total) : '';
+  }
+  if(depEl && maxDep && !depEl.dataset.touched){
+    depEl.value = Math.round(maxDep);
+  }
+
+  // Build a human-readable summary so the user sees the math at a glance.
+  // Example: "70,000 Frs/day × 7 days = 490,000 Frs"
+  if(summaryEl){
+    if(lineCount === 0 || perPeriodTotal === 0){
+      summaryEl.textContent = '';
+    } else {
+      var unitLabel = _crPeriodLabel(period, units);
+      summaryEl.innerHTML = '\u2014 '
+        + '<span style="font-family:var(--mono)">' + fmt(perPeriodTotal/CUR.rate) + '</span>'
+        + '/' + _crPeriodSingular(period)
+        + ' \u00D7 <strong>' + units + ' ' + unitLabel + '</strong>'
+        + ' = <strong style="color:var(--g)">' + fmt(total/CUR.rate) + '</strong>';
+      summaryEl.style.color = 'var(--text2)';
+    }
+  }
 }
+
+// Return the period label for plural display: "7 days", "2 weeks", etc.
+function _crPeriodLabel(period, n){
+  var fr = BIZ.language==='fr';
+  var plural = (Math.abs(n) !== 1);
+  if(period === 'hour')  return plural ? (fr?'heures':'hours')  : (fr?'heure':'hour');
+  if(period === 'day')   return plural ? (fr?'jours':'days')    : (fr?'jour':'day');
+  if(period === 'week')  return plural ? (fr?'semaines':'weeks'): (fr?'semaine':'week');
+  if(period === 'month') return plural ? (fr?'mois':'months')   : (fr?'mois':'month');
+  return '';
+}
+// Singular for the rate label ("70,000/day" not "70,000/days")
+function _crPeriodSingular(period){
+  return _crPeriodLabel(period, 1);
+}
+
+// Compute number of period units between start and due dates. The "due"
+// is treated as inclusive — a rental from Mon to Mon should be 1 day,
+// not 0. Hours come from the time portion of the date inputs (if the
+// user switched to type=datetime-local) — falls back to whole-day math
+// otherwise.
+function _crComputeDuration(){
+  var startEl  = document.getElementById('cr-start');
+  var dueEl    = document.getElementById('cr-due');
+  var periodEl = document.getElementById('cr-period');
+  var unitsEl  = document.getElementById('cr-units');
+  if(!startEl || !dueEl || !periodEl || !unitsEl) return;
+  // If the user has manually typed a duration, don't overwrite it.
+  if(unitsEl.dataset.touched === '1') return;
+  var period = periodEl.value;
+  if(period === 'custom') return; // custom = user controls everything
+
+  var start = startEl.value, due = dueEl.value;
+  if(!start || !due) return;
+  // For hour period, the date inputs are datetime-local — parse both
+  // halves; for everything else, treat as midnight start of day.
+  var startD = new Date(start.includes('T') ? start : start+'T00:00:00');
+  var dueD   = new Date(due  .includes('T') ? due   : due  +'T00:00:00');
+  var ms = dueD - startD;
+  if(ms < 0) ms = 0;
+  var units;
+  if(period === 'hour'){
+    units = Math.max(1, Math.round(ms / 3600000));
+  } else if(period === 'day'){
+    // Inclusive day-count: same-day = 1 day, +1 calendar day = 2 days, etc.
+    units = Math.max(1, Math.round(ms / 86400000) + 1);
+  } else if(period === 'week'){
+    units = Math.max(1, Math.round(ms / 604800000));
+    if(!units) units = 1;
+  } else if(period === 'month'){
+    // Calendar-month diff — approximate, but more sensible than dividing
+    // by a fixed 30-day window
+    var m = (dueD.getFullYear() - startD.getFullYear()) * 12
+          + (dueD.getMonth() - startD.getMonth());
+    if(dueD.getDate() >= startD.getDate()) m += 0;
+    else                                    m -= 1;
+    units = Math.max(1, m + 1);
+  } else {
+    units = 1;
+  }
+  unitsEl.value = units;
+}
+
+// Called when period dropdown changes — adjusts the date input types
+// (datetime-local for hours, date for everything else) and recomputes
+// duration + fee.
+function _crPeriodChange(){
+  var periodEl = document.getElementById('cr-period');
+  var startEl  = document.getElementById('cr-start');
+  var dueEl    = document.getElementById('cr-due');
+  var unitsEl  = document.getElementById('cr-units');
+  var unitsRow = document.getElementById('cr-units-row');
+  var rateLbl  = document.getElementById('cr-rate-period-lbl');
+  if(!periodEl) return;
+  var p = periodEl.value;
+  var fr = BIZ.language==='fr';
+
+  // Swap date input type to datetime-local for hourly rentals
+  if(startEl && dueEl){
+    var newType = p === 'hour' ? 'datetime-local' : 'date';
+    if(startEl.type !== newType){
+      // Preserve the date portion when toggling
+      var sv = startEl.value, dv = dueEl.value;
+      startEl.type = newType;
+      dueEl.type   = newType;
+      if(newType === 'datetime-local'){
+        if(sv && !sv.includes('T')) startEl.value = sv + 'T09:00';
+        if(dv && !dv.includes('T')) dueEl.value   = dv + 'T17:00';
+      } else {
+        if(sv && sv.includes('T')) startEl.value = sv.split('T')[0];
+        if(dv && dv.includes('T')) dueEl.value   = dv.split('T')[0];
+      }
+    }
+  }
+  // Toggle the duration row's visibility — "custom" hides it (user
+  // sets a flat fee directly without duration math).
+  if(unitsRow) unitsRow.style.display = (p === 'custom') ? 'none' : '';
+  // Update rate-per-period label on each line (purely cosmetic)
+  if(rateLbl) rateLbl.textContent = '/' + _crPeriodSingular(p);
+  // Reset duration-touched so auto-compute can refire on the new unit
+  if(unitsEl) delete unitsEl.dataset.touched;
+  _crComputeDuration();
+  _crUpdateFee();
+}
+
 async function mCreateRental(startDate){const _s=_L();
   if(!D.cust.length) _loadCustCache();
   if(!D.cust.length && _sb && SESSION.bizId && !SESSION.isSuperAdmin){
@@ -7181,30 +7351,44 @@ async function mCreateRental(startDate){const _s=_L();
         <span style="font-size:10px;color:var(--a);margin-left:6px;cursor:pointer" onclick="_mPush('cr-item-0');mAddItem('cr-item-0')">+ New Item</span>
       </label>
       <div id="cr-line-rows">
-        <div class="cr-line-row" style="display:grid;grid-template-columns:1fr auto;gap:6px;margin-bottom:6px;align-items:center">
+        <div class="cr-line-row" style="display:grid;grid-template-columns:1fr 70px auto;gap:6px;margin-bottom:6px;align-items:center">
           <select class="fs cr-item-sel" onchange="_crLineChange(this)">
             <option value="">-- Select Item --</option>
-            ${rentable.map(i=>`<option value="${i.id}" data-rp="${Math.round((i.rp||0)*CUR.rate)}" data-dep="${Math.round((i.dep||0)*CUR.rate)}" data-name="${i.name}">${i.name} (${(i.qty||0)-(i.rented||0)} avail)${i.rp?" — "+fmt(i.rp)+"/day":""}</option>`).join('')}
+            ${rentable.map(i=>{var av=(i.qty||0)-(i.rented||0);return `<option value="${i.id}" data-avail="${av}" data-rp="${Math.round((i.rp||0)*CUR.rate)}" data-dep="${Math.round((i.dep||0)*CUR.rate)}" data-name="${i.name}">${i.name} (${av} avail)${i.rp?" \u2014 "+fmt(i.rp)+' /'+(BIZ.language==='fr'?'jour':'day'):""}</option>`;}).join('')}
           </select>
-          <button type="button" class="btn btn-d btn-xs" onclick="_crRemoveLine(this)" style="padding:6px 8px">✕</button>
+          <input class="fi cr-line-qty" type="number" min="1" step="1" value="1" style="text-align:center" oninput="_crUpdateFee()" title="Qty"/>
+          <button type="button" class="btn btn-d btn-xs" onclick="_crRemoveLine(this)" style="padding:6px 8px">\u2715</button>
         </div>
       </div>
       <button type="button" class="btn btn-s btn-sm" style="margin-top:4px" onclick="_crAddLine()">+ Add Item</button>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">${BIZ.language==='fr'?'Qté = quantité du m\u00eame article lou\u00e9e ensemble':'Qty = number of the same item rented together'}</div>
     </div>
-    <div class="fg"><label class="fl">${_s.rent_start}</label><input class="fi" type="date" id="cr-start" value="${today}"/></div>
-    <div class="fg"><label class="fl">${_s.rent_due}</label><input class="fi" type="date" id="cr-due" value="${due4}"/></div>
-    <div class="fg"><label class="fl">Rental Fee <span style="font-size:10px;color:var(--text2)">(${sym}, total)</span></label>
-      <input class="fi" type="number" id="cr-fee" placeholder="0" step="any"/>
+    <div class="fg"><label class="fl">${BIZ.language==='fr'?'P\u00e9riode de location':'Rental Period'}</label>
+      <select class="fs" id="cr-period" onchange="_crPeriodChange()">
+        <option value="day" selected>${BIZ.language==='fr'?'Par jour':'Per Day'}</option>
+        <option value="hour">${BIZ.language==='fr'?'Par heure':'Per Hour'}</option>
+        <option value="week">${BIZ.language==='fr'?'Par semaine':'Per Week'}</option>
+        <option value="month">${BIZ.language==='fr'?'Par mois':'Per Month'}</option>
+        <option value="custom">${BIZ.language==='fr'?'Personnalis\u00e9 (montant forfaitaire)':'Custom (flat amount)'}</option>
+      </select>
+    </div>
+    <div class="fg" id="cr-units-row"><label class="fl">${BIZ.language==='fr'?'Dur\u00e9e':'Duration'} <span style="font-size:10px;color:var(--text2)"><span id="cr-units-period-lbl">${BIZ.language==='fr'?'jours':'days'}</span> \u2014 ${BIZ.language==='fr'?'auto-calcul\u00e9 depuis les dates':'auto-calculated from dates'}</span></label>
+      <input class="fi" type="number" id="cr-units" min="1" step="any" value="1" oninput="this.dataset.touched='1';_crUpdateFee()"/>
+    </div>
+    <div class="fg"><label class="fl">${_s.rent_start}</label><input class="fi" type="date" id="cr-start" value="${today}" onchange="_crComputeDuration();_crUpdateFee()"/></div>
+    <div class="fg"><label class="fl">${_s.rent_due}</label><input class="fi" type="date" id="cr-due" value="${due4}" onchange="_crComputeDuration();_crUpdateFee()"/></div>
+    <div class="fg"><label class="fl">${BIZ.language==='fr'?'Frais Total':'Total Rental Fee'} <span style="font-size:10px;color:var(--text2)">(${sym}) <span id="cr-fee-summary" style="color:var(--text2)"></span></span></label>
+      <input class="fi" type="number" id="cr-fee" placeholder="0" step="any" oninput="this.dataset.touched='1'" style="font-weight:700;color:var(--g)"/>
     </div>
     <div class="fg"><label class="fl">Deposit <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
-      <input class="fi" type="number" id="cr-dep" placeholder="0" step="any"/>
+      <input class="fi" type="number" id="cr-dep" placeholder="0" step="any" oninput="this.dataset.touched='1'"/>
     </div>
   </div>
   <div class="fg"><label class="fl">${_s.rent_cond_before}</label>
     <select class="fs" id="cr-cond"><option>New</option><option selected>${_s.rent_cond_exc}</option><option>${_s.rent_cond_good}</option><option>${_s.rent_cond_fair}</option></select>
   </div>
   <div class="fg"><label class="fl">${_s.rent_pre_damage}</label>
-    <textarea class="ft" id="cr-notes" placeholder="Note any existing marks or repairs…" style="min-height:48px"></textarea>
+    <textarea class="ft" id="cr-notes" placeholder="Note any existing marks or repairs\u2026" style="min-height:48px"></textarea>
   </div>
   <div class="fg"><label class="fl">${_s.rent_dep_method}</label>
     <select class="fs" id="cr-method"><option>${_s.ui_cash}</option><option>${_s.ui_card}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option></select>
@@ -7216,11 +7400,23 @@ async function mCreateRental(startDate){const _s=_L();
     var due=document.getElementById('cr-due').value;
     if(!custId){toast(_L().t_select_cust,'error');return;}
     if(!start||!due){toast(_L().t_enter_dates,'error');return;}
-    // Collect all selected items from line rows
-    var crItems=Array.from(document.querySelectorAll('#cr-line-rows .cr-item-sel'))
-      .map(function(s){return s.value?D.inv.find(function(i){return i.id===s.value;}):null;})
-      .filter(Boolean);
-    if(!crItems.length){toast(_L().t_select_item,'error');return;}
+    var period=document.getElementById('cr-period').value||'day';
+    var units=parseFloat(document.getElementById('cr-units').value)||1;
+    if(period==='custom') units=0; // sentinel: flat fee, no duration math
+    // Collect per-line: item ref + qty. Qty defaults to 1 if blank, capped
+    // to available stock so we don't oversell.
+    var crLines=Array.from(document.querySelectorAll('#cr-line-rows .cr-line-row')).map(function(row){
+      var s=row.querySelector('.cr-item-sel');
+      if(!s||!s.value) return null;
+      var item=D.inv.find(function(i){return i.id===s.value;});
+      if(!item) return null;
+      var avail=(item.qty||0)-(item.rented||0);
+      var q=parseInt(row.querySelector('.cr-line-qty')?.value)||1;
+      if(q<1) q=1;
+      if(q>avail) q=avail;
+      return {item:item, qty:q};
+    }).filter(Boolean);
+    if(!crLines.length){toast(_L().t_select_item,'error');return;}
     var custObj=D.cust.find(function(x){return x.id===custId;});
     var cust=custObj?custObj.name:custId;
     var r2=CUR.rate;
@@ -7232,24 +7428,31 @@ async function mCreateRental(startDate){const _s=_L();
     // Plan gate before creating records
     if(_isFreePlan()){ _showPremiumUpgradePrompt('rentals'); return; }
     if(_planWriteBlocked('Creating a rental','rentals')) return;
-    // Create one rental record per item
-    crItems.forEach(function(itemObj,idx){
-      itemObj.rented=(itemObj.rented||0)+1;
-      var _maxRNum=D.rentals.reduce(function(m,r){var n=parseInt((r.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
-      var newId='R-'+String(_maxRNum+1+idx).padStart(4,'0');
-      var itemFee=crItems.length>1?Math.round(fee/crItems.length*100)/100:fee;
-      var itemDep=crItems.length>1?Math.round(dep/crItems.length*100)/100:dep;
-      D.rentals.unshift({id:newId,cust,custId,item:itemObj.name,itemId:itemObj.id,start,due,fee:itemFee,dep:itemDep,lf:0,st:'Checked Out',cb:cond,ca:'',notes,method});
+    // Allocate fee + deposit across line totals (weighted by rp \u00d7 qty so
+    // a 70k\u00d7day x qty1 row and a 30k\u00d7day x qty2 row split fairly).
+    var weights=crLines.map(function(l){return ((l.item.rp||0)*l.qty);});
+    var weightSum=weights.reduce(function(a,b){return a+b;},0)||crLines.length;
+    var maxRNum=D.rentals.reduce(function(m,r){var n=parseInt((r.id||'').replace(/\\D/g,''),10)||0;return n>m?n:m;},0);
+    crLines.forEach(function(line,idx){
+      // Update rented count by FULL qty (was always +1 regardless of qty)
+      line.item.rented=(line.item.rented||0)+line.qty;
+      var newId='R-'+String(maxRNum+1+idx).padStart(4,'0');
+      var w=weights[idx]||1;
+      var itemFee=crLines.length>1?Math.round((fee*w/weightSum)*100)/100:fee;
+      var itemDep=crLines.length>1?Math.round((dep*w/weightSum)*100)/100:dep;
+      D.rentals.unshift({id:newId,cust,custId,item:line.item.name,itemId:line.item.id,
+        qty:line.qty,period:period,units:units,
+        start,due,fee:itemFee,dep:itemDep,lf:0,st:'Checked Out',cb:cond,ca:'',notes,method});
       _dbSaveRental(D.rentals[0]);
-      addAudit('Rental created',newId+' - '+cust+' - '+itemObj.name);
+      addAudit('Rental created',newId+' - '+cust+' - '+line.qty+'\u00d7 '+line.item.name);
     });
     if(custObj){custObj.visits=(custObj.visits||0)+1;custObj.last=start;}
     refreshLiveKpis();
     closeModal();
-    toast(crItems.length+' item(s) checked out to '+cust,'success');
+    toast(crLines.length+' item(s) checked out to '+cust,'success');
     nav('rentals');
    ">${_s.rent_btn_create}</button>`);
-  // Init searchable customer select — retry to handle modal render delay
+  // Init searchable customer select \u2014 retry to handle modal render delay
   function _initCrCustSelect(){
     var wrap = document.getElementById('cr-cust-wrap');
     if(!wrap) return;
@@ -7279,6 +7482,9 @@ async function mCreateRental(startDate){const _s=_L();
   }
   setTimeout(_initCrCustSelect, 80);
   setTimeout(function(){ if(!(document.getElementById('cr-cust-wrap')||{})._ssOpts) _initCrCustSelect(); }, 300);
+  // Kick off initial duration + fee compute so the user sees the math
+  // from the moment the modal opens
+  setTimeout(function(){ _crComputeDuration(); _crUpdateFee(); }, 100);
 }
 
 function mReturn(id){const _s=_L();
@@ -7489,16 +7695,21 @@ function genRentalReceiptDoc(id){var _s=_L();
       +'</div>'
     +'</div>'
     +'<table class="doc-items">'
-      +'<thead><tr><th style="width:45%">'+L.item+'</th><th>'+L.period+'</th><th>'+L.conditionOut+'</th><th>'+L.conditionIn+'</th><th class="num">'+L.fee+'</th></tr></thead>'
+      +'<thead><tr><th style="width:35%">'+L.item+'</th><th class="num">'+(BIZ.language==='fr'?'Qt\u00e9':'Qty')+'</th><th>'+L.period+'</th><th>'+L.conditionOut+'</th><th>'+L.conditionIn+'</th><th class="num">'+L.fee+'</th></tr></thead>'
       +'<tbody>'
         +'<tr>'
           +'<td class="desc"><strong>'+_esc(r.item)+'</strong></td>'
-          +'<td style="font-size:11px">'+r.start+' → '+r.due+'</td>'
-          +'<td>'+_esc(r.cb||'—')+'</td>'
-          +'<td>'+(r.ca?_esc(r.ca):'<span style="color:#94a3b8">—</span>')+'</td>'
+          +'<td class="num">'+(r.qty||1)+'</td>'
+          +'<td style="font-size:11px">'
+            +(r.period && r.period !== 'custom' && r.units
+              ? r.units + ' ' + _crPeriodLabel(r.period, r.units) + '<br><span style="color:#94a3b8;font-size:10px">' + r.start + ' \u2192 ' + r.due + '</span>'
+              : r.start + ' \u2192 ' + r.due)
+          +'</td>'
+          +'<td>'+_esc(r.cb||'\u2014')+'</td>'
+          +'<td>'+(r.ca?_esc(r.ca):'<span style="color:#94a3b8">\u2014</span>')+'</td>'
           +'<td class="num" style="font-weight:700">'+fmtDoc(r.fee)+'</td>'
         +'</tr>'
-        +(r.lf>0?'<tr><td class="desc" style="color:#dc2626">'+L.lateFee+'</td><td colspan="3"></td><td class="num" style="color:#dc2626;font-weight:600">'+fmtDoc(r.lf)+'</td></tr>':'')
+        +(r.lf>0?'<tr><td class="desc" style="color:#dc2626">'+L.lateFee+'</td><td colspan="4"></td><td class="num" style="color:#dc2626;font-weight:600">'+fmtDoc(r.lf)+'</td></tr>':'')
       +'</tbody>'
     +'</table>'
     +'<div class="doc-totals"><div class="doc-totals-box">'
@@ -18304,6 +18515,9 @@ function _dbToSale(r){ return {
 function _dbToRental(r){ return {
   id:r.id, cust:r.customer, custId:r.customer_id||'',
   item:r.item, itemId:r.item_id||'',
+  qty: r.qty || 1,
+  period: r.period || 'day',
+  units: r.units != null ? r.units : 1,
   start:r.start_date, due:r.due_date,
   fee:r.fee||0, dep:r.deposit||0, paid:r.paid||0,
   st:r.status||'Reserved', cb:r.condition_before||'Good',
@@ -18483,6 +18697,7 @@ function _saleToDB(s, bizId){ return {
 function _rentalToDB(r, bizId){ return {
   id:r.id, biz_id:bizId, customer:r.cust, customer_id:r.custId||'',
   item:r.item, item_id:r.itemId||'',
+  qty: r.qty||1, period: r.period||'day', units: r.units != null ? r.units : 1,
   start_date:r.start, due_date:r.due, fee:r.fee||0,
   deposit:r.dep||0, paid:r.paid||0,
   status:r.st||'Reserved',
@@ -18779,7 +18994,24 @@ async function _dbSaveRental(r){
   if(_idx>=0) D.rentals[_idx]=r; else D.rentals.unshift(r);
   _idbSave(SESSION.bizId,'rentals',D.rentals).catch(function(){});
   if(!_sb||!navigator.onLine) return;
-  await _safeUpsert('rentals', _rentalToDB(r, SESSION.bizId), 'saveRental');
+  var result = await _safeUpsert('rentals', _rentalToDB(r, SESSION.bizId), 'saveRental');
+  if(result && !result.ok){
+    var errMsg = (result.error && (result.error.message || result.error.code)) || '';
+    // If the qty/period/units columns aren't yet in the schema, retry
+    // without them. Local copy keeps the values, syncs once migration runs.
+    if(/\b(qty|period|units)\b/i.test(errMsg)){
+      console.warn('[saveRental] qty/period/units columns not yet in schema; retrying without them.');
+      var payload = _rentalToDB(r, SESSION.bizId);
+      delete payload.qty;
+      delete payload.period;
+      delete payload.units;
+      var retry = await _safeUpsert('rentals', payload, 'saveRental');
+      if(retry && retry.ok) return;
+      if(retry) console.error('[saveRental] retry FAILED for '+r.id+':', retry.error);
+      return;
+    }
+    console.error('[saveRental] FAILED for '+r.id+':', result.error);
+  }
 }
 async function _dbDelRental(id){
   if(!SESSION.bizId) return;
