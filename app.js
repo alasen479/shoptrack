@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779565476");
+console.log("ShopTrack v2.7 - build:1779565901");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -3766,6 +3766,9 @@ function _costBreakdownHTML(prefix, existingLines){const _s=_L();
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Unit Cost ('+CUR.symbol+')</div>'
         +'<div></div>'
       +'</div>'
+      +'<div style="font-size:10px;color:var(--text2);margin:-2px 0 8px;padding:6px 8px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--a)">'
+        +'\uD83D\uDCA1 <strong>How qty works:</strong> Only <em>Purchase</em>, <em>Materials</em>, and <em>Import</em> lines count toward the unit-count divisor (and auto-fill stock on hand). For other categories like Transport, Labor, Insurance \u2014 just enter the total cost; the qty doesn\u2019t affect the per-unit calculation.'
+      +'</div>'
 
       // Line rows container
       +'<div id="'+prefix+'-cb-rows">'+existingRowsHTML+'</div>'
@@ -3960,10 +3963,24 @@ function _cbRecalc(prefix){
 
   if(!container) return;
   var total = 0;
+  // Only categories that represent the PHYSICAL UNITS acquired contribute
+  // to the per-unit divisor. Overhead categories (transport, labor,
+  // marketing, etc.) record total cost — their "qty" might be "1 trip"
+  // or "2 hours" which is meaningless when computing cost per finished
+  // unit. Mixing them into the divisor produces nonsense like
+  // "10 jeans + 1 trip + 2 hours = 13 units" → wrong per-unit cost.
+  var QTY_BEARING = { purchase:1, materials:1, import:1 };
+  var unitQty = 0;     // sum of qty across qty-bearing rows only
+  var unitQtyRows = 0; // how many qty-bearing rows exist (informational)
   container.querySelectorAll('.cb-row').forEach(function(row){
     var qty = parseFloat(row.querySelector('.cb-qty')?.value) || 1;
     var uc  = parseFloat(row.querySelector('.cb-uc')?.value)  || 0;
+    var cat = row.querySelector('.cb-cat')?.value || 'other';
     total += qty * uc;
+    if(QTY_BEARING[cat]){
+      unitQty += qty;
+      unitQtyRows++;
+    }
   });
 
   // total is already in display currency (user enters in CUR.symbol)
@@ -3977,20 +3994,24 @@ function _cbRecalc(prefix){
       : '<span style="font-size:12px;color:var(--text3)">0</span>';
   }
 
-  // Auto-fill the cost price field with PER-UNIT cost
-  // Total from breakdown = total acquisition cost; divide by total qty to get unit cost
+  // Auto-fill the cost price field with PER-UNIT cost.
+  // Divisor = sum of qty across PURCHASE / MATERIALS / IMPORT rows only.
+  // If none exist, treat the whole entry as one unit acquisition (rare —
+  // means the user only logged overhead costs without specifying what
+  // they bought; still a sensible fallback).
   if(costField && total > 0){
-    var totalQty = 0;
-    container.querySelectorAll('.cb-row').forEach(function(row){
-      totalQty += parseFloat(row.querySelector('.cb-qty')?.value) || 1;
-    });
-    var perUnit = totalQty > 0 ? total / totalQty : total;
+    var divisor = unitQty > 0 ? unitQty : 1;
+    var perUnit = total / divisor;
     costField.value = Math.round(perUnit * 100) / 100;
-    // Auto-populate Qty on Hand for Add Item form
-    if(prefix === 'ci' && totalQty > 0){
+    // Auto-populate Qty on Hand for Add Item form using the SAME divisor.
+    // This is the number of physical units acquired — exactly what stock
+    // on hand should be set to. Only fire if at least one qty-bearing
+    // line was found (don't auto-set qty=1 from a fallback divisor;
+    // the user can fill that field manually).
+    if(prefix === 'ci' && unitQty > 0){
       var qtyField = document.getElementById('ai-qty');
       if(qtyField){
-        qtyField.value = Math.round(totalQty);
+        qtyField.value = Math.round(unitQty);
         qtyField.style.transition = 'background .3s';
         qtyField.style.background = 'var(--g-dim)';
         setTimeout(function(){ qtyField.style.background = ''; }, 600);
