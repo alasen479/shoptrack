@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779571561");
+console.log("ShopTrack v2.7 - build:1779572549");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -8575,7 +8575,17 @@ function mRecordPurchase(){const _s=_L();
       <select class="fs" id="po-method"><option>${_s.ui_bank_transfer}</option><option>${_s.ui_cash}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option><option>${_s.ui_credit_card}</option></select>
     </div>
   </div>
-  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="po-notes" placeholder="Notes to vendor…" style="min-height:48px"></textarea></div>`,
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="po-notes" placeholder="Notes to vendor…" style="min-height:48px"></textarea></div>
+  <div class="fg">
+    <label class="fl">${BIZ.language==='fr'?'Pièces jointes':'Attachments'} <span style="font-size:10px;color:var(--text2);font-weight:400">${BIZ.language==='fr'?'reçus, facture fournisseur, documents douaniers...':'receipts, vendor invoice, customs paperwork…'}</span></label>
+    <div id="po-new-docs-list" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px"></div>
+    <div style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('po-new-docs-input').click()">
+      <span style="font-size:18px">➕</span>
+      <div style="font-size:12px;font-weight:600;color:var(--ink)">${BIZ.language==='fr'?'Joindre des documents':'Attach documents'}</div>
+      <span style="font-size:10px;color:var(--text3)">${BIZ.language==='fr'?'(images / PDF)':'(images / PDF)'}</span>
+      <input id="po-new-docs-input" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'po-new-docs-list')"/>
+    </div>
+  </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="savePO()">${_s.po_create}</button>`);
 }
@@ -8635,13 +8645,37 @@ function savePO(){var _s=_L();
   // Update inventory stock only when PO is marked Received or Paid
   // Pending/Partial POs do NOT increment stock — goods not yet received
   if(poSt==='Received'||poSt==='Paid'){
+    // TRUE LANDED COST: spread freight/duties/taxes/other proportionally
+    // across each inventory-linked line by its subtotal share. Without
+    // this, sales reports would overstate margin — a wig bought at
+    // 50,000 Frs + 10,000 Frs of freight/duties allocated to it costs
+    // 60,000 to land, not 50,000. Each item's stored 'cost' must reflect
+    // the full landed unit cost so COGS at sale time is accurate.
+    var _overhead = freight + duties + taxes + other; // already in base USD
+    var _linesSub = poLines.reduce(function(a, r){ return a + r.qty * (r.uc / rr); }, 0);
+    // Use Weighted Moving Average (WMA) when restocking — never set cost
+    // directly. Mixing a 1000-Frs old batch with a 2000-Frs new batch
+    // should yield an average cost, not overwrite the old basis.
     poLines.forEach(function(li){
       if(li.invId&&li.invId!=='__custom__'){
         var invObj=D.inv.find(function(x){return x.id===li.invId;});
         if(invObj){
-          invObj.qty=(invObj.qty||0)+li.qty;
-          if(li.uc) invObj.cost=Math.round((li.uc/rr)*10000)/10000;
-          _dbSaveInv(invObj,+li.qty);
+          var oldQty  = invObj.qty || 0;
+          var oldCost = invObj.cost || 0;
+          var addQty  = li.qty || 0;
+          var lineSubBase = (li.uc / rr) * addQty; // line subtotal in base
+          // This line's share of the overhead pool, proportional to its sub
+          var overheadShare = _linesSub > 0 ? _overhead * (lineSubBase / _linesSub) : 0;
+          var landedLineCost = lineSubBase + overheadShare;       // total landed for this line
+          var newUnitLanded = addQty > 0 ? landedLineCost / addQty : (li.uc / rr);
+          // Weighted moving average across old stock + new acquisition
+          var newQty = oldQty + addQty;
+          var blendedCost = newQty > 0
+            ? ((oldQty * oldCost) + (addQty * newUnitLanded)) / newQty
+            : newUnitLanded;
+          invObj.qty  = newQty;
+          invObj.cost = Math.round(blendedCost * 10000) / 10000;
+          _dbSaveInv(invObj, +addQty);
         }
       }
     });
@@ -8649,7 +8683,18 @@ function savePO(){var _s=_L();
   var invId=(poLines.find(function(r){return r.invId&&r.invId!=='__custom__';})||{invId:''}).invId;
   var qty=totalQty;
   if(vendorObj){vendorObj.orders=(vendorObj.orders||0)+1;vendorObj.total=(vendorObj.total||0)+total;} // v.bal recomputed by _reconcileVendorTotals in refreshLiveKpis
-  D.purchases.unshift({id:newId,vendor,vendorId,items,qty,dt:document.getElementById('po-dt').value,delivery:document.getElementById('po-delivery').value,sub,freight,duties,taxes,other,total,paid,bal:total-paid,invId,lines:poLines,st:poSt,method:document.getElementById('po-method').value,notes:document.getElementById('po-notes').value,docs:[]});
+  // Collect any documents the user attached during creation.
+  // handleDocAttach stored each one in _DOC_STORE keyed by a fresh id;
+  // here we materialise them onto the purchase record so they persist.
+  var _docs = [];
+  var _docList = document.getElementById('po-new-docs-list');
+  if(_docList && _docList._docKeys){
+    _docList._docKeys.forEach(function(key){
+      var entry = _DOC_STORE && _DOC_STORE[key];
+      if(entry) _docs.push({name:entry.name||'doc', _key:key, dataUrl:entry.dataUrl, type:entry.type||''});
+    });
+  }
+  D.purchases.unshift({id:newId,vendor,vendorId,items,qty,dt:document.getElementById('po-dt').value,delivery:document.getElementById('po-delivery').value,sub,freight,duties,taxes,other,total,paid,bal:total-paid,invId,lines:poLines,st:poSt,method:document.getElementById('po-method').value,notes:document.getElementById('po-notes').value,docs:_docs});
   _dbSavePurchase(D.purchases[0]);
   refreshLiveKpis();
   addAudit('PO created',newId+' - '+vendor+' - '+fmt(total));
@@ -26854,12 +26899,32 @@ function mViewPurchase(id){const _s=_L();
     var recvBtn=document.getElementById('po-recv-btn');
     if(recvBtn) recvBtn.onclick=function(){
       p.st='Received';
-      // Update inventory: only use lines that have an invId linked
+      // Update inventory: only use lines that have an invId linked.
+      // Apply true landed cost via WMA — same logic as savePO above.
       if(p.lines&&p.lines.length){
+        var _ovh = (p.freight||0) + (p.duties||0) + (p.taxes||0) + (p.other||0); // base USD
+        var _linesSub = p.lines.reduce(function(a, r){ return a + (r.qty||1) * (r.uc||0); }, 0); // r.uc was stored in display currency at save
+        // r.uc was stored in display currency — convert per-line for the share math
+        var rr2 = CUR.rate;
+        var _linesSubBase = _linesSub / rr2;
         p.lines.forEach(function(li){
           if(li.invId&&li.invId!=='__custom__'){
             var inv=D.inv.find(function(i){return i.id===li.invId;});
-            if(inv){ var _pq2=li.qty||1; inv.qty=(inv.qty||0)+_pq2; _dbSaveInv(inv,+_pq2); }
+            if(inv){
+              var addQty = li.qty || 1;
+              var lineSubBase = ((li.uc||0) / rr2) * addQty;
+              var ohShare = _linesSubBase > 0 ? _ovh * (lineSubBase / _linesSubBase) : 0;
+              var newUnitLanded = addQty > 0 ? (lineSubBase + ohShare) / addQty : ((li.uc||0) / rr2);
+              var oldQty = inv.qty || 0;
+              var oldCost = inv.cost || 0;
+              var newQty = oldQty + addQty;
+              var blended = newQty > 0
+                ? ((oldQty * oldCost) + (addQty * newUnitLanded)) / newQty
+                : newUnitLanded;
+              inv.qty = newQty;
+              inv.cost = Math.round(blended * 10000) / 10000;
+              _dbSaveInv(inv, +addQty);
+            }
           }
         });
       }
@@ -26892,8 +26957,72 @@ function genPODoc(id){
   const primary=BIZ.primaryColor, accent=BIZ.accentColor;
   const v=D.vendors.find(v=>v.name===p.vendor)||{};
   const L=_L();
+  const fr = BIZ.language === 'fr';
   const stLabel = p.st==='Paid'?L.stPaid : p.st==='Partial'?L.stPartial : p.st;
   const stBadge = p.st==='Paid'?'paid' : p.st==='Partial'?'partial':'unpaid';
+  const paid = p.paid || (p.st==='Paid' ? p.total : 0);
+  const bal  = Math.max(0, (p.total||0) - paid);
+
+  // Build line-item rows. Falls back to a single "items" row for legacy
+  // POs that don't have structured lines (older saves before line items
+  // were a thing).
+  var lineRows = '';
+  if(p.lines && p.lines.length){
+    var rr = CUR.rate;
+    lineRows = p.lines.map(function(li){
+      var name = li.name || (li.invId && li.invId !== '__custom__'
+        ? (D.inv.find(function(i){return i.id===li.invId;})||{}).name || L.poCustomItem || 'Item'
+        : L.poCustomItem || 'Item');
+      var qty  = li.qty || 1;
+      var ucDisplay = li.uc || 0; // stored in display currency
+      var lineSubDisplay = qty * ucDisplay;
+      return '<tr>'
+        + '<td class="desc">'+_esc(name)+'</td>'
+        + '<td class="num">'+qty+'</td>'
+        + '<td class="num">'+fmtDoc(ucDisplay/rr)+'</td>'
+        + '<td class="num" style="font-weight:700">'+fmtDoc(lineSubDisplay/rr)+'</td>'
+        + '</tr>';
+    }).join('');
+  } else {
+    // Legacy fallback for POs without structured lines
+    lineRows = '<tr>'
+      + '<td class="desc">'+_esc(p.items||'—')+'</td>'
+      + '<td class="num">'+(p.qty||1)+'</td>'
+      + '<td class="num">'+(p.qty?fmtDoc((p.sub||0)/(p.qty||1)):'—')+'</td>'
+      + '<td class="num" style="font-weight:700">'+fmtDoc(p.sub||0)+'</td>'
+      + '</tr>';
+  }
+
+  // Payment summary section — only shown if there's a paid amount or a
+  // balance to report. Clear separation between "what was ordered"
+  // (totals box) and "what was paid" (payment box).
+  var payHTML = '';
+  if(paid > 0 || bal > 0 || p.st !== 'Pending'){
+    payHTML = '<div class="doc-section-title" style="margin-top:18px">'+(fr?'Paiement':'Payment')+'</div>'
+      +'<div style="display:flex;justify-content:flex-end">'
+        +'<div style="min-width:280px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">'
+          +'<div style="display:flex;justify-content:space-between;padding:8px 14px;background:#f8fafc;font-size:12px"><span style="color:#475569">'+(fr?'Méthode':'Method')+'</span><span style="font-weight:600;color:#0f172a">'+_esc(p.method||'—')+'</span></div>'
+          +'<div style="display:flex;justify-content:space-between;padding:8px 14px;font-size:12px"><span style="color:#475569">'+(fr?'Montant Payé':'Amount Paid')+'</span><span style="font-weight:700;color:#047857;font-family:var(--mono)">'+fmtDoc(paid)+'</span></div>'
+          +(bal>0
+            ? '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:'+primary+';color:#fff;font-size:13px"><span style="font-weight:700">'+(fr?'Solde dû':'Balance Due')+'</span><span style="font-weight:800;font-family:var(--mono)">'+fmtDoc(bal)+'</span></div>'
+            : '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:#047857;color:#fff;font-size:13px"><span style="font-weight:700">'+(fr?'Solde':'Balance')+'</span><span style="font-weight:800;font-family:var(--mono)">'+fmtDoc(0)+'</span></div>'
+          )
+        +'</div>'
+      +'</div>';
+  }
+
+  // Attachments indicator — if docs are attached, mention them in the doc.
+  // The actual files are accessible from the in-app modal (Documents tab on
+  // the PO). The printed/PDF version notes their existence for audit.
+  var docsHTML = '';
+  if(p.docs && p.docs.length){
+    docsHTML = '<div class="doc-section-title" style="margin-top:14px">'+(fr?'Pièces jointes':'Attachments')+'</div>'
+      +'<div style="font-size:12px;color:#475569">📎 '+p.docs.length+' '
+      +(fr ? (p.docs.length>1?'documents joints':'document joint')
+           : (p.docs.length>1?'documents attached':'document attached'))
+      +' '+(fr?'(consultables dans l\'application)':'(viewable in the app)')+'</div>';
+  }
+
   const html=`${docStyles(primary,accent)}
   <div style="background:${primary};padding:24px 28px 20px;display:flex;justify-content:space-between;align-items:flex-start">
     <div>
@@ -26925,14 +27054,13 @@ function genPODoc(id){
       </div>
     </div>
     <table class="doc-items">
-      <thead><tr><th style="width:45%">${L.description}</th><th class="num">${L.subtotal}</th><th class="num">${L.freight}</th><th class="num">${L.importDuties}</th><th class="num">${L.total}</th></tr></thead>
-      <tbody><tr>
-        <td class="desc">${_esc(p.items)}</td>
-        <td class="num">${fmtDoc(p.sub)}</td>
-        <td class="num">${fmtDoc(p.freight)}</td>
-        <td class="num">${fmtDoc(p.duties)}</td>
-        <td class="num" style="font-weight:700">${fmtDoc(p.total)}</td>
-      </tr></tbody>
+      <thead><tr>
+        <th style="width:55%">${L.description}</th>
+        <th class="num" style="width:10%">${fr?'Qté':'Qty'}</th>
+        <th class="num" style="width:15%">${fr?'Coût Unitaire':'Unit Cost'}</th>
+        <th class="num" style="width:20%">${L.subtotal}</th>
+      </tr></thead>
+      <tbody>${lineRows}</tbody>
     </table>
     <div class="doc-totals">
       <div class="doc-totals-box">
@@ -26940,9 +27068,12 @@ function genPODoc(id){
         ${p.freight>0?`<div class="doc-total-row"><span>${L.freight}</span><span class="num">${fmtDoc(p.freight)}</span></div>`:''}
         ${p.duties>0?`<div class="doc-total-row"><span>${L.importDuties}</span><span class="num">${fmtDoc(p.duties)}</span></div>`:''}
         ${(p.taxes||0)>0?`<div class="doc-total-row"><span>${L.taxes}</span><span class="num">${fmtDoc(p.taxes)}</span></div>`:''}
+        ${(p.other||0)>0?`<div class="doc-total-row"><span>${L.other||(fr?'Autre':'Other')}</span><span class="num">${fmtDoc(p.other)}</span></div>`:''}
         <div class="doc-total-final"><span>${L.totalLanded}</span><span class="num">${fmtDoc(p.total)}</span></div>
       </div>
     </div>
+    ${payHTML}
+    ${docsHTML}
     ${p.notes?`<div class="doc-section-title">${L.notes}</div><p style="font-size:12px;color:#475569;line-height:1.6;margin-bottom:16px">${_esc(p.notes)}</p>`:''}
     ${docSignStamp()}
   </div>
