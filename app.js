@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779565199");
+console.log("ShopTrack v2.7 - build:1779565476");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4230,6 +4230,11 @@ async function _saveCatsToDb(){
 
 async function mAddItem(_returnSelectId){const _s=_L();
   await _syncCatsFromDB(); // always get latest user-created categories
+  // Clear any stale pending photos from a previous Add session — otherwise
+  // they could silently get attached to the next item.
+  if(window._pendingPhotos && window._pendingPhotos['__new__']){
+    delete window._pendingPhotos['__new__'];
+  }
   modal(_s.inv_add_item,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.inv_name_lbl}</label><input class="fi" id="ai-name" placeholder="e.g. Lace Mermaid Bridal Gown"/></div>
@@ -4297,9 +4302,15 @@ function _previewNewItemPhotos(input){
   const grid = document.getElementById('ai-photo-grid');
   const status = document.getElementById('ai-photo-status');
   window._pendingPhotos = window._pendingPhotos || {};
-  window._pendingPhotos['__new__'] = [];
-  window._pendingPhotos['__new__']._expectedCount = files.length;
-  if(grid) grid.innerHTML = '';
+  // Append to existing photos rather than replacing — otherwise the user
+  // can't add photos in multiple passes (each new file picker invocation
+  // wiped everything they'd already added).
+  if(!Array.isArray(window._pendingPhotos['__new__'])){
+    window._pendingPhotos['__new__'] = [];
+  }
+  const alreadyLoaded = window._pendingPhotos['__new__'].length;
+  // The status counter shows total expected = already-loaded + this batch.
+  window._pendingPhotos['__new__']._expectedCount = alreadyLoaded + files.length;
   files.forEach(function(file, idx){
     const reader = new FileReader();
     reader.onload = function(e){
@@ -4307,12 +4318,32 @@ function _previewNewItemPhotos(input){
       if(grid){
         const thumb = document.createElement('div');
         thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:var(--r6);overflow:hidden;border:1px solid var(--border2)';
+        // Capture the index of THIS photo at insert time so the ✕ button
+        // removes the right one even after more photos are added later.
         const removeIdx = window._pendingPhotos['__new__'].length - 1;
         thumb.innerHTML = '<img loading="lazy" src="'+e.target.result+'" style="width:100%;height:100%;object-fit:cover"/>';
         const xBtn = document.createElement('button');
-        xBtn.textContent = 'x';
+        xBtn.textContent = '\u2715';
         xBtn.style.cssText = 'position:absolute;top:3px;right:3px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:1';
-        xBtn.onclick = function(){ thumb.remove(); window._pendingPhotos['__new__'].splice(removeIdx,1); };
+        xBtn.onclick = function(){
+          // Find the current position of this thumb in the grid — that's
+          // its current index in the pending array (after any earlier
+          // removals shifted things).
+          const thumbs = Array.from(grid.children);
+          const liveIdx = thumbs.indexOf(thumb);
+          if(liveIdx >= 0){
+            window._pendingPhotos['__new__'].splice(liveIdx, 1);
+            window._pendingPhotos['__new__']._expectedCount = Math.max(0,
+              (window._pendingPhotos['__new__']._expectedCount || 0) - 1);
+          }
+          thumb.remove();
+          // Update counter after removal
+          if(status){
+            const remaining = window._pendingPhotos['__new__'].length;
+            status.textContent = remaining ? (remaining + ' photo' + (remaining>1?'s':'') + ' ready') : '';
+            status.style.display = remaining ? 'block' : 'none';
+          }
+        };
         thumb.appendChild(xBtn);
         grid.appendChild(thumb);
       }
@@ -4325,6 +4356,10 @@ function _previewNewItemPhotos(input){
     };
     reader.readAsDataURL(file);
   });
+  // Reset the input so picking the SAME file again still triggers onchange.
+  // Without this, picking photo X, removing it, then picking X again would
+  // be a no-op (the input.files value is unchanged → no onchange fires).
+  input.value = '';
 }
 
 function _saveNewItem(){var _s=_L();
@@ -4477,19 +4512,80 @@ async function mEditItem(id){const _s=_L();
 function previewItemPhotos(input, id){
   const files = Array.from(input.files);
   if(!files.length) return;
-  const el = document.getElementById('ei-photo-newpreviews-'+id);
-  if(el){ el.style.display='block'; el.textContent = files.length + ' photo(s) selected — will be saved'; }
-  // Reset pending for this item — use a clean object with known count
   window._pendingPhotos = window._pendingPhotos || {};
-  const pending = [];
-  pending._expectedCount = files.length;
-  window._pendingPhotos[id] = pending;
+  // Append to existing pending photos rather than replacing — otherwise
+  // picking a 2nd batch of photos wiped the 1st batch silently.
+  if(!Array.isArray(window._pendingPhotos[id])){
+    window._pendingPhotos[id] = [];
+  }
+  const pending = window._pendingPhotos[id];
+  const alreadyLoaded = pending.length;
+  pending._expectedCount = alreadyLoaded + files.length;
+
+  // Live preview thumbnails are appended underneath the on-record photo grid
+  // so the user can see exactly what's queued for save. Container is created
+  // on first pick and reused on subsequent picks.
+  let pendingGrid = document.getElementById('ei-photo-pending-'+id);
+  if(!pendingGrid){
+    const status = document.getElementById('ei-photo-newpreviews-'+id);
+    if(status){
+      const wrap = document.createElement('div');
+      wrap.id = 'ei-photo-pending-wrap-'+id;
+      wrap.style.cssText = 'margin-top:8px;display:flex;flex-direction:column;gap:6px';
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size:11px;color:var(--text2);font-weight:600';
+      label.textContent = 'New photos queued (saved on Update):';
+      pendingGrid = document.createElement('div');
+      pendingGrid.id = 'ei-photo-pending-'+id;
+      pendingGrid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px';
+      wrap.appendChild(label);
+      wrap.appendChild(pendingGrid);
+      // Insert after the existing status line
+      status.parentNode.insertBefore(wrap, status.nextSibling);
+    }
+  }
+
+  const statusEl = document.getElementById('ei-photo-newpreviews-'+id);
+  if(statusEl){
+    statusEl.style.display = 'block';
+    statusEl.textContent = pending._expectedCount + ' photo(s) queued — will be saved';
+  }
+
   files.forEach(function(file){
     const reader = new FileReader();
-    reader.onload = function(e){ pending.push(e.target.result); };
+    reader.onload = function(e){
+      pending.push(e.target.result);
+      if(pendingGrid){
+        const thumb = document.createElement('div');
+        thumb.style.cssText = 'position:relative;aspect-ratio:1;border-radius:var(--r6);overflow:hidden;border:1px solid var(--border2)';
+        thumb.innerHTML = '<img loading="lazy" src="'+e.target.result+'" style="width:100%;height:100%;object-fit:cover"/>';
+        const xBtn = document.createElement('button');
+        xBtn.textContent = '\u2715';
+        xBtn.style.cssText = 'position:absolute;top:3px;right:3px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:1';
+        xBtn.onclick = function(){
+          // Remove from pending array using current live position
+          const thumbs = Array.from(pendingGrid.children);
+          const liveIdx = thumbs.indexOf(thumb);
+          if(liveIdx >= 0){
+            pending.splice(liveIdx, 1);
+            pending._expectedCount = Math.max(0, (pending._expectedCount||0) - 1);
+          }
+          thumb.remove();
+          if(statusEl){
+            const remaining = pending.length;
+            statusEl.style.display = remaining ? 'block' : 'none';
+            statusEl.textContent = remaining ? (remaining + ' photo(s) queued — will be saved') : '';
+          }
+        };
+        thumb.appendChild(xBtn);
+        pendingGrid.appendChild(thumb);
+      }
+    };
     reader.onerror = function(){ pending._expectedCount--; }; // skip failed reads
     reader.readAsDataURL(file);
   });
+  // Reset input so picking the same file again triggers onchange.
+  input.value = '';
 }
 
 function removeItemPhoto(id, idx){var _s=_L();
