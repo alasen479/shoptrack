@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779566423");
+console.log("ShopTrack v2.7 - build:1779566787");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1311,7 +1311,7 @@ function _csAddLine(){const _s=_L();
     +(sellOpts?'<optgroup label="📦 Products">'+sellOpts+'</optgroup>':'')
     +(svcOpts?'<optgroup label="✂️ Services">'+svcOpts+'</optgroup>':'')
     +'<option value="__custom__">── Custom item ──</option></select>'
-    +'<input class="fi cs-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" oninput="_csRecalcTotal()" placeholder="Qty"/>'
+    +'<input class="fi cs-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" oninput="_csRecalcTotal();_csRecalcCOGS()" placeholder="Qty"/>'
     +'<input class="fi cs-line-price" type="number" placeholder="'+_s.sal_price_lbl+'" style="width:90px" oninput="_csRecalcTotal();_csCheckMinSpWarn()"/>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_csRemoveLine(this)" style="padding:6px 8px">✕</button>';
   var container = document.getElementById('cs-line-rows');
@@ -1321,13 +1321,13 @@ function _csRemoveLine(btn){
   var row = btn.closest('.cs-line-row');
   var container = document.getElementById('cs-line-rows');
   if(container && container.querySelectorAll('.cs-line-row').length > 1) {
-    row.remove(); _csRecalcTotal();
+    row.remove(); _csRecalcTotal(); _csRecalcCOGS();
   } else {
     // Clear the last row instead of removing
     var sel = row.querySelector('.cs-inv-sel'); if(sel) sel.value='';
     var qty = row.querySelector('.cs-line-qty'); if(qty) qty.value='1';
     var price = row.querySelector('.cs-line-price'); if(price) price.value='';
-    _csRecalcTotal();
+    _csRecalcTotal(); _csRecalcCOGS();
   }
 }
 // Open New Service modal from inside the Create Sale modal,
@@ -1398,7 +1398,49 @@ function _csLineChange(sel){
   var descEl = document.getElementById('cs-items');
   if(descEl && !descEl.dataset.manualEdit) descEl.value = allNames.join(' + ');
   _csRecalcTotal();
+  _csRecalcCOGS();   // keep COGS field in sync with selected inventory items
   _csCheckMinSpWarn();
+}
+
+// Sum COGS across all inventory line items and write into the visible
+// cs-cost field. The save-time logic already does this calculation, but
+// the user expected to SEE the COGS auto-fill as soon as they pick an
+// inventory item — without it, the field's "auto-filled" label felt
+// like a lie. This function is called from _csLineChange and
+// _csRecalcTotal so it stays in sync with qty/item edits.
+function _csRecalcCOGS(){
+  var costField = document.getElementById('cs-cost');
+  if(!costField) return;
+  // If the user typed into the COGS field themselves, respect it —
+  // don't overwrite. Same pattern as Cost Breakdown qty auto-fill.
+  if(costField.dataset.touched === '1') return;
+
+  var totalCogsDisplay = 0;
+  var anyInv = false;
+  document.querySelectorAll('#cs-line-rows .cs-line-row').forEach(function(row){
+    var sel = row.querySelector('.cs-inv-sel');
+    if(!sel || !sel.value) return;
+    var val = sel.value;
+    // Only inventory items contribute COGS — services have no COGS,
+    // custom items have no known cost.
+    if(!val.startsWith('inv:') && !(val !== '__custom__' && val !== '' && !val.startsWith('svc:'))) return;
+    var invId = val.startsWith('inv:') ? val.replace('inv:','') : val;
+    if(invId === '__custom__') return;
+    var it = D.inv.find(function(x){return x.id===invId;});
+    if(!it) return;
+    var qty = parseFloat(row.querySelector('.cs-line-qty')?.value)||1;
+    totalCogsDisplay += (it.cost||0) * qty * CUR.rate;
+    anyInv = true;
+  });
+  if(anyInv){
+    costField.value = Math.round(totalCogsDisplay);
+    // Flash highlight so the user sees the auto-update
+    costField.style.transition = 'background .3s';
+    costField.style.background = 'var(--g-dim)';
+    setTimeout(function(){ costField.style.background = ''; }, 600);
+  }
+  // If no inventory items selected (all-services or all-custom sale),
+  // leave the field at whatever it was — the user may type a manual cost.
 }
 function _csRecalcTotal(){
   // Sum all line rows
@@ -5188,7 +5230,7 @@ async function mCreateSale(){const _s=_L();
     <div id="cs-line-rows">
       <div class="cs-line-row" style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px;margin-bottom:6px;align-items:center">
         <select class="fs cs-inv-sel" id="cs-inv-0" onchange="_csLineChange(this);_csCheckMinSpWarn()">${firstLineOpts}</select>
-        <input class="fi cs-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" oninput="_csRecalcTotal()" placeholder="Qty"/>
+        <input class="fi cs-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" oninput="_csRecalcTotal();_csRecalcCOGS()" placeholder="Qty"/>
         <input class="fi cs-line-price" type="number" placeholder="${_s.sal_price_lbl}" style="width:90px" oninput="_csRecalcTotal()"/>
         <button type="button" class="btn btn-d btn-xs" onclick="_csRemoveLine(this)" style="padding:6px 8px">✕</button>
       </div>
@@ -5221,7 +5263,7 @@ async function mCreateSale(){const _s=_L();
       <input class="fi" type="number" id="cs-paid" placeholder="Leave blank = fully paid" step="any"/>
     </div>
     <div class="fg"><label class="fl"><span id="cs-cost-lbl">COGS (${sym}, auto-filled)</span></label>
-      <input class="fi" type="number" id="cs-cost" placeholder="0" step="any" oninput="_csCheckCostWarn()"/>
+      <input class="fi" type="number" id="cs-cost" placeholder="0" step="any" oninput="this.dataset.touched='1';_csCheckCostWarn()"/>
       <div id="cs-cost-warn" style="display:none;font-size:11px;color:var(--y);margin-top:4px;padding:4px 8px;background:rgba(245,158,11,.08);border-radius:var(--r6);border-left:3px solid var(--y)">⚠️ No cost entered — profit will show as 100%. Add cost price for accurate margin reporting.</div>
     </div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
@@ -19684,8 +19726,18 @@ function _inlineSaveNewCust(prefix){var _s=_L();
   _dbSaveCust(D.cust[0]);
   addAudit('Customer added', newId+' — '+name);
 
-  // Inject into ALL native <select> customer dropdowns in current modal
-  document.querySelectorAll('.mo-box select, .modal-box select, #mc select').forEach(function(sel){
+  // Inject into customer <select> dropdowns in the current modal.
+  // CRITICAL: only target selects that are actually customer pickers.
+  // The previous net of '.mo-box select, .modal-box select, #mc select'
+  // matched EVERY select in the modal — including inventory line-item
+  // dropdowns — and silently appended the new customer as an option there,
+  // creating ghost "John Doe (555-1234)" entries below the Products and
+  // Services optgroups. We now match only selects whose id ends with
+  // -cust, -c, -cust-sel, or -c-sel (the patterns used by customer pickers
+  // across the codebase: cs-cust, inv-c-sel, ap-c, etc.).
+  document.querySelectorAll('#mc select').forEach(function(sel){
+    var isCustSelect = /(?:^|-)c(?:-sel)?$/.test(sel.id) || /-cust(?:-sel)?$/.test(sel.id);
+    if(!isCustSelect) return;
     if(!sel.querySelector('option[value="'+newId+'"]')){
       var opt=document.createElement('option');
       opt.value=newId; opt.textContent=name+(phone?' ('+phone+')':'');
