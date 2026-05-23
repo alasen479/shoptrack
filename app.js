@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779524151");
+console.log("ShopTrack v2.7 - build:1779524579");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -995,6 +995,21 @@ const fmtRaw = n => {
 
 // Document formatting — same as fmt (consistent decimal handling)
 const fmtDoc = n => fmt(n);
+
+// Format a base-USD value as a plain number string for HTML <input type="number">
+// fields, with precision matching the active currency (0 for XAF/NGN, 2 for
+// USD/GBP/EUR/GHS). Use this whenever pre-rendering an existing value into
+// an input — never .toFixed(2) directly, since that introduces drift on
+// zero-decimal currencies (5000 XAF → '4999.95' after the rate round-trip).
+//   curIn(s.price)                 → returns '5000' or '8.13' depending on currency
+//   curIn(s.price, { raw:true })   → returns base USD with 2 decimals (for non-currency contexts)
+const curIn = (baseUsd, opts) => {
+  if(opts && opts.raw) return (baseUsd||0).toFixed(2);
+  const d = CUR.decimals || 0;
+  return ((baseUsd||0) * (CUR.rate||1)).toFixed(d);
+};
+// Companion: the right `step` value for the active currency.
+const curStep = () => (CUR.decimals||0) > 0 ? '0.01' : '1';
 const cc = c => ({New:'c-new',Excellent:'c-exc',Good:'c-good',Fair:'c-fair',Worn:'c-worn',Damaged:'c-dmg','Under Repair':'c-rep'}[c]||'c-good');
 const bx = (lbl,cls) => `<span class="bx ${cls}">${lbl}</span>`;
 const badge = s => {
@@ -5437,12 +5452,15 @@ function _invAddRow(name, price, unit){const _s=_L();
   const tr = document.createElement('tr');
   tr.className = 'inv-line-row';
   const descVal  = name  ? String(name).replace(/"/g,'&quot;')  : '';
-  const priceVal = price ? (price/CUR.rate).toFixed(2) : '';
+  // `price` arrives in display currency (catalogue options store Math.round(usd*rate)).
+  // Don't round-trip through base USD — that re-introduces the same drift
+  // bug we're trying to avoid. Just format to the active currency's precision.
+  const priceVal = price ? (+price).toFixed(CUR.decimals||0) : '';
   const unitVal  = unit ? String(unit).replace(/"/g,'&quot;') : '';
   tr.innerHTML = '<td style="padding:5px 7px"><input class="fi inv-desc" style="font-size:12px;margin:0" placeholder="'+_s.inv_modal_desc+'" value="'+descVal+'"/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-qty" type="number" value="1" min="0" step="any" style="width:64px;margin:0;text-align:center" oninput="_invUpdateRow(this)"/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-unit" placeholder="each / per hr / per m\u00B2" style="width:100px;margin:0;font-size:12px" value="'+unitVal+'" title="Unit of measure shown on the document (free-text). Examples: each, per hour, per m\u00B2, per head, per visit, per day."/></td>'
-    +'<td style="padding:5px 7px"><input class="fi inv-price" type="number" placeholder="0.00" step="any" style="width:90px;margin:0" value="'+priceVal+'" oninput="_invUpdateRow(this)"/></td>'
+    +'<td style="padding:5px 7px"><input class="fi inv-price" type="number" placeholder="'+((CUR.decimals||0)>0?'0.00':'0')+'" step="any" style="width:90px;margin:0" value="'+priceVal+'" oninput="_invUpdateRow(this)"/></td>'
     +'<td style="padding:5px 7px;font-family:var(--mono);color:var(--g);min-width:70px" class="inv-row-total">'+(priceVal?fmt(parseFloat(priceVal)||0):'\u2014')+'</td>'
     +'<td style="padding:5px 3px"><button type="button" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px" onclick="this.closest(\'tr\').remove();_invUpdateTotals()" title="'+_s.photo_remove_row+'">\u2715</button></td>';
   tbody.appendChild(tr);
@@ -8201,7 +8219,7 @@ function mCollectBalance(custId){const _s=_L();
   </div>
   <div class="fg-2">
     <div class="fg"><label class="fl">Amount Collected <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label>
-      <input class="fi" type="number" id="col-amt" value="${(c.bal*CUR.rate).toFixed(2)}" step="any" min="0.01"/>
+      <input class="fi" type="number" id="col-amt" value="${curIn(c.bal)}" step="${curStep()}" min="${(CUR.decimals||0)>0?'0.01':'1'}"/>
     </div>
     <div class="fg"><label class="fl">${_s.ui_date}</label>
       <input class="fi" type="date" id="col-dt" value="${localDateStr()}"/>
@@ -8294,7 +8312,7 @@ function mRecordVendorPayment(vendorId){const _s=_L();
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" type="date" id="vp-dt" value="${localDateStr()}"/></div>
     <div class="fg"><label class="fl">Amount <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label>
-      <input class="fi" type="number" id="vp-amt" value="${Math.round((v.bal||0)*CUR.rate*100)/100}" step="any" min="0.01"/>
+      <input class="fi" type="number" id="vp-amt" value="${curIn(v.bal||0)}" step="${curStep()}" min="${(CUR.decimals||0)>0?'0.01':'1'}"/>
     </div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="vp-method">${methodOpts}</select></div>
     <div class="fg"><label class="fl">${_s.ui_reference}</label><input class="fi" id="vp-ref" placeholder="Bank ref, receipt no…"/></div>
@@ -25766,7 +25784,7 @@ async function mEditExp(id){const _s=_L();
       </div>
     </div>
     <div class="fg"><label class="fl">${_s.exp_payee_ph}</label><input class="fi" id="edit-exp-payee" value="${_esc(e.payee)}"/></div>
-    <div class="fg" style="display:none"><input class="fi" type="number" id="edit-exp-amt" value="${Math.round(e.amt*(CUR.rate||1)*100)/100}" step="any"/></div>
+    <div class="fg" style="display:none"><input class="fi" type="number" id="edit-exp-amt" value="${curIn(e.amt)}" step="${curStep()}"/></div>
     <div class="fg"><label class="fl">${_s.ui_type}</label><select class="fs" id="edit-exp-type">${typeOpts}</select></div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label><select class="fs" id="edit-exp-method">${methodOpts}</select></div>
   </div>
@@ -26531,7 +26549,7 @@ function mPayVendor(vendorId){const _s=_L();
   </div>
   <div class="fg-2">
     <div class="fg"><label class="fl">Payment Amount</label>
-      <input class="fi" id="vp-amt" type="number" value="${(v.bal*CUR.rate).toFixed(CUR.decimals||0)}" min="0" step="${(CUR.decimals||0)>0 ? '0.01' : '1'}" placeholder="Amount in ${CUR.code}"/></div>
+      <input class="fi" id="vp-amt" type="number" value="${curIn(v.bal)}" min="0" step="${curStep()}" placeholder="Amount in ${CUR.code}"/></div>
     <div class="fg"><label class="fl">${_s.sal_pay_date}</label>
       <input class="fi" id="vp-dt" type="date" value="${today}"/></div>
   </div>
@@ -27343,7 +27361,7 @@ function _naSync(){
   var aEl = document.getElementById('na-amt');
   if(aEl&&!aEl._t){
     var total=_computeSvcTotal(pr,pt,dur)*CUR.rate;
-    aEl.value=total.toFixed(2);
+    aEl.value=total.toFixed(CUR.decimals||0);
   }
 }
 function _naCust(){
@@ -28198,7 +28216,7 @@ function _eaSync(){const _s=_L();
   var st=document.getElementById('ea-st')?document.getElementById('ea-st').value:'09:00';
   var et=document.getElementById('ea-et'); if(et) et.value=_addMins(st,dur);
   var amtEl=document.getElementById('ea-amt');
-  if(amtEl&&!amtEl._t){ var total=_computeSvcTotal(pr,pt,dur)*CUR.rate; amtEl.value=total.toFixed(2); }
+  if(amtEl&&!amtEl._t){ var total=_computeSvcTotal(pr,pt,dur)*CUR.rate; amtEl.value=total.toFixed(CUR.decimals||0); }
 }
 function _saveEditAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a) return;
@@ -33001,7 +33019,7 @@ function mNewAppt(date){const _s=_L();
   <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="na-ph" placeholder="${_s.appt_auto_cust}"/></div>
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.appt_staff}</label><select class="fs" id="na-st"><option value="">${_s.appt_any_staff}</option>${stO}</select></div>
-    <div class="fg"><label class="fl">${_s.ui_amount}</label><input class="fi" id="na-amt" type="number" placeholder="${_s.sal_price_lbl}" step="0.01" oninput="this._t=true"/></div>
+    <div class="fg"><label class="fl">${_s.ui_amount}</label><input class="fi" id="na-amt" type="number" placeholder="${_s.sal_price_lbl}" step="${curStep()}" oninput="this._t=true"/></div>
   </div>
   <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="na-n" rows="2" placeholder="Special requests, notes…"></textarea></div>
   <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px"><input type="checkbox" id="na-wi" style="accent-color:var(--a)"/> Walk-in (no prior booking)</label>`,
