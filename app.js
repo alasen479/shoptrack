@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779524579");
+console.log("ShopTrack v2.7 - build:1779548821");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1457,6 +1457,30 @@ function _poLineChange(sel){
     var o=s.options[s.selectedIndex];return o&&o.dataset.name?o.dataset.name:(s.value==='__custom__'?'Custom':'');
   }).filter(Boolean);
   var d=document.getElementById('po-items');if(d)d.value=allNames.join(', ');
+
+  // Auto-prefill the Purchase's vendor field from this item's preferred vendor,
+  // but ONLY if the user hasn't already picked one. Don't override intentional
+  // choices. This runs against both the plain <select> and the searchable variant.
+  if(it && it.vendorId){
+    var vendor = D.vendors.find(function(v){return v.id===it.vendorId;});
+    if(vendor){
+      var vSel = document.getElementById('po-vendor-sel');
+      var vInp = document.getElementById('po-vendor');
+      // Also check the searchable-select hidden value (if used)
+      var currentVendor = (vSel && vSel.value) || (vInp && vInp.value) || _ssGetVal('po-vendor-wrap') || '';
+      if(!currentVendor){
+        if(vSel) vSel.value = vendor.id;
+        if(vInp) vInp.value = vendor.id;
+        // For searchable-select, also update its visible label
+        var vWrap = document.getElementById('po-vendor-wrap');
+        if(vWrap && typeof _ssSetVal === 'function'){
+          try{ _ssSetVal('po-vendor-wrap', vendor.id, vendor.name); }catch(e){}
+        }
+        toast('Vendor set to '+vendor.name+' (preferred for this item)','info');
+      }
+    }
+  }
+
   _poRecalcTotal();
 }
 function _poRecalcTotal(){
@@ -3148,7 +3172,7 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-family:var(--mono);font-size:12px;color:${isOOS?'var(--r)':'var(--y)'};font-weight:700">${isOOS?_s.dash_out_of_stock:avail+' '+_s.dash_left}</span>
-            <button class="btn btn-xs btn-p" onclick="nav('purchases')">${_s.dash_reorder}</button>
+            <button class="btn btn-xs btn-p" onclick="_invReorder('${i.id}')" title="Pre-fill a new Purchase for this item with its preferred vendor &amp; last-known cost">${_s.dash_reorder}</button>
           </div>
         </div>`;
       }).join('')
@@ -3511,6 +3535,10 @@ function mItem(id){const _s=_L();
     <div><div class="fl">${_s.inv_brand_lbl}</div><div>${it.brand||'—'}</div></div>
     <div><div class="fl">${_s.inv_color_lbl}</div><div>${it.color||'—'}</div></div>
     <div><div class="fl">${_s.inv_size_lbl}</div><div>${it.sz||'—'}</div></div>
+    ${(function(){
+      var v = it.vendorId ? D.vendors.find(function(x){return x.id===it.vendorId;}) : null;
+      return '<div><div class="fl">Preferred vendor</div><div>'+(v?_esc(v.name):'<span style="color:var(--text3);font-style:italic">— not set —</span>')+'</div></div>';
+    })()}
       <div><div class="fl">${_s.inv_qty_lbl}</div>
         <div style="display:flex;align-items:center;gap:6px">
           <button onclick="_adjStock('${it.id}',-1)" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">-</button>
@@ -3556,6 +3584,33 @@ function mItem(id){const _s=_L();
   </div>
 
   <div id="mi-history" style="display:none">
+  ${(function(){
+    var itemPurchases = (D.purchases||[]).filter(function(p){
+      return (p.lines||[]).some(function(li){return li.invId===it.id;});
+    }).sort(function(a,b){return (b.dt||'').localeCompare(a.dt||'');}).slice(0,8);
+    if(!itemPurchases.length) return '';
+    return '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">\uD83D\uDCE6 Purchase history ('+itemPurchases.length+')</div>'
+      +'<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      +'<thead><tr style="background:var(--bg3)">'
+        +'<th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Date</th>'
+        +'<th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Vendor</th>'
+        +'<th style="text-align:right;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Qty</th>'
+        +'<th style="text-align:right;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Unit cost</th>'
+        +'<th style="text-align:right;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Status</th>'
+      +'</tr></thead><tbody>'
+      + itemPurchases.map(function(p){
+          var line = (p.lines||[]).find(function(l){return l.invId===it.id;}) || {};
+          return '<tr style="border-top:1px solid var(--border)">'
+            +'<td style="padding:7px 10px"><span style="font-family:var(--mono);font-size:11px;color:var(--a);font-weight:600">'+_esc(p.id)+'</span> &middot; '+_esc(p.dt||'')+'</td>'
+            +'<td style="padding:7px 10px">'+_esc(p.vendor||'')+'</td>'
+            +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono)">'+(line.qty||0)+'</td>'
+            +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono)">'+fmt((line.uc||0)/CUR.rate)+'</td>'
+            +'<td style="padding:7px 10px;text-align:right">'+badge(p.st||'')+'</td>'
+          +'</tr>';
+        }).join('')
+      +'</tbody></table></div></div>';
+  })()}
   <div class="tl">
     ${D.rentals.filter(r=>r.itemId===it.id||r.item===it.name).slice(0,6).map(r=>`
     <div class="tl-item on">
@@ -3571,6 +3626,7 @@ function mItem(id){const _s=_L();
   </div>`,
   `<button class="btn btn-d btn-sm" onclick="_mItemDelete('${it.id}')">🗑 Delete</button>
    <button class="btn btn-g btn-sm" onclick="closeModal();mDuplicateItem('${it.id}')">&#x29C9; Dup</button>
+   <button class="btn btn-g btn-sm" onclick="closeModal();_invReorder('${it.id}')" title="Pre-fill a new Purchase for this item with its preferred vendor &amp; last-known cost">\uD83D\uDD04 Reorder</button>
    <button class="btn btn-s btn-sm" onclick="closeModal();mEditItem('${it.id}')">&#x270F; Edit</button>
    <button class="btn btn-p" onclick="closeModal();mEditItem('${it.id}')">${_s.ui_save}</button>`);
 }
@@ -4025,6 +4081,12 @@ async function mAddItem(_returnSelectId){const _s=_L();
     <div class="fg"><label class="fl">${_s.inv_color_lbl}</label><input class="fi" id="ai-color" placeholder="e.g. Ivory"/></div>
     <div class="fg"><label class="fl">${_s.inv_size_lbl}</label><input class="fi" id="ai-sz" placeholder="e.g. 8"/></div>
   </div>
+  <div class="fg"><label class="fl">Preferred Vendor <span style="font-size:10px;color:var(--text2);font-weight:400">Optional — auto-fills on Purchase orders &amp; powers one-tap reorder</span></label>
+    <select class="fs" id="ai-vendor">
+      <option value="">— No preferred vendor —</option>
+      ${(D.vendors||[]).slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');}).map(function(v){return '<option value="'+v.id+'">'+_esc(v.name)+'</option>';}).join('')}
+    </select>
+  </div>
   <div class="fg"><label class="fl">${_s.ui_description}</label><textarea class="ft" id="ai-desc" placeholder="Product description…"></textarea></div>
   <div class="fg">${_costBreakdownHTML('ci',[])}</div>
   <div class="fg">
@@ -4115,6 +4177,7 @@ function _saveNewItem(){var _s=_L();
     minStock: parseInt(document.getElementById('ai-minstock')?.value)||0,
     color: document.getElementById('ai-color').value,
     sz:    document.getElementById('ai-sz').value,
+    vendorId: document.getElementById('ai-vendor')?.value || '',
     desc:  document.getElementById('ai-desc').value,
     rented: 0, photoDataUrls: [],
     costLines: _cbReadLines('ci'),
@@ -4184,6 +4247,12 @@ async function mEditItem(id){const _s=_L();
     <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">${_s.set_optional}</span></label><input class="fi" id="ei-minstock" type="number" value="${it.minStock||''}" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert when available qty ≤ this number. Leave blank or 0 to disable.</div></div>
     <div class="fg"><label class="fl">${_s.inv_color_lbl}</label><input class="fi" id="ei-color" value="${it.color||''}"/></div>
     <div class="fg"><label class="fl">${_s.inv_size_lbl}</label><input class="fi" id="ei-sz" value="${it.sz||''}"/></div>
+  </div>
+  <div class="fg"><label class="fl">Preferred Vendor <span style="font-size:10px;color:var(--text2);font-weight:400">Optional — auto-fills on Purchase orders &amp; powers one-tap reorder</span></label>
+    <select class="fs" id="ei-vendor">
+      <option value="">— No preferred vendor —</option>
+      ${(D.vendors||[]).slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');}).map(function(v){return '<option value="'+v.id+'"'+(v.id===it.vendorId?' selected':'')+'>'+_esc(v.name)+'</option>';}).join('')}
+    </select>
   </div>
   <div class="fg"><label class="fl">${_s.ui_description}</label><textarea class="ft" id="ei-desc">${it.desc||''}</textarea></div>
   ${editCost ? `<div class="fg">${_costBreakdownHTML('cei', it.costLines||[])}</div>` : ''}
@@ -4285,6 +4354,9 @@ function saveEditItem(id){
   if(!isNaN(msv)&&msv>=0) it.minStock=msv;
   it.color=document.getElementById('ei-color')?.value.trim()||it.color||'';
   it.sz   =document.getElementById('ei-sz')?.value.trim()||it.sz||'';
+  // Preferred vendor — empty string means "no preferred vendor"
+  var _eiVend = document.getElementById('ei-vendor');
+  if(_eiVend) it.vendorId = _eiVend.value || '';
   it.desc =document.getElementById('ei-desc')?.value||it.desc||'';
   // Save cost breakdown lines if panel was shown (editCost permission)
   var ceiLines = _cbReadLines('cei');
@@ -4346,6 +4418,67 @@ function mDuplicateItem(id){var _s=_L();
   toast(_L().t_item_dup,'success');
   nav('inventory');
   setTimeout(()=>mEditItem(newId),200);
+}
+
+// One-click reorder: open the Purchase modal with this item pre-selected
+// on the first line and the vendor pre-set to either:
+//   (a) the item's preferred vendor (Edit Inventory → Preferred Vendor), or
+//   (b) the vendor on the most recent Purchase that included this item, or
+//   (c) blank — the user picks.
+// Unit cost is pre-filled from the last Purchase's line cost if found,
+// otherwise from the item's current cost. The line qty defaults to 1; user
+// adjusts before saving.
+function _invReorder(id){
+  var it = D.inv.find(function(x){return x.id===id;}); if(!it){ return; }
+  // Resolve vendor: preferred → last-used → empty
+  var vendorId = it.vendorId || '';
+  var lastLineUC = 0;
+  if(!vendorId){
+    var lastPO = (D.purchases||[]).slice().sort(function(a,b){return (b.dt||'').localeCompare(a.dt||'');})
+      .find(function(p){ return (p.lines||[]).some(function(l){return l.invId===id;}); });
+    if(lastPO){
+      vendorId = lastPO.vendorId || '';
+      var ll = (lastPO.lines||[]).find(function(l){return l.invId===id;});
+      if(ll) lastLineUC = ll.uc || 0;
+    }
+  } else {
+    // Even with a preferred vendor, the last purchase's UC is a better
+    // unit-cost prefill than item.cost (which might be older or hand-entered).
+    var lastForUC = (D.purchases||[]).slice().sort(function(a,b){return (b.dt||'').localeCompare(a.dt||'');})
+      .find(function(p){ return (p.lines||[]).some(function(l){return l.invId===id;}); });
+    if(lastForUC){
+      var llv = (lastForUC.lines||[]).find(function(l){return l.invId===id;});
+      if(llv) lastLineUC = llv.uc || 0;
+    }
+  }
+  var unitCost = lastLineUC || Math.round((it.cost||0)*CUR.rate);
+
+  mRecordPurchase();
+
+  // Wait for the modal DOM to render, then populate the first line + vendor
+  setTimeout(function(){
+    // First line: select the inventory item
+    var firstSel = document.querySelector('#po-line-rows .po-inv-sel');
+    if(firstSel){
+      firstSel.value = id;
+      // Trigger change so _poLineChange runs (vendor auto-prefill, cost fill, items list)
+      var ev = new Event('change', { bubbles: true });
+      firstSel.dispatchEvent(ev);
+    }
+    // Override unit cost with the better prefill (last PO's price, not current it.cost)
+    var firstCost = document.querySelector('#po-line-rows .po-line-cost');
+    if(firstCost && unitCost) firstCost.value = unitCost;
+    // If _poLineChange didn't fire the vendor auto-set (e.g. no preferred vendor
+    // on the item but we resolved one from last-PO history), set it directly.
+    if(vendorId){
+      var vInp = document.getElementById('po-vendor');
+      var currentVendor = (vInp && vInp.value) || _ssGetVal('po-vendor-wrap') || '';
+      if(!currentVendor && vInp){ vInp.value = vendorId; }
+    }
+    _poRecalcTotal && _poRecalcTotal();
+    var vName = vendorId ? (D.vendors.find(function(v){return v.id===vendorId;})||{}).name : '';
+    toast(vName ? ('Reorder pre-filled \u2014 vendor: '+vName) : 'Reorder pre-filled \u2014 pick a vendor and confirm', 'info');
+  }, 150);
 }
 
 // ============================================================
@@ -17028,6 +17161,7 @@ function _dbToInv(r){ return {
   sp:r.sp||0, cost:r.cost||0, rp:r.rp||0, dep:r.deposit||0,
   minSp:r.min_sp||0, minStock:r.min_stock||0,
   qty:r.qty||0, color:r.color||'', sz:r.size||'', desc:r.description||'',
+  vendorId:r.vendor_id||'',
   rented:r.rented||0, img:r.img||'gown-aline',
   imgC:r.img_color||['#a8b4c8','#c8b4a0','#e0d4bc'],
   imgDataUrl:r.img_data_url||null,
@@ -17121,6 +17255,7 @@ function _invToDB(item, bizId){
     rp:item.rp||0, deposit:item.dep||0, min_sp:item.minSp||0,
     min_stock:item.minStock||0, qty:item.qty||0,
     color:item.color||'', size:item.sz||'', description:item.desc||'',
+    vendor_id:item.vendorId||null,
     rented:item.rented||0, img:item.img||'gown-aline',
     img_color:imgColor,
     img_data_url:item.imgDataUrl||(item.photoDataUrls&&item.photoDataUrls[0])||null,
@@ -17279,6 +17414,19 @@ async function _dbSaveInv(item, qtyDelta){
   }
   var result = await _safeUpsert('inventory', _invToDB(item, SESSION.bizId), 'saveInv');
   if(result && !result.ok){
+    // If the vendor_id column hasn't been added to the schema yet, retry
+    // without it. Local-only vendor link is preserved in IDB and will
+    // sync once the migration runs.
+    var errMsg = (result.error && (result.error.message || result.error.code)) || '';
+    if(/vendor_id/i.test(errMsg)){
+      console.warn('[saveInv] vendor_id column not yet in schema; retrying without it.');
+      var payload = _invToDB(item, SESSION.bizId);
+      delete payload.vendor_id;
+      var retry = await _safeUpsert('inventory', payload, 'saveInv');
+      if(retry && retry.ok) return;
+      if(retry) console.error('[saveInv] retry FAILED for '+item.id+':', retry.error);
+      return;
+    }
     console.error('[saveInv] FAILED for '+item.id+' ('+item.name+'):', result.error);
   }
 }
