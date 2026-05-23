@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779565901");
+console.log("ShopTrack v2.7 - build:1779566423");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4004,14 +4004,17 @@ function _cbRecalc(prefix){
     var perUnit = total / divisor;
     costField.value = Math.round(perUnit * 100) / 100;
     // Auto-populate Qty on Hand for Add Item form using the SAME divisor.
-    // This is the number of physical units acquired — exactly what stock
-    // on hand should be set to. Only fire if at least one qty-bearing
-    // line was found (don't auto-set qty=1 from a fallback divisor;
-    // the user can fill that field manually).
+    // Preserve decimal qtys for businesses tracking fractional units
+    // (e.g. 2.5 kg flour, 1.75 m fabric). Trim float noise to 3 decimals
+    // then strip trailing zeros.
+    // SKIP overwrite if the user has already typed a value into the qty
+    // field manually — `data-touched` is set by the input's oninput
+    // handler. They had a reason for the value they typed.
     if(prefix === 'ci' && unitQty > 0){
       var qtyField = document.getElementById('ai-qty');
-      if(qtyField){
-        qtyField.value = Math.round(unitQty);
+      if(qtyField && qtyField.dataset.touched !== '1'){
+        var qtyDisplay = parseFloat(unitQty.toFixed(3)); // strip noise
+        qtyField.value = qtyDisplay;
         qtyField.style.transition = 'background .3s';
         qtyField.style.background = 'var(--g-dim)';
         setTimeout(function(){ qtyField.style.background = ''; }, 600);
@@ -4285,8 +4288,8 @@ async function mAddItem(_returnSelectId){const _s=_L();
     <div class="fg"><label class="fl">Rental Price/Day <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="ai-rp" placeholder="0"/></div>
     <div class="fg"><label class="fl">Min. Sell Price 🔒</label><input class="fi" type="number" id="ai-minsp" placeholder="0"/><div class="fh">${_s.inv_hidden_staff}</div></div>
     <div class="fg"><label class="fl">${_s.inv_deposit_lbl}</label><input class="fi" type="number" id="ai-dep" placeholder="0"/></div>
-    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" type="number" id="ai-qty" value="1"/></div>
-    <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">Optional — triggers low stock warning</span></label><input class="fi" type="number" id="ai-minstock" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert fires when available qty falls to or below this number. Leave blank or set 0 to disable.</div></div>
+    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" type="number" step="any" min="0" id="ai-qty" value="1" oninput="this.dataset.touched='1'"/></div>
+    <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">Optional — triggers low stock warning</span></label><input class="fi" type="number" step="any" id="ai-minstock" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert fires when available qty falls to or below this number. Leave blank or set 0 to disable.</div></div>
   </div>
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.inv_color_lbl}</label><input class="fi" id="ai-color" placeholder="e.g. Ivory"/></div>
@@ -4414,8 +4417,8 @@ function _saveNewItem(){var _s=_L();
     rp:    (parseFloat(document.getElementById('ai-rp').value)||0)/rr3,
     minSp: (parseFloat(document.getElementById('ai-minsp').value)||0)/rr3,
     dep:   (parseFloat(document.getElementById('ai-dep').value)||0)/rr3,
-    qty:   parseInt(document.getElementById('ai-qty').value)||1,
-    minStock: parseInt(document.getElementById('ai-minstock')?.value)||0,
+    qty:   parseFloat(document.getElementById('ai-qty').value)||1,
+    minStock: parseFloat(document.getElementById('ai-minstock')?.value)||0,
     color: document.getElementById('ai-color').value,
     sz:    document.getElementById('ai-sz').value,
     vendorId: document.getElementById('ai-vendor')?.value || '',
@@ -4484,8 +4487,8 @@ async function mEditItem(id){const _s=_L();
     <div class="fg"><label class="fl">${_s.inv_selling_lbl}</label><input class="fi" id="ei-sp" type="number" value="${Math.round((it.sp||0)*CUR.rate)}"/></div>
     <div class="fg"><label class="fl">${_s.inv_rental_day}</label><input class="fi" id="ei-rp" type="number" value="${Math.round((it.rp||0)*CUR.rate)}"/></div>
     ${showMin?`<div class="fg"><label class="fl" style="display:flex;align-items:center;gap:5px">Min Sell Price 🔒 ${!editMin?'<span style="font-size:10px;color:var(--y)">(read-only)</span>':''}</label><input class="fi" id="ei-minsp" type="number" value="${Math.round((it.minSp||0)*CUR.rate)}" ${!editMin?'readonly style="opacity:.5"':''}/><div class="fh">${editMin?'Staff cannot sell below this price':'You can view but not edit this field'}</div></div>`:''}
-    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" id="ei-qty" type="number" value="${it.qty}"/></div>
-    <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">${_s.set_optional}</span></label><input class="fi" id="ei-minstock" type="number" value="${it.minStock||''}" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert when available qty ≤ this number. Leave blank or 0 to disable.</div></div>
+    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" id="ei-qty" type="number" step="any" min="0" value="${it.qty}"/></div>
+    <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">${_s.set_optional}</span></label><input class="fi" id="ei-minstock" type="number" step="any" value="${it.minStock||''}" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert when available qty ≤ this number. Leave blank or 0 to disable.</div></div>
     <div class="fg"><label class="fl">${_s.inv_color_lbl}</label><input class="fi" id="ei-color" value="${it.color||''}"/></div>
     <div class="fg"><label class="fl">${_s.inv_size_lbl}</label><input class="fi" id="ei-sz" value="${it.sz||''}"/></div>
   </div>
@@ -4651,9 +4654,9 @@ function saveEditItem(id){
     const v=document.getElementById('ei-minsp');
     if(v){ const mv=parseFloat(v.value); if(!isNaN(mv)) it.minSp=mv/r; }
   }
-  const qv=parseInt(document.getElementById('ei-qty')?.value);
+  const qv=parseFloat(document.getElementById('ei-qty')?.value);
   if(!isNaN(qv)&&qv>=0) it.qty=qv;
-  const msv=parseInt(document.getElementById('ei-minstock')?.value);
+  const msv=parseFloat(document.getElementById('ei-minstock')?.value);
   if(!isNaN(msv)&&msv>=0) it.minStock=msv;
   it.color=document.getElementById('ei-color')?.value.trim()||it.color||'';
   it.sz   =document.getElementById('ei-sz')?.value.trim()||it.sz||'';
@@ -4801,7 +4804,7 @@ const IMPORT_CONFIGS = {
       ['GW-010','Lace Mermaid Gown','Wedding Gowns','Vera Wang','Both','New','600','1400','250','1100','2','3','Ivory','10','Elegant lace detail with court train'],
       ['ACC-022','Crystal Tiara','Accessories','Generic','For Sale','New','45','120','','90','1','5','Silver','One Size','Rhinestone crystal tiara'],
     ],
-    insert(rows){ const _r=CUR.rate||1; const _ts=Date.now(); rows.forEach((r,i)=>{ D.inv.push({id:'IMP-'+_ts+'-'+i+'-'+Math.random().toString(36).slice(2,6),sku:r[0]||'SKU-'+i,name:r[1]||'Imported Item',cat:r[2]||'General',brand:r[3]||'',st:r[4]||'For Sale',cond:r[5]||'Good',cost:(parseFloat(r[6])||0)/_r,sp:(parseFloat(r[7])||0)/_r,rp:(parseFloat(r[8])||0)/_r,minSp:(parseFloat(r[9])||0)/_r,minStock:parseInt(r[10])||0,qty:parseInt(r[11])||1,color:r[12]||'',sz:r[13]||'',desc:r[14]||'',rented:0,img:'gown-aline',imgC:['#a8b4c8','#c8b4a0','#e0d4bc']}); }); refreshLiveKpis(); }
+    insert(rows){ const _r=CUR.rate||1; const _ts=Date.now(); rows.forEach((r,i)=>{ D.inv.push({id:'IMP-'+_ts+'-'+i+'-'+Math.random().toString(36).slice(2,6),sku:r[0]||'SKU-'+i,name:r[1]||'Imported Item',cat:r[2]||'General',brand:r[3]||'',st:r[4]||'For Sale',cond:r[5]||'Good',cost:(parseFloat(r[6])||0)/_r,sp:(parseFloat(r[7])||0)/_r,rp:(parseFloat(r[8])||0)/_r,minSp:(parseFloat(r[9])||0)/_r,minStock:parseFloat(r[10])||0,qty:parseFloat(r[11])||1,color:r[12]||'',sz:r[13]||'',desc:r[14]||'',rented:0,img:'gown-aline',imgC:['#a8b4c8','#c8b4a0','#e0d4bc']}); }); refreshLiveKpis(); }
   },
   sales:{
     title:'Sales',page:'sales',
