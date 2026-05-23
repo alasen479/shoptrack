@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779575567");
+console.log("ShopTrack v2.7 - build:1779576792");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1442,6 +1442,63 @@ function _csRecalcCOGS(){
   // If no inventory items selected (all-services or all-custom sale),
   // leave the field at whatever it was — the user may type a manual cost.
 }
+
+// On Account ↔ Amount Paid cross-link in New Sale modal.
+// Business rules:
+//   - "On Account" means the customer pays later (full balance due).
+//     The Amount Paid input must be 0 / blank — disabled to make this
+//     impossible to violate.
+//   - Conversely, typing a paid amount > 0 means it's NOT On Account.
+//     If the user had On Account selected, snap method to Cash so the
+//     transaction makes sense.
+function _csMethodChange(){
+  var methodEl = document.getElementById('cs-method');
+  var paidEl   = document.getElementById('cs-paid');
+  var hintEl   = document.getElementById('cs-paid-hint');
+  if(!methodEl || !paidEl) return;
+  var isOnAccount = /on account|compte client/i.test(methodEl.value);
+  var fr = BIZ.language === 'fr';
+  if(isOnAccount){
+    // Wipe and lock the paid field — On Account = pay later, nothing now.
+    paidEl.value = '';
+    paidEl.disabled = true;
+    paidEl.style.background = 'var(--bg3)';
+    paidEl.style.cursor = 'not-allowed';
+    paidEl.placeholder = fr ? '0 (sur compte)' : '0 (charged to account)';
+    if(hintEl){
+      hintEl.textContent = fr ? '— sur compte client : à payer plus tard' : '— on account: due later';
+      hintEl.style.color = 'var(--y)';
+    }
+  } else {
+    // Unlock — let the user type whatever they actually received
+    paidEl.disabled = false;
+    paidEl.style.background = '';
+    paidEl.style.cursor = '';
+    paidEl.placeholder = fr ? 'Vide = entièrement payé' : 'Leave blank = fully paid';
+    if(hintEl){
+      hintEl.textContent = fr ? '— laisser vide = entièrement payé' : '— leave blank = fully paid';
+      hintEl.style.color = 'var(--text3)';
+    }
+  }
+}
+
+function _csPaidChange(){
+  // If the user types a paid amount > 0 and method is currently On
+  // Account, flip method to Cash (a sensible default — the most common
+  // immediate-payment method). Doesn't fire if the field is disabled
+  // (which would mean we set it programmatically, not the user).
+  var methodEl = document.getElementById('cs-method');
+  var paidEl   = document.getElementById('cs-paid');
+  if(!methodEl || !paidEl || paidEl.disabled) return;
+  var paid = parseFloat(paidEl.value) || 0;
+  if(paid > 0 && /on account|compte client/i.test(methodEl.value)){
+    var s = _L();
+    var cash = s.ui_cash || 'Cash';
+    methodEl.value = cash;
+    // Don't fire _csMethodChange here — paid value is already what the user wants
+  }
+}
+
 function _csRecalcTotal(){
   // Sum all line rows
   var sp = 0;
@@ -5253,14 +5310,14 @@ ${(D.quotes && D.quotes.length) ? `
 <div class="card">
   <div class="tbl-wrap"><table id="sales-table">
     <thead><tr><th>${_s.sal_col_id}</th><th>${_s.sal_col_date}</th><th>${_s.sal_col_cust}</th><th>${_s.sal_col_items}</th><th>${_s.sal_col_total}</th><th>${_s.sal_col_paid}</th><th>${_s.sal_col_bal}</th><th>${_s.sal_col_gp}</th><th>${_s.sal_col_status}</th><th>${_s.sal_col_actions}</th></tr></thead>
-    <tbody id="sales-tbody">${D.sales.map(s=>`<tr data-cust="${s.cust}" data-status="${s.st}" data-date="${s.dt}" data-items="${(s.items||'').toLowerCase()}">
+    <tbody id="sales-tbody">${D.sales.map(s=>`<tr data-cust="${s.cust}" data-status="${s.st}" data-date="${s.dt}" data-items="${(s.items||'').toLowerCase()}" class="sale-row" style="cursor:pointer" onclick="mViewSale('${s.id}')">
       <td>${mono(s.id,'a')}</td><td style="color:var(--text2)">${s.dt}</td><td><strong style="color:var(--ink)">${s.cust}</strong></td>
       <td class="w" style="font-size:12px">${s.items}</td>
       <td>${mono(fmt(s.total||s.amt))}</td><td>${mono(fmt(s.paid),'g')}</td>
       <td>${mono(fmt((s.total||s.amt)-s.paid),(s.total||s.amt)-s.paid>0?'r':'text3')}</td>
       <td>${mono(fmt(s.profit!==undefined?s.profit:(s.total||s.amt)-(s.cost||0)),'g')}</td>
       <td>${badge(s.st)}</td>
-      <td><div class="btn-row">
+      <td onclick="event.stopPropagation()"><div class="btn-row">
         <button class="btn btn-g btn-xs" onclick="genInvoiceDoc('${s.id}')" title="${_s.sal_ttl_invoice}">📄</button>
         <button class="btn btn-g btn-xs" onclick="genReceiptDoc('${s.id}')" title="${_s.sal_ttl_receipt}">🧾</button>
         <button class="btn btn-g btn-xs" onclick="mRecordPayment('${s.id}')" title="${_s.sal_ttl_payment}">💰</button>
@@ -5368,15 +5425,15 @@ async function mCreateSale(){const _s=_L();
       <label class="fl" style="color:var(--g);font-weight:700">${BIZ.language==='fr'?'Prix de vente total':'Total Selling Price'} <span style="font-size:10px;color:var(--text2);font-weight:400">(${sym})</span></label>
       <input class="fi" type="number" id="cs-total" placeholder="0" readonly style="background:var(--a-dim);color:var(--g);font-weight:700;cursor:default"/>
     </div>
-    <div class="fg"><label class="fl">Amount Paid Now <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
-      <input class="fi" type="number" id="cs-paid" placeholder="Leave blank = fully paid" step="any"/>
+    <div class="fg"><label class="fl">Amount Paid Now <span style="font-size:10px;color:var(--text2)">(${sym}) <span id="cs-paid-hint" style="color:var(--text3)">${BIZ.language==='fr'?'— laisser vide = entièrement payé':'— leave blank = fully paid'}</span></span></label>
+      <input class="fi" type="number" id="cs-paid" placeholder="${BIZ.language==='fr'?'Vide = entièrement payé':'Leave blank = fully paid'}" step="any" oninput="_csPaidChange()"/>
     </div>
-    <div class="fg"><label class="fl"><span id="cs-cost-lbl">COGS (${sym}, auto-filled)</span></label>
+    <div class="fg"><label class="fl">${_s.ui_cogs||'COGS'} <span style="font-size:10px;color:var(--text2)">(${sym}, auto-filled)</span></label>
       <input class="fi" type="number" id="cs-cost" placeholder="0" step="any" oninput="this.dataset.touched='1';_csCheckCostWarn()"/>
       <div id="cs-cost-warn" style="display:none;font-size:11px;color:var(--y);margin-top:4px;padding:4px 8px;background:rgba(245,158,11,.08);border-radius:var(--r6);border-left:3px solid var(--y)">⚠️ No cost entered — profit will show as 100%. Add cost price for accurate margin reporting.</div>
     </div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
-      <select class="fs" id="cs-method"><option>${_s.ui_cash}</option><option>${_s.ui_card}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option><option>${_s.ui_on_account}</option></select>
+      <select class="fs" id="cs-method" onchange="_csMethodChange()"><option>${_s.ui_cash}</option><option>${_s.ui_card}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option><option>${_s.ui_on_account}</option></select>
     </div>
   </div>
   <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="cs-notes" placeholder="Notes…" style="min-height:48px"></textarea></div>
@@ -5528,7 +5585,18 @@ function _saveSale(){var _s=_L();
     itemsVal = lineItems.map(function(r){ return (r.qty>1?r.qty+'× ':'')+r.name; }).filter(Boolean).join(', ') || 'Sale';
   }
   var paidRaw=document.getElementById('cs-paid').value;
-  var paidFrs=paidRaw===''||paidRaw===null?totalFrs:parseFloat(paidRaw)||0;
+  var methodRaw=document.getElementById('cs-method').value;
+  var isOnAcct = /on account|compte client/i.test(methodRaw||'');
+  // Defensive: enforce the On Account rule at save time, in case the
+  // user got around the disabled field (devtools, paste, etc.). On
+  // Account means the customer pays nothing now — the entire total
+  // becomes AR for them.
+  var paidFrs;
+  if(isOnAcct){
+    paidFrs = 0;
+  } else {
+    paidFrs = paidRaw===''||paidRaw===null?totalFrs:parseFloat(paidRaw)||0;
+  }
   var rate=CUR.rate;
   var freight=(parseFloat(document.getElementById('cs-freight').value)||0)/rate;
   var taxes=(parseFloat(document.getElementById('cs-taxes').value)||0)/rate;
@@ -24783,6 +24851,113 @@ function previewBrandColors(){const _s=_L();
 // ============================================================
 // EDIT / DUPLICATE — SALES
 // ============================================================
+// ============================================================
+// SALE VIEW MODAL
+// ============================================================
+// Read-only summary of a completed sale. Reached by clicking anywhere
+// on a sales row except an action button. Mirrors the View Purchase
+// modal structure (line items table + payment summary + action footer)
+// for consistency across the app.
+function mViewSale(id){const _s=_L();
+  const s=D.sales.find(x=>x.id===id);if(!s)return;
+  const fr = BIZ.language==='fr';
+  const total = s.total||s.amt||0;
+  const paid  = s.paid||0;
+  const bal   = Math.max(0, total - paid);
+  const cogs  = s.cost||0;
+  const profit = total - cogs;
+  const marginPct = total > 0 ? Math.round(profit/total*100) : 0;
+
+  // Build line items table from s.lineItems (post-v124 sales) or fall
+  // back to the legacy s.items string for older records.
+  var linesTableHTML = '';
+  if(s.lineItems && s.lineItems.length){
+    var rowsHTML = s.lineItems.map(function(li){
+      var name = li.name || li.desc || 'Item';
+      var qty  = li.qty || 1;
+      // li.price is stored in BASE currency (USD) — convert for display
+      var pxBase = li.price || li.sp || 0;
+      var lineTot = qty * pxBase;
+      return '<tr>'
+        +'<td style="padding:7px 10px;font-size:12px">'+_esc(name)+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+qty+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+fmt(pxBase)+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-weight:600;font-size:12px">'+fmt(lineTot)+'</td>'
+      +'</tr>';
+    }).join('');
+    linesTableHTML = '<div class="fl" style="margin:14px 0 6px">'+(fr?'Articles':'Line items')+'</div>'
+      +'<div style="border:1px solid var(--border2);border-radius:8px;overflow:hidden;overflow-x:auto">'
+        +'<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:420px">'
+          +'<thead><tr style="background:var(--bg3);border-bottom:1px solid var(--border)">'
+            +'<th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Article':'Item')+'</th>'
+            +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Qté':'Qty')+'</th>'
+            +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Prix':'Price')+'</th>'
+            +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Total':'Total')+'</th>'
+          +'</tr></thead>'
+          +'<tbody>'+rowsHTML+'</tbody>'
+        +'</table>'
+      +'</div>';
+  }
+
+  // Status badge maps to a friendly label
+  const stLabel = s.st || (paid>=total?'Paid':paid>0?'Partial':'Unpaid');
+
+  modal('\uD83E\uDDFE '+(fr?'Vente':'Sale')+' \u2014 '+s.id,
+    // ── KPI tiles ───────────────────────────────────────────
+    '<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;gap:8px">'
+      +'<div class="kpi b" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">'+(fr?'Total':'Total')+'</div>'
+        +'<div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--a)">'+fmt(total)+'</div></div>'
+      +'<div class="kpi g" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">'+(fr?'Payé':'Paid')+'</div>'
+        +'<div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--g)">'+fmt(paid)+'</div></div>'
+      +'<div class="kpi '+(bal>0?'r':'')+'" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">'+(fr?'Solde':'Balance')+'</div>'
+        +'<div style="font-size:15px;font-weight:700;font-family:var(--mono);color:'+(bal>0?'var(--r)':'var(--g)')+'">'+fmt(bal)+'</div></div>'
+      +'<div class="kpi" style="padding:10px"><div class="kpi-lbl" style="font-size:10px">'+(fr?'Statut':'Status')+'</div>'
+        +'<div style="margin-top:4px">'+badge(stLabel)+'</div></div>'
+    +'</div>'
+    // ── Details grid ──────────────────────────────────────────
+    +'<div class="fg-2" style="margin-bottom:6px">'
+      +'<div><div class="fl">'+(fr?'Client':'Customer')+'</div><div style="font-size:13px;color:var(--ink);font-weight:600">'+_esc(s.cust||'—')+'</div></div>'
+      +'<div><div class="fl">'+(fr?'Date':'Date')+'</div><div style="font-size:13px;color:var(--text)">'+_esc(s.dt||'—')+'</div></div>'
+      +'<div><div class="fl">'+(fr?'Mode de paiement':'Payment Method')+'</div><div style="font-size:13px;color:var(--text)">'+_esc(s.method||'—')+'</div></div>'
+      +(s.terms?'<div><div class="fl">'+(fr?'Conditions':'Terms')+'</div><div style="font-size:13px;color:var(--text)">'+_esc(s.terms)+'</div></div>':'')
+    +'</div>'
+    // ── Line items ────────────────────────────────────────────
+    +linesTableHTML
+    // ── Free-text items description for legacy / supplementary info ──
+    +(!s.lineItems||!s.lineItems.length?
+      '<div class="fl" style="margin:14px 0 6px">'+(fr?'Description':'Items')+'</div>'
+      +'<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);padding:12px;font-size:13px;color:var(--text);white-space:pre-line;line-height:1.6">'+_esc(s.items||'—')+'</div>'
+      : '')
+    // ── Margins block ─────────────────────────────────────────
+    +'<div class="fl" style="margin:14px 0 6px">'+(fr?'Marge':'Margin')+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
+      +'<div style="padding:10px 12px;background:var(--bg3);border-radius:8px">'
+        +'<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">'+(fr?'Coût des Ventes':'COGS')+'</div>'
+        +'<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);margin-top:2px">'+fmt(cogs)+'</div>'
+      +'</div>'
+      +'<div style="padding:10px 12px;background:var(--g-dim);border-radius:8px">'
+        +'<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">'+(fr?'Bénéfice Brut':'Gross Profit')+'</div>'
+        +'<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--g);margin-top:2px">'+fmt(profit)+'</div>'
+      +'</div>'
+      +'<div style="padding:10px 12px;background:var(--bg3);border-radius:8px">'
+        +'<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">'+(fr?'Marge %':'Margin %')+'</div>'
+        +'<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:'+(marginPct>=30?'var(--g)':marginPct>=10?'var(--y)':'var(--r)')+';margin-top:2px">'+marginPct+'%</div>'
+      +'</div>'
+    +'</div>'
+    // ── Notes ─────────────────────────────────────────────────
+    +(s.notes?
+      '<div class="fl" style="margin:14px 0 4px">'+(fr?'Notes':'Notes')+'</div>'
+      +'<div style="font-size:12px;color:var(--text2);line-height:1.5">'+_esc(s.notes)+'</div>'
+      : '')
+  ,
+    '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>'
+    +'<button class="btn btn-g btn-sm" onclick="closeModal();mEditSale(\''+s.id+'\')">\u270F '+(fr?'Modifier':'Edit')+'</button>'
+    +'<button class="btn btn-g btn-sm" onclick="genInvoiceDoc(\''+s.id+'\')">\uD83D\uDCC4 '+(fr?'Facture':'Invoice')+'</button>'
+    +'<button class="btn btn-g btn-sm" onclick="genReceiptDoc(\''+s.id+'\')">\uD83E\uDDFE '+(fr?'Reçu':'Receipt')+'</button>'
+    +(bal>0.01?'<button class="btn btn-p btn-sm" onclick="closeModal();mRecordPayment(\''+s.id+'\')">\uD83D\uDCB0 '+(fr?'Enregistrer Paiement':'Record Payment')+'</button>':'')
+  );
+}
+
 function mEditSale(id){const _s=_L();
   if(!requireRight('edit_sales','Edit Sales')) return;
   const s=D.sales.find(x=>x.id===id);if(!s)return;
@@ -24827,8 +25002,8 @@ function mEditSale(id){const _s=_L();
     <div class="fg"><label class="fl">Total Amount (${CUR.symbol})</label>
       <input class="fi" type="number" id="es-total" value="${Math.round((s.total||s.amt||0)*r)}" oninput="_esAutoStatus()"/>
     </div>
-    <div class="fg"><label class="fl">Amount Paid (${CUR.symbol})</label>
-      <input class="fi" type="number" id="es-paid" value="${Math.round((s.paid||0)*r)}" oninput="_esAutoStatus()"/>
+    <div class="fg"><label class="fl">Amount Paid (${CUR.symbol}) <span id="es-paid-hint" style="font-size:10px;color:var(--text3)"></span></label>
+      <input class="fi" type="number" id="es-paid" value="${Math.round((s.paid||0)*r)}" oninput="_esPaidChange();_esAutoStatus()"/>
     </div>
     <div class="fg"><label class="fl">COGS / Cost (${CUR.symbol})</label>
       <input class="fi" type="number" id="es-cost" value="${Math.round((s.cost||0)*r)}" placeholder="Cost of goods sold"/>
@@ -24841,7 +25016,7 @@ function mEditSale(id){const _s=_L();
       </select>
     </div>
     <div class="fg"><label class="fl">${_s.ui_pay_method}</label>
-      <select class="fs" id="es-method">
+      <select class="fs" id="es-method" onchange="_esMethodChange()">
         ${['Cash','Card','Bank Transfer','Mobile Money (MTN)','Orange Money','On Account','Cheque','Other'].map(m=>'<option'+(s.method===m?' selected':'')+'>'+m+'</option>').join('')}
       </select>
     </div>
@@ -24861,6 +25036,8 @@ function mEditSale(id){const _s=_L();
   `<button class="btn btn-d btn-sm" onclick="closeModal();deleteSale('${id}')">\uD83D\uDDD1 Delete</button>
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveEditSale('${id}')">\uD83D\uDCBE Save Changes</button>`);
+  // Sync the On-Account paid-field lock to match the loaded sale's method
+  setTimeout(function(){ _esMethodChange(); }, 30);
 }
 function saveEditSale(id){var _s=_L();
   const s=D.sales.find(x=>x.id===id);if(!s)return;
@@ -24875,6 +25052,11 @@ function saveEditSale(id){var _s=_L();
   const paidV =parseFloat(document.getElementById('es-paid')?.value);  if(!isNaN(paidV))  s.paid=paidV/r;
   const costV =parseFloat(document.getElementById('es-cost')?.value);  if(!isNaN(costV))  s.cost=costV/r;
   const methodV=document.getElementById('es-method')?.value; if(methodV) s.method=methodV;
+  // Defensive: enforce On Account → paid=0 (matches the disabled-field
+  // UX, and survives any UI bypass).
+  if(/on account|compte client/i.test(s.method||'')){
+    s.paid = 0;
+  }
   const frV=parseFloat(document.getElementById('es-freight')?.value);  if(!isNaN(frV)) s.freight=frV/r;
   const txV=parseFloat(document.getElementById('es-taxes')?.value);    if(!isNaN(txV)) s.taxes=txV/r;
   const itemsV=document.getElementById('es-items')?.value;  if(itemsV!==undefined) s.items=itemsV;
@@ -24913,6 +25095,44 @@ function _esAutoStatus(){
   var t=parseFloat(document.getElementById('es-total')?.value)||0;
   var p=parseFloat(document.getElementById('es-paid')?.value)||0;
   var el=document.getElementById('es-st');if(el) el.value=p>=t&&t>0?'Paid':p>0?'Partial':'Unpaid';
+}
+
+// On Account ↔ Amount Paid cross-link for Edit Sale modal.
+// Same rules as the Create Sale modal — On Account means pay later, so
+// paid field is locked to 0; typing a paid amount flips method off of
+// On Account.
+function _esMethodChange(){
+  var methodEl = document.getElementById('es-method');
+  var paidEl   = document.getElementById('es-paid');
+  var hintEl   = document.getElementById('es-paid-hint');
+  if(!methodEl || !paidEl) return;
+  var isOnAccount = /on account|compte client/i.test(methodEl.value);
+  var fr = BIZ.language==='fr';
+  if(isOnAccount){
+    paidEl.value = 0;
+    paidEl.disabled = true;
+    paidEl.style.background = 'var(--bg3)';
+    paidEl.style.cursor = 'not-allowed';
+    if(hintEl){
+      hintEl.textContent = fr ? '— sur compte client' : '— on account';
+      hintEl.style.color = 'var(--y)';
+    }
+    _esAutoStatus();
+  } else {
+    paidEl.disabled = false;
+    paidEl.style.background = '';
+    paidEl.style.cursor = '';
+    if(hintEl){ hintEl.textContent = ''; }
+  }
+}
+function _esPaidChange(){
+  var methodEl = document.getElementById('es-method');
+  var paidEl   = document.getElementById('es-paid');
+  if(!methodEl || !paidEl || paidEl.disabled) return;
+  var paid = parseFloat(paidEl.value) || 0;
+  if(paid > 0 && /on account|compte client/i.test(methodEl.value)){
+    methodEl.value = 'Cash';
+  }
 }
 function _esAddLine(){
   var container=document.getElementById('es-lines');
