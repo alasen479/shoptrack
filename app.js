@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779564977");
+console.log("ShopTrack v2.7 - build:1779565199");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -19749,15 +19749,29 @@ function _mkSearchSelect(id, opts, currentVal, onSelect, placeholder){
   var wrap = document.getElementById(id);
   if(!wrap) return;
   // Use native <select> for reliability on all devices (mobile + desktop)
-  // Skip rebuild if select already exists — just update callback
+  // Skip rebuild ONLY when the option set is unchanged (count + values match).
+  // If a caller added a new option (e.g. owner just created a new category),
+  // we must rebuild — otherwise the new value can't be selected because no
+  // matching <option> exists, and the assignment silently fails.
   var existingSel = wrap.querySelector('select');
   if(existingSel && existingSel.options.length > 0){
-    wrap._ssOnSelect = onSelect;
-    // Update selected value if it changed
-    if(currentVal && existingSel.value !== String(currentVal)){
-      existingSel.value = String(currentVal);
+    // How many options are real (i.e. excluding the placeholder, if any)?
+    var hasPlaceholder = placeholder && existingSel.options[0] && existingSel.options[0].value === '';
+    var realOptCount = existingSel.options.length - (hasPlaceholder ? 1 : 0);
+    var sameCount = realOptCount === opts.length;
+    var sameValues = sameCount && opts.every(function(o, i){
+      var optEl = existingSel.options[i + (hasPlaceholder ? 1 : 0)];
+      return optEl && String(optEl.value) === String(o.val);
+    });
+    if(sameValues){
+      // Truly identical option set — fast path
+      wrap._ssOnSelect = onSelect;
+      if(currentVal && existingSel.value !== String(currentVal)){
+        existingSel.value = String(currentVal);
+      }
+      return;
     }
-    return;
+    // Option set changed — fall through to full rebuild
   }
   wrap._ssOnSelect = onSelect;
   var html = '<select class="fs" style="width:100%;padding:10px 13px;font-size:13px;cursor:pointer">';
