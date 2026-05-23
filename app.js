@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779574994");
+console.log("ShopTrack v2.7 - build:1779575567");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -8013,7 +8013,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
       +'<td>'+mono(fmt(p.sub),'a')+costBreak+'</td>'
       +'<td>'+mono(fmt(p.total),'b')+'</td>'
       +'<td>'+statusBadge+(isUnpaid && _outstanding>0.01?'<span style="display:block;font-size:10px;color:var(--r);margin-top:1px">AP '+fmt(_outstanding)+'</span>':'')+'</td>'
-      +'<td style="font-size:11px;color:var(--text2)">'+_esc(p.method||'—')+'</td>'
+      +'<td>'+(p.paid>0 ? mono(fmt(p.paid),'g') : '<span style="font-size:11px;color:var(--text3)">—</span>')+'</td>'
       +'<td onclick="event.stopPropagation()">'
         +'<div class="btn-row" style="flex-wrap:nowrap">'
         + (showPay
@@ -8081,7 +8081,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
       <div class="tbl-wrap"><table id="po-table">
         <thead><tr>
           <th>${_s.po_col_id}</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>${_s.sal_col_items}</th>
-          <th>${_s.ui_subtotal}</th><th>${_s.po_landed}</th><th>${_s.ui_status}</th><th>${_s.ui_method}</th><th></th>
+          <th>${_s.ui_subtotal}</th><th>${_s.po_landed}</th><th>${_s.ui_status}</th><th>${_s.po_col_paid || (BIZ.language==='fr'?'Payé':'Amount Paid')}</th><th></th>
         </tr></thead>
         <tbody id="po-tbody">${rows}</tbody>
       </table></div>
@@ -27302,7 +27302,10 @@ function mViewPurchase(id){const _s=_L();
     // button is preferred for any amount less than full.
     var paidBtn=document.getElementById('po-paid-btn');
     if(paidBtn) paidBtn.onclick=function(){
-      // Record a payment for the full outstanding balance, then flip status
+      // Record a payment for the full outstanding balance, then update
+      // status. Like _savePOPayment, status only flips to 'Paid' when
+      // goods have also been fully received — otherwise stays 'Partial'
+      // so the Receive Items button remains accessible.
       var outstanding = (p.total||0) - (p.paid||0);
       if(outstanding > 0.01){
         if(!p.payments) p.payments = [];
@@ -27314,8 +27317,16 @@ function mViewPurchase(id){const _s=_L();
         });
         p.paid = (p.paid||0) + outstanding;
       }
-      p.st = 'Paid';
       p.bal = 0;
+      // Are all goods in?
+      var fullyReceived;
+      if(!p.lines || !p.lines.length){
+        fullyReceived = p.st==='Received' || p.st==='Paid';
+      } else {
+        var lr = p.linesReceived || [];
+        fullyReceived = p.lines.every(function(li, i){ return (lr[i]||0) >= (li.qty||1); });
+      }
+      p.st = fullyReceived ? 'Paid' : 'Partial';
       _dbSavePurchase(p); refreshLiveKpis();
       addAudit('PO paid', p.id+' — '+(p.vendor||''));
       closeModal(); toast(_L().t_po_paid, 'success'); nav('purchases');
@@ -27404,14 +27415,27 @@ function _savePOPayment(id){const _s=_L();
   p.payments.push({dt:dt, amount:amtBase, method:method, note:note});
   p.paid = (p.paid||0) + amtBase;
   p.bal  = Math.max(0, (p.total||0) - p.paid);
-  // Status: flip to Partial if some paid; to Paid if fully covered; stay
-  // Received-style if already received (paid status is a separate axis).
+  // Status reflects what's STILL open. Payment-axis (money) and
+  // receipt-axis (goods) are independent — fully paying for goods that
+  // haven't arrived yet should NOT flip status to Paid (because Paid
+  // implies the cycle is closed, and goods aren't in yet). Instead:
+  //
+  //   fully paid + fully received  → Paid       (cycle complete)
+  //   fully paid, not yet received → Partial    (paid side done, goods still due)
+  //   partially paid, any receipt  → Partial
+  //   nothing paid, nothing recv'd → Pending
+  //
+  // This keeps the "Receive Items" row button visible when goods are
+  // still in transit, even after the buyer has paid in full.
+  function _poFullyReceived(po){
+    if(!po.lines || !po.lines.length) return po.st==='Received' || po.st==='Paid';
+    var lr = po.linesReceived || [];
+    return po.lines.every(function(li, i){ return (lr[i]||0) >= (li.qty||1); });
+  }
   if(p.paid >= (p.total||0) - 0.01){
-    if(p.st==='Received') p.st = 'Paid'; // received AND paid
-    else                   p.st = 'Paid';
+    p.st = _poFullyReceived(p) ? 'Paid' : 'Partial';
   } else if(p.paid > 0){
-    if(p.st==='Pending') p.st = 'Partial';
-    // If already Partial or Received with partial pay, leave as is
+    p.st = 'Partial';
   }
   // Persist method on the PO (so subsequent reminders default to it)
   p.method = method;
