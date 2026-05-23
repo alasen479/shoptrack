@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779548821");
+console.log("ShopTrack v2.7 - build:1779549295");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -3319,6 +3319,8 @@ function _invGridClick(e){const _s=_L();
   if(editEl){ e.stopPropagation(); mEditItem(editEl.dataset.editId); return; }
   var dupEl = e.target.closest('[data-dup-id]');
   if(dupEl){ e.stopPropagation(); mDuplicateItem(dupEl.dataset.dupId); return; }
+  var reorderEl = e.target.closest('[data-reorder-id]');
+  if(reorderEl){ e.stopPropagation(); _invReorder(reorderEl.dataset.reorderId); return; }
   var delEl = e.target.closest('[data-del-id]');
   if(delEl){ e.stopPropagation(); _mItemDelete(delEl.dataset.delId); return; }
   var card = e.target.closest('[data-inv-id]');
@@ -3383,9 +3385,10 @@ function _buildInvGridFiltered(items){const _s=_L();
       +(stockVal>0?'<div style="font-size:10px;color:var(--text2);margin-top:3px">Stock value: <strong style="color:var(--ink)">'+fmt(stockVal)+'</strong></div>':'')
       +(it.rented>0?'<div style="font-size:10px;color:var(--c);margin-top:2px">🔄 '+(it.rented||0)+' rented out</div>':'')
       +'<div class="btn-row" style="margin-top:7px">'
-        +'<button class="btn btn-g btn-xs" data-edit-id="'+it.id+'">✏ Edit</button>'
-        +'<button class="btn btn-g btn-xs" data-dup-id="'+it.id+'">⧉ Dup</button>'
-        +'<button class="btn btn-d btn-xs" data-del-id="'+it.id+'">🗑</button>'
+        +'<button class="btn btn-g btn-xs" data-edit-id="'+it.id+'" title="Edit">✏ Edit</button>'
+        +'<button class="btn btn-g btn-xs" data-dup-id="'+it.id+'" title="Duplicate">⧉ Dup</button>'
+        +'<button class="btn btn-g btn-xs" data-reorder-id="'+it.id+'" title="Reorder — pre-fills a new Purchase with this item, its preferred vendor &amp; last-known cost">🔄</button>'
+        +'<button class="btn btn-d btn-xs" data-del-id="'+it.id+'" title="Delete">🗑</button>'
       +'</div>'
       +'</div>'
       +'</div>';
@@ -3418,9 +3421,10 @@ function switchInvView(el,mode){const _s=_L();
       <td><div class="cond ${cc(i.cond)}"><div class="cdot"></div><span style="font-size:11px">${i.cond}</span></div></td>
       <td><div class="btn-row">
         <button class="btn btn-g btn-xs" onclick="mItem('${i.id}')">${_s.ui_view}</button>
-        <button class="btn btn-g btn-xs" onclick="mEditItem('${i.id}')">✏</button>
-        <button class="btn btn-g btn-xs" onclick="mDuplicateItem('${i.id}')">⧉</button>
-        <button class="btn btn-d btn-xs" onclick="_mItemDelete('${i.id}')">🗑</button>
+        <button class="btn btn-g btn-xs" onclick="mEditItem('${i.id}')" title="Edit">✏</button>
+        <button class="btn btn-g btn-xs" onclick="mDuplicateItem('${i.id}')" title="Duplicate">⧉</button>
+        <button class="btn btn-g btn-xs" onclick="_invReorder('${i.id}')" title="Reorder \u2014 pre-fills a new Purchase with this item, its preferred vendor &amp; last-known cost">🔄</button>
+        <button class="btn btn-d btn-xs" onclick="_mItemDelete('${i.id}')" title="Delete">🗑</button>
       </div></td>
     </tr>`}).join('')}
     </tbody></table></div>`;
