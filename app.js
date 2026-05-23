@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779489997");
+console.log("ShopTrack v2.7 - build:1779524151");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -26531,7 +26531,7 @@ function mPayVendor(vendorId){const _s=_L();
   </div>
   <div class="fg-2">
     <div class="fg"><label class="fl">Payment Amount</label>
-      <input class="fi" id="vp-amt" type="number" value="${(v.bal*CUR.rate).toFixed(2)}" min="0" step="0.01" placeholder="Amount in ${CUR.code}"/></div>
+      <input class="fi" id="vp-amt" type="number" value="${(v.bal*CUR.rate).toFixed(CUR.decimals||0)}" min="0" step="${(CUR.decimals||0)>0 ? '0.01' : '1'}" placeholder="Amount in ${CUR.code}"/></div>
     <div class="fg"><label class="fl">${_s.sal_pay_date}</label>
       <input class="fi" id="vp-dt" type="date" value="${today}"/></div>
   </div>
@@ -28169,7 +28169,7 @@ function mEditAppt(id){const _s=_L();
     +'<div class="fg-2">'
     +'<div class="fg"><label class="fl">'+_s.ui_phone+'</label><input class="fi" id="ea-phone" value="'+(a.custPhone||'')+'"/></div>'
     +'<div class="fg"><label class="fl">'+_s.appt_staff+'</label><select class="fs" id="ea-staff"><option value="">Any</option>'+stfOpts+'</select></div>'
-    +'<div class="fg"><label class="fl">Amount ('+CUR.symbol+')</label><input class="fi" id="ea-amt" type="number" value="'+Math.round((a.totalAmt||0)*CUR.rate*100)/100+'" step="0.01" oninput="this._t=true"/></div>'
+    +'<div class="fg"><label class="fl">Amount ('+CUR.symbol+')</label><input class="fi" id="ea-amt" type="number" value="'+((CUR.decimals||0)>0?(Math.round((a.totalAmt||0)*CUR.rate*100)/100):Math.round((a.totalAmt||0)*CUR.rate))+'" step="'+((CUR.decimals||0)>0?'0.01':'1')+'" oninput="this._t=true"/></div>'
     +'<div class="fg"><label class="fl">'+_s.ui_status+'</label><select class="fs" id="ea-status">'+stList+'</select></div>'
     +'</div>'
     +'<div class="fg"><label class="fl">'+(BIZ.language==='fr'?'\uD83D\uDCF7 Photos':'\uD83D\uDCF7 Photos')+' <span style="font-size:10px;color:var(--text2);font-weight:400">('+(BIZ.language==='fr'?'visite, avant/après, plans \u2014 max 6':'site visits, before/after, sketches \u2014 max 6')+')</span></label>'
@@ -28458,7 +28458,7 @@ async function mNewService(){const _s=_L();
     </div>
     <div class="fg">
       <label class="fl" id="sv-pr-lbl">Price (${CUR.symbol})</label>
-      <input class="fi" id="sv-pr" type="number" placeholder="0.00" step="0.01" oninput="_svSyncTotal()"/>
+      <input class="fi" id="sv-pr" type="number" placeholder="${(CUR.decimals||0)>0 ? '0.00' : '0'}" step="${(CUR.decimals||0)>0 ? '0.01' : '1'}" oninput="_svSyncTotal()"/>
       <div id="sv-total-preview" style="display:none;font-size:11px;color:var(--g);margin-top:4px;font-weight:600"></div>
     </div>
   </div>
@@ -28527,7 +28527,7 @@ async function mEditSvc(id){const _s=_L();
     </div>
     <div class="fg">
       <label class="fl" id="sv-pr-lbl">Price (${CUR.symbol})</label>
-      <input class="fi" id="sv-pr" type="number" value="${(s.price*CUR.rate).toFixed(2)}" step="0.01" oninput="_svSyncTotal()"/>
+      <input class="fi" id="sv-pr" type="number" value="${(s.price*CUR.rate).toFixed(CUR.decimals||0)}" step="${(CUR.decimals||0)>0 ? '0.01' : '1'}" oninput="_svSyncTotal()"/>
       <div id="sv-total-preview" style="display:none;font-size:11px;color:var(--g);margin-top:4px;font-weight:600"></div>
     </div>
   </div>
