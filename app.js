@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779645986");
+console.log("ShopTrack v2.7 - build:1779646524");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -962,6 +962,20 @@ const _numFmt = n => {
 // KPI display formatter — splits number from currency suffix for clean rendering
 const fmtKpi = n => {
   const val = Number(n) * CUR.rate;
+  switch(CUR.code){
+    case 'XAF': return `<span>${_numFmt(Math.round(val))}</span><span class="kpi-cur">Frs</span>`;
+    case 'NGN': return `<span>&#8358;${_numFmt(Math.round(val))}</span>`;
+    case 'GBP': return `<span>&#163;${val.toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0})}</span>`;
+    case 'EUR': return `<span>&#8364;${val.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0})}</span>`;
+    default:    return `<span>$${val.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</span>`;
+  }
+};
+// fmtKpiRaw: render a KPI value that is ALREADY in display currency
+// (no rate multiplication). Use this when summing native-amount fields
+// like totalAmtNative so the displayed number matches the per-record
+// amounts shown elsewhere.
+const fmtKpiRaw = n => {
+  const val = Number(n);
   switch(CUR.code){
     case 'XAF': return `<span>${_numFmt(Math.round(val))}</span><span class="kpi-cur">Frs</span>`;
     case 'NGN': return `<span>&#8358;${_numFmt(Math.round(val))}</span>`;
@@ -3472,10 +3486,10 @@ ${_subExpiryBanner()}
 ${_setupScoreBar()}
 
 <div class="kpi-grid" id="dash-kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(185px,1fr))">
-  ${DC.kpis.includes('rev')?`<div class="kpi b" onclick="_navWithPeriod('reports',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">${_s.dash_kpi_rev}</div><div id="dash-kpi-rev" class="kpi-val b">${fmtKpi(k.rev)}</div><div class="kpi-sub" id="dash-kpi-rev-sub"></div></div>`:''}
-  ${DC.kpis.includes('saleRev')?`<div class="kpi g" onclick="_navWithPeriod('sales',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">${_s.dash_kpi_sale}</div><div id="dash-kpi-sale" class="kpi-val g">${fmtKpi(k.saleRev)}</div><div class="kpi-sub" id="dash-kpi-sale-sub"></div></div>`:''}
-  ${DC.kpis.includes('rentRev')?`<div class="kpi c" onclick="_navWithPeriod('rentals',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">${_s.dash_kpi_rent}</div><div id="dash-kpi-rent" class="kpi-val c">${fmtKpi(k.rentRev)}</div><div class="kpi-sub" id="dash-kpi-rent-sub"></div></div>`:''}
-  ${DC.kpis.includes('apptRev')?`<div class="kpi p" onclick="mServicesRevenue()" style="cursor:pointer" title="${_s.dash_kpi_appt_title}"><div class="kpi-lbl">${_s.dash_kpi_appt}</div><div id="dash-kpi-appt" class="kpi-val p">${fmtKpi(k.apptRev||0)}</div><div class="kpi-sub" id="dash-kpi-appt-sub">${_s.dash_kpi_appt_sub}</div></div>`:''}
+  ${DC.kpis.includes('rev')?`<div class="kpi b" onclick="_navWithPeriod('reports',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">${_s.dash_kpi_rev}</div><div id="dash-kpi-rev" class="kpi-val b">${k.revNative!=null?fmtKpiRaw(k.revNative):fmtKpi(k.rev)}</div><div class="kpi-sub" id="dash-kpi-rev-sub"></div></div>`:''}
+  ${DC.kpis.includes('saleRev')?`<div class="kpi g" onclick="_navWithPeriod('sales',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">${_s.dash_kpi_sale}</div><div id="dash-kpi-sale" class="kpi-val g">${k.saleRevNative!=null?fmtKpiRaw(k.saleRevNative):fmtKpi(k.saleRev)}</div><div class="kpi-sub" id="dash-kpi-sale-sub"></div></div>`:''}
+  ${DC.kpis.includes('rentRev')?`<div class="kpi c" onclick="_navWithPeriod('rentals',_dashPeriod)" style="cursor:pointer"><div class="kpi-lbl">${_s.dash_kpi_rent}</div><div id="dash-kpi-rent" class="kpi-val c">${k.rentRevNative!=null?fmtKpiRaw(k.rentRevNative):fmtKpi(k.rentRev)}</div><div class="kpi-sub" id="dash-kpi-rent-sub"></div></div>`:''}
+  ${DC.kpis.includes('apptRev')?`<div class="kpi p" onclick="mServicesRevenue()" style="cursor:pointer" title="${_s.dash_kpi_appt_title}"><div class="kpi-lbl">${_s.dash_kpi_appt}</div><div id="dash-kpi-appt" class="kpi-val p">${k.apptRevNative!=null?fmtKpiRaw(k.apptRevNative):fmtKpi(k.apptRev||0)}</div><div class="kpi-sub" id="dash-kpi-appt-sub">${_s.dash_kpi_appt_sub}</div></div>`:''}
   ${DC.kpis.includes('gp')?`<div class="kpi p"><div class="kpi-lbl">${_s.dash_kpi_gp}</div><div id="dash-kpi-gp" class="kpi-val p">${fmtKpi(k.gp)}</div><div class="kpi-sub">${_s.dash_kpi_margin}<strong id="dash-kpi-gp-pct" style="color:var(--p)">${k.rev>0?Math.round(k.gp/k.rev*100):0}%</strong></div></div>`:''}
   ${DC.kpis.includes('np')?`<div class="kpi g"><div class="kpi-lbl">${_s.dash_kpi_np}</div><div id="dash-kpi-np" class="kpi-val g">${fmtKpi(k.np)}</div><div class="kpi-sub">${_s.dash_kpi_margin}<strong id="dash-kpi-np-pct" style="color:var(--g)">${k.rev>0?Math.round(k.np/k.rev*100):0}%</strong></div></div>`:''}
   ${DC.kpis.includes('ar')?`<div class="kpi r" onclick="mARDetail()" style="cursor:pointer" title="${_s.dash_kpi_ar_title}"><div class="kpi-lbl">${_s.dash_kpi_ar}</div><div id="dash-kpi-ar" class="kpi-val r">${fmtKpi(k.ar)}</div><div class="kpi-sub" id="dash-kpi-ar-sub">${D.cust.filter(c=>c.bal>0).length} ${_s.dash_cust_owe}</div></div>`:''}
@@ -26820,17 +26834,44 @@ function computeKPIs(range){
   const expenses = D.exp.filter(e=>inRange(e.dt, range));
 
   // ── Revenue ──────────────────────────────────────────────────
+  // We compute TWO parallel sums:
+  //   - USD-base (saleRev, rentRev, apptRev) used by P&L exports,
+  //     report generators, and any code that expects D.kpis values in
+  //     the legacy base currency.
+  //   - Native-currency (saleRevNative, rentRevNative, apptRevNative)
+  //     used by Dashboard KPI tiles so the displayed values match the
+  //     per-record amounts exactly (no rate-multiply drift).
+  //
+  // Without the native sums, the Dashboard tile reads e.g.
+  // apptRev = 48.7212 USD (sum of four totalAmt floats), then fmtKpi
+  // multiplies by current rate ~615.85 = 30,006 — while the
+  // Appointments page rolls up native amounts directly to 30,000.
+  // Same data, two different numbers, user confusion.
+
   // Sales: use total (includes freight/tax), not amt (subtotal only)
   const saleRev  = sales.reduce((a,s)=>a+(s.total||s.amt||0), 0);
+  const saleRevNative = sales.reduce((a,s)=>{
+    if(s.totalNative!=null && s.totalCurrency===CUR.code) return a + Number(s.totalNative);
+    return a + (Number(s.total||s.amt||0) * (CUR.rate||1));
+  }, 0);
   // Rental revenue: only count fees on rentals that are active or completed
   // Reserved rentals have not yet been earned; Returned and Checked Out have.
   const earnedRentals = rentals.filter(r=>r.st==='Returned'||r.st==='Checked Out'||r.st==='Overdue');
   const rentRev  = earnedRentals.reduce((a,r)=>a+(r.fee||0), 0);
+  const rentRevNative = earnedRentals.reduce((a,r)=>{
+    if(r.feeNative!=null && r.feeCurrency===CUR.code) return a + Number(r.feeNative);
+    return a + (Number(r.fee||0) * (CUR.rate||1));
+  }, 0);
   // Appointments: only Completed
   const apptArr  = (D.appointments||[]).filter(a=>
     a.st==='Completed' && (a.totalAmt||0)>0 && inRange(a.date, range));
   const apptRev  = apptArr.reduce((a,ap)=>a+(ap.totalAmt||0), 0);
+  const apptRevNative = apptArr.reduce((a,ap)=>{
+    if(ap.totalAmtNative!=null && ap.totalAmtCurrency===CUR.code) return a + Number(ap.totalAmtNative);
+    return a + (Number(ap.totalAmt||0) * (CUR.rate||1));
+  }, 0);
   const rev      = saleRev + rentRev + apptRev;
+  const revNative = saleRevNative + rentRevNative + apptRevNative;
 
   // ── COGS ─────────────────────────────────────────────────────
   // Cost of goods for sales in the period. Rentals & services have no COGS here
@@ -26906,6 +26947,7 @@ function computeKPIs(range){
 
   const invVal   = D.inv.reduce(function(a,i){return a+(i.cost||0)*(i.qty||0);},0);
   return {rev, saleRev, rentRev, apptRev, cogs, gp, np, oh,
+          revNative, saleRevNative, rentRevNative, apptRevNative,
           ar, ap, cashIn, saleCashIn, cashOut, invVal,
           sales, rentals: earnedRentals, allRentals: rentals, expenses};
 }
