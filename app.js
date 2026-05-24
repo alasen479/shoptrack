@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779645042");
+console.log("ShopTrack v2.7 - build:1779645669");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -30354,7 +30354,8 @@ function _updateApptBadge(){
 
 // ── Calendar state ───────────────────────────────────────────
 let _apptCalY=new Date().getFullYear(), _apptCalM=new Date().getMonth(), _apptCalSel=null, _apptView='calendar';
-let _apptDayDate = null; // YYYY-MM-DD for the Day view focus
+let _apptDayDate = null;  // YYYY-MM-DD for the Day view focus
+let _apptWeekDate = null; // YYYY-MM-DD for the Week view; resolves to its containing week (Sun-Sat)
 
 function initAppointments(){ _updateApptBadge(); }
 
@@ -30364,15 +30365,20 @@ function initAppointments(){ _updateApptBadge(); }
 // ── APPOINTMENT VIEW HELPERS ─────────────────────────────────
 
 function _togApptView(mode, filter){
-  // Tri-state: 'calendar' (month grid) | 'day' (hourly timeline) | 'list' (table)
+  // Four-state: 'calendar' (month grid) | 'week' (7-day timeline)
+  // | 'day' (single-day hourly timeline) | 'list' (table)
   // If no explicit mode, cycle through them in order.
   if(mode){
     _apptView = mode;
   } else {
-    _apptView = (_apptView==='calendar') ? 'day' : (_apptView==='day') ? 'list' : 'calendar';
+    _apptView = (_apptView==='calendar') ? 'week'
+              : (_apptView==='week')     ? 'day'
+              : (_apptView==='day')      ? 'list'
+              : 'calendar';
   }
-  // Day view needs a date — default to selected day, else today.
-  if(_apptView==='day' && !_apptDayDate) _apptDayDate = _apptCalSel || localDateStr();
+  // Each view needs its own anchor date — default to selected day, else today.
+  if(_apptView==='day'  && !_apptDayDate)  _apptDayDate  = _apptCalSel || localDateStr();
+  if(_apptView==='week' && !_apptWeekDate) _apptWeekDate = _apptCalSel || _apptDayDate || localDateStr();
   nav('appointments');
   if(filter) setTimeout(()=>_apptFilter(filter),120);
 }
@@ -30401,6 +30407,259 @@ function _apptDayToday(){
 function _apptDayBlock(){
   mBlockTime(_apptDayDate || localDateStr());
 }
+
+// ── WEEK VIEW ────────────────────────────────────────────────
+// Return the Sunday of the week containing the given YYYY-MM-DD date.
+function _weekStartOf(ds){
+  var dt = new Date(ds+'T12:00:00');
+  dt.setDate(dt.getDate() - dt.getDay()); // Sunday
+  return dt.toISOString().slice(0,10);
+}
+
+function _apptWeekNav(dir){
+  var dt = new Date((_apptWeekDate||localDateStr())+'T12:00:00');
+  dt.setDate(dt.getDate() + dir*7);
+  _apptWeekDate = dt.toISOString().slice(0,10);
+  var el=document.getElementById('appt-main'); if(el) el.innerHTML=_apptWeekHTML();
+}
+function _apptWeekToday(){
+  _apptWeekDate = localDateStr();
+  var el=document.getElementById('appt-main'); if(el) el.innerHTML=_apptWeekHTML();
+}
+
+function _apptWeekHTML(){
+  var _s = _L();
+  var fr = BIZ.language==='fr';
+  var anchor = _apptWeekDate || localDateStr();
+  var weekStart = _weekStartOf(anchor);
+  var today = localDateStr();
+
+  // Build the 7 day-stamps Sun→Sat for the week containing `anchor`.
+  var days = [];
+  var startDt = new Date(weekStart+'T12:00:00');
+  for(var i=0;i<7;i++){
+    var d = new Date(startDt); d.setDate(startDt.getDate()+i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  var weekEnd = days[6];
+
+  // Month name + range header. If the week spans two months we show both,
+  // e.g. "May 24 – Jun 30, 2026" — keeps the header compact.
+  var monthNames = fr ? ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.']
+                      : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var dN = fr ? ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']
+              : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var s0 = new Date(weekStart+'T12:00:00');
+  var s6 = new Date(weekEnd+'T12:00:00');
+  var rangeLabel = (s0.getMonth()===s6.getMonth())
+    ? monthNames[s0.getMonth()]+' '+s0.getDate()+' – '+s6.getDate()+', '+s6.getFullYear()
+    : monthNames[s0.getMonth()]+' '+s0.getDate()+' – '+monthNames[s6.getMonth()]+' '+s6.getDate()+', '+s6.getFullYear();
+
+  // Pull appointments and blocked slots for the whole week in one pass.
+  var weekAppts = (D.appointments||[]).filter(function(a){return a.date>=weekStart && a.date<=weekEnd;});
+  var weekBlocks = (D.blockedSlots||[]).filter(function(b){return b.date>=weekStart && b.date<=weekEnd;});
+
+  // Per-day group for fast lookup when rendering each column.
+  var apptsByDay = {}; var blocksByDay = {};
+  days.forEach(function(d){ apptsByDay[d]=[]; blocksByDay[d]=[]; });
+  weekAppts.forEach(function(a){ if(apptsByDay[a.date]) apptsByDay[a.date].push(a); });
+  weekBlocks.forEach(function(b){ if(blocksByDay[b.date]) blocksByDay[b.date].push(b); });
+
+  // Week summary — appointment + revenue rollup for the side panel.
+  var weekCounts = {Reserved:0,Confirmed:0,'In Progress':0,Completed:0,'No-Show':0,Cancelled:0};
+  var weekRevNative = 0;
+  weekAppts.forEach(function(a){
+    if(weekCounts.hasOwnProperty(a.st)) weekCounts[a.st]++;
+    if(a.st==='Completed'){
+      if(a.totalAmtNative != null && a.totalAmtCurrency === CUR.code){
+        weekRevNative += Number(a.totalAmtNative);
+      } else {
+        weekRevNative += Number(a.totalAmt||0) * (CUR.rate||1);
+      }
+    }
+  });
+
+  // Shared timeline window — same dimensions as the Day view so users
+  // who switch between the two see the same hourly density.
+  var startHour=6, endHour=22, pxPerHour=48; // slightly tighter than Day for 7 columns
+  var totalHeight = (endHour-startHour) * pxPerHour;
+  function _toMin(t){var p=(t||'09:00').split(':');return (+p[0])*60+(+p[1]);}
+
+  // Hour-label gutter (rendered once, on the left)
+  var hourLabels = '';
+  for(var h=startHour; h<=endHour; h++){
+    var hLabel = (h<10?'0':'')+h+':00';
+    hourLabels += '<div style="height:'+pxPerHour+'px;font-size:10px;color:var(--text2);font-family:var(--mono);text-align:right;padding-right:6px;border-top:1px solid var(--border);position:relative">'
+      + '<span style="position:absolute;top:-7px;right:6px;background:var(--bg2);padding:0 4px">'+hLabel+'</span></div>';
+  }
+
+  // Build one column per day. Each column reuses the same positioning
+  // logic as the Day view, just narrower and without the per-block status
+  // pill / amount footer (too cramped at week density).
+  var dayColumns = '';
+  days.forEach(function(ds){
+    var dt = new Date(ds+'T12:00:00');
+    var isToday = ds===today;
+    var dayAppts = apptsByDay[ds] || [];
+    var dayBlocks = blocksByDay[ds] || [];
+    // Overlap detection within the column so we can flag conflicts
+    var conflictIds = {};
+    var live = dayAppts.filter(function(a){return a.st!=='No-Show' && a.st!=='Cancelled';});
+    for(var i=0;i<live.length;i++){
+      for(var j=i+1;j<live.length;j++){
+        var aS=_toMin(live[i].startTime), aE=_toMin(live[i].endTime||live[i].startTime);
+        var bS=_toMin(live[j].startTime), bE=_toMin(live[j].endTime||live[j].startTime);
+        if(aS<bE && bS<aE){ conflictIds[live[i].id]=1; conflictIds[live[j].id]=1; }
+      }
+    }
+
+    // Blocked overlays
+    var blockOverlays = '';
+    dayBlocks.forEach(function(b){
+      var bs = b.allDay ? startHour*60 : _toMin(b.startTime);
+      var be = b.allDay ? endHour*60   : _toMin(b.endTime);
+      if(be<=startHour*60 || bs>=endHour*60) return;
+      bs = Math.max(bs, startHour*60);
+      be = Math.min(be, endHour*60);
+      var top = ((bs - startHour*60)/60) * pxPerHour;
+      var height = ((be - bs)/60) * pxPerHour;
+      if(height<6) height=6;
+      blockOverlays += '<div title="🚫 '+(b.reason||(fr?'Non disponible':'Not Available'))+'" '
+        + 'style="position:absolute;left:0;right:0;top:'+top+'px;height:'+height+'px;'
+        + 'background:repeating-linear-gradient(45deg,rgba(239,68,68,.12),rgba(239,68,68,.12) 5px,rgba(239,68,68,.22) 5px,rgba(239,68,68,.22) 10px);'
+        + 'border-top:1px solid rgba(239,68,68,.45);border-bottom:1px solid rgba(239,68,68,.45);z-index:1;pointer-events:auto;cursor:pointer" '
+        + 'onclick="mBlockTime(\''+ds+'\')"></div>';
+    });
+
+    // Appointment blocks (active = not cancelled)
+    var apptBlocks = '';
+    dayAppts.filter(function(a){return a.st!=='Cancelled';}).forEach(function(a){
+      var aS = _toMin(a.startTime);
+      var aE = _toMin(a.endTime||a.startTime);
+      if(aE<=aS) aE = aS+30;
+      if(aE<=startHour*60 || aS>=endHour*60) return;
+      var clipS = Math.max(aS, startHour*60);
+      var clipE = Math.min(aE, endHour*60);
+      var top = ((clipS - startHour*60)/60) * pxPerHour;
+      var height = ((clipE - clipS)/60) * pxPerHour;
+      if(height<18) height=18;
+      var col = _apptCol(a.st);
+      var bg = _apptBg(a.st);
+      var hasConflict = !!conflictIds[a.id];
+      apptBlocks += '<div onclick="mViewAppt(\''+a.id+'\')" '
+        + 'title="'+_esc(a.custName)+' · '+_esc(a.serviceName)+' · '+_timeLabel(a.startTime)+(a.endTime?'–'+_timeLabel(a.endTime):'')+' · '+a.st+'" '
+        + 'style="position:absolute;left:2px;right:2px;top:'+top+'px;height:'+height+'px;'
+        + 'background:'+bg+';border-left:3px solid '+col+';border-radius:5px;padding:2px 5px;'
+        + 'cursor:pointer;z-index:'+(hasConflict?'4':'3')+';overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05);'
+        + (hasConflict?'outline:2px solid rgba(239,68,68,.55);outline-offset:-2px;':'')
+        + 'transition:transform .1s">'
+        + '<div style="font-size:10px;font-weight:700;color:'+col+';line-height:1.15">'+(hasConflict?'⚠ ':'')+_timeLabel(a.startTime)+'</div>'
+        + '<div style="font-size:11px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">'+_esc(a.custName||'—')+'</div>'
+        + (height>=36?'<div style="font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">'+_esc(a.serviceName||'')+'</div>':'')
+        + '</div>';
+    });
+
+    // Now-line for today's column
+    var nowLine = '';
+    if(isToday){
+      var now = new Date();
+      var nMin = now.getHours()*60 + now.getMinutes();
+      if(nMin>=startHour*60 && nMin<=endHour*60){
+        var nowTop = ((nMin - startHour*60)/60) * pxPerHour;
+        nowLine = '<div style="position:absolute;left:0;right:0;top:'+nowTop+'px;height:2px;background:#ef4444;z-index:5;pointer-events:none">'
+          + '<div style="position:absolute;left:-5px;top:-4px;width:9px;height:9px;background:#ef4444;border-radius:50%"></div>'
+          + '</div>';
+      }
+    }
+
+    // Column header — clickable, opens Day view for that date
+    var dayHeader = '<div onclick="_apptOpenDay(\''+ds+'\')" '
+      + 'style="text-align:center;padding:6px 4px;cursor:pointer;border-bottom:1px solid var(--border);'
+      + (isToday?'background:var(--a-dim)':'')
+      + ';transition:background .12s" '
+      + 'onmouseover="this.style.background=\''+(isToday?'var(--a-dim)':'var(--bg3)')+'\'" '
+      + 'onmouseout="this.style.background=\''+(isToday?'var(--a-dim)':'transparent')+'\'">'
+      + '<div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px">'+dN[dt.getDay()]+'</div>'
+      + '<div style="font-size:16px;font-weight:800;color:'+(isToday?'var(--a)':'var(--ink)')+';font-family:var(--display)">'+dt.getDate()+'</div>'
+      + (dayAppts.length?'<div style="font-size:10px;color:var(--text2)">'+dayAppts.length+' '+(fr?'rdv':'appt'+(dayAppts.length===1?'':'s'))+'</div>':'<div style="font-size:10px;color:var(--text3)">—</div>')
+      + '</div>';
+
+    dayColumns += '<div style="flex:1;min-width:0;border-right:1px solid var(--border)">'
+      + dayHeader
+      + '<div style="position:relative;min-height:'+totalHeight+'px;background:'
+      +   'repeating-linear-gradient(to bottom,transparent,transparent '+(pxPerHour-1)+'px,var(--border) '+(pxPerHour-1)+'px,var(--border) '+pxPerHour+'px);'
+      +   'cursor:pointer" '
+      +   'ondblclick="_apptOpenDay(\''+ds+'\')" '
+      +   'title="'+(fr?'Double-cliquez pour ouvrir':'Double-click to open Day view')+'">'
+      +   blockOverlays + apptBlocks + nowLine
+      + '</div>'
+      + '</div>';
+  });
+
+  // Side panel — week summary (mirrors the Day view's right column)
+  var summaryRows = '';
+  Object.keys(weekCounts).forEach(function(st){
+    if(weekCounts[st]>0){
+      summaryRows += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">'
+        + '<span style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="width:9px;height:9px;background:'+_apptCol(st)+';border-radius:50%"></span>'+st+'</span>'
+        + '<span style="font-weight:700;color:var(--ink)">'+weekCounts[st]+'</span></div>';
+    }
+  });
+  if(weekBlocks.length){
+    summaryRows += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">'
+      + '<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--r)"><span style="width:9px;height:9px;background:#ef4444;border-radius:50%"></span>'+(fr?'Bloqué':'Blocked')+'</span>'
+      + '<span style="font-weight:700;color:var(--r)">'+weekBlocks.length+'</span></div>';
+  }
+
+  var sidePanel = '<div style="width:210px;flex-shrink:0">'
+    + '<div class="card" style="padding:14px;margin-bottom:10px">'
+    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text2);letter-spacing:.4px;margin-bottom:8px">'+(fr?'Résumé hebdo':'Week summary')+'</div>'
+    + (summaryRows || '<div style="font-size:12px;color:var(--text2);padding:6px 0">'+(fr?'Rien à afficher':'Nothing scheduled')+'</div>')
+    + (weekRevNative>0?'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;margin-top:6px;border-top:1px solid var(--border)"><span style="font-size:11px;font-weight:700;color:var(--text2)">'+(fr?'Revenu':'Revenue')+'</span><span style="font-family:var(--mono);font-weight:700;color:var(--g)">'+fmtRaw(weekRevNative)+'</span></div>':'')
+    + '</div>'
+    + '<div class="card" style="padding:14px">'
+    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text2);letter-spacing:.4px;margin-bottom:8px">'+(fr?'Actions':'Actions')+'</div>'
+    + '<button class="btn btn-p btn-sm" style="width:100%;margin-bottom:6px" onclick="mNewAppt(\''+(today>=weekStart&&today<=weekEnd?today:weekStart)+'\')">+ '+(fr?'Réserver':'Book appointment')+'</button>'
+    + '<button class="btn btn-s btn-sm" style="width:100%;background:var(--r-dim);color:var(--r)" onclick="mBlockTime(\''+(today>=weekStart&&today<=weekEnd?today:weekStart)+'\')">🗓 '+(fr?'Disponibilité':'Availability Manager')+'</button>'
+    + '</div></div>';
+
+  // Header: prev / today / next + date picker
+  var header = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap">'
+    + '<div style="display:flex;align-items:center;gap:6px">'
+    + '<button class="btn btn-g btn-sm" onclick="_apptWeekNav(-1)" title="'+(fr?'Semaine précédente':'Previous week')+'">‹</button>'
+    + '<button class="btn btn-s btn-sm" onclick="_apptWeekToday()">'+(fr?'Cette semaine':'This week')+'</button>'
+    + '<button class="btn btn-g btn-sm" onclick="_apptWeekNav(1)" title="'+(fr?'Semaine suivante':'Next week')+'">›</button>'
+    + '</div>'
+    + '<div style="flex:1;text-align:center">'
+    + '<div style="font-family:var(--display);font-size:17px;font-weight:800;color:var(--ink)">'+rangeLabel+'</div>'
+    + '<div style="font-size:11px;color:var(--text2)">'+weekAppts.length+' '+(fr?'rendez-vous':'appt'+(weekAppts.length===1?'':'s'))
+    + (weekRevNative>0?' · '+fmtRaw(weekRevNative)+' '+(fr?'attendu':'expected'):'')
+    + (weekBlocks.length?' · 🚫 '+weekBlocks.length+' '+(fr?'bloc(s)':'block'+(weekBlocks.length===1?'':'s')):'')
+    + '</div></div>'
+    + '<input type="date" class="fi-s" value="'+anchor+'" onchange="_apptWeekDate=this.value;document.getElementById(\'appt-main\').innerHTML=_apptWeekHTML()" style="width:150px"/>'
+    + '</div>';
+
+  return '<div>' + header
+    + '<div style="display:flex;gap:12px;align-items:flex-start">'
+    + '<div style="flex:1;min-width:0"><div class="card" style="padding:8px">'
+    // Hour-gutter + 7 day columns. Each column has its own header strip
+    // at the top of its grid (date + count), so the gutter is padded
+    // down by the header height to keep the hour labels aligned with
+    // the timeline grid below.
+    + '<div style="display:flex;align-items:stretch">'
+    + '<div style="width:56px;flex-shrink:0;padding-top:56px">'
+    +   hourLabels
+    + '</div>'
+    + '<div style="flex:1;display:flex;border-left:1px solid var(--border)">'
+    +   dayColumns
+    + '</div>'
+    + '</div>'
+    + '</div></div>'
+    + sidePanel
+    + '</div>'
+    + '</div>';
+}
+
 function _apptCalHTML(){var _s=_L();
   const Y=_apptCalY, M=_apptCalM, today=localDateStr();
   const tY=+today.slice(0,4), tMo=+today.slice(5,7)-1, tD=+today.slice(8);
@@ -31206,6 +31465,7 @@ function pgAppointments(){const _s=_L();
     +'<div class="ph-row"><h1>'+_s.appt_title+'</h1>'
     +'<div class="btn-row">'
     +'<button class="btn btn-sm" style="background:'+(_apptView==='calendar'?'var(--a)':'var(--bg3)')+';color:'+(_apptView==='calendar'?'#fff':'var(--text)')+'" onclick="_togApptView(\'calendar\')">📅 Month</button>'
+    +'<button class="btn btn-sm" style="background:'+(_apptView==='week'?'var(--a)':'var(--bg3)')+';color:'+(_apptView==='week'?'#fff':'var(--text)')+'" onclick="_togApptView(\'week\')">🗓 Week</button>'
     +'<button class="btn btn-sm" style="background:'+(_apptView==='day'?'var(--a)':'var(--bg3)')+';color:'+(_apptView==='day'?'#fff':'var(--text)')+'" onclick="_togApptView(\'day\')">🕒 Day</button>'
     +'<button class="btn btn-sm" style="background:'+(_apptView==='list'?'var(--a)':'var(--bg3)')+';color:'+(_apptView==='list'?'#fff':'var(--text)')+'" onclick="_togApptView(\'list\')">📋 List</button>'
     +'<button class="btn btn-s btn-sm" onclick="_apptBulkConfirm()">✓ Confirm All</button>'
@@ -31247,13 +31507,9 @@ function pgAppointments(){const _s=_L();
       +'<div class="kpi-sub">'+(totalRevNative>0?fmtRaw(totalRevNative)+' '+(_s.appt_earned||'earned'):(_s.appt_no_rev||'No revenue yet'))+'</div>'
     +'</div>'
 
-    // Revenue KPI — avg per appointment (uses native sum to stay in
-    // sync with the per-row amounts shown below)
-    +'<div class="kpi y" style="cursor:pointer" onclick="mServicesRevenue()" title="'+_s.appt_view_rev+'">'
-      +'<div class="kpi-lbl">'+(_s.appt_avg||'Avg / Appt')+'</div>'
-      +'<div class="kpi-val y"><span>'+_numFmt(Math.round(avgRevNative))+'</span><span class="kpi-cur"> '+(CUR.symbol||'Frs')+'</span></div>'
-      +'<div class="kpi-sub">'+(completed.length?completed.length+' '+(_s.appt_completed_count||'completed'):'\u2014')+'</div>'
-    +'</div>'
+    // Revenue KPI removed in v165 — the per-row amounts and the
+    // Completed tile's 'N Frs earned' subline already communicate
+    // the same information without the extra column.
 
     // No-shows → filters list
     +'<div class="kpi r" style="cursor:pointer" onclick="_togApptView(\'list\',\'no-show\')" title="View no-show appointments">'
@@ -31271,7 +31527,7 @@ function pgAppointments(){const _s=_L();
     +'</div>'
 
     +todayCard
-    +'<div id="appt-main">'+(_apptView==='calendar' ? _apptCalHTML() : _apptView==='day' ? _apptDayHTML() : _apptListHTML())+'</div>';
+    +'<div id="appt-main">'+(_apptView==='calendar' ? _apptCalHTML() : _apptView==='week' ? _apptWeekHTML() : _apptView==='day' ? _apptDayHTML() : _apptListHTML())+'</div>';
 }
 
 
