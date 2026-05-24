@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779588744");
+console.log("ShopTrack v2.7 - build:1779589202");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -29510,9 +29510,9 @@ function filterLedger(el, type){
 // ============================================================
 
 // ── DB helpers ──────────────────────────────────────────────
-function _dbToService(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,bookable:r.bookable!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null,costLines:r.cost_lines?JSON.parse(r.cost_lines):null}; }
+function _dbToService(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceNative:r.price_native!=null?r.price_native:null,priceCurrency:r.price_currency||null,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,bookable:r.bookable!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null,costLines:r.cost_lines?JSON.parse(r.cost_lines):null}; }
 function _dbToAppt(r){ return {id:r.id,serviceId:r.service_id||'',serviceName:r.service_name||'',custId:r.customer_id||'',custName:r.customer_name||'',custPhone:r.customer_phone||'',staffId:r.staff_id||'',staffName:r.staff_name||'',date:r.date||'',startTime:r.start_time||'',endTime:r.end_time||'',st:r.status||'Reserved',notes:r.notes||'',walkIn:r.walk_in||false,totalAmt:r.total_amount||0,payMethod:r.pay_method||'Cash',saleId:r.sale_id||'',createdAt:r.created_at||'',photos:Array.isArray(r.photos)?r.photos:(r.photos?(function(){try{return JSON.parse(r.photos);}catch(e){return [];}})():[])}; }
-function _serviceDB(s,bizId){ return {id:s.id,biz_id:bizId,name:s.name,duration_mins:s.duration,price:s.price||0,price_type:s.priceType||'flat',category:s.cat||'',color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,bookable:s.bookable!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null,cost_lines:s.costLines?JSON.stringify(s.costLines):null}; }
+function _serviceDB(s,bizId){ return {id:s.id,biz_id:bizId,name:s.name,duration_mins:s.duration,price:s.price||0,price_native:s.priceNative!=null?s.priceNative:null,price_currency:s.priceCurrency||null,price_type:s.priceType||'flat',category:s.cat||'',color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,bookable:s.bookable!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null,cost_lines:s.costLines?JSON.stringify(s.costLines):null}; }
 function _apptDB(a,bizId){ return {id:a.id,biz_id:bizId,service_id:a.serviceId,service_name:a.serviceName,customer_id:a.custId,customer_name:a.custName,customer_phone:a.custPhone,staff_id:a.staffId,staff_name:a.staffName,date:a.date,start_time:a.startTime,end_time:a.endTime,status:a.st,notes:a.notes,walk_in:a.walkIn,total_amount:a.totalAmt,pay_method:a.payMethod||'',sale_id:a.saleId||'',photos:a.photos||[]}; }
 async function _dbSaveService(s){
   if(!SESSION.bizId) return;
@@ -31339,6 +31339,15 @@ async function mEditSvc(id){const _s=_L();
   const pt=s.priceType||'flat';
   const ptOpts=_PRICE_TYPES.map(p=>`<option value="${p.value}"${p.value===pt?' selected':''}>${p.label}</option>`).join('');
   const sCat=s.cat||'';
+  // Prefer the natively-stored amount when the currency hasn't changed
+  // since save. This keeps a 2,500 Frs service rendering as exactly
+  // 2,500 across edits, immune to live FX rate drift. If priceCurrency
+  // is missing (legacy records) or differs from the active currency
+  // (user changed countries / currencies in settings), fall back to the
+  // USD-based conversion.
+  const _priceForEdit = (s.priceNative != null && s.priceCurrency === CUR.code)
+    ? s.priceNative
+    : (s.price||0) * CUR.rate;
   if(!D.svcCats||!D.svcCats.length) D.svcCats=['Consultation','Installation','Maintenance & Repair','Training','Design & Planning','Delivery & Logistics','Cleaning','Beauty & Grooming','Health & Wellness','Events & Catering','Photography & Media','IT & Tech Support','Other'];
   modal('✏ Edit — '+s.name,`
   <div class="fg-2">
@@ -31363,7 +31372,7 @@ async function mEditSvc(id){const _s=_L();
     </div>
     <div class="fg">
       <label class="fl" id="sv-pr-lbl">Price (${CUR.symbol})</label>
-      <input class="fi" id="sv-pr" type="number" value="${(s.price*CUR.rate).toFixed(CUR.decimals||0)}" step="${(CUR.decimals||0)>0 ? '0.01' : '1'}" oninput="_svSyncTotal()"/>
+      <input class="fi" id="sv-pr" type="number" value="${(+_priceForEdit).toFixed(CUR.decimals||0)}" step="${(CUR.decimals||0)>0 ? '0.01' : '1'}" oninput="_svSyncTotal()"/>
       <div id="sv-total-preview" style="display:none;font-size:11px;color:var(--g);margin-top:4px;font-weight:600"></div>
     </div>
   </div>
@@ -31624,9 +31633,21 @@ function _getSvcData(){var _s=_L();
   if(!nm){ toast(_L().t_name_req,'error'); return null; }
   const priceType = document.getElementById('sv-pt')?.value || 'flat';
   const cat = document.getElementById('sv-cat')?.value || '';
-  // Use newly uploaded image, or preserve existing (set by edit modal)
-  // If user uploaded a new photo, use it; otherwise preserve existing (set by edit modal) or null
-  const result = {name:nm,cat,duration:parseInt(document.getElementById('sv-du')?.value)||0,price:(parseFloat(document.getElementById('sv-pr')?.value)||0)/CUR.rate,priceType,color:document.getElementById('sv-cl')?.value||'#4361ee',desc:document.getElementById('sv-ds')?.value||'',active:document.getElementById('sv-ac')?.checked!==false,bookable:document.getElementById('sv-bk')?.checked!==false,staffIds:[...document.querySelectorAll('#sv-stl input:checked')].map(e=>e.value),costLines:_cbReadLines('cs')};
+  // Capture price BOTH in USD-base (for cross-currency math) AND in the
+  // currency the user actually entered (for drift-free round-trips).
+  // The XAF/USD rate fluctuates live from the Frankfurter API; if a
+  // service is saved at rate=615.0 and reopened at rate=615.7, the
+  // re-displayed value drifts (2500 \u2192 2503 \u2192 ...) because we were
+  // recomputing display = USD * rate every time. By storing the native
+  // amount alongside the USD value, the edit form can show exactly what
+  // the user typed when the active currency hasn't changed.
+  const priceDisplay = parseFloat(document.getElementById('sv-pr')?.value)||0;
+  const priceUSD     = priceDisplay / CUR.rate;
+  const result = {name:nm,cat,duration:parseInt(document.getElementById('sv-du')?.value)||0,
+    price: priceUSD,
+    priceNative: priceDisplay,
+    priceCurrency: CUR.code,
+    priceType,color:document.getElementById('sv-cl')?.value||'#4361ee',desc:document.getElementById('sv-ds')?.value||'',active:document.getElementById('sv-ac')?.checked!==false,bookable:document.getElementById('sv-bk')?.checked!==false,staffIds:[...document.querySelectorAll('#sv-stl input:checked')].map(e=>e.value),costLines:_cbReadLines('cs')};
   if(window._svcImgData !== undefined && window._svcImgData !== null) {
     result.imgDataUrl = window._svcImgData; // new upload
   } else if(window._svcExistingImg !== undefined) {
