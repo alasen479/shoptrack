@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779587642");
+console.log("ShopTrack v2.7 - build:1779588398");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -7116,28 +7116,54 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
 </div>
 <div class="card">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>${_s.rent_col_id}</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.appt_start}</th><th>Due</th><th>${_s.ui_status}</th><th>Fee</th><th>${_s.rent_col_dep}</th><th>${_s.rent_col_late}</th><th>${_s.inv_cond_lbl}</th><th>Docs</th><th>${_s.ui_actions}</th></tr></thead>
-    <tbody id="rentals-tbody">${D.rentals.map(r=>`<tr class="rental-row" style="cursor:pointer" onclick="mRentalDetail('${r.id}')" data-status="${r.st}" data-start="${r.start}" data-date="${r.start}" data-cust="${(r.cust||'')}" data-item="${(r.item||'')}" data-id="${r.id}" data-bal="${Math.max(0,(r.fee||0)-(r.paid||0))}">
-      <td>${mono(r.id,'a')}</td>
-      <td><strong style="color:var(--ink)">${r.cust}</strong></td>
-      <td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis">${r.item}</td>
-      <td style="color:var(--text2)">${r.start}</td>
-      <td style="color:${r.st==='Overdue'?'var(--r)':'var(--text2)'};font-weight:${r.st==='Overdue'?'600':'400'}">${r.due}</td>
-      <td>${badge(r.st)}</td>
-      <td>${mono(fmt(r.fee))}</td>
-      <td>${mono(fmt(r.dep),'y')}</td>
-      <td>${mono(r.lf>0?fmt(r.lf):'—',r.lf>0?'r':'text3')}</td>
-      <td><div class="cond ${cc(r.cb)}" style="font-size:10px"><div class="cdot"></div>${r.cb}${r.ca?` → ${r.ca}`:''}</div></td>
-      <td onclick="event.stopPropagation()">${r.docs&&r.docs.length?`<span style="display:inline-flex;align-items:center;gap:3px;background:var(--a-dim);color:var(--a);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer" onclick="mRentalDetail('${r.id}')">📎 ${r.docs.length}</span>`:`<button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')" style="opacity:.6">+ Doc</button>`}</td>
-      <td onclick="event.stopPropagation()"><div class="btn-row">
-        ${r.bal>0?`<button class="btn btn-p btn-xs" onclick="mRecordPayment('${r.id}')" title="${_s.rent_btn_payment}">💰</button>`:''}
-        ${r.st==='Overdue'?`<button class="btn btn-g btn-xs" onclick="_rentalWARemind('${r.id}')" title="${_s.rent_send_wa}">💬</button>`:''}        ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-xs" onclick="mReturn('${r.id}')">↩ Return</button>`:''}
-        ${BIZ.contractEnabled?`<button class="btn btn-c btn-xs" onclick="mRentalContract('${r.id}')" title="${_s.rent_btn_contract}">${r.contractSigned?'📋✓':'📋'}</button>`:''}
-        <button class="btn btn-g btn-xs" onclick="genRentalReceiptDoc('${r.id}')" title="${_s.rent_btn_receipt}">🧾</button>
-        <button class="btn btn-g btn-xs" onclick="mEditRental('${r.id}')" title="${_s.ui_edit||'Edit'}">✏</button>
-        <button class="btn btn-d btn-xs" onclick="deleteRental('${r.id}')" title="${_s.ui_delete}">🗑</button>
-      </div></td>
-    </tr>`).join('')}
+    <thead><tr>
+      <th>${_s.rent_col_id}</th>
+      <th>${_s.ui_customer}</th>
+      <th>${_s.rent_item_lbl}</th>
+      <th>${_s.appt_start}</th>
+      <th>Due</th>
+      <th>${_s.ui_status}</th>
+      <th>${BIZ.language==='fr'?'Revenu Engag\u00e9':'Revenue Earned'}</th>
+      <th>${BIZ.language==='fr'?'Esp\u00e8ces Per\u00e7ues':'Cash Collected'}</th>
+      <th>${BIZ.language==='fr'?'Solde / AR':'Balance / AR'}</th>
+      <th>${BIZ.language==='fr'?'Caution Retenue':'Deposit Held'}</th>
+      <th>${BIZ.language==='fr'?'Frais Retard':'Late Fees Due'}</th>
+      <th>${_s.ui_actions}</th>
+    </tr></thead>
+    <tbody id="rentals-tbody">${D.rentals.map(function(r){
+      // Per-row financial derivations
+      var bal      = Math.max(0, (r.fee||0) - (r.paid||0));
+      var settled  = r.st==='Returned' || r.st==='Closed';
+      // "Deposit Held" = refundable security CURRENTLY in our possession.
+      // Once the rental is Returned / Closed the deposit has been settled
+      // (refunded, applied to damage, or applied to unpaid rent), so we
+      // shouldn't list it as still held. The user's screenshot showed
+      // Melissa's returned rental still displaying her 450k deposit in this
+      // column \u2014 misleading because it's been refunded.
+      var depHeldNow = settled ? 0 : (r.dep||0);
+      return '<tr class="rental-row" style="cursor:pointer" onclick="mRentalDetail(\''+r.id+'\')" data-status="'+r.st+'" data-start="'+r.start+'" data-date="'+r.start+'" data-cust="'+_esc(r.cust||'')+'" data-item="'+_esc(r.item||'')+'" data-id="'+r.id+'" data-bal="'+bal+'">'
+        +'<td>'+mono(r.id,'a')+'</td>'
+        +'<td><strong style="color:var(--ink)">'+_esc(r.cust||'')+'</strong></td>'
+        +'<td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis">'+_esc(r.item||'')+'</td>'
+        +'<td style="color:var(--text2)">'+r.start+'</td>'
+        +'<td style="color:'+(r.st==='Overdue'?'var(--r)':'var(--text2)')+';font-weight:'+(r.st==='Overdue'?'600':'400')+'">'+r.due+'</td>'
+        +'<td>'+badge(r.st)+'</td>'
+        +'<td>'+mono(fmt(r.fee||0),'a')+'</td>'
+        +'<td>'+mono(fmt(r.paid||0),(r.paid||0)>0?'g':'text3')+'</td>'
+        +'<td>'+mono(bal>0?fmt(bal):'\u2014', bal>0?'r':'text3')+'</td>'
+        +'<td>'+mono(depHeldNow>0?fmt(depHeldNow):'\u2014', depHeldNow>0?'y':'text3')+'</td>'
+        +'<td>'+mono((r.lf||0)>0?fmt(r.lf):'\u2014', (r.lf||0)>0?'r':'text3')+'</td>'
+        +'<td onclick="event.stopPropagation()"><div class="btn-row">'
+        +(bal>0?'<button class="btn btn-p btn-xs" onclick="mRecordPayment(\''+r.id+'\')" title="'+_s.rent_btn_payment+'">\uD83D\uDCB0</button>':'')
+        +(r.st==='Overdue'?'<button class="btn btn-g btn-xs" onclick="_rentalWARemind(\''+r.id+'\')" title="'+_s.rent_send_wa+'">\uD83D\uDCAC</button>':'')
+        +((r.st==='Overdue'||r.st==='Checked Out')?'<button class="btn btn-p btn-xs" onclick="mReturn(\''+r.id+'\')">\u21A9 Return</button>':'')
+        +(BIZ.contractEnabled?'<button class="btn btn-c btn-xs" onclick="mRentalContract(\''+r.id+'\')" title="'+_s.rent_btn_contract+'">'+(r.contractSigned?'\uD83D\uDCCB\u2713':'\uD83D\uDCCB')+'</button>':'')
+        +'<button class="btn btn-g btn-xs" onclick="genRentalReceiptDoc(\''+r.id+'\')" title="'+_s.rent_btn_receipt+'">\uD83E\uDDFE</button>'
+        +'<button class="btn btn-g btn-xs" onclick="mEditRental(\''+r.id+'\')" title="'+(_s.ui_edit||'Edit')+'">\u270F</button>'
+        +'<button class="btn btn-d btn-xs" onclick="deleteRental(\''+r.id+'\')" title="'+_s.ui_delete+'">\uD83D\uDDD1</button>'
+        +'</div></td>'
+      +'</tr>';
+    }).join('')}
     </tbody>
   </table></div>
 </div>`;
