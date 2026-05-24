@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779588398");
+console.log("ShopTrack v2.7 - build:1779588744");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -27350,18 +27350,24 @@ function _computeRentalKPIs(range){
 function _refreshRentalKPIs(){
   var k = _computeRentalKPIs(_rentalsCurrentRange);
   var fr = BIZ.language==='fr';
-  function _set(id, val){ var el = document.getElementById(id); if(el) el.textContent = val; }
-  _set('rkpi-active-val',   k.activeCount);
-  _set('rkpi-overdue-val',  k.overdueCount);
-  _set('rkpi-overdue-sub',  k.overdueCount>0 ? (fr?'Voir la liste \u2192':'View list \u2192') : (fr?'Tout est OK \u2713':'All clear \u2713'));
-  _set('rkpi-returned-val', k.returnedCount);
-  _set('rkpi-dep-val',      fmtKpi(k.depHeld));
-  _set('rkpi-dep-sub',      k.activeCount + ' ' + (fr?'actives':'active') + ' \u2192');
-  _set('rkpi-rev-val',      fmtKpi(k.rentRevenue));
-  _set('rkpi-rev-sub',      k.earnedCount + ' ' + (fr?'gagn\u00e9es':'earned') + ' \u2192');
-  _set('rkpi-cash-val',     fmtKpi(k.rentCash));
-  _set('rkpi-ar-val',       fmtKpi(k.rentAR));
-  _set('rkpi-ar-sub',       k.arCount>0
+  // _setText for plain values (numbers, label strings)
+  // _setHtml for currency-formatted values returned by fmtKpi, which
+  // emits <span>amount</span><span class="kpi-cur">Frs</span> markup.
+  // Using textContent on the latter caused the raw tags to render
+  // visibly inside the tiles \u2014 the scrambling bug from the screenshot.
+  function _setText(id, val){ var el = document.getElementById(id); if(el) el.textContent = val; }
+  function _setHtml(id, val){ var el = document.getElementById(id); if(el) el.innerHTML = val; }
+  _setText('rkpi-active-val',   k.activeCount);
+  _setText('rkpi-overdue-val',  k.overdueCount);
+  _setText('rkpi-overdue-sub',  k.overdueCount>0 ? (fr?'Voir la liste \u2192':'View list \u2192') : (fr?'Tout est OK \u2713':'All clear \u2713'));
+  _setText('rkpi-returned-val', k.returnedCount);
+  _setHtml('rkpi-dep-val',      fmtKpi(k.depHeld));
+  _setText('rkpi-dep-sub',      k.activeCount + ' ' + (fr?'actives':'active') + ' \u2192');
+  _setHtml('rkpi-rev-val',      fmtKpi(k.rentRevenue));
+  _setText('rkpi-rev-sub',      k.earnedCount + ' ' + (fr?'gagn\u00e9es':'earned') + ' \u2192');
+  _setHtml('rkpi-cash-val',     fmtKpi(k.rentCash));
+  _setHtml('rkpi-ar-val',       fmtKpi(k.rentAR));
+  _setText('rkpi-ar-sub',       k.arCount>0
       ? (k.arCount + ' ' + (fr?'locations':'rentals') + ' \u2192')
       : (fr?'tout per\u00e7u \u2713':'all collected \u2713'));
 }
