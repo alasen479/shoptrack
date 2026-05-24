@@ -850,7 +850,7 @@ body.light .ai-out.has-content{background:#f8faff;border-color:var(--a)}
   var scripts = [
     'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
-    '/app.js?v=1779590535'
+    '/app.js?v=1779619910'
   ];
   var i = 0;
   function loadNext(){
@@ -1137,6 +1137,7 @@ window.addEventListener('unhandledrejection', function(e){
   <div class="bni bni-biz" id="bn-inventory" onclick="nav('inventory')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
     <span class="bni-lbl">Inventory</span>
+    <div class="bni-dot" id="bn-inventory-dot" style="display:none"></div>
   </div>
   <div class="bni bni-biz" id="bn-sales" onclick="nav('sales')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3a1 1 0 001.3 1.5L9 15m0 0l2 2 4-4m-4 2h4"/></svg>
@@ -1220,6 +1221,7 @@ window.addEventListener('unhandledrejection', function(e){
     <div class="sb-item" data-p="inventory">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
       <span class="sb-lbl-txt">Inventory</span>
+      <span class="sb-badge" id="sb-inventory-badge" style="display:none"></span>
     </div>
     <div class="sb-item" data-p="sales">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3a1 1 0 001.3 1.5L9 15m0 0l2 2 4-4m-4 2h4"/></svg>

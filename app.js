@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779590535");
+console.log("ShopTrack v2.7 - build:1779619910");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -17352,11 +17352,14 @@ async function _dbLoadBizData(bizId){
     // Log any query errors - don't silently replace data with empty arrays
     // Retry timed-out queries individually (smaller result sets are faster)
     var _invResult = inv;
+    // Track whether we had to use the slim retry (no image columns) so the
+    // merge below can preserve image fields from the IDB-cached local copy.
+    var _invRetryStripped = false;
     if(inv.error && (inv.error.message||'').includes('timeout')){
       console.warn('[DB] Retrying inventory query without photos...');
       _invResult = await _sb.from('inventory').select('id,biz_id,sku,name,cat,brand,status,condition,sp,cost,rp,deposit,min_sp,min_stock,qty,color,size,description,rented,img,img_color').eq('biz_id', bizId).limit(2000);
       if(_invResult.error) console.error('[DB] inventory retry also failed:', _invResult.error.message);
-      else console.log('[DB] inventory retry OK:', (_invResult.data||[]).length, 'items');
+      else { console.log('[DB] inventory retry OK:', (_invResult.data||[]).length, 'items'); _invRetryStripped = true; }
     }
     var _svcResult = svcs;
     if(svcs.error && (svcs.error.message||'').includes('timeout')){
@@ -17383,7 +17386,33 @@ async function _dbLoadBizData(bizId){
       return localOnly.concat(freshArr);
     }
     // Only update D.xxx if query succeeded (no error) — never overwrite with empty on failure
-    if(!_invResult.error && (!_is107 || (_invResult.data||[]).length))       D.inv       = _mergeData(D.inv, (_invResult.data||[]).map(_dbToInv));
+    if(!_invResult.error && (!_is107 || (_invResult.data||[]).length)){
+      var _freshInv = (_invResult.data||[]).map(_dbToInv);
+      if(_invRetryStripped && D.inv && D.inv.length){
+        // Slim retry omits img_data_url/photo_data_urls/photoDataUrls — so
+        // the fresh rows have null images. Pictures would disappear from
+        // the UI even though they're saved in IDB locally. Overlay image
+        // fields from the local copy where we have a match by id.
+        var _localImgMap = {};
+        D.inv.forEach(function(li){
+          _localImgMap[li.id] = {
+            imgDataUrl:     li.imgDataUrl,
+            photoDataUrls:  li.photoDataUrls,
+            img:            li.img,
+            imgC:           li.imgC
+          };
+        });
+        _freshInv = _freshInv.map(function(fr){
+          var loc = _localImgMap[fr.id];
+          if(!loc) return fr;
+          // Preserve only the fields the slim retry stripped; fresh data wins for everything else
+          if(!fr.imgDataUrl    && loc.imgDataUrl)    fr.imgDataUrl    = loc.imgDataUrl;
+          if((!fr.photoDataUrls || !fr.photoDataUrls.length) && loc.photoDataUrls && loc.photoDataUrls.length) fr.photoDataUrls = loc.photoDataUrls;
+          return fr;
+        });
+      }
+      D.inv = _mergeData(D.inv, _freshInv);
+    }
     else {
       // Overlay: apply saved photos/edits onto demo items from Supabase
       // (Supabase may have individual items saved — merge by id)
@@ -19899,6 +19928,24 @@ function updateSidebarForRole(){
   // Mobile bottom nav rentals dot
   const rDot = document.getElementById('bn-rentals-dot');
   if(rDot){ if(overdueR>0){rDot.textContent=overdueR;rDot.style.display='';}else{rDot.style.display='none';} }
+  // Update inventory low/out-of-stock badge — same alert criteria as the
+  // dashboard tile, so the user sees one consistent number across surfaces.
+  // Counts items where (qty - rented) is at or below their threshold,
+  // AND items that are completely out of stock (avail<=0). The badge
+  // sums both since both deserve attention.
+  const _invAlerts = (D.inv||[]).filter(function(i){
+    var avail = (i.qty||0) - (i.rented||0);
+    var thresh = i.minStock || i.minQty || 0;
+    var sellable = i.st==='For Sale' || i.st==='Both' || i.st==='For Rent';
+    if(!sellable) return false;
+    if(avail <= 0) return true; // out of stock
+    if(thresh > 0 && avail <= thresh) return true; // low
+    return false;
+  }).length;
+  const iBadge = document.getElementById('sb-inventory-badge');
+  if(iBadge){ if(_invAlerts>0){iBadge.textContent=_invAlerts;iBadge.style.display='';}else{iBadge.style.display='none';} }
+  const iDot = document.getElementById('bn-inventory-dot');
+  if(iDot){ if(_invAlerts>0){iDot.textContent=_invAlerts;iDot.style.display='';}else{iDot.style.display='none';} }
 // Update billing badge on Businesses sidebar item
   if(isSA){
     const billingAlert = D.adminBiz.filter(function(b){
@@ -29765,40 +29812,20 @@ async function _dbSaveService(s){
   if(_sIdx>=0) D.services[_sIdx]=s; else (D.services=D.services||[]).push(s);
   _idbSave(SESSION.bizId, 'services', D.services).catch(function(){});
 
-  if(!_sb || !navigator.onLine){
-    var _sp = _serviceDB(s, SESSION.bizId);
-    await _queueEnqueue(SESSION.bizId, 'services', _sp);
-    var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc);
-    _showSaved(); return;
-  }
-  try{
-    var payload = _serviceDB(s, SESSION.bizId);
-    var {error} = await _sb.from('services').upsert(payload);
-    if(error){
-      if(error.message && (error.message.includes('price_type')||error.message.includes('category')||error.message.includes('bookable')||error.message.includes('column'))){
-        console.warn('[ShopTrack] New service columns not yet in DB, falling back to base payload:', error.message);
-        var base = {id:s.id,biz_id:SESSION.bizId,name:s.name,duration_mins:s.duration,price:s.price||0,color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null};
-        var {error:e2} = await _sb.from('services').upsert(base);
-        if(e2){
-          // Queue the base payload
-          await _queueEnqueue(SESSION.bizId, 'services', base).catch(function(){});
-          toast(_L().t_svc_saved,'warn');
-        } else { _showSaved(); }
-      } else {
-        // Queue full payload for retry
-        await _queueEnqueue(SESSION.bizId, 'services', payload).catch(function(){});
-        toast(_L().t_svc_saved,'warn');
-      }
-    } else {
-      _showSaved();
-    }
-  }catch(e){
-    if(!navigator.onLine||(e.message||'').includes('fetch')){
-      await _queueEnqueue(SESSION.bizId, 'services', _serviceDB(s,SESSION.bizId)).catch(function(){});
-      var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
-      _showSaved();
-    } else { _dbErr('saveService',e); }
-  }
+  // _safeUpsert handles offline queueing + dynamic per-column stripping
+  // (via _sbUpsertWithFallback). Strips only the SPECIFIC missing column
+  // and retries up to 10 times — so when price_native is the missing
+  // column, the rest of the payload (including bookable, category,
+  // priceNative wouldn't be there either, but price_currency and any
+  // already-present columns) is preserved.
+  //
+  // The prior implementation dropped to a hardcoded 'base' payload on
+  // any column error, which silently stripped priceNative and
+  // priceCurrency even when only ONE other column was missing —
+  // recreating the drift bug for any business that hadn't run the
+  // service-table migration.
+  var result = await _safeUpsert('services', _serviceDB(s, SESSION.bizId), 'saveService');
+  if(result && result.ok){ _showSaved(); }
 }
 async function _dbSaveAppt(a){
   if(!SESSION.bizId) return;
