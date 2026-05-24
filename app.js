@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779620757");
+console.log("ShopTrack v2.7 - build:1779621401");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -17496,9 +17496,9 @@ async function _dbLoadBizData(bizId){
       if(_svcResult.error) console.error('Services load error:', _svcResult.error.message);
       else {
         // Use the proper _dbToService mapper which reads priceNative /
-        // priceCurrency / costLines columns. The earlier inline mapper
-        // omitted these, so even after the schema migration runs, fresh
-        // loads would have ignored them.
+        // priceCurrency / costLines columns AND auto-cures legacy records
+        // that have no priceNative yet (stamps the current display value
+        // so further drift stops immediately).
         var _freshSvcs = (_svcResult.data||[]).map(_dbToService);
         // If the user hasn't run the migration yet, cloud rows have no
         // price_native / price_currency / cost_lines columns at all (they
@@ -17511,17 +17511,25 @@ async function _dbLoadBizData(bizId){
           _freshSvcs = _freshSvcs.map(function(fr){
             var loc = _localSvcMap[fr.id];
             if(!loc) return fr;
-            if(fr.priceNative == null && loc.priceNative != null){
+            // Local IDB beats fresh-from-cloud-stamped-just-now: the user
+            // may have ALREADY hand-corrected the value locally before this
+            // load. Prefer the locally-saved native amount over the
+            // auto-stamped one.
+            if(loc.priceNative != null && loc.priceCurrency === CUR.code){
               fr.priceNative   = loc.priceNative;
-              fr.priceCurrency = loc.priceCurrency || fr.priceCurrency;
+              fr.priceCurrency = loc.priceCurrency;
             }
             if(!fr.costLines && loc.costLines) fr.costLines = loc.costLines;
-            // Also preserve service photo if cloud lacks it
             if(!fr.imgDataUrl && loc.imgDataUrl) fr.imgDataUrl = loc.imgDataUrl;
             return fr;
           });
         }
         D.services = _freshSvcs;
+        // Persist the auto-cured native amounts back to IDB immediately
+        // so they survive the next session even without an explicit save.
+        // Fire-and-forget — IDB save is best-effort, and a failure here
+        // is recoverable (next load re-cures with whatever rate is active).
+        _idbSave(SESSION.bizId, 'services', D.services).catch(function(){});
       }
     }
     if(!_is107 || (appts.data||[]).length){
@@ -29903,7 +29911,34 @@ function filterLedger(el, type){
 // ============================================================
 
 // ── DB helpers ──────────────────────────────────────────────
-function _dbToService(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceNative:r.price_native!=null?r.price_native:null,priceCurrency:r.price_currency||null,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,bookable:r.bookable!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null,costLines:r.cost_lines?JSON.parse(r.cost_lines):null}; }
+function _dbToService(r){
+  var rec = {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceNative:r.price_native!=null?r.price_native:null,priceCurrency:r.price_currency||null,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,bookable:r.bookable!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null,costLines:r.cost_lines?JSON.parse(r.cost_lines):null};
+  // ── LEGACY-RECORD AUTO-CURE ─────────────────────────────────
+  // Pre-v149 service records were stored only as USD-base floats. On
+  // every edit the form computed display = price * CUR.rate, then save
+  // computed back price = display / CUR.rate — and live FX rate ticks
+  // between those two operations caused drift (2500 → 2503 → 2506 → …).
+  //
+  // The v149 fix added priceNative + priceCurrency to stop drift for
+  // NEW records, but legacy records never got those fields populated.
+  // Worse, the user had to manually open + save each drifted record to
+  // pin its value, and during that opening the fallback path
+  // (price * CUR.rate) would already display the drifted number.
+  //
+  // Fix: on first load of any legacy record (priceNative still null),
+  // stamp it with the current display-currency value rounded to the
+  // currency's precision (XAF=0, USD=2, etc.) and tag it with the
+  // active currency. From that moment forward the record uses the
+  // priceNative path and drift stops. The cured value is whatever the
+  // user sees right now — which is what they'd type if forced to
+  // re-save anyway. Idempotent for already-cured records.
+  if(rec.priceNative == null && rec.price > 0 && (CUR.rate||0) > 0){
+    var d = CUR.decimals || 0;
+    rec.priceNative = parseFloat((rec.price * CUR.rate).toFixed(d));
+    rec.priceCurrency = CUR.code;
+  }
+  return rec;
+}
 function _dbToAppt(r){ return {id:r.id,serviceId:r.service_id||'',serviceName:r.service_name||'',custId:r.customer_id||'',custName:r.customer_name||'',custPhone:r.customer_phone||'',staffId:r.staff_id||'',staffName:r.staff_name||'',date:r.date||'',startTime:r.start_time||'',endTime:r.end_time||'',st:r.status||'Reserved',notes:r.notes||'',walkIn:r.walk_in||false,totalAmt:r.total_amount||0,totalAmtNative:r.total_amount_native!=null?r.total_amount_native:null,totalAmtCurrency:r.total_amount_currency||null,payMethod:r.pay_method||'Cash',saleId:r.sale_id||'',createdAt:r.created_at||'',photos:Array.isArray(r.photos)?r.photos:(r.photos?(function(){try{return JSON.parse(r.photos);}catch(e){return [];}})():[])}; }
 function _serviceDB(s,bizId){ return {id:s.id,biz_id:bizId,name:s.name,duration_mins:s.duration,price:s.price||0,price_native:s.priceNative!=null?s.priceNative:null,price_currency:s.priceCurrency||null,price_type:s.priceType||'flat',category:s.cat||'',color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,bookable:s.bookable!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null,cost_lines:s.costLines?JSON.stringify(s.costLines):null}; }
 function _apptDB(a,bizId){ return {id:a.id,biz_id:bizId,service_id:a.serviceId,service_name:a.serviceName,customer_id:a.custId,customer_name:a.custName,customer_phone:a.custPhone,staff_id:a.staffId,staff_name:a.staffName,date:a.date,start_time:a.startTime,end_time:a.endTime,status:a.st,notes:a.notes,walk_in:a.walkIn,total_amount:a.totalAmt,total_amount_native:a.totalAmtNative!=null?a.totalAmtNative:null,total_amount_currency:a.totalAmtCurrency||null,pay_method:a.payMethod||'',sale_id:a.saleId||'',photos:a.photos||[]}; }
