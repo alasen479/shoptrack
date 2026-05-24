@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779626923");
+console.log("ShopTrack v2.7 - build:1779645042");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -27271,13 +27271,26 @@ function _apWriteOff(vendorId){const _s=_L();
 function mServicesRevenue(){const _s=_L();
   const completed = (D.appointments||[]).filter(a=>a.st==='Completed'&&(a.totalAmt||0)>0)
     .sort((a,b)=>b.date.localeCompare(a.date));
-  const total     = completed.reduce((s,a)=>s+(a.totalAmt||0),0);
-  const avgVal    = completed.length ? total/completed.length : 0;
+  // Sum totals using the per-appointment native amount when present so
+  // the modal KPIs match the per-row amounts that fmtApptAmt renders.
+  // Mixing legacy USD-base sums with display-rate multiplies (fmt) was
+  // the cause of the modal saying 2,503 while each row said 2,500.
+  const _amtNative = (a) => {
+    if(a.totalAmtNative != null && a.totalAmtCurrency === CUR.code){
+      return Number(a.totalAmtNative);
+    }
+    return Number(a.totalAmt||0) * (CUR.rate||1);
+  };
+  const totalNative = completed.reduce((s,a)=>s+_amtNative(a),0);
+  const avgValNative = completed.length ? totalNative/completed.length : 0;
+  // Keep USD-base values for any downstream calls expecting them
+  const total  = completed.reduce((s,a)=>s+(a.totalAmt||0),0);
+  const avgVal = completed.length ? total/completed.length : 0;
 
-  // Group by service for breakdown
-  const bySvc={};
-  completed.forEach(a=>{ bySvc[a.serviceName]=(bySvc[a.serviceName]||0)+(a.totalAmt||0); });
-  const topSvc=Object.entries(bySvc).sort((a,b)=>b[1]-a[1]);
+  // Group by service for breakdown — also native-summed
+  const bySvcNative={};
+  completed.forEach(a=>{ bySvcNative[a.serviceName]=(bySvcNative[a.serviceName]||0)+_amtNative(a); });
+  const topSvc=Object.entries(bySvcNative).sort((a,b)=>b[1]-a[1]);
 
   if(!completed.length){
     toast(_L().t_no_comp_appts,'info'); return;
@@ -27300,14 +27313,14 @@ function mServicesRevenue(){const _s=_L();
   const svcBreakdown = topSvc.slice(0,5).map(([name,val])=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:12px">${_esc(name)}</span>
-      <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--p)">${fmt(val)}</span>
+      <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--p)">${fmtRaw(val)}</span>
     </div>`).join('');
 
   modal('✂️ Services Revenue',`
   <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
-    <div class="kpi p" style="padding:11px"><div class="kpi-lbl">${_s.rpt_total_rev}</div><div style="font-size:17px;font-weight:800;font-family:var(--mono);color:var(--p)">${fmt(total)}</div></div>
+    <div class="kpi p" style="padding:11px"><div class="kpi-lbl">${_s.rpt_total_rev}</div><div style="font-size:17px;font-weight:800;font-family:var(--mono);color:var(--p)">${fmtRaw(totalNative)}</div></div>
     <div class="kpi g" style="padding:11px"><div class="kpi-lbl">${_s.rpt_completed_appts}</div><div style="font-size:17px;font-weight:800;color:var(--g)">${completed.length}</div></div>
-    <div class="kpi b" style="padding:11px"><div class="kpi-lbl">${_s.rpt_avg_per_appt}</div><div style="font-size:17px;font-weight:800;font-family:var(--mono);color:var(--a)">${fmt(avgVal)}</div></div>
+    <div class="kpi b" style="padding:11px"><div class="kpi-lbl">${_s.rpt_avg_per_appt}</div><div style="font-size:17px;font-weight:800;font-family:var(--mono);color:var(--a)">${fmtRaw(avgValNative)}</div></div>
   </div>
   ${topSvc.length>1?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${_s.rpt_rev_by_svc}</div>${svcBreakdown}</div>`:''}
   <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Completed Appointments — click row for invoice</div>
@@ -30402,7 +30415,12 @@ function _apptCalHTML(){var _s=_L();
   const bmap={};
   (D.blockedSlots||[]).filter(b=>b.date&&b.date.startsWith(ms)).forEach(b=>{ (bmap[b.date]=bmap[b.date]||[]).push(b); });
   const mA=(D.appointments||[]).filter(a=>a.date&&a.date.startsWith(ms));
-  const mR=mA.filter(a=>a.st==='Completed').reduce((s,a)=>s+a.totalAmt,0);
+  // Sum month revenue using native amounts when present (matches the
+  // per-row display values shown on the appointment list).
+  const mR=mA.filter(a=>a.st==='Completed').reduce((s,a)=>{
+    if(a.totalAmtNative!=null && a.totalAmtCurrency===CUR.code) return s + Number(a.totalAmtNative);
+    return s + (Number(a.totalAmt||0) * (CUR.rate||1));
+  }, 0);
   let cells='';
   for(let i=0;i<fd;i++) cells+=`<div style="min-height:78px"></div>`;
   for(let d=1;d<=dim;d++){
@@ -30437,7 +30455,7 @@ function _apptCalHTML(){var _s=_L();
   <div style="flex:1;min-width:0"><div class="card" style="padding:14px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <button class="btn btn-g btn-sm" onclick="_apptNav(${pY},${pM})">‹</button>
-      <div style="text-align:center"><div style="font-size:15px;font-weight:800;color:var(--ink);font-family:var(--display)">${MN[M]} ${Y}</div><div style="font-size:11px;color:var(--text2)">${mA.length} appt${mA.length!==1?'s':''} · ${fmt(mR)} revenue</div></div>
+      <div style="text-align:center"><div style="font-size:15px;font-weight:800;color:var(--ink);font-family:var(--display)">${MN[M]} ${Y}</div><div style="font-size:11px;color:var(--text2)">${mA.length} appt${mA.length!==1?'s':''} · ${fmtRaw(mR)} revenue</div></div>
       <button class="btn btn-g btn-sm" onclick="_apptNav(${nY},${nM})">›</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">${DN.map(d=>`<div style="text-align:center;font-size:9.5px;font-weight:700;color:var(--text2);text-transform:uppercase;padding:3px 0">${d}</div>`).join('')}</div>
@@ -31125,12 +31143,28 @@ function pgAppointments(){const _s=_L();
   // shows Reserved-only) doesn't match the KPI number.
   var pending   = appts.filter(function(a){return a.st==='Reserved' && a.date>=today;});
   var cancelled = appts.filter(function(a){return a.st==='Cancelled';});
-  var totalRev  = completed.reduce(function(s,a){return s+(a.totalAmt||0);},0);
-  var todayRev  = todayList.filter(function(a){return a.st==='Completed';}).reduce(function(s,a){return s+(a.totalAmt||0);},0);
+  // Sum revenue using native amounts when present so KPI tiles match
+  // what's shown on the appointment rows below. Mixing USD-base sums
+  // with display rate multiplies introduced cumulative drift across
+  // every completed appointment.
+  var _isNative = function(a){ return a.totalAmtNative != null && a.totalAmtCurrency === CUR.code; };
+  var totalRevNative = completed.reduce(function(s,a){
+    if(_isNative(a)) return s + Number(a.totalAmtNative);
+    return s + (Number(a.totalAmt||0) * (CUR.rate||1));
+  }, 0);
+  var todayRevNative = todayList.filter(function(a){return a.st==='Completed';}).reduce(function(s,a){
+    if(_isNative(a)) return s + Number(a.totalAmtNative);
+    return s + (Number(a.totalAmt||0) * (CUR.rate||1));
+  }, 0);
+  // Keep USD-base versions for any downstream code that still expects them
+  var totalRev = completed.reduce(function(s,a){return s+(a.totalAmt||0);},0);
+  var todayRev = todayList.filter(function(a){return a.st==='Completed';}).reduce(function(s,a){return s+(a.totalAmt||0);},0);
   var activeServices = (D.services||[]).filter(function(s){return s.active;}).length;
   var noShowRate = (completed.length+noShows.length)>0 ? Math.round(noShows.length/(completed.length+noShows.length)*100) : 0;
 
-  // Avg revenue per completed appointment
+  // Avg revenue per completed appointment (use native sum to match the
+  // amounts shown on the appointment rows below)
+  var avgRevNative = completed.length ? totalRevNative/completed.length : 0;
   var avgRev = completed.length ? totalRev/completed.length : 0;
 
   // Build today's schedule rows
@@ -31161,7 +31195,7 @@ function pgAppointments(){const _s=_L();
   var todayCard = todayList.length
     ? '<div class="card" style="margin-bottom:14px;border-left:4px solid var(--a)">'
       +'<div class="card-hd"><div style="display:flex;align-items:center;gap:10px"><div class="card-ttl">📅 Today — '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</div>'
-      +(todayRev>0?'<span style="font-size:12px;font-weight:700;color:var(--g);background:var(--g-dim);padding:2px 9px;border-radius:10px">'+fmt(todayRev)+' earned</span>':'')
+      +(todayRevNative>0?'<span style="font-size:12px;font-weight:700;color:var(--g);background:var(--g-dim);padding:2px 9px;border-radius:10px">'+fmtRaw(todayRevNative)+' earned</span>':'')
       +'</div>'
       +'<div class="btn-row"><button class="btn btn-s btn-sm" onclick="mNewAppt(\''+today+'\')">+ Add</button><button class="btn btn-s btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="mBlockTime()">🗓 Availability Manager</button></div></div>'
       +'<div style="display:flex;flex-direction:column;gap:6px">'+todayRows+'</div></div>'
@@ -31210,13 +31244,14 @@ function pgAppointments(){const _s=_L();
     +'<div class="kpi g" style="cursor:pointer" onclick="mServicesRevenue()" title="'+(_s.appt_view_completed||'View completed appointments & revenue')+'">'
       +'<div class="kpi-lbl">'+_s.ui_st_completed+'</div>'
       +'<div class="kpi-val g">'+completed.length+'</div>'
-      +'<div class="kpi-sub">'+(totalRev>0?fmt(totalRev)+' '+(_s.appt_earned||'earned'):(_s.appt_no_rev||'No revenue yet'))+'</div>'
+      +'<div class="kpi-sub">'+(totalRevNative>0?fmtRaw(totalRevNative)+' '+(_s.appt_earned||'earned'):(_s.appt_no_rev||'No revenue yet'))+'</div>'
     +'</div>'
 
-    // Revenue KPI — avg per appointment
+    // Revenue KPI — avg per appointment (uses native sum to stay in
+    // sync with the per-row amounts shown below)
     +'<div class="kpi y" style="cursor:pointer" onclick="mServicesRevenue()" title="'+_s.appt_view_rev+'">'
       +'<div class="kpi-lbl">'+(_s.appt_avg||'Avg / Appt')+'</div>'
-      +'<div class="kpi-val y">'+fmtKpi(avgRev)+'</div>'
+      +'<div class="kpi-val y"><span>'+_numFmt(Math.round(avgRevNative))+'</span><span class="kpi-cur"> '+(CUR.symbol||'Frs')+'</span></div>'
       +'<div class="kpi-sub">'+(completed.length?completed.length+' '+(_s.appt_completed_count||'completed'):'\u2014')+'</div>'
     +'</div>'
 
