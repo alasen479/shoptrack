@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779625228");
+console.log("ShopTrack v2.7 - build:1779625504");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -30740,21 +30740,31 @@ function _apptCheckout(id){var _s=_L();
   //      first, then by name (covers cases where the original
   //      service was deleted and recreated).
   //   3) appt.totalAmt × current rate (legacy fallback, drift-prone)
-  //
-  // Without this, completing a Hair Cut appointment booked when the
-  // service had drifted to 2,503 USD-base would create a sale showing
-  // 2,503 even after the owner corrected the service price to 2,500.
+  console.log('[apptCheckout] start | appt=', {
+    id:a.id, serviceId:a.serviceId, serviceName:a.serviceName,
+    totalAmt:a.totalAmt, totalAmtNative:a.totalAmtNative, totalAmtCurrency:a.totalAmtCurrency,
+    duration:a.duration
+  }, '| CUR=', {code:CUR.code, rate:CUR.rate});
   var saleTotalUSD = a.totalAmt || 0;
   var saleTotalNative = null;
   var saleTotalCurrency = CUR.code;
+  var resolvedVia = 'tier3-legacy';
   if(a.totalAmtNative != null && a.totalAmtCurrency === CUR.code){
     saleTotalNative = a.totalAmtNative;
     saleTotalUSD    = saleTotalNative / (CUR.rate || 1);
+    resolvedVia = 'tier1-appt-native';
   } else if(a.serviceId || a.serviceName){
     var svc = a.serviceId ? (D.services||[]).find(function(x){return x.id===a.serviceId;}) : null;
+    var svcMatchVia = svc ? 'id' : null;
     if(!svc && a.serviceName){
       svc = (D.services||[]).find(function(x){return x.name === a.serviceName;});
+      if(svc) svcMatchVia = 'name';
     }
+    console.log('[apptCheckout] service lookup | matchedVia=', svcMatchVia, '| svc=', svc ? {
+      id:svc.id, name:svc.name, price:svc.price,
+      priceNative:svc.priceNative, priceCurrency:svc.priceCurrency,
+      priceType:svc.priceType, duration:svc.duration
+    } : null);
     if(svc && svc.priceNative != null && svc.priceCurrency === CUR.code){
       var pt    = svc.priceType||'flat';
       var dur   = a.duration || svc.duration || 60;
@@ -30765,8 +30775,31 @@ function _apptCheckout(id){var _s=_L();
       var _d = CUR.decimals || 0;
       saleTotalNative = parseFloat(saleTotalNative.toFixed(_d));
       saleTotalUSD    = saleTotalNative / (CUR.rate || 1);
+      resolvedVia = 'tier2-svc-native';
+    } else if(svc){
+      // Service found but no priceNative yet — stamp one NOW from the
+      // service's current displayed value, then use it. This is the
+      // safety net for service records that somehow lost their
+      // priceNative between the v149 fix and this commit.
+      var stampDur = a.duration || svc.duration || 60;
+      var stampPt  = svc.priceType || 'flat';
+      var dispUSDperUnit = svc.price || 0;
+      var stampNative = (typeof _computeSvcTotal === 'function')
+        ? _computeSvcTotal(dispUSDperUnit, stampPt, stampDur) * (CUR.rate||1)
+        : dispUSDperUnit * (CUR.rate||1);
+      var _d2 = CUR.decimals || 0;
+      stampNative = parseFloat(stampNative.toFixed(_d2));
+      // ALSO stamp the service so future checkouts hit tier 2
+      svc.priceNative = parseFloat((dispUSDperUnit * (CUR.rate||1)).toFixed(_d2));
+      svc.priceCurrency = CUR.code;
+      try { localStorage.setItem('stk:svcPriceNative:'+SESSION.bizId+':'+svc.id, svc.priceNative+':'+svc.priceCurrency); } catch(_e){}
+      saleTotalNative = stampNative;
+      saleTotalUSD    = saleTotalNative / (CUR.rate||1);
+      resolvedVia = 'tier2.5-svc-auto-stamped';
+      console.warn('[apptCheckout] service had no priceNative; auto-stamped to', svc.priceNative, svc.priceCurrency);
     }
   }
+  console.log('[apptCheckout] resolved via', resolvedVia, '| saleTotalUSD=', saleTotalUSD, '| saleTotalNative=', saleTotalNative);
   const sale={id:sid,dt:a.date||localDateStr(),cust:a.custName,custId:a.custId||'',invId:'__custom__',
     items:a.serviceName+(a.staffName?' ('+a.staffName+')':''),
     amt:saleTotalUSD, total:saleTotalUSD, paid:saleTotalUSD, cost:0,
