@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779652081");
+console.log("ShopTrack v2.7 - build:1779652351");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -8828,6 +8828,141 @@ function rdTab(el, showId){const _s=_L();
 // ============================================================
 // PURCHASES
 // ============================================================
+
+// ── Recovery: re-fetch POs directly from Supabase with a series ──
+// of progressively-slimmer SELECTs. Used when the standard load
+// path returns 500 or the IDB cache is empty. Tries:
+//   1. SELECT * (best case — gets everything)
+//   2. SELECT minimal column set (works around schema-cache errors)
+//   3. SELECT id-only (last resort — at least confirms existence)
+// On success, maps the rows through _dbToPurchase and merges into
+// D.purchases (preserves any local-only entries). Saves the result
+// to IDB so subsequent loads have a healthy cache. Refreshes the
+// page so the user sees their POs immediately.
+async function _recoverPurchases(){
+  if(!_sb || !SESSION.bizId){
+    toast('Cloud not connected — cannot recover from server', 'error');
+    return;
+  }
+  var fr = BIZ.language==='fr';
+  toast(fr?'Récupération en cours…':'Recovering purchase orders from cloud…', 'info');
+
+  // Show a progress-style toast — we replace it as each attempt resolves
+  var bizId = SESSION.bizId;
+  var attempts = [
+    {
+      label: 'full',
+      query: function(){
+        return _sb.from('purchases').select('*').eq('biz_id', bizId).limit(2000);
+      }
+    },
+    {
+      label: 'slim',
+      query: function(){
+        return _sb.from('purchases')
+          .select('id,biz_id,date,vendor,vendor_id,items,qty,subtotal,total,status,notes,inv_id,delivery_date,method,lines,paid')
+          .eq('biz_id', bizId)
+          .limit(2000);
+      }
+    },
+    {
+      label: 'minimal',
+      query: function(){
+        return _sb.from('purchases')
+          .select('id,biz_id,date,vendor,items,total,status')
+          .eq('biz_id', bizId)
+          .limit(2000);
+      }
+    },
+    {
+      label: 'ids-only',
+      query: function(){
+        // Last resort — just confirms existence. Maps as skeleton rows
+        // that the user can re-enter cost data on without losing track
+        // of the IDs / vendor / status.
+        return _sb.from('purchases')
+          .select('id,biz_id,vendor,status,date,total')
+          .eq('biz_id', bizId)
+          .limit(2000);
+      }
+    }
+  ];
+
+  var rows = null;
+  var usedLabel = null;
+  for(var i=0; i<attempts.length; i++){
+    var a = attempts[i];
+    console.log('[recoverPurchases] attempt:', a.label);
+    try {
+      var result = await a.query();
+      if(!result.error && result.data){
+        rows = result.data;
+        usedLabel = a.label;
+        console.log('[recoverPurchases] '+a.label+' succeeded with', rows.length, 'rows');
+        break;
+      }
+      if(result.error){
+        console.warn('[recoverPurchases] '+a.label+' failed:', result.error.message || result.error.code);
+      }
+    } catch(e){
+      console.warn('[recoverPurchases] '+a.label+' threw:', e.message);
+    }
+  }
+
+  if(!rows){
+    toast(fr
+      ? 'Impossible de récupérer depuis le serveur. Données possiblement perdues.'
+      : 'Could not recover from server — all attempts failed. Open browser console for details.',
+      'error');
+    return;
+  }
+
+  if(rows.length === 0){
+    // The server has zero rows. This means the cloud copy IS empty.
+    // Don't touch IDB — preserve whatever local cache has.
+    var localCount = (D.purchases||[]).length;
+    if(localCount > 0){
+      toast(fr
+        ? "Le serveur n'a aucune commande, mais "+localCount+" trouvée(s) localement. Conservées."
+        : 'Server has 0 POs but '+localCount+' found in local cache — kept local copy.',
+        'warn');
+    } else {
+      toast(fr
+        ? 'Aucune commande trouvée — ni sur le serveur ni localement.'
+        : 'No purchase orders found — server and local cache both empty.',
+        'info');
+    }
+    return;
+  }
+
+  // Map cloud rows → app format. _dbToPurchase handles partial rows
+  // (missing columns map to defaults).
+  var recovered = rows.map(_dbToPurchase);
+
+  // Merge with whatever is already in D.purchases — preserves any
+  // local-only entries that haven't synced yet.
+  var idsInRecovered = {};
+  recovered.forEach(function(p){ idsInRecovered[p.id] = true; });
+  var localOnly = (D.purchases||[]).filter(function(p){ return !idsInRecovered[p.id]; });
+  D.purchases = localOnly.concat(recovered);
+
+  // Persist recovered set to IDB so next page load starts healthy.
+  try { await _idbSave(bizId, 'purchases', D.purchases); }
+  catch(e){ console.warn('[recoverPurchases] IDB save failed:', e.message); }
+
+  toast(fr
+    ? 'Récupéré '+recovered.length+' commande(s) du serveur (méthode: '+usedLabel+')'
+    : 'Recovered '+recovered.length+' PO(s) from server (method: '+usedLabel+')',
+    'success');
+
+  addAudit('Purchases recovered from cloud', recovered.length+' POs via '+usedLabel+' query');
+
+  // Refresh the page to show the recovered data
+  if(curPage === 'purchases'){
+    setTimeout(function(){ nav('purchases'); }, 600);
+  }
+}
+
 function pgPurchases(){const _s=_L();const _ui=_s;
   // Default to month — keep KPIs in sync with visible rows on load
   const monthRange = PERIOD_RANGES['ytd'];
@@ -8941,6 +9076,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
     <div class="btn-row">
       <button class="btn btn-s btn-sm" onclick="exportPurchasesCSV()">⬇ CSV</button>
       <button class="btn btn-g btn-sm" onclick="exportPurchasesPDF()">⬇ PDF</button>
+      <button class="btn btn-g btn-sm" onclick="_recoverPurchases()" title="${BIZ.language==='fr'?'Récupérer les commandes depuis le serveur si elles ont disparu':'Re-fetch purchase orders from cloud (use if POs are missing)'}">🩺 ${BIZ.language==='fr'?'Récupérer':'Recover'}</button>
       <button class="btn btn-p btn-sm" onclick="mRecordPurchase()">${_ui.btn_new_po}</button>
     </div>
   </div>
@@ -8989,11 +9125,15 @@ function pgPurchases(){const _s=_L();const _ui=_s;
         </tr></thead>
         <tbody id="po-tbody">${rows}</tbody>
       </table></div>
-      <div id="po-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--text2)">
+      <div id="po-empty" style="display:${(rows && rows.length)?'none':''};text-align:center;padding:40px 20px;color:var(--text2)">
         <div style="font-size:32px;margin-bottom:10px">📦</div>
         <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:6px">${_s.po_empty2}</div>
         <div style="font-size:12px;margin-bottom:14px">${_s.exp_no_data}</div>
-        <button class="btn btn-p btn-sm" onclick="mRecordPurchase()">+ New Purchase Order</button>
+        <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-p btn-sm" onclick="mRecordPurchase()">+ ${BIZ.language==='fr'?'Nouvelle commande':'New Purchase Order'}</button>
+          <button class="btn btn-g btn-sm" onclick="_recoverPurchases()" title="${BIZ.language==='fr'?'Récupérer les commandes manquantes depuis le serveur':'Re-fetch missing POs from cloud'}">🩺 ${BIZ.language==='fr'?'Récupérer du serveur':'Recover from cloud'}</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:10px;max-width:380px;margin-left:auto;margin-right:auto">${BIZ.language==='fr'?'Si vous voyez ce message mais que vous savez avoir des commandes, cliquez sur Récupérer.':"If you know you have purchase orders but they're not showing, click Recover."}</div>
       </div>
       <div id="po-footer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)">
         <span id="po-footer-count"></span>
@@ -9019,6 +9159,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
         <button class="btn btn-s btn-sm" onclick="nav('vendors')" style="width:100%">👥 Manage Vendors</button>
         <button class="btn btn-s btn-sm" onclick="exportPurchasesCSV()" style="width:100%">⬇ Export CSV</button>
         <button class="btn btn-g btn-sm" onclick="exportPurchasesPDF()" style="width:100%">⬇ Export PDF</button>
+        <button class="btn btn-g btn-sm" onclick="_recoverPurchases()" style="width:100%" title="${BIZ.language==='fr'?'Récupérer les commandes depuis le serveur':"Re-fetch POs from cloud if they're missing"}">🩺 ${BIZ.language==='fr'?'Récupérer du serveur':'Recover from Cloud'}</button>
       </div>
     </div>
   </div>
