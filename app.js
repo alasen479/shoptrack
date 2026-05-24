@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779623968");
+console.log("ShopTrack v2.7 - build:1779624327");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -18767,7 +18767,10 @@ async function _sbUpsertWithFallback(table, payload, ctx){var _s=_L();
     console.warn('['+ctx+'] 42P10 with id,biz_id — trying plain upsert with stripped payload');
     var _safeForRetry = (typeof safe !== 'undefined') ? safe : payload;
     var r3 = await _sb.from(table).upsert(_safeForRetry).select();
-    if(!r3.error){ return {ok:true, data:r3.data}; }
+    if(!r3.error){
+      console.log('['+ctx+'] saved OK via plain upsert (post-42P10) | columns:', Object.keys(_safeForRetry).join(','));
+      return {ok:true, data:r3.data};
+    }
     error = r3.error;
     // Even the plain upsert can hit PGRST204 if the column-stripping loop
     // never ran (because the first error was 42P10, not PGRST204). Strip
@@ -18780,7 +18783,10 @@ async function _sbUpsertWithFallback(table, payload, ctx){var _s=_L();
         console.warn('['+ctx+'] (post-42P10) Stripping missing column: '+cm2[1]);
         delete _safeForRetry[cm2[1]];
         var r4 = await _sb.from(table).upsert(_safeForRetry).select();
-        if(!r4.error) return {ok:true, data:r4.data};
+        if(!r4.error){
+          console.log('['+ctx+'] saved OK after post-42P10 stripping (retry '+(stripCount+1)+') | columns:', Object.keys(_safeForRetry).join(','));
+          return {ok:true, data:r4.data};
+        }
         error = r4.error;
         stripCount++;
       }
@@ -30965,16 +30971,15 @@ async function _syncServicesToCloud(){var _s=_L();
   for(var i=0;i<D.services.length;i++){
     try{
       var svc = D.services[i];
-      var {error:sErr} = await _sb.from('services').upsert(_serviceDB(svc,SESSION.bizId));
-      if(sErr){
-        // Fallback: try base columns only if new columns don't exist yet
-        if(sErr.message&&(sErr.message.includes('price_type')||sErr.message.includes('category')||sErr.message.includes('column'))){
-          var base={id:svc.id,biz_id:SESSION.bizId,name:svc.name,duration_mins:svc.duration,price:svc.price||0,color:svc.color||'#4361ee',staff_ids:svc.staffIds||[],active:svc.active!==false,description:svc.desc||'',img_data_url:svc.imgDataUrl||null};
-          var {error:sErr2}=await _sb.from('services').upsert(base);
-          if(sErr2){ errors++; console.error('Sync fallback err:',svc.name,sErr2.message); }
-        } else { errors++; console.error('Sync err:',svc.name,sErr.message); }
-      }
-    }catch(e){ errors++; }
+      // Use _safeUpsert so the dynamic per-column stripper preserves
+      // priceNative + priceCurrency when other columns (cost_lines,
+      // category, etc.) are the ones missing from the schema. The
+      // previous hardcoded 'base' fallback dropped ALL new fields on
+      // any column error, which silently re-introduced the drift bug
+      // every time the user clicked Sync to Cloud.
+      var result = await _safeUpsert('services', _serviceDB(svc, SESSION.bizId), 'syncSvcCloud');
+      if(!result || !result.ok){ errors++; console.error('Sync err:', svc.name, result && result.error); }
+    }catch(e){ errors++; console.error('Sync exception:', e.message); }
   }
   if(btn){ btn.textContent='☁ Sync to Cloud'; btn.disabled=false; }
   if(errors){ toast(errors+' service(s) failed to sync','error'); }

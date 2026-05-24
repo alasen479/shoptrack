@@ -433,25 +433,53 @@ function computeSvcTotal(price, priceType, durationMins){
     default:         return p;
   }
 }
+function _bookingLsNative(svcId){
+  // Cross-tab fallback: the in-app save (v154+) writes the user's typed
+  // price to localStorage with a key tied to bizId + svcId. The booking
+  // page runs in the same origin so it can read those values directly,
+  // which gives us a drift-immune price even when the cloud schema
+  // migration (price_native + price_currency columns) hasn't been run.
+  try {
+    if(!BIZ || !BIZ.id || !svcId) return null;
+    const lsKey = 'stk:svcPriceNative:' + BIZ.id + ':' + svcId;
+    const raw = localStorage.getItem(lsKey);
+    if(!raw) return null;
+    const parts = raw.split(':');
+    const native = parseFloat(parts[0]);
+    const cur    = parts[1] || '';
+    if(isNaN(native)) return null;
+    return { native, currency: cur };
+  } catch(_e){ return null; }
+}
+
 function fmtSvcPrice(s){
   // s is a raw Supabase service row (price_type, price, price_native, price_currency, duration_mins).
-  // When price_native is present and the saved currency matches the
-  // active currency, use it directly — no rate-multiply, no drift.
-  // Falls back to the legacy USD-base round-trip for older records.
+  // Price source priority:
+  //   1) cloud price_native + price_currency (post-migration)
+  //   2) localStorage backup written by the in-app save flow
+  //   3) legacy s.price * rate (drift-prone fallback)
   const pt = s.price_type || 'flat';
   const cur = BIZ.currency || 'XAF';
   const rate = RATES[cur] || 615;
   const sym  = SYMS[cur]  || 'Frs';
   const rawPrice = s.price || 0;
-  if(!rawPrice && !s.price_native) return 'Free';
   const fmtAmt = n => (cur==='XAF'||cur==='XOF') ? fmt(Math.round(n))+' '+sym : sym+fmt(Math.round(n));
   const suffixMap = {per_hour:'/hr', per_min:'/min', per_day:'/day', per_week:'/wk', per_session:'/session'};
-  // Native-currency path (drift-immune)
-  let dispPrice;
+  // Resolve the display amount
+  let dispPrice = null;
   if(s.price_native != null && s.price_currency === cur){
     dispPrice = Number(s.price_native);
   } else {
-    dispPrice = rawPrice * rate;
+    const ls = _bookingLsNative(s.id);
+    if(ls && ls.currency === cur){
+      dispPrice = ls.native;
+    } else {
+      dispPrice = rawPrice * rate;
+    }
+  }
+  if(!dispPrice || dispPrice <= 0){
+    if(!rawPrice && !s.price_native) return 'Free';
+    if(dispPrice === 0) return 'Free';
   }
   if(pt === 'starting') return 'From ' + fmtAmt(dispPrice);
   const suffix = suffixMap[pt] || '';
@@ -465,12 +493,20 @@ function fmtSvcTotal(s){
   const rate = RATES[cur] || 615;
   const sym  = SYMS[cur]  || 'Frs';
   const fmtAmt = n => (cur==='XAF'||cur==='XOF') ? fmt(Math.round(n))+' '+sym : sym+fmt(Math.round(n));
-  // Use native amount as the per-unit base when available, so the total
-  // calculation (× duration units) stays drift-free as well.
-  const perUnit = (s.price_native != null && s.price_currency === cur)
-    ? Number(s.price_native) / rate   // convert native → USD-base for computeSvcTotal
-    : (s.price || 0);
-  const total = computeSvcTotal(perUnit, pt, s.duration_mins!=null?s.duration_mins:60) * rate;
+  // Use native amount as the per-unit base when available (cloud OR
+  // localStorage), so the per-hour/per-day total stays drift-free.
+  let perUnitUSD;
+  if(s.price_native != null && s.price_currency === cur){
+    perUnitUSD = Number(s.price_native) / rate;
+  } else {
+    const ls = _bookingLsNative(s.id);
+    if(ls && ls.currency === cur){
+      perUnitUSD = ls.native / rate;
+    } else {
+      perUnitUSD = s.price || 0;
+    }
+  }
+  const total = computeSvcTotal(perUnitUSD, pt, s.duration_mins!=null?s.duration_mins:60) * rate;
   return fmtAmt(total);
 }
 
