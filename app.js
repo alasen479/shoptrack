@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779589202");
+console.log("ShopTrack v2.7 - build:1779590535");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1011,6 +1011,47 @@ const curIn = (baseUsd, opts) => {
 };
 // Companion: the right `step` value for the active currency.
 const curStep = () => (CUR.decimals||0) > 0 ? '0.01' : '1';
+
+// ──────────────────────────────────────────────────────────────────
+// Native-currency round-trip helpers (prevent FX-rate drift on edits)
+// ──────────────────────────────────────────────────────────────────
+// The app stores money values as USD-base floats so multi-currency
+// display works. But the USD/XAF rate fetched from Frankfurter ticks
+// daily, so a service saved as 2,500 Frs at rate 615.0 redisplays as
+// 2,503 Frs once the rate moves to 615.738 — and that drift compounds
+// on every save. The fix is to ALSO store the original native value
+// and the currency code, then prefer the native value when the active
+// currency hasn't changed since save.
+//
+// curInNative(record, fieldUsd, fieldNative, fieldCurrency)
+//   → returns a formatted number string suitable for <input value="…">
+//   → prefers record[fieldNative] when record[fieldCurrency] === CUR.code
+//   → otherwise falls back to USD-based conversion (record[fieldUsd] * rate)
+//   → legacy records (no native fields) keep working through the fallback
+const curInNative = (rec, fUsd, fNative, fCur) => {
+  if(!rec) return '0';
+  const d = CUR.decimals || 0;
+  const native = rec[fNative];
+  if(native != null && rec[fCur] === CUR.code){
+    return (+native).toFixed(d);
+  }
+  return ((rec[fUsd]||0) * (CUR.rate||1)).toFixed(d);
+};
+// curOutPair(rawInputStr)
+//   → returns {usd, native, currency} for assigning to a record
+//   → rawInputStr is whatever the user typed in the input
+//   → use like: Object.assign(item, _spread(curOutPair(spVal), 'sp'))
+//     but in practice we just do:
+//       const p = curOutPair(spVal);
+//       item.sp = p.usd; item.spNative = p.native; item.spCurrency = p.currency;
+const curOutPair = (rawInputStr) => {
+  const native = parseFloat(rawInputStr) || 0;
+  return {
+    usd: native / (CUR.rate || 1),
+    native: native,
+    currency: CUR.code
+  };
+};
 const cc = c => ({New:'c-new',Excellent:'c-exc',Good:'c-good',Fair:'c-fair',Worn:'c-worn',Damaged:'c-dmg','Under Repair':'c-rep'}[c]||'c-good');
 const bx = (lbl,cls) => `<span class="bx ${cls}">${lbl}</span>`;
 const badge = s => {
@@ -3668,7 +3709,6 @@ function switchInvView(el,mode){const _s=_L();
 }
 
 function _saveItemPrices(id){var _s=_L();
-  var r2=CUR.rate;
   var itx=D.inv.find(function(i){return i.id===id;});
   if(!itx){toast(_L().t_item_notfound,'error');return;}
   var spEl=document.getElementById('mi-sp-'+id);
@@ -3680,10 +3720,17 @@ function _saveItemPrices(id){var _s=_L();
   if(!isNaN(spVal)){
     var _minSpCheckP = _checkMinSp(id, spVal);
     if(_minSpCheckP && _minSpCheckP.block){ toast(_minSpCheckP.msg, 'error'); return; }
-    itx.sp=spVal/r2;
+    var sp = curOutPair(spVal);
+    itx.sp = sp.usd; itx.spNative = sp.native; itx.spCurrency = sp.currency;
   }
-  if(!isNaN(rpVal)) itx.rp=rpVal/r2;
-  if(!isNaN(msVal)) itx.minSp=msVal/r2;
+  if(!isNaN(rpVal)){
+    var rp = curOutPair(rpVal);
+    itx.rp = rp.usd; itx.rpNative = rp.native; itx.rpCurrency = rp.currency;
+  }
+  if(!isNaN(msVal)){
+    var ms = curOutPair(msVal);
+    itx.minSp = ms.usd; itx.minSpNative = ms.native; itx.minSpCurrency = ms.currency;
+  }
   _dbSaveInv(itx);
   refreshLiveKpis();
   addAudit('Prices updated',itx.id+' SP='+fmt(itx.sp)+' RP='+fmt(itx.rp)+' MinSP='+fmt(itx.minSp));
@@ -3775,13 +3822,13 @@ function mItem(id){const _s=_L();
     ${it.sp&&it.qty?`<div class="kpi g" style="padding:13px"><div class="kpi-lbl">${_s.inv_retail_val}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(it.sp*it.qty)}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${it.qty} units × ${fmt(it.sp)} sell price</div></div>`:''}
   </div>
   <div class="fg"><label class="fl">Sell Price <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label>
-    <input class="fi" id="mi-sp-${it.id}" value="${Math.round((it.sp||0)*CUR.rate)}" type="number"/>
+    <input class="fi" id="mi-sp-${it.id}" value="${curInNative(it,'sp','spNative','spCurrency')}" type="number"/>
   </div>
   <div class="fg"><label class="fl">Rental Price/Day <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label>
-    <input class="fi" id="mi-rp-${it.id}" value="${Math.round((it.rp||0)*CUR.rate)}" type="number"/>
+    <input class="fi" id="mi-rp-${it.id}" value="${curInNative(it,'rp','rpNative','rpCurrency')}" type="number"/>
   </div>
   <div class="fg"><label class="fl">Min. Sell Price \uD83D\uDD12 <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label>
-    <input class="fi" id="mi-minsp-${it.id}" value="${Math.round((it.minSp||0)*CUR.rate)}" type="number"/>
+    <input class="fi" id="mi-minsp-${it.id}" value="${curInNative(it,'minSp','minSpNative','minSpCurrency')}" type="number"/>
   </div>
   <button class="btn btn-p btn-sm" style="margin-top:8px" onclick="_saveItemPrices('${it.id}')">💾 Save Prices</button>
   </div>
@@ -4614,17 +4661,25 @@ function _saveNewItem(){var _s=_L();
     D.invCats.push(cat);
     if(SESSION.bizId&&!SESSION.isSuperAdmin) _dbSaveCategories(SESSION.bizId);
   }
+  // Money fields are stored both as USD-base (for cross-currency math)
+  // AND in the user's working currency (so re-edits don't drift when
+  // the live FX rate moves). curOutPair returns {usd, native, currency}.
+  var _aiCostP  = curOutPair(document.getElementById('ai-cost').value);
+  var _aiSpP    = curOutPair(document.getElementById('ai-sp').value);
+  var _aiRpP    = curOutPair(document.getElementById('ai-rp').value);
+  var _aiMinSpP = curOutPair(document.getElementById('ai-minsp').value);
+  var _aiDepP   = curOutPair(document.getElementById('ai-dep').value);
   var newItem = {
     id:id, sku:sku, name:name,
     cat:   cat,
     brand: document.getElementById('ai-brand').value,
     st:    document.getElementById('ai-st').value,
     cond:  document.getElementById('ai-cond').value,
-    cost:  (parseFloat(document.getElementById('ai-cost').value)||0)/rr3,
-    sp:    (parseFloat(document.getElementById('ai-sp').value)||0)/rr3,
-    rp:    (parseFloat(document.getElementById('ai-rp').value)||0)/rr3,
-    minSp: (parseFloat(document.getElementById('ai-minsp').value)||0)/rr3,
-    dep:   (parseFloat(document.getElementById('ai-dep').value)||0)/rr3,
+    cost:  _aiCostP.usd,  costNative:  _aiCostP.native,  costCurrency:  _aiCostP.currency,
+    sp:    _aiSpP.usd,    spNative:    _aiSpP.native,    spCurrency:    _aiSpP.currency,
+    rp:    _aiRpP.usd,    rpNative:    _aiRpP.native,    rpCurrency:    _aiRpP.currency,
+    minSp: _aiMinSpP.usd, minSpNative: _aiMinSpP.native, minSpCurrency: _aiMinSpP.currency,
+    dep:   _aiDepP.usd,   depNative:   _aiDepP.native,   depCurrency:   _aiDepP.currency,
     qty:   parseFloat(document.getElementById('ai-qty').value)||1,
     minStock: parseFloat(document.getElementById('ai-minstock')?.value)||0,
     color: document.getElementById('ai-color').value,
@@ -4691,10 +4746,10 @@ async function mEditItem(id){const _s=_L();
     <div class="fg"><label class="fl">${_s.inv_cond_lbl}</label><select class="fs" id="ei-cond"><option${it.cond==='New'?' selected':''}>New</option><option${it.cond==='Excellent'?' selected':''}>${_s.rent_cond_exc}</option><option${it.cond==='Good'?' selected':''}>${_s.rent_cond_good}</option><option${it.cond==='Fair'?' selected':''}>${_s.rent_cond_fair}</option><option${it.cond==='Worn'?' selected':''}>${_s.rent_cond_worn}</option></select></div>
   </div>
   <div class="fg-3">
-    ${showCost?`<div class="fg"><label class="fl">Cost Price ${!editCost?'🔒':''} <span style="font-size:10px;color:var(--text3);font-weight:400">auto-filled by breakdown ↓</span></label><input class="fi" id="ei-cost" type="number" value="${Math.round((it.cost||0)*CUR.rate)}" ${!editCost?'readonly style="opacity:.5"':''}/>${!editCost?'<div class="fh">'+_s.inv_read_only+'</div>':''}</div>`:'<div class="fg"><label class="fl" style="color:var(--text2)">'+_s.inv_cost_lbl+'</label><div style="font-size:12px;color:var(--text2);padding:8px 0">🔒 Hidden</div></div>'}
-    <div class="fg"><label class="fl">${_s.inv_selling_lbl}</label><input class="fi" id="ei-sp" type="number" value="${Math.round((it.sp||0)*CUR.rate)}"/></div>
-    <div class="fg"><label class="fl">${_s.inv_rental_day}</label><input class="fi" id="ei-rp" type="number" value="${Math.round((it.rp||0)*CUR.rate)}"/></div>
-    ${showMin?`<div class="fg"><label class="fl" style="display:flex;align-items:center;gap:5px">Min Sell Price 🔒 ${!editMin?'<span style="font-size:10px;color:var(--y)">(read-only)</span>':''}</label><input class="fi" id="ei-minsp" type="number" value="${Math.round((it.minSp||0)*CUR.rate)}" ${!editMin?'readonly style="opacity:.5"':''}/><div class="fh">${editMin?'Staff cannot sell below this price':'You can view but not edit this field'}</div></div>`:''}
+    ${showCost?`<div class="fg"><label class="fl">Cost Price ${!editCost?'🔒':''} <span style="font-size:10px;color:var(--text3);font-weight:400">auto-filled by breakdown ↓</span></label><input class="fi" id="ei-cost" type="number" value="${curInNative(it,'cost','costNative','costCurrency')}" ${!editCost?'readonly style="opacity:.5"':''}/>${!editCost?'<div class="fh">'+_s.inv_read_only+'</div>':''}</div>`:'<div class="fg"><label class="fl" style="color:var(--text2)">'+_s.inv_cost_lbl+'</label><div style="font-size:12px;color:var(--text2);padding:8px 0">🔒 Hidden</div></div>'}
+    <div class="fg"><label class="fl">${_s.inv_selling_lbl}</label><input class="fi" id="ei-sp" type="number" value="${curInNative(it,'sp','spNative','spCurrency')}"/></div>
+    <div class="fg"><label class="fl">${_s.inv_rental_day}</label><input class="fi" id="ei-rp" type="number" value="${curInNative(it,'rp','rpNative','rpCurrency')}"/></div>
+    ${showMin?`<div class="fg"><label class="fl" style="display:flex;align-items:center;gap:5px">Min Sell Price 🔒 ${!editMin?'<span style="font-size:10px;color:var(--y)">(read-only)</span>':''}</label><input class="fi" id="ei-minsp" type="number" value="${curInNative(it,'minSp','minSpNative','minSpCurrency')}" ${!editMin?'readonly style="opacity:.5"':''}/><div class="fh">${editMin?'Staff cannot sell below this price':'You can view but not edit this field'}</div></div>`:''}
     <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" id="ei-qty" type="number" step="any" min="0" value="${it.qty}"/></div>
     <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">${_s.set_optional}</span></label><input class="fi" id="ei-minstock" type="number" step="any" value="${it.minStock||''}" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert when available qty ≤ this number. Leave blank or 0 to disable.</div></div>
     <div class="fg"><label class="fl">${_s.inv_color_lbl}</label><input class="fi" id="ei-color" value="${it.color||''}"/></div>
@@ -4848,19 +4903,31 @@ function saveEditItem(id){
   }
   if(canEdit('inventory_cost')){
     const cv=parseFloat(document.getElementById('ei-cost')?.value);
-    if(!isNaN(cv)) it.cost=cv/r;
+    if(!isNaN(cv)){
+      const p = curOutPair(cv);
+      it.cost = p.usd; it.costNative = p.native; it.costCurrency = p.currency;
+    }
   }
   const spv=parseFloat(document.getElementById('ei-sp')?.value);
   if(!isNaN(spv) && spv > 0 && it.minSp){
     var _minSpCheckEI = _checkMinSp(it.id, spv * CUR.rate);
     if(_minSpCheckEI && _minSpCheckEI.block){ toast(_minSpCheckEI.msg, 'error'); return; }
   }
-  if(!isNaN(spv)) it.sp=spv/r;
+  if(!isNaN(spv)){
+    const p = curOutPair(spv);
+    it.sp = p.usd; it.spNative = p.native; it.spCurrency = p.currency;
+  }
   const rpv=parseFloat(document.getElementById('ei-rp')?.value);
-  if(!isNaN(rpv)) it.rp=rpv/r;
+  if(!isNaN(rpv)){
+    const p = curOutPair(rpv);
+    it.rp = p.usd; it.rpNative = p.native; it.rpCurrency = p.currency;
+  }
   if(canEdit('inventory_min')){
     const v=document.getElementById('ei-minsp');
-    if(v){ const mv=parseFloat(v.value); if(!isNaN(mv)) it.minSp=mv/r; }
+    if(v){ const mv=parseFloat(v.value); if(!isNaN(mv)){
+      const p = curOutPair(mv);
+      it.minSp = p.usd; it.minSpNative = p.native; it.minSpCurrency = p.currency;
+    } }
   }
   const qv=parseFloat(document.getElementById('ei-qty')?.value);
   if(!isNaN(qv)&&qv>=0) it.qty=qv;
@@ -5894,7 +5961,13 @@ function _saveRecordPayment(){var _s=_L();
       const prevPaid  = sale.paid||0;
       const newPaid   = Math.min(saleTotal, prevPaid + amtUsd);
       const applied   = newPaid - prevPaid; // amount actually applied (capped at balance)
+      // Track applied amount in display currency too. If applied < amtUsd
+      // (overpayment capped at balance), scale the native portion by the
+      // same ratio so the two stay in lockstep.
+      const appliedNative = (amtUsd > 0) ? (amtDisplay * (applied / amtUsd)) : 0;
       sale.paid = newPaid;
+      sale.paidNative = (sale.paidNative||0) + appliedNative;
+      sale.paidCurrency = CUR.code;
       sale.st   = sale.paid>=saleTotal ? 'Paid' : sale.paid>0 ? 'Partial' : 'Unpaid';
       _dbSaveSale(sale);
       // Reduce customer AR balance by exactly the amount applied
@@ -5915,6 +5988,11 @@ function _saveRecordPayment(){var _s=_L();
     if(rental){
       const prevRentPaid = rental.paid||0;
       rental.paid = prevRentPaid + amtUsd;
+      // Mirror the increment on the native-currency aggregate so the
+      // Edit modal's prefilled "Total Paid" remains a clean integer
+      // (immune to FX rate drift across re-edits).
+      rental.paidNative = (rental.paidNative||0) + amtDisplay;
+      rental.paidCurrency = CUR.code;
       // Append to payments[] audit trail so the View modal can show a
       // running history of partial payments (essential for monthly
       // rentals, layaway-style payments, etc.).
@@ -7499,9 +7577,15 @@ async function mCreateRental(startDate){const _s=_L();
     var custObj=D.cust.find(function(x){return x.id===custId;});
     var cust=custObj?custObj.name:custId;
     var r2=CUR.rate;
-    var fee=(parseFloat(document.getElementById('cr-fee').value)||0)/r2;
-    var dep=(parseFloat(document.getElementById('cr-dep').value)||0)/r2;
-    var initPaid=(parseFloat(document.getElementById('cr-paid').value)||0)/r2;
+    // Capture native (display-currency) values for fee/dep/paid in
+    // addition to USD-base. This is what immunizes the rental record
+    // from FX rate drift on later edits — same pattern as services.
+    var feeRawDisplay  = parseFloat(document.getElementById('cr-fee').value)||0;
+    var depRawDisplay  = parseFloat(document.getElementById('cr-dep').value)||0;
+    var paidRawDisplay = parseFloat(document.getElementById('cr-paid').value)||0;
+    var fee=feeRawDisplay/r2;
+    var dep=depRawDisplay/r2;
+    var initPaid=paidRawDisplay/r2;
     var cond=document.getElementById('cr-cond').value;
     var notes=document.getElementById('cr-notes').value;
     var method=document.getElementById('cr-method').value;
@@ -7522,6 +7606,10 @@ async function mCreateRental(startDate){const _s=_L();
       var itemFee=crLines.length>1?Math.round((fee*w/weightSum)*100)/100:fee;
       var itemDep=crLines.length>1?Math.round((dep*w/weightSum)*100)/100:dep;
       var itemPaid=crLines.length>1?Math.round((initPaid*w/weightSum)*100)/100:initPaid;
+      // Native values are also split proportionally for multi-line rentals
+      var itemFeeNative  = crLines.length>1?Math.round((feeRawDisplay  *w/weightSum)*100)/100:feeRawDisplay;
+      var itemDepNative  = crLines.length>1?Math.round((depRawDisplay  *w/weightSum)*100)/100:depRawDisplay;
+      var itemPaidNative = crLines.length>1?Math.round((paidRawDisplay *w/weightSum)*100)/100:paidRawDisplay;
       // If an initial payment was made, seed the payments[] audit trail
       // so the View modal and statements can show 'when was this paid'.
       // The deposit is tracked separately (r.dep) and isn't a payment
@@ -7534,8 +7622,13 @@ async function mCreateRental(startDate){const _s=_L();
       }]:[];
       D.rentals.unshift({id:newId,cust,custId,item:line.item.name,itemId:line.item.id,
         qty:line.qty,period:period,units:units,
-        start,due,fee:itemFee,dep:itemDep,paid:itemPaid,payments:initialPayments,
-        lf:0,st:'Checked Out',cb:cond,ca:'',notes,method});
+        start,due,
+        fee:itemFee,   feeNative:itemFeeNative,   feeCurrency:CUR.code,
+        dep:itemDep,   depNative:itemDepNative,   depCurrency:CUR.code,
+        paid:itemPaid, paidNative:itemPaidNative, paidCurrency:CUR.code,
+        payments:initialPayments,
+        lf:0, lfNative:0, lfCurrency:CUR.code,
+        st:'Checked Out',cb:cond,ca:'',notes,method});
       _dbSaveRental(D.rentals[0]);
       addAudit('Rental created',newId+' - '+cust+' - '+line.qty+'\u00d7 '+line.item.name+(itemPaid>0?' (paid '+fmt(itemPaid)+')':''));
       // Reduce customer balance by initial payment (just like Record Payment)
@@ -18625,6 +18718,13 @@ function _dbToInv(r){ return {
   id:r.id, sku:r.sku||'', name:r.name, cat:r.cat||'General', brand:r.brand||'',
   st:r.status||'For Sale', cond:r.condition||'Good',
   sp:r.sp||0, cost:r.cost||0, rp:r.rp||0, dep:r.deposit||0,
+  // Native + currency for each money field — preferred during edit so
+  // values survive live FX rate fluctuation untouched.
+  spNative:    r.sp_native    != null ? r.sp_native    : null, spCurrency:    r.sp_currency    || null,
+  costNative:  r.cost_native  != null ? r.cost_native  : null, costCurrency:  r.cost_currency  || null,
+  rpNative:    r.rp_native    != null ? r.rp_native    : null, rpCurrency:    r.rp_currency    || null,
+  minSpNative: r.min_sp_native!= null ? r.min_sp_native: null, minSpCurrency: r.min_sp_currency|| null,
+  depNative:   r.dep_native   != null ? r.dep_native   : null, depCurrency:   r.dep_currency   || null,
   minSp:r.min_sp||0, minStock:r.min_stock||0,
   qty:r.qty||0, color:r.color||'', sz:r.size||'', desc:r.description||'',
   vendorId:r.vendor_id||'',
@@ -18658,6 +18758,12 @@ function _dbToSale(r){ return {
   amt:r.amount||0, total:r.total||r.amount||0,
   paid:r.paid||0, cost:r.cost||0,
   freight:r.freight||0, taxes:r.taxes||0, other:r.other||0,
+  // Drift-protection: stored native amounts + the currency at save time
+  totalNative:   r.total_native   != null ? r.total_native   : null, totalCurrency:   r.total_currency   || null,
+  paidNative:    r.paid_native    != null ? r.paid_native    : null, paidCurrency:    r.paid_currency    || null,
+  costNative:    r.cost_native    != null ? r.cost_native    : null, costCurrency:    r.cost_currency    || null,
+  freightNative: r.freight_native != null ? r.freight_native : null, freightCurrency: r.freight_currency || null,
+  taxesNative:   r.taxes_native   != null ? r.taxes_native   : null, taxesCurrency:   r.taxes_currency   || null,
   profit:r.profit||0, st:r.status||'Unpaid',
   method:r.method||'Cash', notes:r.notes||'',
   lineItems: r.line_items ? (typeof r.line_items==='string' ? JSON.parse(r.line_items) : r.line_items) : null
@@ -18670,6 +18776,12 @@ function _dbToRental(r){ return {
   units: r.units != null ? r.units : 1,
   start:r.start_date, due:r.due_date,
   fee:r.fee||0, dep:r.deposit||0, paid:r.paid||0,
+  // Drift-protection: prefer native amount when the active currency
+  // still matches the one recorded at save time.
+  feeNative:  r.fee_native     != null ? r.fee_native     : null, feeCurrency:  r.fee_currency     || null,
+  depNative:  r.deposit_native != null ? r.deposit_native : null, depCurrency:  r.deposit_currency || null,
+  paidNative: r.paid_native    != null ? r.paid_native    : null, paidCurrency: r.paid_currency    || null,
+  lfNative:   r.late_fee_native!= null ? r.late_fee_native: null, lfCurrency:   r.late_fee_currency|| null,
   payments: r.payments
     ? (typeof r.payments === 'string'
         ? (function(){ try{return JSON.parse(r.payments);}catch(e){return [];} })()
@@ -18684,6 +18796,13 @@ function _dbToRental(r){ return {
 function _dbToExp(r){ return {
   id:r.id, dt:r.date, cat:r.category, payee:r.payee,
   amt:r.amount, type:r.type, method:r.method, notes:r.notes,
+  amtNative:   r.amount_native   != null ? r.amount_native   : null,
+  amtCurrency: r.amount_currency || null,
+  lineItems: r.line_items
+    ? (typeof r.line_items === 'string'
+        ? (function(){ try{return JSON.parse(r.line_items);}catch(_){return null;} })()
+        : r.line_items)
+    : null,
   st:r.status||'Paid', docs:r.docs||[]
 }; }
 function _dbToVendor(r){ return {
@@ -18701,6 +18820,14 @@ function _dbToPurchase(r){ return {
   total:r.total||0,
   paid: r.paid != null ? r.paid : (r.status==='Paid' || r.status==='Payé' ? (r.total||0) : 0),
   bal:  r.bal  != null ? r.bal  : Math.max(0, (r.total||0) - (r.paid != null ? r.paid : (r.status==='Paid' || r.status==='Payé' ? (r.total||0) : 0))),
+  // Drift-protection: native amount per money field
+  subNative:     r.subtotal_native != null ? r.subtotal_native : null, subCurrency:     r.subtotal_currency || null,
+  freightNative: r.freight_native  != null ? r.freight_native  : null, freightCurrency: r.freight_currency  || null,
+  dutiesNative:  r.duties_native   != null ? r.duties_native   : null, dutiesCurrency:  r.duties_currency   || null,
+  taxesNative:   r.taxes_native    != null ? r.taxes_native    : null, taxesCurrency:   r.taxes_currency    || null,
+  otherNative:   r.other_native    != null ? r.other_native    : null, otherCurrency:   r.other_currency    || null,
+  totalNative:   r.total_native    != null ? r.total_native    : null, totalCurrency:   r.total_currency    || null,
+  paidNative:    r.paid_native     != null ? r.paid_native     : null, paidCurrency:    r.paid_currency     || null,
   payments: r.payments
     ? (typeof r.payments === 'string'
         ? (function(){ try{return JSON.parse(r.payments);}catch(e){return [];} })()
@@ -18815,6 +18942,13 @@ function _invToDB(item, bizId){
     cat:item.cat||'General', brand:item.brand||'', status:item.st||'For Sale',
     condition:item.cond||'Good', sp:item.sp||0, cost:item.cost||0,
     rp:item.rp||0, deposit:item.dep||0, min_sp:item.minSp||0,
+    // Native amounts + currency code per money field (for drift-free
+    // re-edits when live FX rate moves).
+    sp_native:     item.spNative    != null ? item.spNative    : null, sp_currency:     item.spCurrency    || null,
+    cost_native:   item.costNative  != null ? item.costNative  : null, cost_currency:   item.costCurrency  || null,
+    rp_native:     item.rpNative    != null ? item.rpNative    : null, rp_currency:     item.rpCurrency    || null,
+    min_sp_native: item.minSpNative != null ? item.minSpNative : null, min_sp_currency: item.minSpCurrency || null,
+    dep_native:    item.depNative   != null ? item.depNative   : null, dep_currency:    item.depCurrency   || null,
     min_stock:item.minStock||0, qty:item.qty||0,
     color:item.color||'', size:item.sz||'', description:item.desc||'',
     vendor_id:item.vendorId||null,
@@ -18845,6 +18979,11 @@ function _saleToDB(s, bizId){ return {
   items:s.items, amount:s.amt||0, total:s.total||s.amt||0,
   paid:s.paid||0, cost:s.cost||0,
   freight:s.freight||0, taxes:s.taxes||0, other:s.other||0,
+  total_native:    s.totalNative   != null ? s.totalNative   : null, total_currency:    s.totalCurrency   || null,
+  paid_native:     s.paidNative    != null ? s.paidNative    : null, paid_currency:     s.paidCurrency    || null,
+  cost_native:     s.costNative    != null ? s.costNative    : null, cost_currency:     s.costCurrency    || null,
+  freight_native:  s.freightNative != null ? s.freightNative : null, freight_currency:  s.freightCurrency || null,
+  taxes_native:    s.taxesNative   != null ? s.taxesNative   : null, taxes_currency:    s.taxesCurrency   || null,
     profit:s.profit!=null?s.profit:((s.total||s.amt||0)-(s.cost||0)),
   _storedProfit:s.profit||0, status:s.st||'Unpaid',
   method:s.method||'Cash', notes:s.notes||'',
@@ -18856,6 +18995,11 @@ function _rentalToDB(r, bizId){ return {
   qty: r.qty||1, period: r.period||'day', units: r.units != null ? r.units : 1,
   start_date:r.start, due_date:r.due, fee:r.fee||0,
   deposit:r.dep||0, paid:r.paid||0,
+  // Native amounts + currency code, paired with each money field
+  fee_native:      r.feeNative  != null ? r.feeNative  : null, fee_currency:      r.feeCurrency  || null,
+  deposit_native:  r.depNative  != null ? r.depNative  : null, deposit_currency:  r.depCurrency  || null,
+  paid_native:     r.paidNative != null ? r.paidNative : null, paid_currency:     r.paidCurrency || null,
+  late_fee_native: r.lfNative   != null ? r.lfNative   : null, late_fee_currency: r.lfCurrency   || null,
   payments: r.payments ? JSON.stringify(r.payments) : null,
   method: r.method||'',
   status:r.st||'Reserved',
@@ -18879,6 +19023,9 @@ function _expToDB(e, bizId){
   return {
   id:e.id, biz_id:bizId, date:e.dt, category:e.cat,
   payee:e.payee||'', amount:e.amt||0, type:e.type||'One-time',
+  amount_native:   e.amtNative != null ? e.amtNative : null,
+  amount_currency: e.amtCurrency || null,
+  line_items: e.lineItems && e.lineItems.length ? JSON.stringify(e.lineItems) : null,
   method:e.method||'Cash', notes:e.notes||'',
   status:e.st||'Paid'
 }; }
@@ -18898,6 +19045,14 @@ function _purchaseToDB(p, bizId){ return {
   total:p.total||0,
   paid: p.paid||0,
   bal:  p.bal != null ? p.bal : Math.max(0,(p.total||0) - (p.paid||0)),
+  // Native + currency per money field (drift-protection)
+  subtotal_native: p.subNative     != null ? p.subNative     : null, subtotal_currency: p.subCurrency     || null,
+  freight_native:  p.freightNative != null ? p.freightNative : null, freight_currency:  p.freightCurrency || null,
+  duties_native:   p.dutiesNative  != null ? p.dutiesNative  : null, duties_currency:   p.dutiesCurrency  || null,
+  taxes_native:    p.taxesNative   != null ? p.taxesNative   : null, taxes_currency:    p.taxesCurrency   || null,
+  other_native:    p.otherNative   != null ? p.otherNative   : null, other_currency:    p.otherCurrency   || null,
+  total_native:    p.totalNative   != null ? p.totalNative   : null, total_currency:    p.totalCurrency   || null,
+  paid_native:     p.paidNative    != null ? p.paidNative    : null, paid_currency:     p.paidCurrency    || null,
   payments:       p.payments      ? JSON.stringify(p.payments)      : null,
   lines_received: p.linesReceived ? JSON.stringify(p.linesReceived) : null,
   inv_id:p.invId||'',
@@ -19021,15 +19176,19 @@ async function _dbSaveInv(item, qtyDelta){
   }
   var result = await _safeUpsert('inventory', _invToDB(item, SESSION.bizId), 'saveInv');
   if(result && !result.ok){
-    // If the vendor_id or recipe column hasn't been added to the schema yet,
-    // retry without them. Local-only fields are preserved in IDB and will
-    // sync once the migration runs.
+    // If new columns aren't yet in the schema, retry without them. Local
+    // IDB copy preserves the values and they sync once migration runs.
     var errMsg = (result.error && (result.error.message || result.error.code)) || '';
-    if(/vendor_id|recipe/i.test(errMsg)){
-      console.warn('[saveInv] vendor_id/recipe column not yet in schema; retrying without them.');
+    if(/vendor_id|recipe|_native|_currency/i.test(errMsg)){
+      console.warn('[saveInv] new columns not yet in schema; retrying without them.');
       var payload = _invToDB(item, SESSION.bizId);
       delete payload.vendor_id;
       delete payload.recipe;
+      delete payload.sp_native;     delete payload.sp_currency;
+      delete payload.cost_native;   delete payload.cost_currency;
+      delete payload.rp_native;     delete payload.rp_currency;
+      delete payload.min_sp_native; delete payload.min_sp_currency;
+      delete payload.dep_native;    delete payload.dep_currency;
       var retry = await _safeUpsert('inventory', payload, 'saveInv');
       if(retry && retry.ok) return;
       if(retry) console.error('[saveInv] retry FAILED for '+item.id+':', retry.error);
@@ -19174,16 +19333,16 @@ async function _dbSaveRental(r){
   var result = await _safeUpsert('rentals', _rentalToDB(r, SESSION.bizId), 'saveRental');
   if(result && !result.ok){
     var errMsg = (result.error && (result.error.message || result.error.code)) || '';
-    // If the new columns aren't yet in the schema, retry without them.
-    // Local IDB copy keeps the values, syncs once migration runs.
-    if(/\b(qty|period|units|payments|method)\b/i.test(errMsg)){
+    // If new columns aren't yet in schema, retry without them.
+    if(/\b(qty|period|units|payments|method)\b|_native|_currency/i.test(errMsg)){
       console.warn('[saveRental] new columns not yet in schema; retrying without them.');
       var payload = _rentalToDB(r, SESSION.bizId);
-      delete payload.qty;
-      delete payload.period;
-      delete payload.units;
-      delete payload.payments;
-      delete payload.method;
+      delete payload.qty; delete payload.period; delete payload.units;
+      delete payload.payments; delete payload.method;
+      delete payload.fee_native;      delete payload.fee_currency;
+      delete payload.deposit_native;  delete payload.deposit_currency;
+      delete payload.paid_native;     delete payload.paid_currency;
+      delete payload.late_fee_native; delete payload.late_fee_currency;
       var retry = await _safeUpsert('rentals', payload, 'saveRental');
       if(retry && retry.ok) return;
       if(retry) console.error('[saveRental] retry FAILED for '+r.id+':', retry.error);
@@ -19297,16 +19456,18 @@ async function _dbSavePurchase(p){
   var result = await _safeUpsert('purchases', _purchaseToDB(p, SESSION.bizId), 'savePurchase');
   if(result && !result.ok){
     var errMsg = (result.error && (result.error.message || result.error.code)) || '';
-    // If the schema doesn't have the paid/bal/payments/lines_received columns
-    // yet, retry without them. Local copy keeps the values, syncs once the
-    // migration runs.
-    if(/\b(paid|bal|payments|lines_received)\b/i.test(errMsg)){
-      console.warn('[savePurchase] paid/bal/payments/lines_received columns not yet in schema; retrying without them.');
+    // If new columns aren't yet present in the schema, strip them and retry.
+    if(/\b(paid|bal|payments|lines_received)\b|_native|_currency/i.test(errMsg)){
+      console.warn('[savePurchase] new columns not yet in schema; retrying without them.');
       var payload = _purchaseToDB(p, SESSION.bizId);
-      delete payload.paid;
-      delete payload.bal;
-      delete payload.payments;
-      delete payload.lines_received;
+      delete payload.paid; delete payload.bal; delete payload.payments; delete payload.lines_received;
+      delete payload.subtotal_native; delete payload.subtotal_currency;
+      delete payload.freight_native;  delete payload.freight_currency;
+      delete payload.duties_native;   delete payload.duties_currency;
+      delete payload.taxes_native;    delete payload.taxes_currency;
+      delete payload.other_native;    delete payload.other_currency;
+      delete payload.total_native;    delete payload.total_currency;
+      delete payload.paid_native;     delete payload.paid_currency;
       var retry = await _safeUpsert('purchases', payload, 'savePurchase');
       if(retry && retry.ok) return;
       if(retry) console.error('[savePurchase] retry FAILED for '+p.id+':', retry.error);
@@ -25411,13 +25572,13 @@ function mEditSale(id){const _s=_L();
 
   <div class="fg-2">
     <div class="fg"><label class="fl">Total Amount (${CUR.symbol})</label>
-      <input class="fi" type="number" id="es-total" value="${Math.round((s.total||s.amt||0)*r)}" oninput="_esAutoStatus()"/>
+      <input class="fi" type="number" id="es-total" value="${curInNative(s,'total','totalNative','totalCurrency')}" oninput="_esAutoStatus()"/>
     </div>
     <div class="fg"><label class="fl">Amount Paid (${CUR.symbol}) <span id="es-paid-hint" style="font-size:10px;color:var(--text3)"></span></label>
-      <input class="fi" type="number" id="es-paid" value="${Math.round((s.paid||0)*r)}" oninput="_esPaidChange();_esAutoStatus()"/>
+      <input class="fi" type="number" id="es-paid" value="${curInNative(s,'paid','paidNative','paidCurrency')}" oninput="_esPaidChange();_esAutoStatus()"/>
     </div>
     <div class="fg"><label class="fl">COGS / Cost (${CUR.symbol})</label>
-      <input class="fi" type="number" id="es-cost" value="${Math.round((s.cost||0)*r)}" placeholder="Cost of goods sold"/>
+      <input class="fi" type="number" id="es-cost" value="${curInNative(s,'cost','costNative','costCurrency')}" placeholder="Cost of goods sold"/>
     </div>
     <div class="fg"><label class="fl">${_s.ui_status}</label>
       <select class="fs" id="es-st">
@@ -25432,10 +25593,10 @@ function mEditSale(id){const _s=_L();
       </select>
     </div>
     <div class="fg"><label class="fl">Freight (${CUR.symbol})</label>
-      <input class="fi" type="number" id="es-freight" value="${Math.round((s.freight||0)*r)}" placeholder="0"/>
+      <input class="fi" type="number" id="es-freight" value="${curInNative(s,'freight','freightNative','freightCurrency')}" placeholder="0"/>
     </div>
     <div class="fg"><label class="fl">Taxes (${CUR.symbol})</label>
-      <input class="fi" type="number" id="es-taxes" value="${Math.round((s.taxes||0)*r)}" placeholder="0"/>
+      <input class="fi" type="number" id="es-taxes" value="${curInNative(s,'taxes','taxesNative','taxesCurrency')}" placeholder="0"/>
     </div>
   </div>
   <div class="fg"><label class="fl">Items / Description</label>
@@ -25459,17 +25620,32 @@ function saveEditSale(id){var _s=_L();
   const dtV=document.getElementById('es-dt')?.value;       if(dtV) s.dt=dtV;
   const custSel=document.getElementById('es-cust');
   if(custSel){const cu=D.cust.find(c=>c.id===custSel.value);if(cu){s.cust=cu.name;s.custId=cu.id;}}
-  const totalV=parseFloat(document.getElementById('es-total')?.value); if(!isNaN(totalV)){s.total=totalV/r;s.amt=s.total;}
-  const paidV =parseFloat(document.getElementById('es-paid')?.value);  if(!isNaN(paidV))  s.paid=paidV/r;
-  const costV =parseFloat(document.getElementById('es-cost')?.value);  if(!isNaN(costV))  s.cost=costV/r;
+  const totalV=parseFloat(document.getElementById('es-total')?.value);
+  if(!isNaN(totalV)){
+    var p = curOutPair(totalV); s.total = p.usd; s.amt = p.usd; s.totalNative = p.native; s.totalCurrency = p.currency;
+  }
+  const paidV =parseFloat(document.getElementById('es-paid')?.value);
+  if(!isNaN(paidV)){
+    var p = curOutPair(paidV); s.paid = p.usd; s.paidNative = p.native; s.paidCurrency = p.currency;
+  }
+  const costV =parseFloat(document.getElementById('es-cost')?.value);
+  if(!isNaN(costV)){
+    var p = curOutPair(costV); s.cost = p.usd; s.costNative = p.native; s.costCurrency = p.currency;
+  }
   const methodV=document.getElementById('es-method')?.value; if(methodV) s.method=methodV;
   // Defensive: enforce On Account → paid=0 (matches the disabled-field
   // UX, and survives any UI bypass).
   if(/on account|compte client/i.test(s.method||'')){
-    s.paid = 0;
+    s.paid = 0; s.paidNative = 0;
   }
-  const frV=parseFloat(document.getElementById('es-freight')?.value);  if(!isNaN(frV)) s.freight=frV/r;
-  const txV=parseFloat(document.getElementById('es-taxes')?.value);    if(!isNaN(txV)) s.taxes=txV/r;
+  const frV=parseFloat(document.getElementById('es-freight')?.value);
+  if(!isNaN(frV)){
+    var p = curOutPair(frV); s.freight = p.usd; s.freightNative = p.native; s.freightCurrency = p.currency;
+  }
+  const txV=parseFloat(document.getElementById('es-taxes')?.value);
+  if(!isNaN(txV)){
+    var p = curOutPair(txV); s.taxes = p.usd; s.taxesNative = p.native; s.taxesCurrency = p.currency;
+  }
   const itemsV=document.getElementById('es-items')?.value;  if(itemsV!==undefined) s.items=itemsV;
   // Collect line items from edit modal
   var editLines=[];
@@ -25688,7 +25864,18 @@ function mEditPurchase(id){const _s=_L();
   const p=D.purchases.find(x=>x.id===id);if(!p)return;
   const r=CUR.rate, sym=CUR.symbol;
   const fr = BIZ.language==='fr';
-  const v=(n)=>Math.round((p[n]||0)*r*100)/100;
+  // Native-currency-aware display helper. When the PO record stores both
+  // a native amount and the currency it was saved in, prefer that — keeps
+  // typed amounts stable against FX rate drift. Falls back to the USD
+  // round-trip for legacy records that pre-date this fix.
+  const v=(n)=>{
+    const nativeKey = n + 'Native';
+    const curKey    = n + 'Currency';
+    if(p[nativeKey] != null && p[curKey] === CUR.code){
+      return p[nativeKey];
+    }
+    return Math.round((p[n]||0)*r*100)/100;
+  };
   const vOpts = D.vendors.map(v2=>`<option value="${_esc(v2.name)}"${v2.name===p.vendor?' selected':''}>${_esc(v2.name)}</option>`).join('');
   const stOpts = ['Pending','Partial','Paid','Received']
     .map(s=>`<option${s===p.st?' selected':''}>${s}</option>`).join('');
@@ -25719,9 +25906,13 @@ function mEditPurchase(id){const _s=_L();
     +'</div>';
   }).join('');
 
-  // Paid amount input — initial value comes from p.paid (partial-aware) or
-  // inferred from status for legacy records
-  const initPaidDisplay = Math.round(((p.paid||0) + ((p.paid==null && p.st==='Paid')?(p.total||0):0)) * r);
+  // Paid amount input — prefer native when available, fall back to USD
+  // round-trip for legacy records. The fallback also handles the
+  // 'p.paid==null && st==Paid' legacy case where p.paid wasn't stored
+  // historically but the PO was marked Paid (treat full total as paid).
+  const initPaidDisplay = (p.paidNative != null && p.paidCurrency === CUR.code)
+    ? p.paidNative
+    : Math.round(((p.paid||0) + ((p.paid==null && p.st==='Paid')?(p.total||0):0)) * r);
 
   modal(`✏️ Edit PO — ${p.id}`,`
   <div class="fg-2">
@@ -25889,27 +26080,51 @@ function saveEditPurchase(id){var _s=_L();
     // No line rows entered — read the (still readonly-displayed) sub field
     p.sub = Math.round(((parseFloat(document.getElementById('ep-sub')?.value)||0)/rr)*10000)/10000;
   }
-  p.freight  = Math.round(((parseFloat(document.getElementById('ep-freight')?.value)||0)/rr)*10000)/10000;
-  p.duties   = Math.round(((parseFloat(document.getElementById('ep-duties')?.value)||0)/rr)*10000)/10000;
-  p.taxes    = Math.round(((parseFloat(document.getElementById('ep-taxes')?.value)||0)/rr)*10000)/10000;
-  p.other    = Math.round(((parseFloat(document.getElementById('ep-other')?.value)||0)/rr)*10000)/10000;
+  // Native values per field, so re-edits don't drift through USD when
+  // the live FX rate moves. Each field tracks its own native+currency
+  // pair so partial currency changes (rare) are handled cleanly.
+  var _freightDisp = parseFloat(document.getElementById('ep-freight')?.value)||0;
+  var _dutiesDisp  = parseFloat(document.getElementById('ep-duties')?.value)||0;
+  var _taxesDisp   = parseFloat(document.getElementById('ep-taxes')?.value)||0;
+  var _otherDisp   = parseFloat(document.getElementById('ep-other')?.value)||0;
+  p.freight = Math.round((_freightDisp/rr)*10000)/10000; p.freightNative = _freightDisp; p.freightCurrency = CUR.code;
+  p.duties  = Math.round((_dutiesDisp /rr)*10000)/10000; p.dutiesNative  = _dutiesDisp;  p.dutiesCurrency  = CUR.code;
+  p.taxes   = Math.round((_taxesDisp  /rr)*10000)/10000; p.taxesNative   = _taxesDisp;   p.taxesCurrency   = CUR.code;
+  p.other   = Math.round((_otherDisp  /rr)*10000)/10000; p.otherNative   = _otherDisp;   p.otherCurrency   = CUR.code;
   p.total    = p.sub+p.freight+p.duties+p.taxes+p.other;
+  // Total isn't directly user-typed (it's derived), but stash the
+  // computed-from-natives total for symmetry on later edits.
+  p.totalNative   = Math.round((p.sub*rr + _freightDisp + _dutiesDisp + _taxesDisp + _otherDisp)*100)/100;
+  p.totalCurrency = CUR.code;
+  // subNative mirrors the computed sub (sum of native line qty*uc)
+  if(p.lines && p.lines.length){
+    p.subNative   = p.lines.reduce(function(a,li){return a + (li.qty||0)*(li.uc||0);}, 0);
+  } else {
+    p.subNative   = Math.round((parseFloat(document.getElementById('ep-sub')?.value)||0)*100)/100;
+  }
+  p.subCurrency = CUR.code;
 
   // Paid amount — explicit. Allow value to drive status if user changed
   // amount but not the status select (or vice versa, status drives auto-fill).
   var newPaidDisplay = parseFloat(document.getElementById('ep-paid')?.value);
   var newPaid;
+  var newPaidNative; // tracks display amount in lockstep
   if(!isNaN(newPaidDisplay) && newPaidDisplay >= 0){
     newPaid = newPaidDisplay / rr;
+    newPaidNative = newPaidDisplay;
   } else if(newSt === 'Paid'){
     newPaid = p.total;
+    newPaidNative = p.totalNative;
   } else if(newSt === 'Received'){
     // Received doesn't imply paid — keep whatever was there
     newPaid = oldPaid;
+    newPaidNative = p.paidNative != null ? p.paidNative : null;
   } else {
     newPaid = oldPaid;
+    newPaidNative = p.paidNative != null ? p.paidNative : null;
   }
   p.paid = newPaid;
+  if(newPaidNative != null){ p.paidNative = newPaidNative; p.paidCurrency = CUR.code; }
   p.bal  = Math.max(0, p.total - p.paid);
   // Reconcile status with paid amount — paid amount wins over the dropdown
   // when they disagree, mirroring the create-PO behaviour. EXCEPT: if status
@@ -26051,13 +26266,13 @@ function mEditRental(id){const _s=_L();
     <div class="fg"><label class="fl">${fr?'Condition au D\u00e9part':'Condition Before Release'}</label>
       <select class="fs" id="er-cb">${condOpts}</select></div>
     <div class="fg"><label class="fl">${fr?'Frais Total':'Total Rental Fee'} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
-      <input class="fi" type="number" id="er-fee" value="${Math.round((r.fee||0)*CUR.rate)}"/></div>
+      <input class="fi" type="number" id="er-fee" value="${curInNative(r,'fee','feeNative','feeCurrency')}"/></div>
     <div class="fg"><label class="fl">${fr?'Caution':'Security Deposit'} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
-      <input class="fi" type="number" id="er-dep" value="${Math.round((r.dep||0)*CUR.rate)}"/></div>
+      <input class="fi" type="number" id="er-dep" value="${curInNative(r,'dep','depNative','depCurrency')}"/></div>
     <div class="fg"><label class="fl">${fr?'Total Pay\u00e9':'Total Paid'} <span style="font-size:10px;color:var(--text2)">(${sym}) ${(r.payments||[]).length?' \u2014 <span style="color:var(--y)">'+(fr?'\u26a0 modifier ici n\'affecte pas l\'historique':'\u26a0 editing here won\'t affect history')+'</span>':''}</span></label>
-      <input class="fi" type="number" id="er-paid" value="${Math.round((r.paid||0)*CUR.rate)}"/></div>
+      <input class="fi" type="number" id="er-paid" value="${curInNative(r,'paid','paidNative','paidCurrency')}"/></div>
     <div class="fg"><label class="fl">${fr?'Frais de Retard':'Late Fee'} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
-      <input class="fi" type="number" id="er-lf" value="${Math.round((r.lf||0)*CUR.rate)}"/></div>
+      <input class="fi" type="number" id="er-lf" value="${curInNative(r,'lf','lfNative','lfCurrency')}"/></div>
     <div class="fg"><label class="fl">${fr?'Mode de Paiement':'Payment Method'}</label>
       <select class="fs" id="er-method">${methodOpts}</select></div>
     <div class="fg"><label class="fl">${_s.ui_status}</label><select class="fs" id="er-st"><option${r.st==='Reserved'?' selected':''}>${_s.rent_st_reserved}</option><option${r.st==='Checked Out'?' selected':''}>${_s.rent_st_out}</option><option${r.st==='Overdue'?' selected':''}>${_s.rent_kpi_overdue}</option><option${r.st==='Returned'?' selected':''}>${_s.rent_st_returned}</option></select></div>
@@ -26081,10 +26296,22 @@ function saveEditRental(id){var _s=_L();
   const start=document.getElementById('er-start')?.value; if(start) r.start=start;
   const due=document.getElementById('er-due')?.value; if(due) r.due=due;
   var rER=CUR.rate;
-  const fee=document.getElementById('er-fee')?.value; if(fee!==undefined&&fee!=='') r.fee=(parseFloat(fee)||0)/rER;
-  const dep=document.getElementById('er-dep')?.value; if(dep!==undefined&&dep!=='') r.dep=(parseFloat(dep)||0)/rER;
-  const paid=document.getElementById('er-paid')?.value; if(paid!==undefined&&paid!=='') r.paid=(parseFloat(paid)||0)/rER;
-  const lf=document.getElementById('er-lf')?.value; if(lf!==undefined&&lf!=='') r.lf=(parseFloat(lf)||0)/rER;
+  const fee=document.getElementById('er-fee')?.value;
+  if(fee!==undefined&&fee!==''){
+    var p = curOutPair(fee); r.fee = p.usd; r.feeNative = p.native; r.feeCurrency = p.currency;
+  }
+  const dep=document.getElementById('er-dep')?.value;
+  if(dep!==undefined&&dep!==''){
+    var p = curOutPair(dep); r.dep = p.usd; r.depNative = p.native; r.depCurrency = p.currency;
+  }
+  const paid=document.getElementById('er-paid')?.value;
+  if(paid!==undefined&&paid!==''){
+    var p = curOutPair(paid); r.paid = p.usd; r.paidNative = p.native; r.paidCurrency = p.currency;
+  }
+  const lf=document.getElementById('er-lf')?.value;
+  if(lf!==undefined&&lf!==''){
+    var p = curOutPair(lf); r.lf = p.usd; r.lfNative = p.native; r.lfCurrency = p.currency;
+  }
   const st=document.getElementById('er-st')?.value; if(st) r.st=st;
   const notes=document.getElementById('er-notes')?.value; if(notes!==undefined) r.notes=notes;
   // New fields: qty / period / units / condition before / method.
@@ -28242,6 +28469,10 @@ function _savePOPayment(id){const _s=_L();
   if(!p.payments) p.payments = [];
   p.payments.push({dt:dt, amount:amtBase, method:method, note:note});
   p.paid = (p.paid||0) + amtBase;
+  // Mirror the payment increment on the native aggregate so re-edits
+  // don't drift through USD when the FX rate moves.
+  p.paidNative = (p.paidNative||0) + rawAmt;
+  p.paidCurrency = CUR.code;
   p.bal  = Math.max(0, (p.total||0) - p.paid);
   // Status reflects what's STILL open. Payment-axis (money) and
   // receipt-axis (goods) are independent — fully paying for goods that
@@ -28622,7 +28853,15 @@ async function mEditExp(id){const _s=_L();
       <span></span>
     </div>
     <div id="ae-lines">
-      ${(e.lineItems&&e.lineItems.length?e.lineItems:[{desc:e.payee||'',mode:'flat',qty:1,rate:Math.round(e.amt*(CUR.rate||1)*100)/100,total:Math.round(e.amt*(CUR.rate||1)*100)/100}]).map(function(li){
+      ${(e.lineItems&&e.lineItems.length?e.lineItems:(function(){
+        // Fallback single line when no lineItems exist. Prefer the
+        // native amount when the currency hasn't changed since save —
+        // immune to FX rate drift.
+        var fallbackRate = (e.amtNative != null && e.amtCurrency === CUR.code)
+          ? e.amtNative
+          : Math.round(e.amt*(CUR.rate||1)*100)/100;
+        return [{desc:e.payee||'',mode:'flat',qty:1,rate:fallbackRate,total:fallbackRate}];
+      })()).map(function(li){
         var rateDisplay = li.rate||0;
         var totalDisplay = li.mode==='qty'?(li.qty||1)*rateDisplay:rateDisplay;
         return '<div class="ae-line" style="padding:6px 10px;display:grid;grid-template-columns:2fr 90px 70px 90px 90px 28px;gap:6px;align-items:center;border-bottom:1px solid var(--border)">'
@@ -28703,6 +28942,11 @@ function saveExpEdit(id){var _s=_L();
   e.cat   = newCat   || e.cat;
   e.payee = newPayee;
   e.amt   = totalAmt / _er;
+  // Stash native + currency so the next edit can render exactly the
+  // total the user sees here, without drifting through USD when the
+  // live FX rate moves.
+  e.amtNative   = totalAmt;
+  e.amtCurrency = CUR.code;
   e.type  = newType  || e.type;
   e.method= newMethod|| e.method;
   e.notes = newNotes;
@@ -29511,9 +29755,9 @@ function filterLedger(el, type){
 
 // ── DB helpers ──────────────────────────────────────────────
 function _dbToService(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceNative:r.price_native!=null?r.price_native:null,priceCurrency:r.price_currency||null,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,bookable:r.bookable!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null,costLines:r.cost_lines?JSON.parse(r.cost_lines):null}; }
-function _dbToAppt(r){ return {id:r.id,serviceId:r.service_id||'',serviceName:r.service_name||'',custId:r.customer_id||'',custName:r.customer_name||'',custPhone:r.customer_phone||'',staffId:r.staff_id||'',staffName:r.staff_name||'',date:r.date||'',startTime:r.start_time||'',endTime:r.end_time||'',st:r.status||'Reserved',notes:r.notes||'',walkIn:r.walk_in||false,totalAmt:r.total_amount||0,payMethod:r.pay_method||'Cash',saleId:r.sale_id||'',createdAt:r.created_at||'',photos:Array.isArray(r.photos)?r.photos:(r.photos?(function(){try{return JSON.parse(r.photos);}catch(e){return [];}})():[])}; }
+function _dbToAppt(r){ return {id:r.id,serviceId:r.service_id||'',serviceName:r.service_name||'',custId:r.customer_id||'',custName:r.customer_name||'',custPhone:r.customer_phone||'',staffId:r.staff_id||'',staffName:r.staff_name||'',date:r.date||'',startTime:r.start_time||'',endTime:r.end_time||'',st:r.status||'Reserved',notes:r.notes||'',walkIn:r.walk_in||false,totalAmt:r.total_amount||0,totalAmtNative:r.total_amount_native!=null?r.total_amount_native:null,totalAmtCurrency:r.total_amount_currency||null,payMethod:r.pay_method||'Cash',saleId:r.sale_id||'',createdAt:r.created_at||'',photos:Array.isArray(r.photos)?r.photos:(r.photos?(function(){try{return JSON.parse(r.photos);}catch(e){return [];}})():[])}; }
 function _serviceDB(s,bizId){ return {id:s.id,biz_id:bizId,name:s.name,duration_mins:s.duration,price:s.price||0,price_native:s.priceNative!=null?s.priceNative:null,price_currency:s.priceCurrency||null,price_type:s.priceType||'flat',category:s.cat||'',color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,bookable:s.bookable!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null,cost_lines:s.costLines?JSON.stringify(s.costLines):null}; }
-function _apptDB(a,bizId){ return {id:a.id,biz_id:bizId,service_id:a.serviceId,service_name:a.serviceName,customer_id:a.custId,customer_name:a.custName,customer_phone:a.custPhone,staff_id:a.staffId,staff_name:a.staffName,date:a.date,start_time:a.startTime,end_time:a.endTime,status:a.st,notes:a.notes,walk_in:a.walkIn,total_amount:a.totalAmt,pay_method:a.payMethod||'',sale_id:a.saleId||'',photos:a.photos||[]}; }
+function _apptDB(a,bizId){ return {id:a.id,biz_id:bizId,service_id:a.serviceId,service_name:a.serviceName,customer_id:a.custId,customer_name:a.custName,customer_phone:a.custPhone,staff_id:a.staffId,staff_name:a.staffName,date:a.date,start_time:a.startTime,end_time:a.endTime,status:a.st,notes:a.notes,walk_in:a.walkIn,total_amount:a.totalAmt,total_amount_native:a.totalAmtNative!=null?a.totalAmtNative:null,total_amount_currency:a.totalAmtCurrency||null,pay_method:a.payMethod||'',sale_id:a.saleId||'',photos:a.photos||[]}; }
 async function _dbSaveService(s){
   if(!SESSION.bizId) return;
   // Update IDB cache immediately
@@ -29571,13 +29815,16 @@ async function _dbSaveAppt(a){
     await _sb.from('appointments').upsert(_apptDB(a,SESSION.bizId));
     _showSaved();
   }catch(e){
-    // If the photos column doesn't exist yet on this schema, retry without it.
-    // Local-only photos are preserved in IDB and will sync once the migration runs.
-    if(e && e.message && /photos/.test(e.message)){
-      console.warn('[appointments] photos column not yet in schema; saving without it.');
+    // If the photos column or the new native/currency columns don't exist
+    // yet on this schema, retry without them. Local copy in IDB keeps the
+    // values; they sync once the migration runs.
+    if(e && e.message && /photos|total_amount_native|total_amount_currency/i.test(e.message)){
+      console.warn('[appointments] schema column not yet present; saving without it.');
       try{
         var base = _apptDB(a, SESSION.bizId);
         delete base.photos;
+        delete base.total_amount_native;
+        delete base.total_amount_currency;
         await _sb.from('appointments').upsert(base);
         _showSaved();
         return;
@@ -31005,7 +31252,7 @@ function mEditAppt(id){const _s=_L();
     +'<div class="fg-2">'
     +'<div class="fg"><label class="fl">'+_s.ui_phone+'</label><input class="fi" id="ea-phone" value="'+(a.custPhone||'')+'"/></div>'
     +'<div class="fg"><label class="fl">'+_s.appt_staff+'</label><select class="fs" id="ea-staff"><option value="">Any</option>'+stfOpts+'</select></div>'
-    +'<div class="fg"><label class="fl">Amount ('+CUR.symbol+')</label><input class="fi" id="ea-amt" type="number" value="'+((CUR.decimals||0)>0?(Math.round((a.totalAmt||0)*CUR.rate*100)/100):Math.round((a.totalAmt||0)*CUR.rate))+'" step="'+((CUR.decimals||0)>0?'0.01':'1')+'" oninput="this._t=true"/></div>'
+    +'<div class="fg"><label class="fl">Amount ('+CUR.symbol+')</label><input class="fi" id="ea-amt" type="number" value="'+curInNative(a,'totalAmt','totalAmtNative','totalAmtCurrency')+'" step="'+((CUR.decimals||0)>0?'0.01':'1')+'" oninput="this._t=true"/></div>'
     +'<div class="fg"><label class="fl">'+_s.ui_status+'</label><select class="fs" id="ea-status">'+stList+'</select></div>'
     +'</div>'
     +'<div class="fg"><label class="fl">'+(BIZ.language==='fr'?'\uD83D\uDCF7 Photos':'\uD83D\uDCF7 Photos')+' <span style="font-size:10px;color:var(--text2);font-weight:400">('+(BIZ.language==='fr'?'visite, avant/après, plans \u2014 max 6':'site visits, before/after, sketches \u2014 max 6')+')</span></label>'
@@ -31053,7 +31300,10 @@ function _saveEditAppt(id){const _s=_L();
   var stfSel=document.getElementById('ea-staff');
   a.staffId=stfSel?stfSel.value:a.staffId;
   a.staffName=(stfSel&&stfSel.value&&stfSel.options[stfSel.selectedIndex])?stfSel.options[stfSel.selectedIndex].text:a.staffName;
-  a.totalAmt=(parseFloat((document.getElementById('ea-amt')||{}).value)||0)/CUR.rate;
+  var _eaAmtP = curOutPair((document.getElementById('ea-amt')||{}).value);
+  a.totalAmt = _eaAmtP.usd;
+  a.totalAmtNative = _eaAmtP.native;
+  a.totalAmtCurrency = _eaAmtP.currency;
   a.st=(document.getElementById('ea-status')||{}).value||a.st;
   a.notes=(document.getElementById('ea-notes')||{}).value||'';
   // Persist photo array from the in-modal working copy
@@ -35229,7 +35479,10 @@ function _saveAppt(){var _s=_L();
       if(!confirm(_cMsg)) return;
     }
   }
-  const a={id:_newApptId(),serviceId:svc?.id||'',serviceName:svc?.name||'Custom',custId:cId,custName:cName,custPhone:ph,staffId:stfId,staffName:stfName,date,startTime:st,endTime:et,st:'Reserved',notes,walkIn:wi,totalAmt:amt/CUR.rate,createdAt:localDateStr()};
+  const _naAmtP = curOutPair(amt);
+  const a={id:_newApptId(),serviceId:svc?.id||'',serviceName:svc?.name||'Custom',custId:cId,custName:cName,custPhone:ph,staffId:stfId,staffName:stfName,date,startTime:st,endTime:et,st:'Reserved',notes,walkIn:wi,
+    totalAmt:_naAmtP.usd, totalAmtNative:_naAmtP.native, totalAmtCurrency:_naAmtP.currency,
+    createdAt:localDateStr()};
   D.appointments.unshift(a);
   _dbSaveAppt(a);
   refreshLiveKpis();
