@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779645669");
+console.log("ShopTrack v2.7 - build:1779645986");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -30353,7 +30353,7 @@ function _updateApptBadge(){
 }
 
 // ── Calendar state ───────────────────────────────────────────
-let _apptCalY=new Date().getFullYear(), _apptCalM=new Date().getMonth(), _apptCalSel=null, _apptView='calendar';
+let _apptCalY=new Date().getFullYear(), _apptCalM=new Date().getMonth(), _apptCalSel=null, _apptView='week';
 let _apptDayDate = null;  // YYYY-MM-DD for the Day view focus
 let _apptWeekDate = null; // YYYY-MM-DD for the Week view; resolves to its containing week (Sun-Sat)
 
