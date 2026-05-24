@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779646951");
+console.log("ShopTrack v2.7 - build:1779649151");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1273,6 +1273,39 @@ function _addInvCat(){var _s=_L();
   document.getElementById('ai-newcat-inp').value='';
   var row=document.getElementById('ai-newcat-row'); if(row) row.style.display='none';
   toast(_L().t_cat_prefix+val+'" added','success');
+}
+
+// Toggle sale-price-related fields' visual emphasis based on item type.
+// When the user picks Raw Material or Recipe Ingredient, the Selling
+// Price + Min Sell Price + Status fields fade and unflag their
+// required-ness — those items don't get sold to customers directly.
+function _aiToggleItemTypeUI(){
+  var typeEl = document.getElementById('ai-itemtype');
+  if(!typeEl) return;
+  var isResale = typeEl.value === 'resale';
+  // Selectors for fields that only make sense for resale items
+  var saleFieldIds = ['ai-sp','ai-minsp','ai-rp','ai-dep'];
+  saleFieldIds.forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.parentElement.style.opacity = isResale ? '1' : '0.55';
+    el.disabled = !isResale && id === 'ai-sp' ? false : el.disabled;
+    // Only disable strictly when raw — sp can still be 0/empty for raw
+    if(!isResale && el.value === '') el.placeholder = (BIZ.language==='fr'?'Optionnel':'Optional');
+  });
+  // Update the Status select default: raw materials default to "For Sale"
+  // is misleading — show a soft hint via the label text instead.
+  var stEl = document.getElementById('ai-st');
+  if(stEl && !isResale){
+    // Add a small visual cue if the label exists
+    var stLbl = stEl.parentElement.querySelector('.fl');
+    if(stLbl && stLbl.dataset._origText == null){
+      stLbl.dataset._origText = stLbl.textContent;
+    }
+  } else if(stEl){
+    var stLbl2 = stEl.parentElement.querySelector('.fl');
+    if(stLbl2 && stLbl2.dataset._origText) stLbl2.textContent = stLbl2.dataset._origText;
+  }
 }
 
 function _renderInvCatPills(){
@@ -3683,6 +3716,16 @@ ${_invOverBanner}<div class="ph">
   <div class="kpi p" style="cursor:pointer" title="${_s.inv_click_stock_tbl}"><div class="kpi-lbl">${_s.inv_stock_val_cost}</div><div class="kpi-val p">${fmtKpi(D.inv.reduce((a,i)=>a+(i.cost||0)*(i.qty||0),0))}</div><div class="kpi-sub">${_s.inv_at_cost}</div></div>
   <div class="kpi g" style="cursor:pointer" title="Total retail value of all stock"><div class="kpi-lbl">${_s.inv_retail_val}</div><div class="kpi-val g">${fmtKpi(D.inv.reduce((a,i)=>a+(i.sp||0)*(i.qty||0),0))}</div><div class="kpi-sub">${_s.inv_at_sell}</div></div>
   <div class="kpi y" style="cursor:pointer" onclick="_filterInvLowStock()"><div class="kpi-lbl">${_s.inv_low_stock}</div><div class="kpi-val y">${D.inv.filter(i=>{const avail=(i.qty||0)-(i.rented||0);const min=i.minStock||i.minQty||0;return min>0&&avail<=min&&avail>0;}).length}</div><div class="kpi-sub">${_s.cust_click_filter}</div></div>
+  ${(() => {
+    const needsCount = D.inv.filter(i=>i.needsPrice && (i.itemType||'resale')==='resale').length;
+    return needsCount > 0
+      ? `<div class="kpi r" style="cursor:pointer;outline:2px solid #f59e0b" onclick="_filterInvNeedsPrice()" title="Items auto-created from a PO that still need a sale price">
+          <div class="kpi-lbl">${BIZ.language==='fr'?'Prix requis':'Needs Price'}</div>
+          <div class="kpi-val" style="color:#f59e0b">${needsCount}</div>
+          <div class="kpi-sub">${BIZ.language==='fr'?'Cliquez pour filtrer':'Click to filter'}</div>
+        </div>`
+      : '';
+  })()}
 </div>
 <div class="stabs">
   <button class="stab on" onclick="switchInvView(this,'grid')">${_s.inv_grid}</button>
@@ -3798,18 +3841,36 @@ function _buildInvGridFiltered(items){const _s=_L();
     var minQty = it.minStock||it.minQty||0;  // 0 = disabled
     var isOutOfStock = avail<=0 && (it.qty||0)>=0;
     var isLowStock   = minQty>0 && avail<=minQty && avail>0;  // only when threshold set AND not zero
+    // Auto-created items from PO receipt are flagged needsPrice. Surface
+    // them visibly so the owner doesn't accidentally try to sell at 0.
+    // Raw-material / recipe-ingredient items legitimately lack a sale
+    // price and are NOT flagged.
+    var needsPriceBadge = (it.needsPrice && (it.itemType||'resale')==='resale')
+      ? '<div style="background:#f59e0b;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px;cursor:pointer" title="'+(BIZ.language==='fr'?'Saisir le prix de vente':'Set sale price')+'">💲 '+(BIZ.language==='fr'?'PRIX REQUIS':'NEEDS PRICE')+'</div>'
+      : '';
+    var typeBadge = (it.itemType && it.itemType !== 'resale')
+      ? '<div style="background:#64748b;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">'
+        + (it.itemType==='raw_material'
+            ? (BIZ.language==='fr'?'MATIÈRE PREM.':'RAW MATERIAL')
+            : (BIZ.language==='fr'?'INGRÉDIENT':'INGREDIENT'))
+        + '</div>'
+      : '';
     var stockBadge=isOutOfStock
       ?'<div style="background:var(--r);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">'+_s.inv_oos+'</div>'
       :isLowStock
         ?'<div style="background:var(--y);color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">⚠ LOW STOCK ('+avail+' left)</div>'
         :'';
-    return '<div class="icard" data-inv-id="'+it.id+'"'+(isLowStock||isOutOfStock?' style="outline:2px solid '+(isOutOfStock?'var(--r)':'var(--y)')+';"':'')+'>'
+    return '<div class="icard" data-inv-id="'+it.id+'"'
+      +(isLowStock||isOutOfStock?' style="outline:2px solid '+(isOutOfStock?'var(--r)':'var(--y)')+';"'
+        :(needsPriceBadge?' style="outline:2px solid #f59e0b"':''))+'>'
       +'<div class="icard-img">'+photo+_invStatusBadge(it.st)+'</div>'
       +'<div class="icard-body">'
       +'<div class="icard-name">'+_esc(it.name)+'</div>'
       +'<div class="icard-sku">'+_esc(it.sku||'')+'</div>'
       +'<div class="icard-price">'+price+'</div>'
       +stockBadge
+      +needsPriceBadge
+      +typeBadge
       +'<div class="icard-bot">'
         +'<div class="cond '+cc(it.cond)+'"><div class="cdot"></div><span style="font-size:11px;color:var(--text)">'+it.cond+'</span></div>'
         +'<span style="font-size:10px;color:var(--text2)">'+_s.inv_col_avail+': '+avail+'</span>'
@@ -3838,6 +3899,20 @@ function _filterInvLowStock(){const _s=_L();
     return min>0 && avail<=min && avail>0; // threshold must be set; avail>0 separates from out-of-stock
   });
   v.innerHTML = _buildInvGridFiltered(lowStock);
+}
+
+// Filter inventory to show only items that need a sale price set —
+// items auto-created from a PO line on receipt that the owner hasn't
+// finished configuring yet. Excludes raw materials (which legitimately
+// have no sale price).
+function _filterInvNeedsPrice(){
+  _invFilterQ=''; _invFilterCat=''; _invFilterSt=''; _invFilterCond='';
+  const v = document.getElementById('inv-view');
+  if(!v) return;
+  const needs = D.inv.filter(function(i){
+    return i.needsPrice && (i.itemType||'resale')==='resale';
+  });
+  v.innerHTML = _buildInvGridFiltered(needs);
 }
 function switchInvView(el,mode){const _s=_L();
   document.querySelectorAll('.stab').forEach(t=>t.classList.remove('on'));el.classList.add('on');
@@ -3904,6 +3979,9 @@ function _saveItemPrices(id){var _s=_L();
     if(_minSpCheckP && _minSpCheckP.block){ toast(_minSpCheckP.msg, 'error'); return; }
     var sp = curOutPair(spVal);
     itx.sp = sp.usd; itx.spNative = sp.native; itx.spCurrency = sp.currency;
+    // Clear the needsPrice flag once a real sale price has been
+    // entered — the inventory item is now fully usable in sales.
+    if(spVal > 0) itx.needsPrice = false;
   }
   if(!isNaN(rpVal)){
     var rp = curOutPair(rpVal);
@@ -4719,6 +4797,14 @@ async function mAddItem(_returnSelectId){const _s=_L();
     <div class="fg"><label class="fl">${_s.inv_status_lbl}</label><select class="fs" id="ai-st"><option>${_s.inv_st_sale}</option><option>${_s.inv_st_rent}</option><option>${_s.inv_st_both}</option></select></div>
     <div class="fg"><label class="fl">${_s.inv_cond_lbl}</label><select class="fs" id="ai-cond"><option>New</option><option>${_s.rent_cond_exc}</option><option>${_s.rent_cond_good}</option><option>${_s.rent_cond_fair}</option></select></div>
   </div>
+  <div class="fg" style="background:var(--bg3);padding:10px 12px;border-radius:8px;margin-bottom:10px">
+    <label class="fl" style="margin-bottom:6px">${BIZ.language==='fr'?"Type d'article":'Item type'} <span style="font-size:10px;color:var(--text2);font-weight:400">— ${BIZ.language==='fr'?'détermine si un prix de vente est requis':'controls whether a sale price is required'}</span></label>
+    <select class="fs" id="ai-itemtype" onchange="_aiToggleItemTypeUI()">
+      <option value="resale">${BIZ.language==='fr'?'Revente — Produit fini vendu aux clients':'For Resale — finished goods sold to customers'}</option>
+      <option value="raw_material">${BIZ.language==='fr'?'Matière première — composant, stock de réparation (pas de prix de vente requis)':'Raw Material — component or repair stock (no sale price required)'}</option>
+      <option value="recipe_ingredient">${BIZ.language==='fr'?'Ingrédient — utilisé dans une recette/production (pas de prix de vente requis)':'Recipe Ingredient — used in a recipe / production (no sale price required)'}</option>
+    </select>
+  </div>
   <div class="fg-3">
     <div class="fg"><label class="fl">Cost Price * <span style="font-size:10px;color:var(--text2)">(${CUR.symbol}) <span style="color:var(--text3);font-weight:400">auto-filled by breakdown ↓</span></span></label><input class="fi" type="number" id="ai-cost" placeholder="0" oninput="_ciCostManual()"/></div>
     <div class="fg"><label class="fl">Selling Price <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="ai-sp" placeholder="0"/></div>
@@ -4851,12 +4937,21 @@ function _saveNewItem(){var _s=_L();
   var _aiRpP    = curOutPair(document.getElementById('ai-rp').value);
   var _aiMinSpP = curOutPair(document.getElementById('ai-minsp').value);
   var _aiDepP   = curOutPair(document.getElementById('ai-dep').value);
+  // Item type ('resale' | 'raw_material' | 'recipe_ingredient')
+  // controls whether a sales price is required. Raw materials and
+  // recipe ingredients can have sp=0 — they're consumed in production
+  // or held for repair stock, not sold to customers directly.
+  var itemType = document.getElementById('ai-itemtype')?.value || 'resale';
   var newItem = {
     id:id, sku:sku, name:name,
     cat:   cat,
     brand: document.getElementById('ai-brand').value,
     st:    document.getElementById('ai-st').value,
     cond:  document.getElementById('ai-cond').value,
+    itemType: itemType,
+    // needsPrice is false here — the user is explicitly entering the
+    // item with full data. Only auto-creation from PO receipt flips it.
+    needsPrice: false,
     cost:  _aiCostP.usd,  costNative:  _aiCostP.native,  costCurrency:  _aiCostP.currency,
     sp:    _aiSpP.usd,    spNative:    _aiSpP.native,    spCurrency:    _aiSpP.currency,
     rp:    _aiRpP.usd,    rpNative:    _aiRpP.native,    rpCurrency:    _aiRpP.currency,
@@ -4873,10 +4968,11 @@ function _saveNewItem(){var _s=_L();
   };
   var pending = window._pendingPhotos && window._pendingPhotos['__new__'];
   var expectedCount = pending ? (pending._expectedCount || pending.length) : 0;
-  // Validate sp >= minSp when both are set
+  // Validate sp >= minSp when both are set (skip for raw materials —
+  // their sp is allowed to be 0 / unset).
   var _aiSp    = (parseFloat(document.getElementById('ai-sp').value)||0);
   var _aiMinSp = (parseFloat(document.getElementById('ai-minsp').value)||0);
-  if(_aiSp > 0 && _aiMinSp > 0 && _aiSp < _aiMinSp){
+  if(itemType === 'resale' && _aiSp > 0 && _aiMinSp > 0 && _aiSp < _aiMinSp){
     toast(_L().t_selling_price + fmt(_aiSp/CUR.rate) + ') is below the minimum sell price (' + fmt(_aiMinSp/CUR.rate) + ').', 'error');
     return;
   }
@@ -4926,6 +5022,14 @@ async function mEditItem(id){const _s=_L();
     <div class="fg"><label class="fl">${_s.inv_brand_lbl}</label><input class="fi" id="ei-brand" value="${it.brand||''}"/></div>
     <div class="fg"><label class="fl">${_s.inv_status_lbl}</label><select class="fs" id="ei-st"><option${it.st==='For Sale'?' selected':''}>${_s.inv_st_sale}</option><option${it.st==='For Rent'?' selected':''}>${_s.inv_st_rent}</option><option${it.st==='Both'?' selected':''}>${_s.inv_st_both}</option></select></div>
     <div class="fg"><label class="fl">${_s.inv_cond_lbl}</label><select class="fs" id="ei-cond"><option${it.cond==='New'?' selected':''}>New</option><option${it.cond==='Excellent'?' selected':''}>${_s.rent_cond_exc}</option><option${it.cond==='Good'?' selected':''}>${_s.rent_cond_good}</option><option${it.cond==='Fair'?' selected':''}>${_s.rent_cond_fair}</option><option${it.cond==='Worn'?' selected':''}>${_s.rent_cond_worn}</option></select></div>
+  </div>
+  <div class="fg" style="background:var(--bg3);padding:10px 12px;border-radius:8px;margin-bottom:10px">
+    <label class="fl" style="margin-bottom:6px">${BIZ.language==='fr'?"Type d'article":'Item type'} <span style="font-size:10px;color:var(--text2);font-weight:400">— ${BIZ.language==='fr'?'détermine si un prix de vente est requis':'controls whether a sale price is required'}</span></label>
+    <select class="fs" id="ei-itemtype">
+      <option value="resale"${(it.itemType||'resale')==='resale'?' selected':''}>${BIZ.language==='fr'?'Revente — Produit fini vendu aux clients':'For Resale — finished goods sold to customers'}</option>
+      <option value="raw_material"${it.itemType==='raw_material'?' selected':''}>${BIZ.language==='fr'?'Matière première — composant, stock de réparation (pas de prix de vente requis)':'Raw Material — component or repair stock (no sale price required)'}</option>
+      <option value="recipe_ingredient"${it.itemType==='recipe_ingredient'?' selected':''}>${BIZ.language==='fr'?'Ingrédient — utilisé dans une recette/production (pas de prix de vente requis)':'Recipe Ingredient — used in a recipe / production (no sale price required)'}</option>
+    </select>
   </div>
   <div class="fg-3">
     ${showCost?`<div class="fg"><label class="fl">Cost Price ${!editCost?'🔒':''} <span style="font-size:10px;color:var(--text3);font-weight:400">auto-filled by breakdown ↓</span></label><input class="fi" id="ei-cost" type="number" value="${curInNative(it,'cost','costNative','costCurrency')}" ${!editCost?'readonly style="opacity:.5"':''}/>${!editCost?'<div class="fh">'+_s.inv_read_only+'</div>':''}</div>`:'<div class="fg"><label class="fl" style="color:var(--text2)">'+_s.inv_cost_lbl+'</label><div style="font-size:12px;color:var(--text2);padding:8px 0">🔒 Hidden</div></div>'}
@@ -5078,6 +5182,9 @@ function saveEditItem(id){
   it.brand=document.getElementById('ei-brand')?.value.trim()||it.brand;
   it.st   =document.getElementById('ei-st')?.value||it.st;
   it.cond =document.getElementById('ei-cond')?.value||it.cond;
+  // Read item type — controls whether sales price is required
+  var _eiItemType = document.getElementById('ei-itemtype');
+  if(_eiItemType) it.itemType = _eiItemType.value || it.itemType || 'resale';
   // If category is new (typed in or selected but not in master list), persist it
   if(it.cat && D.invCats.indexOf(it.cat)===-1){
     D.invCats.push(it.cat);
@@ -5091,13 +5198,17 @@ function saveEditItem(id){
     }
   }
   const spv=parseFloat(document.getElementById('ei-sp')?.value);
-  if(!isNaN(spv) && spv > 0 && it.minSp){
+  // Skip the minSp guardrail for non-resale items — raw materials and
+  // recipe ingredients legitimately have no sale-price floor.
+  if(!isNaN(spv) && spv > 0 && it.minSp && (it.itemType||'resale')==='resale'){
     var _minSpCheckEI = _checkMinSp(it.id, spv * CUR.rate);
     if(_minSpCheckEI && _minSpCheckEI.block){ toast(_minSpCheckEI.msg, 'error'); return; }
   }
   if(!isNaN(spv)){
     const p = curOutPair(spv);
     it.sp = p.usd; it.spNative = p.native; it.spCurrency = p.currency;
+    // Clear needsPrice flag once a real sale price is set on a resale item.
+    if(spv > 0 && (it.itemType||'resale')==='resale') it.needsPrice = false;
   }
   const rpv=parseFloat(document.getElementById('ei-rp')?.value);
   if(!isNaN(rpv)){
@@ -8658,7 +8769,18 @@ function pgPurchases(){const _s=_L();const _ui=_s;
   const monthRange = PERIOD_RANGES['ytd'];
   const vis   = D.purchases.filter(p => inRange(p.dt, monthRange));
   const totalSpent = vis.reduce((a,p)=>a+(p.total||0), 0);
-  const apOut      = D.vendors.filter(v=>v.bal>0).reduce((a,v)=>a+v.bal, 0);
+  // AP Outstanding — compute live from ALL purchases (not period-filtered,
+  // since a vendor balance is owed regardless of when the PO was issued)
+  // using the same partial-payment-aware formula as the global KPI:
+  //   outstanding = total − paid, for any PO not marked fully Paid.
+  // The previous KPI read D.vendors[].bal which silently drifts whenever
+  // a partial payment is recorded without the vendor balance helper
+  // getting called — leaving the KPI at 0 while real AP exists.
+  const apOut = D.purchases.reduce(function(a,p){
+    if(p.st==='Paid') return a;
+    var bal = (p.total||0) - (p.paid||0);
+    return a + (bal > 0.01 ? bal : 0);
+  }, 0);
   // "Awaiting delivery" = POs with at least one line not yet fully received.
   // This is about goods arriving, not money paid — keeps the KPI honest
   // even when an order is paid in advance but the shipment is still in
@@ -8727,8 +8849,11 @@ function pgPurchases(){const _s=_L();const _ui=_s;
         +' title="'+_esc(p.items||'')+'">'+_esc((p.items||'').slice(0,60))+(p.items&&p.items.length>60?'…':'')+'</td>'
       +'<td>'+mono(fmt(p.sub),'a')+costBreak+'</td>'
       +'<td>'+mono(fmt(p.total),'b')+'</td>'
-      +'<td>'+statusBadge+(isUnpaid && _outstanding>0.01?'<span style="display:block;font-size:10px;color:var(--r);margin-top:1px">AP '+fmt(_outstanding)+'</span>':'')+'</td>'
+      +'<td>'+statusBadge+'</td>'
       +'<td>'+(p.paid>0 ? mono(fmt(p.paid),'g') : '<span style="font-size:11px;color:var(--text3)">—</span>')+'</td>'
+      +'<td>'+(_outstanding > 0.01
+              ? mono(fmt(_outstanding),'r')
+              : '<span style="font-size:11px;color:var(--g)">'+(BIZ.language==='fr'?'Réglé':'Settled')+'</span>')+'</td>'
       +'<td onclick="event.stopPropagation()">'
         +'<div class="btn-row" style="flex-wrap:nowrap">'
         + (showPay
@@ -8796,7 +8921,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
       <div class="tbl-wrap"><table id="po-table">
         <thead><tr>
           <th>${_s.po_col_id}</th><th>${_s.ui_date}</th><th>${_s.ui_vendor}</th><th>${_s.sal_col_items}</th>
-          <th>${_s.ui_subtotal}</th><th>${_s.po_landed}</th><th>${_s.ui_status}</th><th>${_s.po_col_paid || (BIZ.language==='fr'?'Payé':'Amount Paid')}</th><th></th>
+          <th>${_s.ui_subtotal}</th><th>${_s.po_landed}</th><th>${_s.ui_status}</th><th>${_s.po_col_paid || (BIZ.language==='fr'?'Payé':'Amount Paid')}</th><th>${BIZ.language==='fr'?'Solde':'Balance'}</th><th></th>
         </tr></thead>
         <tbody id="po-tbody">${rows}</tbody>
       </table></div>
@@ -19055,6 +19180,25 @@ async function _dbSaveBizProfile(bizId){
 function _dbToInv(r){ return {
   id:r.id, sku:r.sku||'', name:r.name, cat:r.cat||'General', brand:r.brand||'',
   st:r.status||'For Sale', cond:r.condition||'Good',
+  // Item type controls validation + which UI sections apply:
+  //   'resale'             — finished goods sold to customers (default)
+  //   'raw_material'       — components/ingredients used in production
+  //                          or held as repair stock; sales price is
+  //                          optional, no sales-channel features apply
+  //   'recipe_ingredient'  — same as raw_material but explicitly tagged
+  //                          for use in product recipes (smoothie ops,
+  //                          assembled goods, kitchen). Treated as raw
+  //                          material for validation; the separate tag
+  //                          lets us filter recipe pickers later.
+  // Defaults to 'resale' for legacy records to preserve existing
+  // behaviour: if you don't know what type something is, treat it as
+  // resale (which is what every inventory item was before this field).
+  itemType: r.item_type || 'resale',
+  // 'needsPrice' flag — set true when an item is auto-created from a
+  // PO line at receive time. Forces the inventory list to surface
+  // these items for the owner to fill in a sale price before they
+  // become bookable in sales. Cleared automatically when sp is set.
+  needsPrice: !!r.needs_price,
   sp:r.sp||0, cost:r.cost||0, rp:r.rp||0, dep:r.deposit||0,
   // Native + currency for each money field — preferred during edit so
   // values survive live FX rate fluctuation untouched.
@@ -19278,6 +19422,8 @@ function _invToDB(item, bizId){
   return {
     id:item.id, biz_id:bizId, sku:item.sku||'', name:item.name,
     cat:item.cat||'General', brand:item.brand||'', status:item.st||'For Sale',
+    item_type: item.itemType || 'resale',
+    needs_price: !!item.needsPrice,
     condition:item.cond||'Good', sp:item.sp||0, cost:item.cost||0,
     rp:item.rp||0, deposit:item.dep||0, min_sp:item.minSp||0,
     // Native amounts + currency code per money field (for drift-free
@@ -19517,11 +19663,13 @@ async function _dbSaveInv(item, qtyDelta){
     // If new columns aren't yet in the schema, retry without them. Local
     // IDB copy preserves the values and they sync once migration runs.
     var errMsg = (result.error && (result.error.message || result.error.code)) || '';
-    if(/vendor_id|recipe|_native|_currency/i.test(errMsg)){
+    if(/vendor_id|recipe|_native|_currency|item_type|needs_price/i.test(errMsg)){
       console.warn('[saveInv] new columns not yet in schema; retrying without them.');
       var payload = _invToDB(item, SESSION.bizId);
       delete payload.vendor_id;
       delete payload.recipe;
+      delete payload.item_type;
+      delete payload.needs_price;
       delete payload.sp_native;     delete payload.sp_currency;
       delete payload.cost_native;   delete payload.cost_currency;
       delete payload.rp_native;     delete payload.rp_currency;
@@ -28998,21 +29146,94 @@ function _saveReceiveItems(id){
   const overhead = (p.freight||0) + (p.duties||0) + (p.taxes||0) + (p.other||0);
   const totalLinesSub = p.lines.reduce(function(a, l){ return a + ((l.uc||0) * (l.qty||1)) / rr; }, 0);
 
+  // Track names we auto-create so we can surface them in the toast
+  var _autoCreated = [];
+
   p.lines.forEach(function(li, idx){
     var addQty = receivingNow[idx] || 0;
     if(addQty <= 0) return;
     p.linesReceived[idx] = (p.linesReceived[idx]||0) + addQty;
-    if(!li.invId || li.invId==='__custom__') return; // no inventory link
-    var invObj = D.inv.find(function(x){return x.id===li.invId;});
-    if(!invObj) return;
-    var lineSubBase = ((li.uc||0) * (li.qty||1)) / rr; // line's full ordered sub
+
+    // Compute landed unit cost for this line (in USD-base) before
+    // touching inventory — same formula whether we hit an existing
+    // item or auto-create a new one below.
+    var lineSubBase = ((li.uc||0) * (li.qty||1)) / rr;
     var ohShare = totalLinesSub > 0 ? overhead * (lineSubBase / totalLinesSub) : 0;
-    // landed unit cost reflects the ordered qty — we paid the overhead for
-    // the whole line whether we receive it all today or in batches
     var landedUnit = (li.qty||1) > 0
       ? (lineSubBase + ohShare) / (li.qty||1)
       : (li.uc||0) / rr;
-    // WMA blend with existing stock
+
+    // ── Auto-create inventory item for unlinked PO lines ──────────
+    // When a PO line has no invId (or '__custom__'), we previously
+    // dropped the receipt silently — the goods showed in the PO but
+    // never reached the inventory ledger. Now we mint a fresh
+    // inventory item using the line's name and cost. The new item
+    // is flagged needsPrice=true so it appears in a "Needs sale
+    // price" view until the owner fills it in (unless it's a raw
+    // material, which legitimately has no sale price).
+    if(!li.invId || li.invId==='__custom__'){
+      var lineName = (li.name||'').trim();
+      if(!lineName) return;  // can't auto-create without a name
+
+      // Try matching an existing inventory item by name first — avoids
+      // duplicate records when the user types a name that already
+      // exists under a different invId selector.
+      var existing = D.inv.find(function(x){
+        return String(x.name||'').trim().toLowerCase() === lineName.toLowerCase();
+      });
+      if(existing){
+        // Hit — link the PO line to it, then blend stock like normal.
+        li.invId = existing.id;
+        var oldQ = existing.qty || 0;
+        var oldC = existing.cost || 0;
+        var newQ = oldQ + addQty;
+        existing.qty  = newQ;
+        existing.cost = Math.round((newQ > 0
+          ? ((oldQ*oldC)+(addQty*landedUnit))/newQ
+          : landedUnit) * 10000) / 10000;
+        _dbSaveInv(existing, +addQty);
+        return;
+      }
+
+      // No match — mint a new inventory item.
+      // ID format: INV-NNN, picking max+1 of existing.
+      var maxN = (D.inv||[]).reduce(function(m,it){
+        var n = parseInt(String(it.id||'').replace(/[^0-9]/g,''),10)||0;
+        return n>m?n:m;
+      }, 0);
+      var newId = 'INV-'+String(maxN+1).padStart(3,'0');
+      var newItem = {
+        id: newId,
+        sku: '',
+        name: lineName,
+        cat: 'General',
+        brand: '',
+        st: 'For Sale',
+        cond: 'Good',
+        itemType: 'resale',          // owner can change later
+        needsPrice: true,             // flag — owner must enter sale price
+        sp: 0,
+        cost: Math.round(landedUnit * 10000) / 10000,
+        rp: 0, dep: 0, minSp: 0, minStock: 0,
+        qty: addQty,
+        color: '', sz: '', desc: '',
+        vendorId: '',
+        recipe: [],
+        rented: 0, img: 'gown-aline',
+        imgC: ['#a8b4c8','#c8b4a0','#e0d4bc'],
+        imgDataUrl: null,
+        photoDataUrls: []
+      };
+      D.inv.push(newItem);
+      li.invId = newId;  // link PO line to the freshly-created item
+      _dbSaveInv(newItem, +addQty);
+      _autoCreated.push(lineName);
+      return;
+    }
+
+    // ── Existing-link path ─────────────────────────────────────────
+    var invObj = D.inv.find(function(x){return x.id===li.invId;});
+    if(!invObj) return;
     var oldQty = invObj.qty || 0;
     var oldCost = invObj.cost || 0;
     var newQty = oldQty + addQty;
@@ -29046,7 +29267,11 @@ function _saveReceiveItems(id){
   _dbSavePurchase(p); refreshLiveKpis();
   addAudit('PO partial receipt', p.id+' — '+recvSummary+(dt!==localDateStr()?' on '+dt:''));
   closeModal();
-  toast((fr?'Réception enregistrée: ':'Received: ')+recvSummary, 'success');
+  var _toastMsg = (fr?'Réception enregistrée: ':'Received: ')+recvSummary;
+  if(_autoCreated.length){
+    _toastMsg += ' · '+(fr?'Nouveaux articles à tarifer:':'New items need pricing:')+' '+_autoCreated.join(', ');
+  }
+  toast(_toastMsg, _autoCreated.length ? 'info' : 'success');
   if(curPage==='purchases') nav('purchases');
   setTimeout(function(){ mViewPurchase(id); }, 200);
 }
