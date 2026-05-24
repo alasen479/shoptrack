@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779653202");
+console.log("ShopTrack v2.7 - build:1779654085");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -9304,6 +9304,38 @@ function pgPurchases(){const _s=_L();const _ui=_s;
       ? p.lines.some(function(l, i){ return (l.qty||1) > (_linesReceived[i]||0); })
       : (p.st!=='Received' && p.st!=='Paid');
     const showReceive = hasUnreceived;
+
+    // Receipt-state badge — distinct from payment status. Computed
+    // from line qty vs linesReceived. Three states:
+    //   - Not Received: 0 of N units received
+    //   - Partially Received: some but not all
+    //   - Fully Received: every line satisfied
+    // For legacy POs without structured lines, fall back to the
+    // top-level status (Received/Paid → fully received).
+    var _receiptBadge = '';
+    if(p.lines && p.lines.length){
+      var _totalOrdered = p.lines.reduce(function(a,l){return a + (l.qty||0);}, 0);
+      var _totalRcvd    = (_linesReceived||[]).reduce(function(a,n){return a + (Number(n)||0);}, 0);
+      if(_totalOrdered > 0){
+        if(_totalRcvd >= _totalOrdered - 0.001){
+          _receiptBadge = '<div style="display:inline-block;margin-top:3px;font-size:9px;font-weight:700;letter-spacing:.3px;background:var(--g-dim);color:var(--g);padding:2px 7px;border-radius:10px">📦 '+(fr?'REÇU':'RECEIVED')+'</div>';
+        } else if(_totalRcvd > 0){
+          var _pct = Math.round((_totalRcvd/_totalOrdered)*100);
+          _receiptBadge = '<div style="display:inline-block;margin-top:3px;font-size:9px;font-weight:700;letter-spacing:.3px;background:var(--y-dim,#fef3c7);color:var(--y,#b45309);padding:2px 7px;border-radius:10px" title="'+_totalRcvd+' / '+_totalOrdered+' units">📦 '+(fr?'PARTIEL':'PARTIAL')+' '+_pct+'%</div>';
+        } else {
+          _receiptBadge = '<div style="display:inline-block;margin-top:3px;font-size:9px;font-weight:700;letter-spacing:.3px;background:var(--r-dim);color:var(--r);padding:2px 7px;border-radius:10px">📦 '+(fr?'NON REÇU':'NOT RECEIVED')+'</div>';
+        }
+      }
+    } else {
+      // Legacy / line-less PO — fall back to status string
+      var _legacyReceived = (p.st==='Received' || p.st==='Paid');
+      _receiptBadge = '<div style="display:inline-block;margin-top:3px;font-size:9px;font-weight:700;letter-spacing:.3px;background:'
+        + (_legacyReceived?'var(--g-dim);color:var(--g)':'var(--r-dim);color:var(--r)')
+        + ';padding:2px 7px;border-radius:10px">📦 '
+        + (_legacyReceived ? (fr?'REÇU':'RECEIVED') : (fr?'NON REÇU':'NOT RECEIVED'))
+        + '</div>';
+    }
+
     const fr = BIZ.language==='fr';
     return '<tr data-date="'+p.dt+'" data-vendor="'+_esc(p.vendor)+'" data-st="'+(p.st||'')+'"'
       +' class="po-row" style="cursor:pointer" onclick="mViewPurchase(\''+p.id+'\')">'
@@ -9314,7 +9346,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
         +' title="'+_esc(p.items||'')+'">'+_esc((p.items||'').slice(0,60))+(p.items&&p.items.length>60?'…':'')+'</td>'
       +'<td>'+mono(fmt(p.sub),'a')+costBreak+'</td>'
       +'<td>'+mono(fmt(p.total),'b')+'</td>'
-      +'<td>'+statusBadge+'</td>'
+      +'<td style="white-space:nowrap">'+statusBadge+'<br>'+_receiptBadge+'</td>'
       +'<td>'+(p.paid>0 ? mono(fmt(p.paid),'g') : '<span style="font-size:11px;color:var(--text3)">—</span>')+'</td>'
       +'<td>'+(_outstanding > 0.01
               ? mono(fmt(_outstanding),'r')
@@ -27040,7 +27072,34 @@ function mEditPurchase(id){const _s=_L();
   </div>
 
   <div class="fg"><label class="fl">${_s.po_items_desc}</label><textarea class="ft" id="ep-items" style="min-height:55px">${_esc(p.items||'')}</textarea></div>
-  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ep-notes" style="min-height:42px">${_esc(p.notes||'')}</textarea></div>`,
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ep-notes" style="min-height:42px">${_esc(p.notes||'')}</textarea></div>
+  <div class="fg">
+    <label class="fl">${BIZ.language==='fr'?'Pièces jointes':'Attachments'} <span style="font-size:10px;color:var(--text2);font-weight:400">${BIZ.language==='fr'?'reçus, facture fournisseur, documents douaniers...':'receipts, vendor invoice, customs paperwork…'}</span></label>
+    <div id="ep-docs-list-${id}" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px">${
+      (p.docs||[]).map(function(d){
+        // Register existing docs in _DOC_STORE so view/download still work
+        // after edit-modal lifecycle. Generates a key if the doc was saved
+        // before the keyed-storage system existed (legacy string dataUrls).
+        if(typeof d === 'string' && d.startsWith('data:')){
+          var k = 'doc-'+Date.now()+'-'+Math.random().toString(36).slice(2,5);
+          _DOC_STORE[k] = {dataUrl:d, name:'receipt', type:'image'};
+          return docChip({name:'receipt', size:'', type:'image', dataUrl:d, _key:k});
+        }
+        if(d && d.dataUrl){
+          var k2 = d._key || ('doc-'+Date.now()+'-'+Math.random().toString(36).slice(2,5));
+          _DOC_STORE[k2] = {dataUrl:d.dataUrl, name:d.name||'doc', type:d.type||''};
+          return docChip({name:d.name||'doc', size:d.size||'', type:d.type||'', dataUrl:d.dataUrl, _key:k2});
+        }
+        return '';
+      }).join('') || `<div style="font-size:12px;color:var(--text2);padding:6px 0">${BIZ.language==='fr'?'Aucun document joint':'No documents attached yet'}</div>`
+    }</div>
+    <div style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:var(--r6);padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="document.getElementById('ep-docs-input-${id}').click()">
+      <span style="font-size:18px">➕</span>
+      <div style="font-size:12px;font-weight:600;color:var(--ink)">${BIZ.language==='fr'?'Ajouter des documents':'Attach more documents'}</div>
+      <span style="font-size:10px;color:var(--text3)">(images / PDF)</span>
+      <input id="ep-docs-input-${id}" type="file" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocAttach(this,'ep-docs-list-${id}')"/>
+    </div>
+  </div>`,
   `<button class="btn btn-d btn-sm" onclick="closeModal();deletePurchase('${id}')">🗑 Delete</button>
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="saveEditPurchase('${id}')">💾 Save</button>`);
@@ -27229,6 +27288,25 @@ function saveEditPurchase(id){var _s=_L();
 
   p.items    = document.getElementById('ep-items')?.value||p.items;
   p.notes    = document.getElementById('ep-notes')?.value??p.notes;
+
+  // Merge in any docs the user attached while in the edit modal. The
+  // upload widget stashes each file's dataUrl in _DOC_STORE keyed by
+  // an id, and the list element's _docKeys array tracks which keys
+  // were appended this session. handleDocAttach already pushed to
+  // p.docs when the listId matched a known pattern, but our edit
+  // form uses 'ep-docs-list-{id}' which is unrecognised — so we
+  // reconcile here as a fallback. Duplicate-key safe via a Set.
+  var _edList = document.getElementById('ep-docs-list-'+id);
+  if(_edList && _edList._docKeys && _edList._docKeys.length){
+    if(!p.docs) p.docs = [];
+    var existingKeys = {};
+    p.docs.forEach(function(d){ if(d && d._key) existingKeys[d._key] = true; });
+    _edList._docKeys.forEach(function(k){
+      if(existingKeys[k]) return; // already on the record
+      var entry = _DOC_STORE && _DOC_STORE[k];
+      if(entry) p.docs.push({name:entry.name||'doc', _key:k, dataUrl:entry.dataUrl, type:entry.type||''});
+    });
+  }
 
   // ── Inventory diff: handle qty changes per line ────────────────────────
   // If stock was already added (old status was Received/Paid), compute the
