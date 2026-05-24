@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779651547");
+console.log("ShopTrack v2.7 - build:1779652081");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -17772,13 +17772,38 @@ async function _dbLoadBizData(bizId){
       if(_svcResult.error) console.error('[DB] services retry also failed:', _svcResult.error.message);
     }
 
+    var _purchResult = purchases;
+    // If the full SELECT * fails (schema mismatch, 500, timeout), try
+    // a slim retry that only requests columns guaranteed to exist on
+    // every deployment. This mirrors the inventory retry path.
+    // Without this, a single missing column in the schema cache makes
+    // EVERY purchase invisible in the UI even though IDB has them.
+    if(purchases.error){
+      console.warn('[DB] purchases full query failed — trying slim retry:', purchases.error.message);
+      try {
+        _purchResult = await _sb.from('purchases')
+          .select('id,biz_id,date,vendor,vendor_id,items,qty,subtotal,total,status,notes,inv_id,delivery_date,method,lines')
+          .eq('biz_id', bizId)
+          .order('created_at', {ascending:false})
+          .limit(2000);
+        if(_purchResult.error){
+          console.error('[DB] purchases slim retry ALSO failed:', _purchResult.error.message);
+        } else {
+          console.log('[DB] purchases slim retry OK:', (_purchResult.data||[]).length, 'POs');
+        }
+      } catch(pe){
+        console.error('[DB] purchases slim retry threw:', pe.message);
+        _purchResult = purchases; // keep original error for the guard below
+      }
+    }
+
     if(_invResult.error) console.error('[DB] inventory query error:', _invResult.error.message);
     if(cust.error) console.error('[DB] customers query error:', cust.error.message);
     if(sales.error) console.error('[DB] sales query error:', sales.error.message);
     if(rentals.error) console.error('[DB] rentals query error:', rentals.error.message);
     if(exp.error) console.error('[DB] expenses query error:', exp.error.message);
     if(vendors.error) console.error('[DB] vendors query error:', vendors.error.message);
-    if(purchases.error) console.error('[DB] purchases query error:', purchases.error.message);
+    if(_purchResult.error) console.error('[DB] purchases query error (after retry):', _purchResult.error.message);
     
     // MERGE strategy: Supabase data is authoritative, but preserve local-only items
     // that haven't been sync'd to Supabase yet (async save still in flight)
@@ -17875,10 +17900,27 @@ async function _dbLoadBizData(bizId){
       D.exp = _mergeData(D.exp, _freshExp);
     }
     if(!vendors.error && (!_is107 || (vendors.data||[]).length))   D.vendors   = _mergeData(D.vendors, (vendors.data||[]).map(_dbToVendor));
-    if(!purchases.error && (!_is107 || (purchases.data||[]).length)){
-      var _freshPurchases = (purchases.data||[]).map(_dbToPurchase);
+    if(!_purchResult.error && (!_is107 || (_purchResult.data||[]).length)){
+      var _freshPurchases = (_purchResult.data||[]).map(_dbToPurchase);
       _freshPurchases = _preserveNativeFromLocal(D.purchases, _freshPurchases, ['sub','freight','duties','taxes','other','total','paid']);
       D.purchases = _mergeData(D.purchases, _freshPurchases);
+    } else if(_purchResult.error){
+      // Cloud query failed entirely. Don't touch D.purchases — the
+      // IDB-cached copy loaded earlier remains in place. Log it so
+      // we know the cloud↔local state is divergent.
+      console.warn('[DB] purchases load failed completely; preserving',
+        (D.purchases||[]).length, 'POs from IDB cache.');
+      // Surface a non-blocking toast so the user knows there's a
+      // divergence — without this, an empty-looking Purchases page
+      // would otherwise be silently terrifying (it was for the user).
+      var _localCount = (D.purchases||[]).length;
+      setTimeout(function(){
+        if(_localCount > 0){
+          toast('Cloud sync paused — showing '+_localCount+' purchase order(s) from local cache. Server returned: '+(_purchResult.error.code||'error'), 'warn');
+        } else {
+          toast('Could not load purchase orders from server. Your data is safe — please refresh. (Server returned '+(_purchResult.error.code||'error')+')', 'error');
+        }
+      }, 1500);
     }
     if(!audit.error && (!_is107 || (audit.data||[]).length))     D.audit     = (audit.data||[]).map(_dbToAudit);
 
@@ -19545,19 +19587,29 @@ function _invToDB(item, bizId){
     cost_lines:item.costLines?JSON.stringify(item.costLines):null
   };
 }
-function _custToDB(c, bizId){ return {
-  id:c.id, biz_id:bizId, name:c.name, email:c.email||'',
-  phone:    c.phone||c.ph||'',
-  whatsapp: c.whatsapp||c.phone||c.ph||'',
-  address:  c.address||c.addr||'',
-  city:     c.city||c.addr||'',
-  vip:c.vip||false, notes:c.notes||'',
-  spent:c.spent||0, orders:c.orders||0,
-  visits:c.visits||c.orders||0, last_visit:c.last||'',
+function _custToDB(c, bizId){
+  // PostgreSQL DATE columns reject empty strings ('22007 invalid input
+  // syntax'). Coerce blank/missing date fields to null so the row saves
+  // cleanly. Previously this fired a noisy save-loop because the
+  // reconcile pass would retry on every page render.
+  var _dob = c.dob || c.birthday || null;
+  if(_dob === '' || _dob === 'undefined' || _dob === 'null') _dob = null;
+  var _lastVisit = c.last || null;
+  if(_lastVisit === '' || _lastVisit === 'undefined' || _lastVisit === 'null') _lastVisit = null;
+  return {
+    id:c.id, biz_id:bizId, name:c.name, email:c.email||'',
+    phone:    c.phone||c.ph||'',
+    whatsapp: c.whatsapp||c.phone||c.ph||'',
+    address:  c.address||c.addr||'',
+    city:     c.city||c.addr||'',
+    vip:c.vip||false, notes:c.notes||'',
+    spent:c.spent||0, orders:c.orders||0,
+    visits:c.visits||c.orders||0, last_visit:_lastVisit,
     tier:c.tier||'Regular',
-    dob:c.dob||c.birthday||'',
-    birthday:c.dob||c.birthday||''
-}; }
+    dob:_dob,
+    birthday:_dob
+  };
+}
 function _saleToDB(s, bizId){ return {
   id:s.id, biz_id:bizId, date:s.dt, customer:s.cust,
   customer_id:s.custId||'', inv_id:s.invId||'__custom__',
