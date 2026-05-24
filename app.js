@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779577886");
+console.log("ShopTrack v2.7 - build:1779582109");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -7066,7 +7066,7 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
 <div class="card">
   <div class="tbl-wrap"><table>
     <thead><tr><th>${_s.rent_col_id}</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.appt_start}</th><th>Due</th><th>${_s.ui_status}</th><th>Fee</th><th>${_s.rent_col_dep}</th><th>${_s.rent_col_late}</th><th>${_s.inv_cond_lbl}</th><th>Docs</th><th>${_s.ui_actions}</th></tr></thead>
-    <tbody id="rentals-tbody">${D.rentals.map(r=>`<tr data-status="${r.st}" data-start="${r.start}" data-date="${r.start}" data-cust="${(r.cust||'')}" data-item="${(r.item||'')}" data-id="${r.id}">
+    <tbody id="rentals-tbody">${D.rentals.map(r=>`<tr class="rental-row" style="cursor:pointer" onclick="mRentalDetail('${r.id}')" data-status="${r.st}" data-start="${r.start}" data-date="${r.start}" data-cust="${(r.cust||'')}" data-item="${(r.item||'')}" data-id="${r.id}">
       <td>${mono(r.id,'a')}</td>
       <td><strong style="color:var(--ink)">${r.cust}</strong></td>
       <td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis">${r.item}</td>
@@ -7077,14 +7077,13 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
       <td>${mono(fmt(r.dep),'y')}</td>
       <td>${mono(r.lf>0?fmt(r.lf):'—',r.lf>0?'r':'text3')}</td>
       <td><div class="cond ${cc(r.cb)}" style="font-size:10px"><div class="cdot"></div>${r.cb}${r.ca?` → ${r.ca}`:''}</div></td>
-      <td>${r.docs&&r.docs.length?`<span style="display:inline-flex;align-items:center;gap:3px;background:var(--a-dim);color:var(--a);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer" onclick="mRentalDetail('${r.id}')">📎 ${r.docs.length}</span>`:`<button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')" style="opacity:.6">+ Doc</button>`}</td>
-      <td><div class="btn-row">
+      <td onclick="event.stopPropagation()">${r.docs&&r.docs.length?`<span style="display:inline-flex;align-items:center;gap:3px;background:var(--a-dim);color:var(--a);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer" onclick="mRentalDetail('${r.id}')">📎 ${r.docs.length}</span>`:`<button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')" style="opacity:.6">+ Doc</button>`}</td>
+      <td onclick="event.stopPropagation()"><div class="btn-row">
         ${r.bal>0?`<button class="btn btn-p btn-xs" onclick="mRecordPayment('${r.id}')" title="${_s.rent_btn_payment}">💰</button>`:''}
         ${r.st==='Overdue'?`<button class="btn btn-g btn-xs" onclick="_rentalWARemind('${r.id}')" title="${_s.rent_send_wa}">💬</button>`:''}        ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-xs" onclick="mReturn('${r.id}')">↩ Return</button>`:''}
         ${BIZ.contractEnabled?`<button class="btn btn-c btn-xs" onclick="mRentalContract('${r.id}')" title="${_s.rent_btn_contract}">${r.contractSigned?'📋✓':'📋'}</button>`:''}
         <button class="btn btn-g btn-xs" onclick="genRentalReceiptDoc('${r.id}')" title="${_s.rent_btn_receipt}">🧾</button>
-        <button class="btn btn-g btn-xs" onclick="mRentalDetail('${r.id}')">${_s.ui_view}</button>
-        <button class="btn btn-g btn-xs" onclick="mEditRental('${r.id}')">✏</button>
+        <button class="btn btn-g btn-xs" onclick="mEditRental('${r.id}')" title="${_s.ui_edit||'Edit'}">✏</button>
         <button class="btn btn-d btn-xs" onclick="deleteRental('${r.id}')" title="${_s.ui_delete}">🗑</button>
       </div></td>
     </tr>`).join('')}
@@ -7777,6 +7776,14 @@ function processReturn(rid){var _s=_L();
 function mRentalDetail(id){const _s=_L();
   const r=D.rentals.find(x=>x.id===id); if(!r) return;
   const uid='rent-doc-'+id;
+  const fr = BIZ.language==='fr';
+  // Friendly period label: "7 days", "8 hours", "2 weeks" — falls back to
+  // the date range alone when the rental predates period-tracking (legacy
+  // records have r.period undefined).
+  const _periodPretty = (r.period && r.period !== 'custom' && r.units && typeof _crPeriodLabel === 'function')
+    ? (r.units + ' ' + _crPeriodLabel(r.period, r.units))
+    : '';
+  const _qty = r.qty || 1;
   modal(`Rental ${id} — ${r.cust}`,`
   <div class="stabs" id="rd-tabs-${id}" style="margin-bottom:14px">
     <button class="stab on" onclick="rdTab(this,'rd-timeline-${id}')">${_s.rent_timeline}</button>
@@ -7791,11 +7798,17 @@ function mRentalDetail(id){const _s=_L();
       ${r.st==='Returned'?`<div class="tl-item on"><div class="tl-meta">${_s.rent_st_returned}</div><div class="tl-txt">Returned in <strong>${r.ca}</strong> condition. Deposit settled.</div></div>`:''}
     </div>
     <div class="fg-2" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-      <div><div class="fl">${_s.rent_item_lbl}</div><div style="font-size:12px">${r.item}</div></div>
-      <div><div class="fl">${_s.rent_period}</div><div style="font-size:12px">${r.start} → ${r.due}</div></div>
+      <div><div class="fl">${_s.rent_item_lbl}</div><div style="font-size:12px">${_qty>1?'<strong>'+_qty+'\u00d7</strong> ':''}${r.item}</div></div>
+      <div><div class="fl">${_s.rent_period}</div><div style="font-size:12px">${r.start} \u2192 ${r.due}${_periodPretty?' <span style="color:var(--text2)">('+_periodPretty+')</span>':''}</div></div>
       <div><div class="fl">${_s.rent_fee_lbl}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.fee)}</div></div>
       <div><div class="fl">${_s.rent_dep_lbl}</div><div style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</div></div>
+      ${(r.paid||0)>0?`<div><div class="fl">${fr?'Pay\u00e9':'Amount Paid'}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.paid)}</div></div>`:''}
+      ${r.method?`<div><div class="fl">${fr?'Mode de paiement':'Payment Method'}</div><div style="font-size:12px">${_esc(r.method)}</div></div>`:''}
     </div>
+    ${r.notes?`<div style="margin-top:14px;padding:12px 14px;background:var(--bg3);border-left:3px solid var(--a);border-radius:6px">
+      <div style="font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${fr?'Notes':'Notes'} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">${fr?'(d\u00e9g\u00e2ts pr\u00e9existants & autres)':'(pre-existing damage &amp; other)'}</span></div>
+      <div style="font-size:12px;color:var(--text);white-space:pre-line;line-height:1.55">${_esc(r.notes)}</div>
+    </div>`:''}
   </div>
   <div id="rd-docs-${id}" style="display:none">
     <div class="fl" style="margin-bottom:8px">Rental Documents &amp; Photos</div>
@@ -7813,7 +7826,7 @@ function mRentalDetail(id){const _s=_L();
    ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-sm" onclick="closeModal();mReturn('${id}')">↩ Process Return</button>`:''}
    ${BIZ.contractEnabled?`<button class="btn btn-c btn-sm" onclick="mRentalContract('${id}')">📋 Contract</button>`:''}
    <button class="btn btn-g btn-sm" onclick="genRentalReceiptDoc('${id}')">🧾 Receipt</button>
-   <button class="btn btn-g btn-sm" onclick="mEditRental('${id}')">✏ Edit</button>`);
+   <button class="btn btn-g btn-sm" onclick="closeModal();mEditRental('${id}')">✏ Edit</button>`);
 }
 
 
@@ -7949,12 +7962,17 @@ function _buildContractHTML(r, sigDataUrl){var _s=_L();
 
 <div class="summary-grid">
   <div class="sg-cell">${_s.ui_customer}</div><div class="sg-cell">${cust.name||r.cust}${cust.phone?` · ${cust.phone}`:''}</div>
-  <div class="sg-cell">${_s.rent_item_lbl}</div><div class="sg-cell">${r.item}</div>
-  <div class="sg-cell">${_s.rent_period}</div><div class="sg-cell">${r.start} → ${r.due}</div>
+  <div class="sg-cell">${_s.rent_item_lbl}</div><div class="sg-cell">${(r.qty||1)>1?'<strong>'+(r.qty||1)+'\u00d7</strong> ':''}${r.item}</div>
+  <div class="sg-cell">${_s.rent_period}</div><div class="sg-cell">${r.start} \u2192 ${r.due}${(r.period && r.period!=='custom' && r.units && typeof _crPeriodLabel==='function')?` <span style="color:#6b7280">(${r.units} ${_crPeriodLabel(r.period, r.units)})</span>`:''}</div>
   <div class="sg-cell">${_s.rent_fee_lbl}</div><div class="sg-cell"><strong style="color:${accent}">${fmt(r.fee)}</strong></div>
   <div class="sg-cell">${_s.rent_sec_dep}</div><div class="sg-cell">${fmt(r.dep)}</div>
   <div class="sg-cell">${_s.rent_cond_release}</div><div class="sg-cell">${r.cb}</div>
 </div>
+
+${r.notes?`<div style="margin-bottom:18px;padding:10px 14px;background:#fafafa;border-left:3px solid ${accent};border-radius:4px;font-size:11.5px;line-height:1.6">
+  <div style="font-weight:700;color:#374151;margin-bottom:4px;font-size:11px;letter-spacing:.04em;text-transform:uppercase">${BIZ.language==='fr'?'Notes & d\u00e9g\u00e2ts pr\u00e9existants':'Notes &amp; Pre-existing Damage'}</div>
+  <div style="color:#1e293b;white-space:pre-line">${_esc(r.notes)}</div>
+</div>`:''}
 
 <div class="body-section">${bodyHtml}</div>
 
