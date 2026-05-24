@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779646524");
+console.log("ShopTrack v2.7 - build:1779646951");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -2765,7 +2765,7 @@ function _buildRecentSalesRows(range){
   sales = sales.slice().sort(function(a,b){return b.dt>a.dt?1:-1;}).slice(0,6);
   if(!sales.length) return '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:14px">No sales in this period</td></tr>';
   return sales.map(function(s){
-    return '<tr style="cursor:pointer" data-sid="'+s.id+'" onclick="mInvoice(this.dataset.sid)" title="Click to view invoice">'
+    return '<tr style="cursor:pointer" data-sid="'+s.id+'" onclick="mViewSale(this.dataset.sid)" title="Click to view sale">'
       +'<td>'+mono(s.id,'a')+'</td>'
       +'<td><strong>'+_esc(s.cust)+'</strong></td>'
       +'<td>'+mono(fmtMoney(s,"total"))+'</td>'
@@ -2794,7 +2794,7 @@ function _updateDashRecentSales(periodSales){
   var sorted=periodSales.slice().sort(function(a,b){return b.dt>a.dt?1:-1;}).slice(0,6);
   if(!sorted.length){ el.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:14px">No sales in this period</td></tr>'; return; }
   el.innerHTML=sorted.map(function(s){
-    return '<tr style="cursor:pointer" data-sid="'+s.id+'" onclick="mInvoice(this.dataset.sid)" title="View invoice">'
+    return '<tr style="cursor:pointer" data-sid="'+s.id+'" onclick="mViewSale(this.dataset.sid)" title="View sale">'
       +'<td>'+mono(s.id,'a')+'</td>'
       +'<td><strong>'+_esc(s.cust)+'</strong></td>'
       +'<td>'+mono(fmtMoney(s,"total"))+'</td>'
@@ -3523,7 +3523,7 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
   <div class="card">
     <div class="card-hd"><div class="card-ttl">${_s.dash_recent_appts}</div><button class="btn btn-g btn-sm" onclick="nav('appointments')">${_s.dash_view_all}</button></div>
     <div class="tbl-wrap"><table><thead><tr><th>${_s.dash_col_ref}</th><th>${_s.dash_col_cust}</th><th>${_s.dash_col_service}</th><th>${_s.dash_col_date}</th><th>${_s.dash_col_status}</th></tr></thead><tbody>
-    ${(D.appointments||[]).slice(0,5).map(a=>`<tr style="cursor:pointer" onclick="genApptInvoice('${a.id}')" title="${_s.dash_view_invoice}">
+    ${(D.appointments||[]).slice(0,5).map(a=>`<tr style="cursor:pointer" onclick="mViewAppt('${a.id}')" title="${_s.dash_view_appt||'View appointment'}">
       <td>${mono(a.id,'a')}</td><td><strong>${_esc(a.custName)}</strong></td>
       <td style="font-size:11px">${_esc(a.serviceName||'—')}</td>
       <td style="font-size:11px;color:var(--text2)">${a.date}</td>
@@ -36273,6 +36273,33 @@ function refreshNotifPanel(){
           <div class="np-item-desc">${tmrAppts.slice(0,3).map(function(a){return _esc(a.custName);}).join(', ')}${tmrAppts.length>3?' +more':''}</div>
         </div>
         <button class="np-act-btn" onclick="event.stopPropagation();_apptSendReminders()">Remind 💬</button>
+      </div>`;
+    }
+
+    // ── Pending confirmation (Reserved appointments) ─────────
+    // Surfaces all appointments still in Reserved status regardless of
+    // date, so the bell count matches what the user thinks of as
+    // 'reservations awaiting confirmation' — and matches the Pending
+    // KPI tile on the Appointments page exactly.
+    const pendingConfirm = (D.appointments||[]).filter(function(a){
+      return a.st==='Reserved' && a.date>=today;
+    });
+    if(pendingConfirm.length){
+      count += pendingConfirm.length;
+      const confirmLines = pendingConfirm.slice(0,4).map(function(a){
+        return `<div class="np-sub-row" onclick="event.stopPropagation();${_close}mViewAppt('${a.id}')">`
+          +`<span class="np-sub-time">${a.date}</span>`
+          +`<span class="np-sub-name">${_esc(a.custName)}</span>`
+          +`<span class="np-sub-svc">${_esc(a.serviceName||'')}</span>`
+          +`</div>`;
+      }).join('');
+      html += `<div class="np-item np-item-p np-expandable" onclick="${_close}nav('appointments');setTimeout(function(){_apptFilter&&_apptFilter('pending');},120)">
+        <div class="np-item-icon">⏳</div>
+        <div class="np-item-body" style="flex:1">
+          <div class="np-item-title">${pendingConfirm.length} pending confirmation${pendingConfirm.length>1?'s':''}</div>
+          <div class="np-sub-list">${confirmLines}${pendingConfirm.length>4?`<div class="np-sub-more">+${pendingConfirm.length-4} more →</div>`:''}</div>
+        </div>
+        <button class="np-act-btn" onclick="event.stopPropagation();_apptBulkConfirm()">Confirm all ✓</button>
       </div>`;
     }
 
