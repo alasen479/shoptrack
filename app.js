@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779649151");
+console.log("ShopTrack v2.7 - build:1779650347");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1631,20 +1631,49 @@ function _csLineChange(sel){
   var val = sel.value;
   var row = sel.closest('.cs-line-row');
   var priceEl = row ? row.querySelector('.cs-line-price') : null;
+  // Resolve the picked item (inventory or service) for both the
+  // per-line price and the per-unit cost hint shown beneath.
+  var resolvedCost = null;
   if(val && val.startsWith('svc:')){
     // Service item
     var svcId = val.replace('svc:','');
     var svc = D.services.find(function(x){return x.id===svcId;});
     if(svc && priceEl) priceEl.value = Math.round((svc.price||0)*CUR.rate)||'';
+    // Services have no inventory cost — leave the hint blank
   } else if(val && val.startsWith('inv:')){
     // Inventory item
     var invId2 = val.replace('inv:','');
     var it = D.inv.find(function(x){return x.id===invId2;});
-    if(it && priceEl) priceEl.value = Math.round((it.sp||0)*CUR.rate)||'';
+    if(it){
+      if(priceEl) priceEl.value = Math.round((it.sp||0)*CUR.rate)||'';
+      resolvedCost = (it.cost||0) * CUR.rate;
+    }
   } else if(val && val !== '__custom__'){
     // Legacy plain invId (backwards compat)
     var it2 = D.inv.find(function(x){return x.id===val;});
-    if(it2 && priceEl) priceEl.value = Math.round((it2.sp||0)*CUR.rate)||'';
+    if(it2){
+      if(priceEl) priceEl.value = Math.round((it2.sp||0)*CUR.rate)||'';
+      resolvedCost = (it2.cost||0) * CUR.rate;
+    }
+  }
+  // Render / clear the per-unit cost hint shown beneath the price input.
+  // Lets the user see the margin implication of any discount they apply
+  // without having to mentally cross-reference the bottom COGS field.
+  if(row){
+    var hint = row.querySelector('.cs-line-cost-hint');
+    if(resolvedCost != null && resolvedCost > 0){
+      if(!hint){
+        hint = document.createElement('div');
+        hint.className = 'cs-line-cost-hint';
+        hint.style.cssText = 'grid-column:1/-1;font-size:10px;color:var(--text2);margin-top:-4px;padding-left:2px;letter-spacing:.2px';
+        row.appendChild(hint);
+      }
+      hint.innerHTML = (BIZ.language==='fr'?'Coût unitaire:':'Unit cost:')
+        + ' <strong style="color:var(--ink);font-family:var(--mono)">'
+        + fmtRaw(resolvedCost) + '</strong>';
+    } else if(hint){
+      hint.remove();
+    }
   }
   // Update description field
   var allNames = Array.from(document.querySelectorAll('.cs-inv-sel')).map(function(s){
@@ -1677,11 +1706,11 @@ function _csRecalcCOGS(){
     var sel = row.querySelector('.cs-inv-sel');
     if(!sel || !sel.value) return;
     var val = sel.value;
-    // Only inventory items contribute COGS — services have no COGS,
-    // custom items have no known cost.
-    if(!val.startsWith('inv:') && !(val !== '__custom__' && val !== '' && !val.startsWith('svc:'))) return;
-    var invId = val.startsWith('inv:') ? val.replace('inv:','') : val;
-    if(invId === '__custom__') return;
+    // Inventory items can be referenced as 'inv:INV-001' (preferred) or
+    // a bare 'INV-001' (legacy). Services have an 'svc:' prefix; custom
+    // and blank skip. Normalize to a plain id and match against D.inv.
+    if(val === '__custom__' || val.startsWith('svc:')) return;
+    var invId = val.startsWith('inv:') ? val.slice(4) : val;
     var it = D.inv.find(function(x){return x.id===invId;});
     if(!it) return;
     var qty = parseFloat(row.querySelector('.cs-line-qty')?.value)||1;
@@ -1789,14 +1818,28 @@ function _csCheckCostWarn(){
 function _poAddLine(){const _s=_L();
   var row=document.createElement('div');
   row.className='po-line-row';
-  row.style.cssText='display:grid;grid-template-columns:1fr auto auto auto;gap:6px;margin-bottom:6px;align-items:center';
+  row.style.cssText='display:flex;flex-direction:column;gap:6px;margin-bottom:8px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2)';
   var invOpts=D.inv.map(function(i){return '<option value="'+i.id+'" data-cost="'+Math.round((i.cost||0)*CUR.rate)+'" data-name="'+i.name+(i.sku?' ('+i.sku+')':'')+'">'
     +i.name+' (stock: '+(i.qty||0)+') — '+fmt(i.cost||0)+'/unit</option>';}).join('');
-  row.innerHTML='<select class="fs po-inv-sel" onchange="_poLineChange(this)"><option value="">-- Link to inventory --</option>'+invOpts
-    +'<option value="__custom__">── Custom item ──</option></select>'
-    +'<input class="fi po-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" placeholder="Qty" oninput="_poRecalcTotal()"/>'
-    +'<input class="fi po-line-cost" type="number" placeholder="'+_s.po_unit_cost+'" style="width:90px" oninput="_poRecalcTotal()"/>'
-    +'<button type="button" class="btn btn-d btn-xs" onclick="_poRemoveLine(this)" style="padding:6px 8px">✕</button>';
+  // Top row: inventory select + qty + cost + remove (same layout as before)
+  // Second row (hidden until 'Custom' is selected): item name + type selector
+  // for auto-creating the inventory record on receive.
+  row.innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:center">'
+    + '<select class="fs po-inv-sel" onchange="_poLineChange(this)"><option value="">-- Link to inventory --</option>'+invOpts
+    + '<option value="__custom__">── Custom / new item ──</option></select>'
+    + '<input class="fi po-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" placeholder="Qty" oninput="_poRecalcTotal()"/>'
+    + '<input class="fi po-line-cost" type="number" placeholder="'+_s.po_unit_cost+'" style="width:90px" oninput="_poRecalcTotal()"/>'
+    + '<button type="button" class="btn btn-d btn-xs" onclick="_poRemoveLine(this)" style="padding:6px 8px">✕</button>'
+    + '</div>'
+    + '<div class="po-line-custom" style="display:none;gap:6px;align-items:center;padding-left:2px">'
+    +   '<input class="fi po-line-name" type="text" placeholder="'+(BIZ.language==='fr'?'Nom du nouvel article':'New item name (will be auto-created on receive)')+'" style="flex:1;min-width:140px"/>'
+    +   '<select class="fs po-line-type" title="'+(BIZ.language==='fr'?'Type d\'inventaire':'Inventory type')+'" style="width:170px">'
+    +     '<option value="resale">'+(BIZ.language==='fr'?'Revente':'For Resale')+'</option>'
+    +     '<option value="raw_material">'+(BIZ.language==='fr'?'Matière première':'Raw Material')+'</option>'
+    +     '<option value="recipe_ingredient">'+(BIZ.language==='fr'?'Ingrédient':'Recipe Ingredient')+'</option>'
+    +   '</select>'
+    + '</div>';
   var c=document.getElementById('po-line-rows'); if(c) c.appendChild(row);
 }
 function _poRemoveLine(btn){
@@ -1809,8 +1852,29 @@ function _poLineChange(sel){
   var it=D.inv.find(function(x){return x.id===sel.value;});
   var row=sel.closest('.po-line-row');
   if(it&&row){var c=row.querySelector('.po-line-cost');if(c)c.value=Math.round((it.cost||0)*CUR.rate)||'';}
+  // Show/hide the custom-item row (name + type) based on whether
+  // '__custom__' was picked. The selector and inputs remain rendered
+  // so their values can be read on save regardless of toggle state.
+  if(row){
+    var customRow = row.querySelector('.po-line-custom');
+    if(customRow){
+      customRow.style.display = (sel.value === '__custom__') ? 'flex' : 'none';
+      if(sel.value === '__custom__'){
+        var nameInp = customRow.querySelector('.po-line-name');
+        if(nameInp && !nameInp.value) setTimeout(function(){nameInp.focus();}, 50);
+      }
+    }
+  }
   var allNames=Array.from(document.querySelectorAll('.po-inv-sel')).map(function(s){
-    var o=s.options[s.selectedIndex];return o&&o.dataset.name?o.dataset.name:(s.value==='__custom__'?'Custom':'');
+    var o=s.options[s.selectedIndex];
+    // For custom rows, use the typed name if available so the
+    // auto-summary 'po-items' field stays accurate.
+    if(s.value === '__custom__'){
+      var pr = s.closest('.po-line-row');
+      var nm = pr && pr.querySelector('.po-line-name');
+      return (nm && nm.value.trim()) || 'Custom';
+    }
+    return o&&o.dataset.name?o.dataset.name:'';
   }).filter(Boolean);
   var d=document.getElementById('po-items');if(d)d.value=allNames.join(', ');
 
@@ -9422,15 +9486,25 @@ function mRecordPurchase(){const _s=_L();
       <span style="font-size:10px;color:var(--a);margin-left:6px;cursor:pointer" onclick="_mPush('po-inv-0');mAddItem('po-inv-0')">+ New Item</span>
     </label>
     <div id="po-line-rows">
-      <div class="po-line-row" style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px;margin-bottom:6px;align-items:center">
-        <select class="fs po-inv-sel" onchange="_poLineChange(this)">
-          <option value="">-- Link to inventory (optional) --</option>
-          ${D.inv.map(i=>`<option value="${i.id}" data-cost="${Math.round((i.cost||0)*CUR.rate)}" data-name="${i.name}${i.sku?' ('+i.sku+')':''}">${i.name} (stock: ${i.qty||0}) — ${fmt(i.cost||0)}/unit</option>`).join('')}
-          <option value="__custom__">── Custom / not in inventory ──</option>
-        </select>
-        <input class="fi po-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" placeholder="Qty" oninput="_poRecalcTotal()"/>
-        <input class="fi po-line-cost" type="number" placeholder="${_s.po_unit_cost}" style="width:90px" oninput="_poRecalcTotal()"/>
-        <button type="button" class="btn btn-d btn-xs" onclick="_poRemoveLine(this)" style="padding:6px 8px">✕</button>
+      <div class="po-line-row" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2)">
+        <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:center">
+          <select class="fs po-inv-sel" onchange="_poLineChange(this)">
+            <option value="">-- Link to inventory (optional) --</option>
+            ${D.inv.map(i=>`<option value="${i.id}" data-cost="${Math.round((i.cost||0)*CUR.rate)}" data-name="${i.name}${i.sku?' ('+i.sku+')':''}">${i.name} (stock: ${i.qty||0}) — ${fmt(i.cost||0)}/unit</option>`).join('')}
+            <option value="__custom__">── Custom / new item ──</option>
+          </select>
+          <input class="fi po-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" placeholder="Qty" oninput="_poRecalcTotal()"/>
+          <input class="fi po-line-cost" type="number" placeholder="${_s.po_unit_cost}" style="width:90px" oninput="_poRecalcTotal()"/>
+          <button type="button" class="btn btn-d btn-xs" onclick="_poRemoveLine(this)" style="padding:6px 8px">✕</button>
+        </div>
+        <div class="po-line-custom" style="display:none;gap:6px;align-items:center;padding-left:2px">
+          <input class="fi po-line-name" type="text" placeholder="${BIZ.language==='fr'?'Nom du nouvel article':'New item name (will be auto-created on receive)'}" style="flex:1;min-width:140px"/>
+          <select class="fs po-line-type" title="${BIZ.language==='fr'?"Type d'inventaire":'Inventory type'}" style="width:170px">
+            <option value="resale">${BIZ.language==='fr'?'Revente':'For Resale'}</option>
+            <option value="raw_material">${BIZ.language==='fr'?'Matière première':'Raw Material'}</option>
+            <option value="recipe_ingredient">${BIZ.language==='fr'?'Ingrédient':'Recipe Ingredient'}</option>
+          </select>
+        </div>
       </div>
     </div>
     <button type="button" class="btn btn-s btn-sm" style="margin-top:4px" onclick="_poAddLine()">+ Add Item</button>
@@ -9491,8 +9565,20 @@ function savePO(){var _s=_L();
     var uc=parseFloat(row.querySelector('.po-line-cost')?.value)||0;
     var invId2=sel?sel.value:'';
     var opt=sel?sel.options[sel.selectedIndex]:null;
-    var name=(opt&&opt.dataset.name)?opt.dataset.name:(invId2==='__custom__'?'Custom':'');
-    return {invId:invId2,qty,uc,name};
+    var name=(opt&&opt.dataset.name)?opt.dataset.name:'';
+    // Custom item path: pull the typed name + chosen inventory type
+    // from the second-row inputs. The type controls what kind of
+    // inventory record gets auto-created at receive time.
+    var itemType = null;
+    if(invId2==='__custom__'){
+      var nameInp = row.querySelector('.po-line-name');
+      var typeSel = row.querySelector('.po-line-type');
+      name = (nameInp && nameInp.value.trim()) || '';
+      itemType = (typeSel && typeSel.value) || 'resale';
+    }
+    var line = {invId:invId2,qty:qty,uc:uc,name:name||'Custom'};
+    if(itemType) line.itemType = itemType;
+    return line;
   }).filter(function(r){return r.uc>0||r.invId;});
   var sub=poLines.reduce(function(a,r){return a+r.qty*r.uc;},0)/rr;
   var totalQty=poLines.reduce(function(a,r){return a+r.qty;},0)||1;
@@ -29202,6 +29288,11 @@ function _saveReceiveItems(id){
         return n>m?n:m;
       }, 0);
       var newId = 'INV-'+String(maxN+1).padStart(3,'0');
+      // Honour the type declared at PO entry time. Raw materials and
+      // recipe ingredients don't need a sales price and are not
+      // flagged as needsPrice — they're consumed in production or
+      // held for repair stock, not sold.
+      var lineType = li.itemType || 'resale';
       var newItem = {
         id: newId,
         sku: '',
@@ -29210,8 +29301,8 @@ function _saveReceiveItems(id){
         brand: '',
         st: 'For Sale',
         cond: 'Good',
-        itemType: 'resale',          // owner can change later
-        needsPrice: true,             // flag — owner must enter sale price
+        itemType: lineType,
+        needsPrice: lineType === 'resale',  // only resale items need a sale price
         sp: 0,
         cost: Math.round(landedUnit * 10000) / 10000,
         rp: 0, dep: 0, minSp: 0, minStock: 0,
@@ -29227,7 +29318,9 @@ function _saveReceiveItems(id){
       D.inv.push(newItem);
       li.invId = newId;  // link PO line to the freshly-created item
       _dbSaveInv(newItem, +addQty);
-      _autoCreated.push(lineName);
+      // Only surface in the "needs pricing" toast list when it's a
+      // resale item — raw materials and ingredients don't need a price.
+      if(lineType === 'resale') _autoCreated.push(lineName);
       return;
     }
 
