@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779650347");
+console.log("ShopTrack v2.7 - build:1779651547");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -19107,10 +19107,16 @@ async function _sbUpsertWithFallback(table, payload, ctx){var _s=_L();
     return {ok:true, data};
   }
 
-  // PGRST204: column missing — dynamically detect and strip, retry up to 10 times
+  // PGRST204: column missing — dynamically detect and strip, retry up to 25 times.
+  // Older deployments missing 10+ added columns (taxes, freight, duties,
+  // payments, lines_received, all _native/_currency variants, item_type,
+  // needs_price, etc.) need more than the original 10 attempts. Each
+  // retry removes exactly one column reported by Postgres, so the
+  // ceiling needs to comfortably exceed the count of post-launch
+  // additions to any one table.
   if(error.code==='PGRST204' || (error.message||'').includes('column')){
     var safe = Object.assign({}, payload);
-    var maxRetries = 10;
+    var maxRetries = 25;
     for(var _retry=0; _retry<maxRetries; _retry++){
       // Extract the missing column name from error message
       // Format: "Could not find the 'xxx' column of 'table' in the schema cache"
@@ -19183,6 +19189,15 @@ async function _sbUpsertWithFallback(table, payload, ctx){var _s=_L();
     }
   }
 
+  // If we reach here with a column error, _sbUpsertWithFallback's strip
+  // retries didn't get us home. Log but DON'T toast — the local IDB
+  // copy is intact, the user's outer save logic may retry, and a
+  // schema migration will resolve it. A loud toast would imply data
+  // loss when nothing was lost.
+  if(error.code==='PGRST204' || (error.message||'').includes('column')){
+    console.error('['+ctx+'] FAILED (schema mismatch — local copy intact):', error.code, error.message);
+    return {ok:false, error};
+  }
   console.error('['+ctx+'] FAILED:', error.code, error.message);
   toast(_L().t_save_error+error.code+'): '+error.message.slice(0,80),'error');
   return {ok:false, error};
@@ -19744,30 +19759,39 @@ async function _dbSaveInv(item, qtyDelta){
     await _queueEnqueue(SESSION.bizId, 'inventory', _ip, qtyDelta);
     var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
   }
-  var result = await _safeUpsert('inventory', _invToDB(item, SESSION.bizId), 'saveInv');
-  if(result && !result.ok){
-    // If new columns aren't yet in the schema, retry without them. Local
-    // IDB copy preserves the values and they sync once migration runs.
-    var errMsg = (result.error && (result.error.message || result.error.code)) || '';
-    if(/vendor_id|recipe|_native|_currency|item_type|needs_price/i.test(errMsg)){
-      console.warn('[saveInv] new columns not yet in schema; retrying without them.');
-      var payload = _invToDB(item, SESSION.bizId);
-      delete payload.vendor_id;
-      delete payload.recipe;
-      delete payload.item_type;
-      delete payload.needs_price;
-      delete payload.sp_native;     delete payload.sp_currency;
-      delete payload.cost_native;   delete payload.cost_currency;
-      delete payload.rp_native;     delete payload.rp_currency;
-      delete payload.min_sp_native; delete payload.min_sp_currency;
-      delete payload.dep_native;    delete payload.dep_currency;
-      var retry = await _safeUpsert('inventory', payload, 'saveInv');
-      if(retry && retry.ok) return;
-      if(retry) console.error('[saveInv] retry FAILED for '+item.id+':', retry.error);
+
+  // Iterative strip-and-retry — see _dbSavePurchase for the rationale.
+  // Avoids needing to maintain a hardcoded allow-list of missing-column
+  // names every time we add a new field.
+  var payload = _invToDB(item, SESSION.bizId);
+  var attempts = 0;
+  var maxAttempts = 16;
+  var stripped = [];
+  while(attempts++ < maxAttempts){
+    var result = await _safeUpsert('inventory', payload, 'saveInv');
+    if(!result || result.ok){
+      if(stripped.length){
+        console.warn('[saveInv] saved OK after stripping (retry '+(attempts-1)+') | columns:',
+          stripped.join(','));
+      }
       return;
     }
-    console.error('[saveInv] FAILED for '+item.id+' ('+item.name+'):', result.error);
+    var errMsg = (result.error && (result.error.message || result.error.code)) || '';
+    var colMatch = errMsg.match(/Could not find the '([^']+)' column/i);
+    if(!colMatch){
+      console.error('[saveInv] FAILED for '+item.id+' ('+item.name+'):', result.error);
+      return;
+    }
+    var col = colMatch[1];
+    if(!(col in payload)){
+      console.error('[saveInv] reported missing column "'+col+'" not in payload:', result.error);
+      return;
+    }
+    delete payload[col];
+    stripped.push(col);
+    console.warn('[saveInv] Stripping missing column: '+col+' (retry '+attempts+')');
   }
+  console.error('[saveInv] gave up after '+maxAttempts+' retries; missing cols:', stripped.join(','));
 }
 async function _dbDelInv(id){
   if(!SESSION.bizId) return;
@@ -20025,28 +20049,45 @@ async function _dbSavePurchase(p){
   if(_idx>=0) D.purchases[_idx]=p; else D.purchases.unshift(p);
   _idbSave(SESSION.bizId,'purchases',D.purchases).catch(function(){});
   if(!_sb||!navigator.onLine) return;
-  var result = await _safeUpsert('purchases', _purchaseToDB(p, SESSION.bizId), 'savePurchase');
-  if(result && !result.ok){
-    var errMsg = (result.error && (result.error.message || result.error.code)) || '';
-    // If new columns aren't yet present in the schema, strip them and retry.
-    if(/\b(paid|bal|payments|lines_received)\b|_native|_currency/i.test(errMsg)){
-      console.warn('[savePurchase] new columns not yet in schema; retrying without them.');
-      var payload = _purchaseToDB(p, SESSION.bizId);
-      delete payload.paid; delete payload.bal; delete payload.payments; delete payload.lines_received;
-      delete payload.subtotal_native; delete payload.subtotal_currency;
-      delete payload.freight_native;  delete payload.freight_currency;
-      delete payload.duties_native;   delete payload.duties_currency;
-      delete payload.taxes_native;    delete payload.taxes_currency;
-      delete payload.other_native;    delete payload.other_currency;
-      delete payload.total_native;    delete payload.total_currency;
-      delete payload.paid_native;     delete payload.paid_currency;
-      var retry = await _safeUpsert('purchases', payload, 'savePurchase');
-      if(retry && retry.ok) return;
-      if(retry) console.error('[savePurchase] retry FAILED for '+p.id+':', retry.error);
+
+  // PGRST204 errors name the offending column in the message:
+  //   "Could not find the 'taxes' column of 'purchases' in the schema cache"
+  // The fixed allow-list of strippable columns kept missing newly-added
+  // schema fields (taxes, freight, duties, other) on older deployments,
+  // making every save fail permanently. Instead, parse the column name
+  // out of the error and strip it, then retry — up to a small ceiling
+  // so a runaway schema mismatch eventually surfaces.
+  var payload = _purchaseToDB(p, SESSION.bizId);
+  var attempts = 0;
+  var maxAttempts = 12;
+  var stripped = [];
+  while(attempts++ < maxAttempts){
+    var result = await _safeUpsert('purchases', payload, 'savePurchase');
+    if(!result || result.ok) {
+      if(stripped.length){
+        console.warn('[savePurchase] saved OK after stripping (retry '+(attempts-1)+') |',
+          'missing cols:', stripped.join(','));
+      }
       return;
     }
-    console.error('[savePurchase] FAILED for '+p.id+':', result.error);
+    var errMsg = (result.error && (result.error.message || result.error.code)) || '';
+    // Extract the column name from PGRST204 messages.
+    var colMatch = errMsg.match(/Could not find the '([^']+)' column/i);
+    if(!colMatch) {
+      console.error('[savePurchase] FAILED for '+p.id+':', result.error);
+      return;
+    }
+    var col = colMatch[1];
+    if(!(col in payload)) {
+      // Already removed, or never present — bail to avoid infinite loop
+      console.error('[savePurchase] reported missing column "'+col+'" not in payload:', result.error);
+      return;
+    }
+    delete payload[col];
+    stripped.push(col);
+    console.warn('[savePurchase] Stripping missing column: '+col+' (retry '+attempts+')');
   }
+  console.error('[savePurchase] gave up after '+maxAttempts+' retries; missing cols:', stripped.join(','));
 }
 async function _dbDelPurchase(id){
   if(!SESSION.bizId) return;
@@ -28396,7 +28437,22 @@ function _poFilter(){
   const kTotal   = matching.reduce(function(a,p){return a+(p.total||0);},0);
   const kPending = matching.filter(function(p){return p.st==='Pending'||p.st==='Partial';}).length;
   const kPaid    = matching.filter(function(p){return p.st==='Paid'||p.st==='Received';}).length;
-    var kAP=matching.filter(function(p){return p.st==='Pending'||p.st==='Partial'||p.st==='Unpaid';}).reduce(function(a,p){return a+(p.total||0);},0);
+  // AP — same partial-payment-aware live calc as the initial render and
+  // the dashboard. Counts any PO that isn't fully Paid, summing the
+  // outstanding (total - paid). The previous version filtered by an
+  // explicit status whitelist that excluded 'Received' POs entirely
+  // (a Received PO can still have a balance owed!), and summed the
+  // full PO total instead of the outstanding — making AP either
+  // zero (when all POs were Received with balance) or inflated
+  // (when status was Partial but most of the PO had been paid).
+  // NB: runs against ALL purchases, not the period-filtered subset,
+  // because money owed to a vendor is owed regardless of when the
+  // PO was issued — same convention as the dashboard.
+  var kAP = D.purchases.reduce(function(a,p){
+    if(p.st==='Paid') return a;
+    var bal = (p.total||0) - (p.paid||0);
+    return a + (bal > 0.01 ? bal : 0);
+  }, 0);
   _setKpiVal('po-kpi-total',   fmtKpi(kTotal));
     _setKpiVal('po-kpi-ap',      fmtKpi(kAP));
   _setKpiVal('po-kpi-pending', String(kPending));
