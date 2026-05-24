@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779652351");
+console.log("ShopTrack v2.7 - build:1779652636");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -8845,10 +8845,89 @@ async function _recoverPurchases(){
     return;
   }
   var fr = BIZ.language==='fr';
+  var bizId = SESSION.bizId;
+
+  // ── STAGE 0: DIAGNOSTICS ──────────────────────────────────────
+  // Before trying to recover, figure out where the data IS. Three
+  // possible truths and we need to know which one is in play:
+  //   (A) Rows exist for THIS biz_id → just slim retry, schema issue
+  //   (B) Rows exist under a DIFFERENT biz_id → silent migration or
+  //       login mismatch; show the user where they are
+  //   (C) No rows anywhere in this Supabase project → cloud truly
+  //       has nothing. Check IDB raw store for forensic recovery.
+  console.log('[recoverPurchases] === DIAGNOSTIC PHASE ===');
+  console.log('[recoverPurchases] current SESSION.bizId:', bizId);
+  console.log('[recoverPurchases] current BIZ.name:', BIZ.name);
+
+  // Pull a count by biz_id (no filter) so we can detect mismatches.
+  // Limit to 100 rows just to enumerate distinct biz_ids — we don't
+  // actually need every row at this stage.
+  var diagRows = null;
+  try {
+    var diag = await _sb.from('purchases')
+      .select('id,biz_id,date,vendor,total,status')
+      .limit(100);
+    if(!diag.error && diag.data){
+      diagRows = diag.data;
+      var bizMap = {};
+      diagRows.forEach(function(r){
+        var b = r.biz_id || '(null)';
+        bizMap[b] = (bizMap[b]||0) + 1;
+      });
+      console.log('[recoverPurchases] purchases visible across biz_ids:', bizMap);
+      console.log('[recoverPurchases] sample rows:', diagRows.slice(0,5));
+    } else if(diag.error){
+      console.warn('[recoverPurchases] diagnostic query failed:', diag.error.message);
+    }
+  } catch(e){
+    console.warn('[recoverPurchases] diagnostic threw:', e.message);
+  }
+
+  // If diagnostics returned rows but none with our biz_id, surface that
+  if(diagRows && diagRows.length){
+    var matching = diagRows.filter(function(r){ return r.biz_id === bizId; });
+    var otherBizIds = {};
+    diagRows.forEach(function(r){
+      if(r.biz_id !== bizId) otherBizIds[r.biz_id || '(null)'] = true;
+    });
+    var otherList = Object.keys(otherBizIds);
+    if(matching.length === 0 && otherList.length > 0){
+      console.warn('[recoverPurchases] biz_id MISMATCH — your session biz_id is "'+bizId+
+        '" but cloud has purchases for: '+otherList.join(', '));
+      // Try to recover under each other biz_id and re-tag to ours
+      var bestOther = otherList[0];
+      var sampleForOther = diagRows.filter(function(r){return r.biz_id===bestOther;});
+      toast(fr
+        ? 'Décalage biz_id détecté. '+sampleForOther.length+' commande(s) trouvée(s) sous "'+bestOther+'". Réattribution…'
+        : 'biz_id mismatch detected. '+sampleForOther.length+' PO(s) found under "'+bestOther+'". Re-tagging to your session…',
+        'warn');
+      // Fetch full rows under the other biz_id
+      try {
+        var rescue = await _sb.from('purchases').select('*').eq('biz_id', bestOther).limit(2000);
+        if(!rescue.error && rescue.data && rescue.data.length){
+          var rescued = rescue.data.map(function(r){
+            // Re-tag in memory only — do NOT write back to cloud with the
+            // new biz_id (that's destructive). Just show them locally and
+            // let the user re-save if they want to migrate.
+            r.biz_id = bizId;
+            return _dbToPurchase(r);
+          });
+          D.purchases = rescued;
+          try { await _idbSave(bizId, 'purchases', D.purchases); } catch(_){}
+          toast(fr
+            ? "Récupéré "+rescued.length+" commande(s) sous l'autre biz_id"
+            : 'Recovered '+rescued.length+' PO(s) from different biz_id (shown locally; save to migrate)',
+            'success');
+          addAudit('Purchases recovered (biz_id mismatch)', rescued.length+' POs from '+bestOther);
+          if(curPage === 'purchases') setTimeout(function(){ nav('purchases'); }, 600);
+          return;
+        }
+      } catch(re){ console.warn('[recoverPurchases] cross-biz rescue failed:', re.message); }
+    }
+  }
+
   toast(fr?'Récupération en cours…':'Recovering purchase orders from cloud…', 'info');
 
-  // Show a progress-style toast — we replace it as each attempt resolves
-  var bizId = SESSION.bizId;
   var attempts = [
     {
       label: 'full',
@@ -8877,9 +8956,6 @@ async function _recoverPurchases(){
     {
       label: 'ids-only',
       query: function(){
-        // Last resort — just confirms existence. Maps as skeleton rows
-        // that the user can re-enter cost data on without losing track
-        // of the IDs / vendor / status.
         return _sb.from('purchases')
           .select('id,biz_id,vendor,status,date,total')
           .eq('biz_id', bizId)
@@ -8918,9 +8994,32 @@ async function _recoverPurchases(){
   }
 
   if(rows.length === 0){
-    // The server has zero rows. This means the cloud copy IS empty.
-    // Don't touch IDB — preserve whatever local cache has.
+    // Cloud is empty for this biz_id. Before giving up, look directly
+    // in IDB raw storage — D.purchases may be empty in memory because
+    // the last load wiped it, but the underlying IndexedDB store might
+    // still hold the data from a healthier earlier session.
+    console.log('[recoverPurchases] cloud empty — checking IDB raw storage…');
+    var idbRescued = null;
+    try {
+      idbRescued = await _idbLoad(bizId, 'purchases');
+      if(idbRescued && Array.isArray(idbRescued)){
+        console.log('[recoverPurchases] IDB raw has', idbRescued.length, 'rows');
+      }
+    } catch(ie){
+      console.warn('[recoverPurchases] IDB raw load failed:', ie.message);
+    }
     var localCount = (D.purchases||[]).length;
+    if(idbRescued && idbRescued.length > 0){
+      // Restore from IDB even if memory was empty
+      D.purchases = idbRescued;
+      toast(fr
+        ? 'Récupéré '+idbRescued.length+' commande(s) depuis le cache local IndexedDB.'
+        : 'Recovered '+idbRescued.length+' PO(s) from local IndexedDB cache.',
+        'success');
+      addAudit('Purchases restored from IDB', idbRescued.length+' POs');
+      if(curPage === 'purchases') setTimeout(function(){ nav('purchases'); }, 600);
+      return;
+    }
     if(localCount > 0){
       toast(fr
         ? "Le serveur n'a aucune commande, mais "+localCount+" trouvée(s) localement. Conservées."
@@ -8928,9 +9027,9 @@ async function _recoverPurchases(){
         'warn');
     } else {
       toast(fr
-        ? 'Aucune commande trouvée — ni sur le serveur ni localement.'
-        : 'No purchase orders found — server and local cache both empty.',
-        'info');
+        ? 'Aucune commande trouvée — ni sur le serveur, ni localement, ni dans IndexedDB.'
+        : 'No purchase orders found — server, memory, and IndexedDB all empty. The records may have been deleted.',
+        'error');
     }
     return;
   }
@@ -9076,7 +9175,6 @@ function pgPurchases(){const _s=_L();const _ui=_s;
     <div class="btn-row">
       <button class="btn btn-s btn-sm" onclick="exportPurchasesCSV()">⬇ CSV</button>
       <button class="btn btn-g btn-sm" onclick="exportPurchasesPDF()">⬇ PDF</button>
-      <button class="btn btn-g btn-sm" onclick="_recoverPurchases()" title="${BIZ.language==='fr'?'Récupérer les commandes depuis le serveur si elles ont disparu':'Re-fetch purchase orders from cloud (use if POs are missing)'}">🩺 ${BIZ.language==='fr'?'Récupérer':'Recover'}</button>
       <button class="btn btn-p btn-sm" onclick="mRecordPurchase()">${_ui.btn_new_po}</button>
     </div>
   </div>
@@ -9131,9 +9229,8 @@ function pgPurchases(){const _s=_L();const _ui=_s;
         <div style="font-size:12px;margin-bottom:14px">${_s.exp_no_data}</div>
         <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
           <button class="btn btn-p btn-sm" onclick="mRecordPurchase()">+ ${BIZ.language==='fr'?'Nouvelle commande':'New Purchase Order'}</button>
-          <button class="btn btn-g btn-sm" onclick="_recoverPurchases()" title="${BIZ.language==='fr'?'Récupérer les commandes manquantes depuis le serveur':'Re-fetch missing POs from cloud'}">🩺 ${BIZ.language==='fr'?'Récupérer du serveur':'Recover from cloud'}</button>
+          <button class="btn btn-g btn-sm" onclick="_recoverPurchases()" title="${BIZ.language==='fr'?'Récupérer les commandes manquantes':"Re-fetch from cloud if POs are missing"}">${BIZ.language==='fr'?'Récupérer':'Recover from cloud'}</button>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:10px;max-width:380px;margin-left:auto;margin-right:auto">${BIZ.language==='fr'?'Si vous voyez ce message mais que vous savez avoir des commandes, cliquez sur Récupérer.':"If you know you have purchase orders but they're not showing, click Recover."}</div>
       </div>
       <div id="po-footer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)">
         <span id="po-footer-count"></span>
@@ -9159,7 +9256,6 @@ function pgPurchases(){const _s=_L();const _ui=_s;
         <button class="btn btn-s btn-sm" onclick="nav('vendors')" style="width:100%">👥 Manage Vendors</button>
         <button class="btn btn-s btn-sm" onclick="exportPurchasesCSV()" style="width:100%">⬇ Export CSV</button>
         <button class="btn btn-g btn-sm" onclick="exportPurchasesPDF()" style="width:100%">⬇ Export PDF</button>
-        <button class="btn btn-g btn-sm" onclick="_recoverPurchases()" style="width:100%" title="${BIZ.language==='fr'?'Récupérer les commandes depuis le serveur':"Re-fetch POs from cloud if they're missing"}">🩺 ${BIZ.language==='fr'?'Récupérer du serveur':'Recover from Cloud'}</button>
       </div>
     </div>
   </div>
