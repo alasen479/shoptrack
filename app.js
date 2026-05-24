@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779626152");
+console.log("ShopTrack v2.7 - build:1779626923");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1039,8 +1039,15 @@ const fmtMoney = (rec, field) => {
 // the owner has corrected the service price.
 const fmtApptAmt = (a) => {
   if(!a) return fmt(0);
+  // Diagnostic: log the resolution path ONCE per appointment per
+  // session so we can see in the console why an amount displays the
+  // way it does. Cached on window so re-renders don't spam.
+  if(!window._fmtApptAmtLogged) window._fmtApptAmtLogged = {};
+  const _logKey = a.id || 'noid';
+  const _shouldLog = !window._fmtApptAmtLogged[_logKey];
   // Tier 1: appointment has its own native amount → drift-immune
   if(a.totalAmtNative != null && a.totalAmtCurrency === CUR.code){
+    if(_shouldLog){ console.log('[fmtApptAmt]', a.id, 'tier1', {totalAmtNative:a.totalAmtNative, cur:a.totalAmtCurrency, result:fmtRaw(a.totalAmtNative)}); window._fmtApptAmtLogged[_logKey]=1; }
     return fmtRaw(a.totalAmtNative);
   }
   // Tier 2: derive from linked service's current native price. Match
@@ -1052,9 +1059,22 @@ const fmtApptAmt = (a) => {
   // capitalization ('Adult hair cut' vs 'Adult Hair Cut').
   if(a.serviceId || a.serviceName){
     let svc = a.serviceId ? (D.services||[]).find(function(x){return x.id===a.serviceId;}) : null;
+    let matchVia = svc ? 'id' : null;
     if(!svc && a.serviceName){
       const target = String(a.serviceName).trim().toLowerCase();
       svc = (D.services||[]).find(function(x){return String(x.name||'').trim().toLowerCase() === target;});
+      if(svc) matchVia = 'name';
+    }
+    if(_shouldLog){
+      console.log('[fmtApptAmt]', a.id, 'lookup', {
+        apptServiceId: a.serviceId,
+        apptServiceName: a.serviceName,
+        matchVia,
+        matchedSvc: svc ? {id:svc.id, name:svc.name, price:svc.price, priceNative:svc.priceNative, priceCurrency:svc.priceCurrency} : null,
+        curCode: CUR.code,
+        curRate: CUR.rate,
+        availableSvcs: (D.services||[]).map(function(s){return {id:s.id, name:s.name, priceNative:s.priceNative, priceCurrency:s.priceCurrency};})
+      });
     }
     if(svc && svc.priceNative != null && svc.priceCurrency === CUR.code){
       const pt    = svc.priceType || 'flat';
@@ -1069,7 +1089,9 @@ const fmtApptAmt = (a) => {
         totalNative = perUnitNative;
       }
       const d = CUR.decimals || 0;
-      return fmtRaw(parseFloat(totalNative.toFixed(d)));
+      const result = fmtRaw(parseFloat(totalNative.toFixed(d)));
+      if(_shouldLog){ console.log('[fmtApptAmt]', a.id, 'tier2 result:', result); window._fmtApptAmtLogged[_logKey]=1; }
+      return result;
     }
     // Tier 2.5: service found but no priceNative on the in-memory
     // record. Check localStorage backup FIRST (the user's manually-
@@ -1080,6 +1102,7 @@ const fmtApptAmt = (a) => {
       try {
         const lsKey = 'stk:svcPriceNative:' + (SESSION.bizId||'global') + ':' + svc.id;
         const lsRaw = localStorage.getItem(lsKey);
+        if(_shouldLog) console.log('[fmtApptAmt]', a.id, 'tier2.5 ls lookup', {lsKey, lsRaw});
         if(lsRaw){
           const parts = lsRaw.split(':');
           const lsNative = parseFloat(parts[0]);
@@ -1100,7 +1123,9 @@ const fmtApptAmt = (a) => {
               totalNative = lsNative;
             }
             const dLs = CUR.decimals || 0;
-            return fmtRaw(parseFloat(totalNative.toFixed(dLs)));
+            const result25 = fmtRaw(parseFloat(totalNative.toFixed(dLs)));
+            if(_shouldLog){ console.log('[fmtApptAmt]', a.id, 'tier2.5 ls result:', result25); window._fmtApptAmtLogged[_logKey]=1; }
+            return result25;
           }
         }
       } catch(_e) { /* localStorage unavailable — fall through */ }
@@ -1125,11 +1150,15 @@ const fmtApptAmt = (a) => {
       } else {
         totalNative = stampedPerUnit;
       }
-      return fmtRaw(parseFloat(totalNative.toFixed(d2)));
+      const result275 = fmtRaw(parseFloat(totalNative.toFixed(d2)));
+      if(_shouldLog){ console.log('[fmtApptAmt]', a.id, 'tier2.75 stamp result:', result275, '| svc.price was', svc.price); window._fmtApptAmtLogged[_logKey]=1; }
+      return result275;
     }
   }
   // Tier 3: legacy USD round-trip (drift-prone)
-  return fmt(a.totalAmt || 0);
+  const result3 = fmt(a.totalAmt || 0);
+  if(_shouldLog){ console.log('[fmtApptAmt]', a.id, 'tier3-LEGACY result:', result3, '| a.totalAmt was', a.totalAmt); window._fmtApptAmtLogged[_logKey]=1; }
+  return result3;
 };
 
 
@@ -30777,14 +30806,56 @@ function _naSync(){
   var svcId = (document.getElementById('na-s')||{}).value || _ssGetVal('na-s-wrap');
   var svc = (D.services||[]).find(function(s){ return s.id===svcId; });
   var dur = svc ? (svc.duration||60) : 60;
-  var pr  = svc ? (svc.price||0) : 0;
   var pt  = svc ? (svc.priceType||'flat') : 'flat';
   var t   = (document.getElementById('na-t')||{value:'09:00'}).value||'09:00';
   var eEl = document.getElementById('na-e'); if(eEl) eEl.value=_addMins(t,dur);
   var aEl = document.getElementById('na-amt');
-  if(aEl&&!aEl._t){
-    var total=_computeSvcTotal(pr,pt,dur)*CUR.rate;
-    aEl.value=total.toFixed(CUR.decimals||0);
+  if(aEl && !aEl._t && svc){
+    // Drift-immune amount calculation. Prefer the service's native
+    // price (priceNative) directly — that's the amount the user
+    // typed when saving the service. Falls back to svc.price × rate
+    // only for legacy records that never got priceNative populated.
+    // Without this, the auto-filled amount on the booking form is
+    // svc.price * CUR.rate, which is the drifted display value
+    // (2,503 instead of the user's typed 2,500). The amount then
+    // gets saved onto the appointment as totalAmtNative=2503, and
+    // every subsequent display correctly reads 2,503 — but that's
+    // the wrong number.
+    var perUnitNative;
+    if(svc.priceNative != null && svc.priceCurrency === CUR.code){
+      perUnitNative = Number(svc.priceNative);
+    } else {
+      // localStorage fallback before stamping from drifted price
+      var lsNative = null;
+      try {
+        var lsRaw = localStorage.getItem('stk:svcPriceNative:'+(SESSION.bizId||'global')+':'+svc.id);
+        if(lsRaw){
+          var parts = lsRaw.split(':');
+          var lsN = parseFloat(parts[0]);
+          var lsC = parts[1] || '';
+          if(!isNaN(lsN) && lsC === CUR.code) lsNative = lsN;
+        }
+      } catch(_e){}
+      if(lsNative != null){
+        perUnitNative = lsNative;
+        // Rehydrate in-memory copy
+        svc.priceNative = lsNative;
+        svc.priceCurrency = CUR.code;
+      } else {
+        perUnitNative = (svc.price||0) * CUR.rate;
+      }
+    }
+    var totalNative;
+    if(['flat','per_session','starting'].indexOf(pt) >= 0){
+      totalNative = perUnitNative;
+    } else if(typeof _computeSvcTotal === 'function'){
+      totalNative = _computeSvcTotal(perUnitNative, pt, dur);
+    } else {
+      totalNative = perUnitNative;
+    }
+    aEl.value = totalNative.toFixed(CUR.decimals||0);
+  } else if(aEl && !aEl._t){
+    aEl.value = '';
   }
 }
 function _naCust(){
@@ -31105,6 +31176,7 @@ function pgAppointments(){const _s=_L();
     +'<button class="btn btn-sm" style="background:'+(_apptView==='list'?'var(--a)':'var(--bg3)')+';color:'+(_apptView==='list'?'#fff':'var(--text)')+'" onclick="_togApptView(\'list\')">📋 List</button>'
     +'<button class="btn btn-s btn-sm" onclick="_apptBulkConfirm()">✓ Confirm All</button>'
     +'<button class="btn btn-s btn-sm" onclick="_apptSendReminders()">💬 Remind Tomorrow</button>'
+    +'<button class="btn btn-g btn-sm" onclick="_apptFixDrift()" title="Repair appointment amounts that show the wrong (drifted) value">🔧 Fix Drift</button>'
     +'<button class="btn btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="mBlockTime()">🗓 Availability Manager</button>'
     +'<button class="btn btn-g btn-sm" onclick="exportAppointmentsPDF()">⬇ PDF</button>'
     +'<button class="btn btn-p" onclick="mNewAppt()">+ Book</button>'
@@ -31709,13 +31781,48 @@ function mEditAppt(id){const _s=_L();
 function _eaSync(){const _s=_L();
   var sel=document.getElementById('ea-svc');
   var opt=sel&&sel.options[sel.selectedIndex];
+  var svcId = opt && opt.value;
+  var svc = svcId ? (D.services||[]).find(function(s){return s.id===svcId;}) : null;
   var dur=parseInt(opt&&opt.dataset&&opt.dataset.dur)||60;
-  var pr=parseFloat(opt&&opt.dataset&&opt.dataset.p)||0;
   var pt=(opt&&opt.dataset&&opt.dataset.pt)||'flat';
   var st=document.getElementById('ea-st')?document.getElementById('ea-st').value:'09:00';
   var et=document.getElementById('ea-et'); if(et) et.value=_addMins(st,dur);
   var amtEl=document.getElementById('ea-amt');
-  if(amtEl&&!amtEl._t){ var total=_computeSvcTotal(pr,pt,dur)*CUR.rate; amtEl.value=total.toFixed(CUR.decimals||0); }
+  if(amtEl && !amtEl._t && svc){
+    // Same drift-immune calc as _naSync — prefer priceNative over the
+    // drifted USD round-trip.
+    var perUnitNative;
+    if(svc.priceNative != null && svc.priceCurrency === CUR.code){
+      perUnitNative = Number(svc.priceNative);
+    } else {
+      var lsNative = null;
+      try {
+        var lsRaw = localStorage.getItem('stk:svcPriceNative:'+(SESSION.bizId||'global')+':'+svc.id);
+        if(lsRaw){
+          var parts = lsRaw.split(':');
+          var lsN = parseFloat(parts[0]);
+          var lsC = parts[1] || '';
+          if(!isNaN(lsN) && lsC === CUR.code) lsNative = lsN;
+        }
+      } catch(_e){}
+      if(lsNative != null){
+        perUnitNative = lsNative;
+        svc.priceNative = lsNative;
+        svc.priceCurrency = CUR.code;
+      } else {
+        perUnitNative = (svc.price||0) * CUR.rate;
+      }
+    }
+    var totalNative;
+    if(['flat','per_session','starting'].indexOf(pt) >= 0){
+      totalNative = perUnitNative;
+    } else if(typeof _computeSvcTotal === 'function'){
+      totalNative = _computeSvcTotal(perUnitNative, pt, dur);
+    } else {
+      totalNative = perUnitNative;
+    }
+    amtEl.value = totalNative.toFixed(CUR.decimals||0);
+  }
 }
 function _saveEditAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a) return;
@@ -31850,6 +31957,126 @@ function _apptSendReminders(){const _s=_L();
   if(!tmr.length){toast(_L().t_no_aff_tomorrow,'info');return;}
   _bulkWAReminders('appt-tomorrow');
 }
+
+// One-click repair tool: for every appointment that has a drifted
+// amount baked in (its totalAmtNative is off from the current service
+// priceNative), recompute and write the correct value. Also fixes any
+// linked sales. This is the user-friendly workaround for appointments
+// that were booked BEFORE the v163 fix to _naSync/_eaSync which
+// auto-filled the booking form with the drifted display value.
+function _apptFixDrift(){var _s=_L();
+  var appts = D.appointments || [];
+  var diffs = [];
+  function _resolveSvc(a){
+    if(!a.serviceId && !a.serviceName) return null;
+    var s = a.serviceId ? (D.services||[]).find(function(x){return x.id===a.serviceId;}) : null;
+    if(s) return s;
+    if(a.serviceName){
+      var target = String(a.serviceName).trim().toLowerCase();
+      return (D.services||[]).find(function(x){return String(x.name||'').trim().toLowerCase() === target;});
+    }
+    return null;
+  }
+  function _correctNative(a){
+    var svc = _resolveSvc(a);
+    if(!svc) return null;
+    // Use priceNative if matching currency, else localStorage, else null
+    var perUnit = null;
+    if(svc.priceNative != null && svc.priceCurrency === CUR.code){
+      perUnit = Number(svc.priceNative);
+    } else {
+      try {
+        var raw = localStorage.getItem('stk:svcPriceNative:'+(SESSION.bizId||'global')+':'+svc.id);
+        if(raw){
+          var parts = raw.split(':');
+          var n = parseFloat(parts[0]);
+          if(!isNaN(n) && parts[1] === CUR.code) perUnit = n;
+        }
+      } catch(_e){}
+    }
+    if(perUnit == null) return null;
+    var pt  = svc.priceType || 'flat';
+    var dur = a.duration != null ? a.duration : (svc.duration||60);
+    var total;
+    if(['flat','per_session','starting'].indexOf(pt) >= 0){
+      total = perUnit;
+    } else if(typeof _computeSvcTotal === 'function'){
+      total = _computeSvcTotal(perUnit, pt, dur);
+    } else {
+      total = perUnit;
+    }
+    return parseFloat(total.toFixed(CUR.decimals||0));
+  }
+  appts.forEach(function(a){
+    var correctNative = _correctNative(a);
+    if(correctNative == null) return;
+    var currentNative = (a.totalAmtNative != null && a.totalAmtCurrency === CUR.code)
+      ? Number(a.totalAmtNative)
+      : Math.round((a.totalAmt||0) * CUR.rate);
+    if(Math.abs(currentNative - correctNative) >= 1){
+      diffs.push({appt:a, was:currentNative, will:correctNative});
+    }
+  });
+  if(!diffs.length){
+    toast('✓ No drifted amounts found — all appointments match their service prices','success');
+    return;
+  }
+  var rows = diffs.slice(0,8).map(function(d){
+    return '<tr><td style="padding:4px 8px;font-size:11px">'+d.appt.id+'</td>'
+      +'<td style="padding:4px 8px;font-size:11px">'+_esc(d.appt.custName||'')+'</td>'
+      +'<td style="padding:4px 8px;font-size:11px">'+_esc(d.appt.serviceName||'')+'</td>'
+      +'<td style="padding:4px 8px;font-size:11px;color:var(--r)">'+_numFmt(d.was)+' '+CUR.symbol+'</td>'
+      +'<td style="padding:4px 8px;font-size:11px;color:var(--g);font-weight:700">'+_numFmt(d.will)+' '+CUR.symbol+'</td></tr>';
+  }).join('');
+  var more = diffs.length > 8 ? '<div style="font-size:11px;color:var(--text2);margin-top:6px">…and '+(diffs.length-8)+' more</div>' : '';
+  modal('🔧 Fix Drifted Amounts',
+    '<p style="font-size:13px;color:var(--text2);margin-bottom:10px">Found <strong>'+diffs.length+'</strong> appointment'+(diffs.length===1?'':'s')+' where the saved amount no longer matches the service\'s current price:</p>'
+    +'<table style="width:100%;border-collapse:collapse;font-family:var(--mono)"><thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:4px 8px;font-size:10px;color:var(--text2)">ID</th><th style="text-align:left;padding:4px 8px;font-size:10px;color:var(--text2)">CUSTOMER</th><th style="text-align:left;padding:4px 8px;font-size:10px;color:var(--text2)">SERVICE</th><th style="text-align:left;padding:4px 8px;font-size:10px;color:var(--text2)">CURRENT</th><th style="text-align:left;padding:4px 8px;font-size:10px;color:var(--text2)">CORRECTED</th></tr></thead><tbody>'
+    +rows+'</tbody></table>'+more
+    +'<p style="font-size:11px;color:var(--text3);margin-top:12px">Linked sales will be updated to match. Customer balances will be recalculated accordingly.</p>',
+    '<button class="btn btn-s" onclick="closeModal()">Cancel</button>'
+    +'<button class="btn btn-g" id="apply-fix-drift">Fix All ('+diffs.length+')</button>');
+  setTimeout(function(){
+    var btn = document.getElementById('apply-fix-drift');
+    if(btn) btn.onclick = function(){
+      diffs.forEach(function(d){
+        var a = d.appt;
+        var oldTotalUSD = a.totalAmt || 0;
+        a.totalAmtNative   = d.will;
+        a.totalAmtCurrency = CUR.code;
+        a.totalAmt         = d.will / (CUR.rate||1);
+        _dbSaveAppt(a);
+        // Update linked sale
+        if(a.saleId){
+          var sale = (D.sales||[]).find(function(s){return s.id===a.saleId;});
+          if(sale){
+            sale.totalNative = d.will;
+            sale.totalCurrency = CUR.code;
+            sale.paidNative  = d.will;
+            sale.paidCurrency = CUR.code;
+            sale.total = sale.amt = sale.paid = a.totalAmt;
+            sale.profit = sale.total;
+            if(typeof _dbSaveSale === 'function') _dbSaveSale(sale);
+            // Adjust customer spent
+            if(a.custId){
+              var cust = D.cust.find(function(c){return c.id===a.custId;});
+              if(cust){
+                cust.spent = Math.max(0, (cust.spent||0) - oldTotalUSD + a.totalAmt);
+                _dbSaveCust(cust);
+              }
+            }
+          }
+        }
+      });
+      refreshLiveKpis();
+      addAudit('Fix drift', diffs.length+' appointments repaired');
+      closeModal();
+      toast('✓ Fixed '+diffs.length+' appointment'+(diffs.length===1?'':'s'),'success');
+      nav('appointments');
+    };
+  }, 30);
+}
+
 function mAddService(){ mNewService(); }
 function mEditService(id){ mEditSvc(id); }
 
