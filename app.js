@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779625974");
+console.log("ShopTrack v2.7 - build:1779626152");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1070,6 +1070,62 @@ const fmtApptAmt = (a) => {
       }
       const d = CUR.decimals || 0;
       return fmtRaw(parseFloat(totalNative.toFixed(d)));
+    }
+    // Tier 2.5: service found but no priceNative on the in-memory
+    // record. Check localStorage backup FIRST (the user's manually-
+    // typed value lives there even when D.services lost priceNative),
+    // before falling back to stamping from svc.price × rate (which
+    // would just bake in the same drift we're trying to escape).
+    if(svc){
+      try {
+        const lsKey = 'stk:svcPriceNative:' + (SESSION.bizId||'global') + ':' + svc.id;
+        const lsRaw = localStorage.getItem(lsKey);
+        if(lsRaw){
+          const parts = lsRaw.split(':');
+          const lsNative = parseFloat(parts[0]);
+          const lsCur    = parts[1] || '';
+          if(!isNaN(lsNative) && lsCur === CUR.code){
+            // Rehydrate svc.priceNative from localStorage so future
+            // lookups hit tier 2 instead of repeating this work.
+            svc.priceNative   = lsNative;
+            svc.priceCurrency = lsCur;
+            const pt    = svc.priceType || 'flat';
+            const dur   = (a.duration != null ? a.duration : (svc.duration||60));
+            let totalNative;
+            if(['flat','per_session','starting'].indexOf(pt) >= 0){
+              totalNative = lsNative;
+            } else if(typeof _computeSvcTotal === 'function'){
+              totalNative = _computeSvcTotal(lsNative, pt, dur);
+            } else {
+              totalNative = lsNative;
+            }
+            const dLs = CUR.decimals || 0;
+            return fmtRaw(parseFloat(totalNative.toFixed(dLs)));
+          }
+        }
+      } catch(_e) { /* localStorage unavailable — fall through */ }
+    }
+    // Tier 2.75: last-resort stamp from svc.price × rate. This freezes
+    // the currently-displayed drifted value rather than leaving it free
+    // to drift further each load. The user can manually edit the
+    // service to set the correct value, which writes localStorage and
+    // unsticks future loads onto tier 2 / 2.5-localStorage.
+    if(svc && svc.price > 0 && (CUR.rate||0) > 0){
+      const d2 = CUR.decimals || 0;
+      const stampedPerUnit = parseFloat((Number(svc.price) * CUR.rate).toFixed(d2));
+      svc.priceNative   = stampedPerUnit;
+      svc.priceCurrency = CUR.code;
+      const pt    = svc.priceType || 'flat';
+      const dur   = (a.duration != null ? a.duration : (svc.duration||60));
+      let totalNative;
+      if(['flat','per_session','starting'].indexOf(pt) >= 0){
+        totalNative = stampedPerUnit;
+      } else if(typeof _computeSvcTotal === 'function'){
+        totalNative = _computeSvcTotal(stampedPerUnit, pt, dur);
+      } else {
+        totalNative = stampedPerUnit;
+      }
+      return fmtRaw(parseFloat(totalNative.toFixed(d2)));
     }
   }
   // Tier 3: legacy USD round-trip (drift-prone)
