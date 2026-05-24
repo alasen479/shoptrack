@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779655170");
+console.log("ShopTrack v2.7 - build:1779657400");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1633,6 +1633,23 @@ function _csLineChange(sel){
   var priceEl = row ? row.querySelector('.cs-line-price') : null;
   // Resolve the picked item (inventory or service) for both the
   // per-line price and the per-unit cost hint shown beneath.
+  // Helper — resolves the effective per-unit cost for an inventory
+  // item. Uses the stored cost if set; otherwise falls back to
+  // summing the recipe ingredients' costs. Lets 'Scoop' SKUs that
+  // derive their cost from bulk via recipe show a useful unit-cost
+  // hint and contribute to COGS correctly.
+  function _resolveUnitCost(item){
+    if(!item) return 0;
+    if(item.cost) return item.cost;
+    if(item.recipe && item.recipe.length){
+      return item.recipe.reduce(function(a, line){
+        var ing = D.inv.find(function(x){return x.id===line.ingredientId;});
+        if(!ing) return a;
+        return a + ((ing.cost||0) * (line.qty||0));
+      }, 0);
+    }
+    return 0;
+  }
   var resolvedCost = null;
   if(val && val.startsWith('svc:')){
     // Service item
@@ -1646,14 +1663,14 @@ function _csLineChange(sel){
     var it = D.inv.find(function(x){return x.id===invId2;});
     if(it){
       if(priceEl) priceEl.value = Math.round((it.sp||0)*CUR.rate)||'';
-      resolvedCost = (it.cost||0) * CUR.rate;
+      resolvedCost = _resolveUnitCost(it) * CUR.rate;
     }
   } else if(val && val !== '__custom__'){
     // Legacy plain invId (backwards compat)
     var it2 = D.inv.find(function(x){return x.id===val;});
     if(it2){
       if(priceEl) priceEl.value = Math.round((it2.sp||0)*CUR.rate)||'';
-      resolvedCost = (it2.cost||0) * CUR.rate;
+      resolvedCost = _resolveUnitCost(it2) * CUR.rate;
     }
   }
   // Render / clear the per-unit cost hint shown beneath the price input.
@@ -1714,7 +1731,19 @@ function _csRecalcCOGS(){
     var it = D.inv.find(function(x){return x.id===invId;});
     if(!it) return;
     var qty = parseFloat(row.querySelector('.cs-line-qty')?.value)||1;
-    totalCogsDisplay += (it.cost||0) * qty * CUR.rate;
+    // Use stored cost if set; otherwise derive from recipe ingredients.
+    // This handles 'Scoop' SKUs that consume bulk via recipe but never
+    // go through Production themselves — their own cost stays 0, but
+    // we can compute the effective cost as sum(ingredient.cost × qty).
+    var unitCost = it.cost || 0;
+    if(!unitCost && it.recipe && it.recipe.length){
+      unitCost = it.recipe.reduce(function(a, line){
+        var ing = D.inv.find(function(x){return x.id===line.ingredientId;});
+        if(!ing) return a;
+        return a + ((ing.cost||0) * (line.qty||0));
+      }, 0);
+    }
+    totalCogsDisplay += unitCost * qty * CUR.rate;
     anyInv = true;
   });
   if(anyInv){
@@ -6057,15 +6086,28 @@ function _saveSale(){var _s=_L();
   var profit=total-cost; // Gross profit = revenue - COGS (not affected by payment timing)
   D.sales.unshift({id:newId,cust,custId,items:itemsVal,lineItems:lineItemsBase,dt,amt,freight,taxes,other,total,paid,cost,profit,st,method,notes,invId,terms});
     _dbSaveSale(D.sales[0]);
-  // Deduct stock for inventory line items only (services have no stock)
-  // Pass negative delta for conflict-safe offline sync
+  // Deduct stock for inventory line items only (services have no stock).
+  // Two paths per line:
+  //   (A) Plain SKU: subtract sold qty from the SKU.
+  //   (B) Recipe SKU: subtract from the SKU AND recurse into the
+  //       recipe, subtracting (line.qty × ingredient.qty) from each
+  //       ingredient SKU. This is what makes scoop/plate workflows
+  //       work: a 'Scoop' SKU with recipe '0.1L Vanilla Bulk' sells
+  //       one scoop AND consumes 0.1L of bulk in the same transaction.
+  // Pass negative delta for conflict-safe offline sync.
   (typeof lineItems!=='undefined'?lineItems:[{invId,qty:1}]).forEach(function(li){
     if(li.invId&&li.invId!=='__custom__'&&!li.isSvc){
       var invObj2=D.inv.find(function(x){return x.id===li.invId;});
       if(invObj2){
         var _soldQty = li.qty || 1;
         invObj2.qty=Math.max(0,(invObj2.qty||0)-_soldQty);
-        _dbSaveInv(invObj2, -_soldQty); // negative delta = stock sold
+        _dbSaveInv(invObj2, -_soldQty);
+        // If this SKU has a recipe, consume the ingredients too.
+        // _consumeRecipe handles missing ingredients gracefully
+        // (toast warning, no inventory change for that line).
+        if(invObj2.recipe && invObj2.recipe.length){
+          _consumeRecipe(invObj2, _soldQty, newId);
+        }
       }
     }
   });
@@ -20234,6 +20276,58 @@ function _reconcileVendorTotals(){
   });
 }
 
+// ── Recipe consumption ──────────────────────────────────────────
+// When a recipe-bearing SKU is sold (or produced as an ingredient
+// for another batch), consume its ingredients from inventory.
+// `product`     — the inventory item being sold/consumed
+// `multiplier`  — how many units of `product` are being moved
+// `saleRef`     — optional reference id (sale id / batch id) for
+//                 audit/logging context
+//
+// Each recipe line says 'consume N units of ingredientId per 1 unit
+// of product'. Multiplied by `multiplier`, that gives the amount to
+// subtract from the ingredient SKU's qty. Missing or short
+// ingredients are tolerated — the sale still goes through (we
+// already accepted payment), but the user gets a toast warning
+// listing what couldn't be deducted so they can investigate.
+//
+// We do NOT recurse into the ingredients' own recipes here. A
+// scoop SKU consumes 0.1L of bulk; the bulk is a leaf SKU (raw
+// material). Multi-level recipes (e.g. cake → frosting → butter)
+// aren't supported in this version — the user can add intermediate
+// SKUs and produce them via Production explicitly.
+function _consumeRecipe(product, multiplier, saleRef){
+  if(!product || !product.recipe || !product.recipe.length) return;
+  if(!multiplier || multiplier <= 0) return;
+  var shortages = [];
+  product.recipe.forEach(function(line){
+    if(!line.ingredientId) return;
+    var ing = D.inv.find(function(x){return x.id===line.ingredientId;});
+    if(!ing){
+      shortages.push({name:'(missing ingredient id '+line.ingredientId+')', needed:(line.qty||0)*multiplier, have:0});
+      return;
+    }
+    var needed = (line.qty||0) * multiplier;
+    var have = ing.qty || 0;
+    var consume = Math.min(needed, have);
+    ing.qty = Math.max(0, have - needed);
+    _dbSaveInv(ing, -consume);
+    if(needed > have + 0.0001){
+      shortages.push({name:ing.name, needed:needed, have:have, unit:line.unit||ing.sz||''});
+    }
+  });
+  if(shortages.length){
+    var fr = BIZ.language==='fr';
+    var msg = (fr?'Stock insuffisant pour la recette de ':'Insufficient stock for recipe of ')
+      + product.name + ': '
+      + shortages.map(function(s){
+          return s.name+' (needed '+s.needed+(s.unit?' '+s.unit:'')+', had '+s.have+')';
+        }).join('; ');
+    toast(msg, 'warn');
+    console.warn('[consumeRecipe] '+(saleRef||'')+' '+msg);
+  }
+}
+
 async function _dbSaveInv(item, qtyDelta){
   if(!SESSION.bizId||SESSION.isSuperAdmin) return;
   // Always update IDB cache immediately
@@ -29745,6 +29839,14 @@ function mReceiveItems(id){const _s=_L();
   if(!p.linesReceived) p.linesReceived = p.lines.map(function(){return 0;});
 
   const today = localDateStr();
+  // Two modes:
+  //   - 'add' (default): incremental — user enters how much arrived in
+  //     this shipment; inventory increases by that amount
+  //   - 'edit': absolute — user corrects what's been received so far;
+  //     inventory adjusts by (new − old) which can be negative
+  // Mode is selected via a toggle at the top of the modal; both modes
+  // share the same table layout, differing only in which column is
+  // editable and how _saveReceiveItems interprets the values.
   const rowsHTML = p.lines.map(function(li, idx){
     var name = li.name || (li.invId && li.invId!=='__custom__'
       ? (D.inv.find(function(i){return i.id===li.invId;})||{}).name || 'Item'
@@ -29755,8 +29857,14 @@ function mReceiveItems(id){const _s=_L();
     return '<tr data-idx="'+idx+'">'
       +'<td style="padding:8px 10px;font-size:12px">'+_esc(name)+'</td>'
       +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+ordered+'</td>'
-      +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--g)">'+alreadyRecvd+'</td>'
-      +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--text2)">'+stillOpen+'</td>'
+      // "Already Received" cell carries an input that is read-only in
+      // add-mode and editable in edit-mode. _riToggleMode flips this.
+      +'<td style="padding:6px 10px;text-align:right">'
+        +'<input class="fi ri-already" type="number" min="0" max="'+ordered+'" step="any" '
+        +'value="'+alreadyRecvd+'" data-idx="'+idx+'" data-original="'+alreadyRecvd+'" data-ordered="'+ordered+'" '
+        +'readonly style="width:70px;font-family:var(--mono);font-size:12px;text-align:right;padding:5px;color:var(--g);background:transparent;border:1px solid transparent"/>'
+      +'</td>'
+      +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--text2)" class="ri-still-open" data-idx="'+idx+'">'+stillOpen+'</td>'
       +'<td style="padding:6px 10px"><input class="fi ri-now" type="number" min="0" max="'+stillOpen+'" step="any" value="'+stillOpen+'" data-idx="'+idx+'" data-still-open="'+stillOpen+'" style="width:70px;font-family:var(--mono);font-size:12px;text-align:right;padding:5px"/></td>'
     +'</tr>';
   }).join('');
@@ -29769,6 +29877,13 @@ function mReceiveItems(id){const _s=_L();
     +'<div class="fg"><label class="fl">'+(fr?'Date de Réception':'Receipt Date')+'</label>'
       +'<input class="fi" type="date" id="ri-dt" value="'+today+'" style="max-width:200px"/>'
     +'</div>'
+    // Mode toggle — add (default) vs edit. Edit mode is opt-in because
+    // the absolute-set behaviour can decrease inventory.
+    +'<div style="margin:10px 0 6px;display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:6px">'
+      +'<span style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px">'+(fr?'Mode':'Mode')+':</span>'
+      +'<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:12px"><input type="radio" name="ri-mode" value="add" checked onchange="_riToggleMode(\'add\')"/> '+(fr?'Ajouter une réception':'Add new receipt')+'</label>'
+      +'<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:12px"><input type="radio" name="ri-mode" value="edit" onchange="_riToggleMode(\'edit\')"/> '+(fr?'Corriger les quantités reçues':'Edit already received')+'</label>'
+    +'</div>'
     +'<div style="border:1px solid var(--border2);border-radius:8px;overflow:hidden;overflow-x:auto;margin-top:8px">'
       +'<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:520px">'
         +'<thead><tr style="background:var(--bg3);border-bottom:1px solid var(--border)">'
@@ -29776,19 +29891,75 @@ function mReceiveItems(id){const _s=_L();
           +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Commandé':'Ordered')+'</th>'
           +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Déjà Reçu':'Already Recvd')+'</th>'
           +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Encore Dû':'Still Open')+'</th>'
-          +'<th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Reçu Maintenant':'Receiving Now')+'</th>'
+          +'<th id="ri-now-th" style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+(fr?'Reçu Maintenant':'Receiving Now')+'</th>'
         +'</tr></thead>'
         +'<tbody>'+rowsHTML+'</tbody>'
       +'</table>'
     +'</div>'
-    +'<div style="margin-top:10px;font-size:11px;color:var(--text2);line-height:1.5">'
+    +'<div id="ri-help-add" style="margin-top:10px;font-size:11px;color:var(--text2);line-height:1.5">'
       +'\uD83D\uDCA1 '+(fr
         ? 'Les quantités saisies seront ajoutées à l\'inventaire avec le coût de revient réel (incluant fret/douane/taxes au prorata).'
         : 'Quantities entered will be added to inventory at true landed cost (with freight/duties/taxes apportioned proportionally).')
+    +'</div>'
+    +'<div id="ri-help-edit" style="display:none;margin-top:10px;font-size:11px;color:var(--y);line-height:1.5;padding:8px 10px;background:rgba(245,158,11,.08);border-radius:6px;border-left:3px solid var(--y)">'
+      +'\u26A0 '+(fr
+        ? 'Mode édition : les quantités "Déjà Reçu" remplacent les valeurs existantes. L\'inventaire sera ajusté de la différence (positive ou négative).'
+        : 'Edit mode: "Already Received" values REPLACE the existing record. Inventory will be adjusted by the difference, which can be negative.')
     +'</div>',
     '<button class="btn btn-s" onclick="closeModal();mViewPurchase(\''+id+'\')">'+(fr?'Annuler':'Cancel')+'</button>'
-    +'<button class="btn btn-p" onclick="_saveReceiveItems(\''+id+'\')">\u2713 '+(fr?'Confirmer Réception':'Confirm Receipt')+'</button>'
+    +'<button class="btn btn-p" onclick="_saveReceiveItems(\''+id+'\')">\u2713 '+(fr?'Confirmer':'Confirm')+'</button>'
   );
+}
+
+// Toggle receive-items modal between add-mode (default) and edit-mode.
+// add: 'Already Received' is read-only; 'Receiving Now' is editable
+//      and applies as an increment.
+// edit: 'Already Received' becomes editable; 'Receiving Now' is hidden;
+//       save reconciles the delta against inventory.
+function _riToggleMode(mode){
+  var nowInputs = document.querySelectorAll('.ri-now');
+  var alreadyInputs = document.querySelectorAll('.ri-already');
+  var nowTh = document.getElementById('ri-now-th');
+  var helpAdd = document.getElementById('ri-help-add');
+  var helpEdit = document.getElementById('ri-help-edit');
+  if(mode === 'edit'){
+    nowInputs.forEach(function(inp){
+      inp.value = 0;
+      inp.disabled = true;
+      inp.style.opacity = '0.4';
+      inp.closest('td').style.opacity = '0.4';
+    });
+    if(nowTh) nowTh.style.opacity = '0.4';
+    alreadyInputs.forEach(function(inp){
+      inp.readOnly = false;
+      inp.style.background = 'var(--bg)';
+      inp.style.borderColor = 'var(--border2)';
+      inp.style.color = 'var(--ink)';
+    });
+    if(helpAdd) helpAdd.style.display = 'none';
+    if(helpEdit) helpEdit.style.display = '';
+  } else {
+    nowInputs.forEach(function(inp){
+      inp.disabled = false;
+      inp.style.opacity = '';
+      inp.closest('td').style.opacity = '';
+      // Reset to "still open" default
+      var stillOpen = parseFloat(inp.dataset.stillOpen) || 0;
+      inp.value = stillOpen;
+    });
+    if(nowTh) nowTh.style.opacity = '';
+    alreadyInputs.forEach(function(inp){
+      inp.readOnly = true;
+      inp.style.background = 'transparent';
+      inp.style.borderColor = 'transparent';
+      inp.style.color = 'var(--g)';
+      // Reset to original value
+      var orig = parseFloat(inp.dataset.original) || 0;
+      inp.value = orig;
+    });
+    if(helpAdd) helpAdd.style.display = '';
+    if(helpEdit) helpEdit.style.display = 'none';
+  }
 }
 
 function _saveReceiveItems(id){
@@ -29797,27 +29968,62 @@ function _saveReceiveItems(id){
   const dt = document.getElementById('ri-dt')?.value || localDateStr();
   if(!p.linesReceived) p.linesReceived = p.lines.map(function(){return 0;});
 
-  // Read each row's "Receiving Now" input
-  var receivingNow = [];
+  // Determine which mode we're in by inspecting the radio
+  var modeEl = document.querySelector('input[name="ri-mode"]:checked');
+  var mode = modeEl ? modeEl.value : 'add';
+
+  // In both modes we end up with a per-line `delta` array — the net
+  // change to apply to inventory and to p.linesReceived.
+  //   add mode:  delta[i] = receivingNow[i]
+  //   edit mode: delta[i] = newAlready[i] - oldAlready[i]
+  // Inventory adjusts by delta (positive or negative). p.linesReceived
+  // becomes the new absolute value in edit mode, or += delta in add mode.
+  var delta = [];
+  var newLinesReceived = p.linesReceived.slice();
   var hasAny = false;
-  document.querySelectorAll('.ri-now').forEach(function(inp){
-    var idx = parseInt(inp.dataset.idx, 10);
-    var stillOpen = parseFloat(inp.dataset.stillOpen) || 0;
-    var val = parseFloat(inp.value) || 0;
-    if(val < 0) val = 0;
-    if(val > stillOpen) val = stillOpen; // cap at what's outstanding
-    receivingNow[idx] = val;
-    if(val > 0) hasAny = true;
-  });
-  if(!hasAny){
-    toast(fr?'Saisir au moins une quantité reçue':'Enter at least one received qty', 'error');
-    return;
+
+  if(mode === 'edit'){
+    document.querySelectorAll('.ri-already').forEach(function(inp){
+      var idx = parseInt(inp.dataset.idx, 10);
+      var original = parseFloat(inp.dataset.original) || 0;
+      var ordered = parseFloat(inp.dataset.ordered) || 0;
+      var newVal = parseFloat(inp.value);
+      if(isNaN(newVal) || newVal < 0) newVal = 0;
+      if(newVal > ordered) newVal = ordered;  // cap at ordered qty
+      delta[idx] = newVal - original;
+      newLinesReceived[idx] = newVal;
+      if(Math.abs(delta[idx]) > 0.0001) hasAny = true;
+    });
+    if(!hasAny){
+      toast(fr?'Aucune modification — rien à enregistrer':'No changes — nothing to save', 'info');
+      return;
+    }
+  } else {
+    // add mode (default) — incremental
+    document.querySelectorAll('.ri-now').forEach(function(inp){
+      var idx = parseInt(inp.dataset.idx, 10);
+      var stillOpen = parseFloat(inp.dataset.stillOpen) || 0;
+      var val = parseFloat(inp.value) || 0;
+      if(val < 0) val = 0;
+      if(val > stillOpen) val = stillOpen;
+      delta[idx] = val;
+      newLinesReceived[idx] = (p.linesReceived[idx]||0) + val;
+      if(val > 0) hasAny = true;
+    });
+    if(!hasAny){
+      toast(fr?'Saisir au moins une quantité reçue':'Enter at least one received qty', 'error');
+      return;
+    }
   }
 
   // Compute true landed cost per line — share the PO's overhead pool
   // (freight + duties + taxes + other) by each line's subtotal share.
-  // Inventory is increased by receivingNow[i] for each line, with cost
-  // basis blended via Weighted Moving Average.
+  // Inventory is adjusted by delta[i] for each line, with cost basis
+  // blended via Weighted Moving Average for positive deltas. Negative
+  // deltas reduce qty without changing cost basis (you can't un-blend
+  // a weighted average without knowing what was the historical price
+  // of the specific units being reversed; the simplest correct policy
+  // is to keep the current WMA cost intact).
   const rr = CUR.rate;
   const overhead = (p.freight||0) + (p.duties||0) + (p.taxes||0) + (p.other||0);
   const totalLinesSub = p.lines.reduce(function(a, l){ return a + ((l.uc||0) * (l.qty||1)) / rr; }, 0);
@@ -29826,9 +30032,9 @@ function _saveReceiveItems(id){
   var _autoCreated = [];
 
   p.lines.forEach(function(li, idx){
-    var addQty = receivingNow[idx] || 0;
-    if(addQty <= 0) return;
-    p.linesReceived[idx] = (p.linesReceived[idx]||0) + addQty;
+    var addQty = delta[idx] || 0;
+    if(Math.abs(addQty) < 0.0001) return;
+    p.linesReceived[idx] = newLinesReceived[idx];
 
     // Compute landed unit cost for this line (in USD-base) before
     // touching inventory — same formula whether we hit an existing
@@ -29850,6 +30056,7 @@ function _saveReceiveItems(id){
     if(!li.invId || li.invId==='__custom__'){
       var lineName = (li.name||'').trim();
       if(!lineName) return;  // can't auto-create without a name
+      if(addQty < 0) return; // negative delta against an unlinked line — nothing to reverse
 
       // Try matching an existing inventory item by name first — avoids
       // duplicate records when the user types a name that already
@@ -29863,10 +30070,12 @@ function _saveReceiveItems(id){
         var oldQ = existing.qty || 0;
         var oldC = existing.cost || 0;
         var newQ = oldQ + addQty;
+        if(newQ < 0) newQ = 0;
+        var blendedC = (addQty > 0)
+          ? (newQ > 0 ? ((oldQ*oldC)+(addQty*landedUnit))/newQ : landedUnit)
+          : oldC;
         existing.qty  = newQ;
-        existing.cost = Math.round((newQ > 0
-          ? ((oldQ*oldC)+(addQty*landedUnit))/newQ
-          : landedUnit) * 10000) / 10000;
+        existing.cost = Math.round(blendedC * 10000) / 10000;
         _dbSaveInv(existing, +addQty);
         return;
       }
@@ -29920,37 +30129,81 @@ function _saveReceiveItems(id){
     var oldQty = invObj.qty || 0;
     var oldCost = invObj.cost || 0;
     var newQty = oldQty + addQty;
-    var blended = newQty > 0
-      ? ((oldQty * oldCost) + (addQty * landedUnit)) / newQty
-      : landedUnit;
+    // For positive deltas, blend cost via WMA. For negative deltas
+    // (edit-mode corrections that REDUCE the recorded receipt), keep
+    // the current WMA cost intact — there's no reliable way to
+    // un-blend a specific batch's contribution without knowing which
+    // historical receipts the user is reversing.
+    var blended;
+    if(addQty > 0){
+      blended = newQty > 0
+        ? ((oldQty * oldCost) + (addQty * landedUnit)) / newQty
+        : landedUnit;
+    } else {
+      blended = oldCost;
+    }
+    if(newQty < 0) newQty = 0;  // never let inventory go negative
     invObj.qty = newQty;
     invObj.cost = Math.round(blended * 10000) / 10000;
     _dbSaveInv(invObj, +addQty);
   });
 
-  // Update PO status: Received if everything's in, else stays Pending/Partial
+  // Update PO status to reflect the current receipt-axis state.
+  // 'allReceived' → Received (or Paid if also fully paid)
+  // 'anyReceived' but not all → keep existing payment-axis status,
+  //   UNLESS the previous status was 'Received'/'Paid' and we just
+  //   reduced it back below the all-received line (edit mode rollback)
+  // 'noneReceived' → roll back to Pending/Partial based on payment
   var allReceived = p.lines.every(function(li, i){
     return (p.linesReceived[i]||0) >= (li.qty||1);
   });
   var anyReceived = p.lines.some(function(li, i){ return (p.linesReceived[i]||0) > 0; });
   if(allReceived){
-    // If also fully paid → Paid (received+paid). Else Received.
     if((p.paid||0) >= (p.total||0) - 0.01) p.st = 'Paid';
     else                                    p.st = 'Received';
   } else if(anyReceived){
-    // Keep status as Partial / Pending — receipt-axis is separate from
-    // payment-axis. Use existing status, do nothing.
+    // If status said Received/Paid but receipts are now incomplete,
+    // walk back based on payment state.
+    if(p.st === 'Received' || (p.st === 'Paid' && (p.paid||0) < (p.total||0) - 0.01)){
+      if((p.paid||0) >= (p.total||0) - 0.01) p.st = 'Paid';
+      else if((p.paid||0) > 0)                p.st = 'Partial';
+      else                                    p.st = 'Pending';
+    }
+    // Otherwise leave the existing status (Pending/Partial/Paid) alone.
+  } else {
+    // None received — roll back from Received unconditionally
+    if(p.st === 'Received'){
+      if((p.paid||0) >= (p.total||0) - 0.01) p.st = 'Paid';
+      else if((p.paid||0) > 0)                p.st = 'Partial';
+      else                                    p.st = 'Pending';
+    }
   }
 
-  // Audit + persist
-  var recvSummary = receivingNow.map(function(v, i){
-    if(!v) return null;
-    return v+'× '+(p.lines[i].name||'item');
-  }).filter(Boolean).join(', ');
+  // Audit + persist. Summary text varies by mode: '5× Widget, 3× Gadget'
+  // for add, or '5→7× Widget, 3→2× Gadget' for edit (showing the
+  // transition so the audit trail reads cleanly).
+  var recvSummary;
+  if(mode === 'edit'){
+    recvSummary = delta.map(function(v, i){
+      if(!v || Math.abs(v) < 0.0001) return null;
+      var oldV = (p.linesReceived[i]||0) - v; // pre-edit value (after p.linesReceived was set above is the new)
+      // p.linesReceived[i] is now the new (absolute) value
+      return oldV+'→'+p.linesReceived[i]+'× '+(p.lines[i].name||'item');
+    }).filter(Boolean).join(', ');
+  } else {
+    recvSummary = delta.map(function(v, i){
+      if(!v) return null;
+      return v+'× '+(p.lines[i].name||'item');
+    }).filter(Boolean).join(', ');
+  }
   _dbSavePurchase(p); refreshLiveKpis();
-  addAudit('PO partial receipt', p.id+' — '+recvSummary+(dt!==localDateStr()?' on '+dt:''));
+  addAudit(mode === 'edit' ? 'PO receipt corrected' : 'PO partial receipt',
+    p.id+' — '+recvSummary+(dt!==localDateStr()?' on '+dt:''));
   closeModal();
-  var _toastMsg = (fr?'Réception enregistrée: ':'Received: ')+recvSummary;
+  var _toastPrefix = mode === 'edit'
+    ? (fr?'Quantités corrigées: ':'Corrected receipts: ')
+    : (fr?'Réception enregistrée: ':'Received: ');
+  var _toastMsg = _toastPrefix+recvSummary;
   if(_autoCreated.length){
     _toastMsg += ' · '+(fr?'Nouveaux articles à tarifer:':'New items need pricing:')+' '+_autoCreated.join(', ');
   }
