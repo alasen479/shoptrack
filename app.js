@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779658550");
+console.log("ShopTrack v2.7 - build:1779659116");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1901,11 +1901,19 @@ function _poAddLine(){const _s=_L();
     + '<input class="fi po-line-cost" type="number" placeholder="'+_s.po_unit_cost+'" style="width:90px" oninput="_poRecalcTotal()"/>'
     + '<button type="button" class="btn btn-d btn-xs" onclick="_poRemoveLine(this)" style="padding:6px 8px">✕</button>'
     + '</div>'
-    + '<div class="po-line-custom" style="display:none;gap:6px;align-items:center;padding-left:2px">'
-    +   '<input class="fi po-line-name" type="text" placeholder="'+(BIZ.language==='fr'?'Nom du nouvel article':'New item name (will be auto-created on receive)')+'" style="flex:1;min-width:140px"/>'
-    +   '<select class="fs po-line-type" title="'+(BIZ.language==='fr'?'Type d\'inventaire':'Inventory type')+'" style="width:170px">'
-    +     _itemTypeOptionsHTML('resale', true)
-    +   '</select>'
+    + '<div class="po-line-custom" style="display:none;flex-direction:column;gap:4px;padding-left:2px">'
+    +   '<div style="display:flex;gap:6px;align-items:center">'
+    +     '<input class="fi po-line-name" type="text" placeholder="'+(BIZ.language==='fr'?'Nom du nouvel article':'New item name (will be auto-created on receive)')+'" style="flex:1;min-width:140px"/>'
+    +     '<select class="fs po-line-type" title="'+(BIZ.language==='fr'?'Type d\'inventaire':'Inventory type')+'" style="width:200px">'
+    +       _itemTypeOptionsHTML('resale', true)
+    +     '</select>'
+    +   '</div>'
+    +   '<div style="font-size:10px;color:var(--text2);line-height:1.4;padding:2px 4px">'
+    +     '<strong>'+(BIZ.language==='fr'?'Choisir le type':'Pick the type')+':</strong> '
+    +     (BIZ.language==='fr'
+       ? '<em>Produit fini</em> = vendu directement (chaussures, gâteaux, robes). <em>Matière première</em> = composant/ingrédient consommé en production (cuir, farine, tissu). <em>Lot/Vrac</em> = intermédiaire produit puis portionné (5L de glace, châssis assemblé).'
+       : '<em>Finished Product</em> = sold directly (a pair of shoes, a cake, a dress). <em>Raw Material</em> = component/ingredient used to make something else (leather, flour, fabric). <em>Bulk / Batch</em> = produced intermediate that gets portioned (5L ice cream, assembled chair frame).')
+    +   '</div>'
     + '</div>';
   var c=document.getElementById('po-line-rows'); if(c) c.appendChild(row);
 }
@@ -10011,11 +10019,19 @@ function mRecordPurchase(){const _s=_L();
           <input class="fi po-line-cost" type="number" placeholder="${_s.po_unit_cost}" style="width:90px" oninput="_poRecalcTotal()"/>
           <button type="button" class="btn btn-d btn-xs" onclick="_poRemoveLine(this)" style="padding:6px 8px">✕</button>
         </div>
-        <div class="po-line-custom" style="display:none;gap:6px;align-items:center;padding-left:2px">
-          <input class="fi po-line-name" type="text" placeholder="${BIZ.language==='fr'?'Nom du nouvel article':'New item name (will be auto-created on receive)'}" style="flex:1;min-width:140px"/>
-          <select class="fs po-line-type" title="${BIZ.language==='fr'?"Type d'inventaire":'Inventory type'}" style="width:170px">
-            ${_itemTypeOptionsHTML('resale', true)}
-          </select>
+        <div class="po-line-custom" style="display:none;flex-direction:column;gap:4px;padding-left:2px">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input class="fi po-line-name" type="text" placeholder="${BIZ.language==='fr'?'Nom du nouvel article':'New item name (will be auto-created on receive)'}" style="flex:1;min-width:140px"/>
+            <select class="fs po-line-type" title="${BIZ.language==='fr'?"Type d'inventaire":'Inventory type'}" style="width:200px">
+              ${_itemTypeOptionsHTML('resale', true)}
+            </select>
+          </div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.4;padding:2px 4px">
+            <strong>${BIZ.language==='fr'?'Choisir le type':'Pick the type'}:</strong>
+            ${BIZ.language==='fr'
+              ? '<em>Produit fini</em> = vendu directement (chaussures, gâteaux, robes). <em>Matière première</em> = composant/ingrédient consommé en production (cuir, farine, tissu). <em>Lot/Vrac</em> = intermédiaire produit puis portionné (5L de glace, châssis assemblé).'
+              : '<em>Finished Product</em> = sold directly (a pair of shoes, a cake, a dress). <em>Raw Material</em> = component/ingredient used to make something else (leather, flour, fabric). <em>Bulk / Batch</em> = produced intermediate that gets portioned (5L ice cream, assembled chair frame).'}
+          </div>
         </div>
       </div>
     </div>
