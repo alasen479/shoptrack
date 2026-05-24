@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779585999");
+console.log("ShopTrack v2.7 - build:1779587642");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5703,7 +5703,20 @@ function mRecordPayment(id){const _s=_L();
 
   // Build sale options grouped
   const saleOpts   = D.sales.filter(s=>s.st!=='Paid').map(s=>`<option value="${s.id}">[Sale] ${s.id} — ${s.cust} — ${fmt((s.total||s.amt||0)-s.paid)} due</option>`).join('');
-  const rentalOpts = D.rentals.filter(r2=>r2.st!=='Returned'&&r2.fee>0).map(r2=>`<option value="${r2.id}">[Rental] ${r2.id} — ${r2.cust} — ${fmt(r2.fee)} fee</option>`).join('');
+  // Rentals are eligible for payment recording whenever there's an
+  // outstanding balance — including those that have already been physically
+  // Returned without the rent fully collected. Previously the filter excluded
+  // ALL returned rentals, so a tenant returning the item with rent still due
+  // disappeared from "Pay for what" lists and you had no way to log later
+  // payments against the lease.
+  const rentalOpts = D.rentals.filter(function(r2){
+    var bal = (r2.fee||0) - (r2.paid||0);
+    return bal > 0.01;
+  }).map(function(r2){
+    var bal = (r2.fee||0) - (r2.paid||0);
+    var stTag = r2.st==='Returned' ? ' (returned, balance due)' : '';
+    return '<option value="'+r2.id+'">[Rental] '+r2.id+' \u2014 '+_esc(r2.cust)+' \u2014 '+fmt(bal)+' due'+stTag+'</option>';
+  }).join('');
   const apptOpts   = (D.appointments||[]).filter(a=>a.st==='Completed'&&a.totalAmt>0).map(a=>`<option value="${a.id}">[Appt] ${a.id} — ${a.custName} — ${fmt(a.totalAmt)}</option>`).join('');
 
   // Pre-select if id was passed
@@ -5790,8 +5803,26 @@ function _rpFillAmount(){
   const val    = refSel?.value;
   if(!val || val==='__new__') return;
   const amtEl  = document.getElementById('rp-amt');
-  const custSel= document.getElementById('rp-cust');
-  const r      = CUR.rate;
+  // Customer pre-select needs to update BOTH the hidden input (rp-cust,
+  // used by _saveRecordPayment) AND the visible searchable select
+  // (rp-cust-sel, what the user actually sees). Previously only the
+  // hidden input was being set, so the user saw a blank "Select customer"
+  // dropdown even though the right customer was logically picked.
+  function _selectCust(c){
+    if(!c) return;
+    const hidden = document.getElementById('rp-cust');
+    if(hidden) hidden.value = c.id;
+    const visible = document.getElementById('rp-cust-sel');
+    if(visible){
+      var opt = Array.from(visible.options).find(function(o){return o.value===c.id;});
+      if(opt){
+        visible.value = c.id;
+        // Fire change so any dependent UI (filters, phone autofill) updates
+        try { visible.dispatchEvent(new Event('change', {bubbles:true})); } catch(e){}
+      }
+    }
+  }
+  const r = CUR.rate;
 
   // Try sale
   const sale = D.sales.find(s=>s.id===val);
@@ -5799,31 +5830,25 @@ function _rpFillAmount(){
     const saleTotal = sale.total || sale.amt;
     const bal = saleTotal - (sale.paid||0);
     if(amtEl) amtEl.value = Math.round(bal*r*100)/100;
-    // Auto-select customer
-    if(custSel){
-      const c = D.cust.find(x=>x.name===sale.cust);
-      if(c) custSel.value = c.id;
-    }
+    _selectCust(D.cust.find(x=>x.name===sale.cust || x.id===sale.custId));
     return;
   }
-  // Try rental
+  // Try rental \u2014 amount defaults to OUTSTANDING balance, not full fee.
+  // (Old code used r.fee, which over-suggested payments for partial-paid
+  // rentals \u2014 a tenant with 200k paid on a 700k fee would see 700k pre-
+  // filled, not 500k.)
   const rental = D.rentals.find(r2=>r2.id===val);
   if(rental){
-    if(amtEl) amtEl.value = Math.round(rental.fee*r*100)/100;
-    if(custSel){
-      const c = D.cust.find(x=>x.name===rental.cust);
-      if(c) custSel.value = c.id;
-    }
+    const bal = Math.max(0, (rental.fee||0) - (rental.paid||0));
+    if(amtEl) amtEl.value = Math.round(bal*r*100)/100;
+    _selectCust(D.cust.find(x=>x.name===rental.cust || x.id===rental.custId));
     return;
   }
   // Try appointment
   const appt = (D.appointments||[]).find(a=>a.id===val);
   if(appt){
     if(amtEl) amtEl.value = Math.round(appt.totalAmt*r*100)/100;
-    if(custSel){
-      const c = D.cust.find(x=>x.name===appt.custName);
-      if(c) custSel.value = c.id;
-    }
+    _selectCust(D.cust.find(x=>x.name===appt.custName));
   }
 }
 
@@ -7021,33 +7046,12 @@ function pgRentals(){const _s=_L();const _ui=_s;
   refreshLiveKpis();
   const overdue=D.rentals.filter(r=>r.st==='Overdue');
   const totalLF=D.rentals.reduce((a,r)=>a+r.lf,0);
-  // ── Rental financial KPIs ────────────────────────────────────────
-  // Earned rentals = anything that has actually started (Checked Out,
-  // Overdue, Returned, Closed). Reserved rentals haven't earned their
-  // fee yet so they don't count toward revenue or AR.
-  const _earned = D.rentals.filter(function(r){
-    return r.st==='Checked Out' || r.st==='Overdue' || r.st==='Returned' || r.st==='Closed';
-  });
-  // Accrual revenue: full committed fee for every earned rental,
-  // regardless of cash collected. A 12-month apartment lease counts
-  // its full annual fee as earned revenue once the lease starts.
-  const rentRevenueAccrual = _earned.reduce(function(a, r){ return a + (r.fee||0); }, 0);
-  // Cash collected: sum of paid amounts across earned rentals only.
-  // Different from revenue — a customer mid-lease has paid less than
-  // they owe. This is the "money in hand" figure.
-  const rentCashCollected = _earned.reduce(function(a, r){ return a + (r.paid||0); }, 0);
-  // Outstanding AR from rentals: revenue invoiced but not yet paid.
-  const rentAR = _earned.reduce(function(a, r){
-    return a + Math.max(0, (r.fee||0) - (r.paid||0));
-  }, 0);
-  const rentARCount = _earned.filter(function(r){
-    return ((r.fee||0) - (r.paid||0)) > 0.01;
-  }).length;
-  // Active deposits held = refundable cash currently on hand for non-
-  // returned rentals. This is technically a liability (you owe it back)
-  // but worth surfacing operationally.
-  const activeRentals = D.rentals.filter(r=>!['Returned','Closed'].includes(r.st));
-  const depHeld = activeRentals.reduce(function(a, r){ return a + (r.dep||0); }, 0);
+  // Initial KPI compute uses the same default period as the table
+  // (YTD — matches the .dtab.on default in the period row below). When
+  // the user switches period via setRentalsPeriod, _refreshRentalKPIs
+  // recomputes against the new range and patches the tile values
+  // in place.
+  const _initKpis = _computeRentalKPIs(PERIOD_RANGES['ytd']);
   return `
 <div class="ph">
   <div class="bc">ShopTrack / <span>${_ui.nav_rentals}</span></div>
@@ -7060,43 +7064,43 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr))">
   <div class="kpi c" style="cursor:pointer" title="${_s.rent_click_active}" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(3)'),'Checked Out')">
     <div class="kpi-lbl">${_s.rent_kpi_active}</div>
-    <div class="kpi-val c">${D.rentals.filter(r=>['Checked Out','Reserved'].includes(r.st)).length}</div>
-    <div class="kpi-sub" style="font-size:10.5px;color:var(--c);margin-top:4px">View list →</div>
+    <div class="kpi-val c" id="rkpi-active-val">${_initKpis.activeCount}</div>
+    <div class="kpi-sub" style="font-size:10.5px;color:var(--c);margin-top:4px">${BIZ.language==='fr'?'Voir la liste':'View list'} →</div>
   </div>
   <div class="kpi r" style="cursor:pointer" title="${_s.rent_click_overdue_all}" onclick="filterRentalsOverdue()">
     <div class="kpi-lbl">${_s.rent_kpi_overdue}</div>
-    <div class="kpi-val r">${overdue.length}</div>
-    <div class="kpi-sub" style="font-size:10.5px;color:var(--r);margin-top:4px">${overdue.length>0?'View list →':'All clear ✓'}</div>
+    <div class="kpi-val r" id="rkpi-overdue-val">${_initKpis.overdueCount}</div>
+    <div class="kpi-sub" id="rkpi-overdue-sub" style="font-size:10.5px;color:var(--r);margin-top:4px">${_initKpis.overdueCount>0?(BIZ.language==='fr'?'Voir la liste':'View list')+' →':(BIZ.language==='fr'?'Tout est OK \u2713':'All clear \u2713')}</div>
   </div>
   <div class="kpi g" style="cursor:pointer" title="${_s.rent_click_returned}" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(4)'),'Returned')">
-    <div class="kpi-lbl">${_s.rent_tab_today}</div>
-    <div class="kpi-val g">${D.rentals.filter(r=>r.st==='Returned'&&r.returnDate===localDateStr()).length}</div>
-    <div class="kpi-sub" style="font-size:10.5px;color:var(--g);margin-top:4px">View returned →</div>
+    <div class="kpi-lbl">${BIZ.language==='fr'?'Retours (P\u00e9riode)':'Returns (Period)'}</div>
+    <div class="kpi-val g" id="rkpi-returned-val">${_initKpis.returnedCount}</div>
+    <div class="kpi-sub" style="font-size:10.5px;color:var(--g);margin-top:4px">${BIZ.language==='fr'?'Voir retours':'View returned'} →</div>
   </div>
   <div class="kpi y" style="cursor:pointer" title="${BIZ.language==='fr'?'Voir les locations actives (cautions retenues)':'View active rentals (deposits held)'}" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(3)'),'Checked Out')">
     <div class="kpi-lbl">${_s.rent_kpi_deps}</div>
-    <div class="kpi-val y">${fmtKpi(depHeld)}</div>
-    <div class="kpi-sub" style="font-size:10.5px;color:var(--text2);margin-top:4px">${activeRentals.length} ${BIZ.language==='fr'?'actives':'active'} →</div>
+    <div class="kpi-val y" id="rkpi-dep-val">${fmtKpi(_initKpis.depHeld)}</div>
+    <div class="kpi-sub" id="rkpi-dep-sub" style="font-size:10.5px;color:var(--text2);margin-top:4px">${_initKpis.activeCount} ${BIZ.language==='fr'?'actives':'active'} \u2192</div>
   </div>
   <div class="kpi p" style="cursor:pointer" title="${_s.rent_click_overdue}" onclick="filterRentalsOverdue()">
     <div class="kpi-lbl">${_s.rent_kpi_fees}</div>
-    <div class="kpi-val p">${fmtKpi(totalLF)}</div>
-    <div class="kpi-sub" style="font-size:10.5px;color:var(--p);margin-top:4px">${overdue.length>0?'View overdue →':'None outstanding'}</div>
+    <div class="kpi-val p" id="rkpi-lf-val">${fmtKpi(totalLF)}</div>
+    <div class="kpi-sub" style="font-size:10.5px;color:var(--p);margin-top:4px">${overdue.length>0?(BIZ.language==='fr'?'Voir en retard':'View overdue')+' \u2192':(BIZ.language==='fr'?'Aucune en cours':'None outstanding')}</div>
   </div>
-  <div class="kpi b" style="cursor:pointer" title="${BIZ.language==='fr'?'Revenu engag\u00e9 pour toutes les locations actives (base de comptabilit\u00e9 d\'engagement)':'Committed revenue for all earned rentals (accrual basis)'}" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(1)'), '')">
+  <div class="kpi b" style="cursor:pointer" title="${BIZ.language==='fr'?'Revenu engag\u00e9 pour toutes les locations gagn\u00e9es dans la p\u00e9riode (comptabilit\u00e9 d\'engagement)':'Committed revenue for rentals earned in the period (accrual basis)'}" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(1)'), '')">
     <div class="kpi-lbl">${BIZ.language==='fr'?'Revenu (Engagement)':'Revenue (Earned)'}</div>
-    <div class="kpi-val b">${fmtKpi(rentRevenueAccrual)}</div>
-    <div class="kpi-sub" style="font-size:10.5px;color:var(--a);margin-top:4px">${_earned.length} ${BIZ.language==='fr'?'gagn\u00e9es':'earned'} →</div>
+    <div class="kpi-val b" id="rkpi-rev-val">${fmtKpi(_initKpis.rentRevenue)}</div>
+    <div class="kpi-sub" id="rkpi-rev-sub" style="font-size:10.5px;color:var(--a);margin-top:4px">${_initKpis.earnedCount} ${BIZ.language==='fr'?'gagn\u00e9es':'earned'} \u2192</div>
   </div>
-  <div class="kpi g" style="cursor:pointer" title="${BIZ.language==='fr'?'Esp\u00e8ces effectivement re\u00e7ues sur les paiements de loyer':'Cash actually received from rental payments'}" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(1)'), '')">
+  <div class="kpi g" style="cursor:pointer" title="${BIZ.language==='fr'?'Esp\u00e8ces effectivement re\u00e7ues sur les paiements de loyer dans la p\u00e9riode':'Cash actually received from rental payments in the period'}" onclick="filterRentals(document.querySelector('#rental-tabs .stab:nth-child(1)'), '')">
     <div class="kpi-lbl">${BIZ.language==='fr'?'Esp\u00e8ces Re\u00e7ues':'Cash Collected'}</div>
-    <div class="kpi-val g">${fmtKpi(rentCashCollected)}</div>
-    <div class="kpi-sub" style="font-size:10.5px;color:var(--g);margin-top:4px">${BIZ.language==='fr'?'paiements de loyer':'rental payments'} →</div>
+    <div class="kpi-val g" id="rkpi-cash-val">${fmtKpi(_initKpis.rentCash)}</div>
+    <div class="kpi-sub" style="font-size:10.5px;color:var(--g);margin-top:4px">${BIZ.language==='fr'?'paiements de loyer':'rental payments'} \u2192</div>
   </div>
-  <div class="kpi r" style="cursor:pointer" title="${BIZ.language==='fr'?'Loyer factur\u00e9 mais non encore re\u00e7u (cr\u00e9ances locataires)':'Rent invoiced but not yet collected (tenant AR)'}" onclick="filterRentalsByBalance()">
+  <div class="kpi r" style="cursor:pointer" title="${BIZ.language==='fr'?'Loyer factur\u00e9 mais non encore re\u00e7u (cr\u00e9ances locataires) \u2014 toute p\u00e9riode':'Rent invoiced but not yet collected (tenant AR) \u2014 all time'}" onclick="filterRentalsByBalance()">
     <div class="kpi-lbl">${BIZ.language==='fr'?'Loyer D\u00fb (AR)':'Rental AR (owed)'}</div>
-    <div class="kpi-val r">${fmtKpi(rentAR)}</div>
-    <div class="kpi-sub" style="font-size:10.5px;color:var(--r);margin-top:4px">${rentARCount > 0 ? rentARCount + ' ' + (BIZ.language==='fr'?'locations \u2192':'rentals →') : (BIZ.language==='fr'?'tout per\u00e7u \u2713':'all collected \u2713')}</div>
+    <div class="kpi-val r" id="rkpi-ar-val">${fmtKpi(_initKpis.rentAR)}</div>
+    <div class="kpi-sub" id="rkpi-ar-sub" style="font-size:10.5px;color:var(--r);margin-top:4px">${_initKpis.arCount > 0 ? _initKpis.arCount + ' ' + (BIZ.language==='fr'?'locations':'rentals') + ' \u2192' : (BIZ.language==='fr'?'tout per\u00e7u \u2713':'all collected \u2713')}</div>
   </div>
 </div>
 <div class="stabs" id="rental-tabs">
@@ -27262,6 +27266,78 @@ function setRentalsPeriod(el, period){
   el.classList.add('on');
   _rentalsCurrentRange = PERIOD_RANGES[period] || null;
   _rentalsFilter();
+  _refreshRentalKPIs(); // keep tile values in sync with the visible list
+}
+
+// Compute period-aware rental KPIs.
+//   range null    \u2192 all-time (matches the "all time" filter, used after
+//                    filterRentalsOverdue / filterRentalsByBalance clear
+//                    the range)
+//   range object  \u2192 only rentals whose start date falls inside [from..to]
+//
+// "Earned" = a rental that has actually started (Checked Out, Overdue,
+// Returned, Closed). Reserved doesn't earn. The returnedCount tile is
+// period-aware against r.returnDate so a "Returns this week" question
+// answers correctly.
+function _computeRentalKPIs(range){
+  function _inR(dt){ return !range || (dt && inRange(dt, range)); }
+  // Period-filtered base set keyed on rental start
+  var pool = D.rentals.filter(function(r){ return _inR(r.start); });
+  var activeCount  = pool.filter(function(r){ return r.st==='Checked Out' || r.st==='Reserved'; }).length;
+  var overdueCount = pool.filter(function(r){ return r.st==='Overdue'; }).length;
+  // Returned count for the period is keyed on returnDate (not start)
+  var returnedCount = D.rentals.filter(function(r){
+    return r.st==='Returned' && _inR(r.returnDate);
+  }).length;
+  var earned = pool.filter(function(r){
+    return r.st==='Checked Out' || r.st==='Overdue' || r.st==='Returned' || r.st==='Closed';
+  });
+  var rentRevenue = earned.reduce(function(a, r){ return a + (r.fee||0); }, 0);
+  var rentCash    = earned.reduce(function(a, r){ return a + (r.paid||0); }, 0);
+  // AR is point-in-time. Period filter still narrows by start date (so a
+  // tenant whose lease started in Jan but who is still owing rent today
+  // doesn't show up in a "this week" view — which matches the operational
+  // question "what came in / went out this week").
+  var rentAR = earned.reduce(function(a, r){
+    return a + Math.max(0, (r.fee||0) - (r.paid||0));
+  }, 0);
+  var arCount = earned.filter(function(r){ return ((r.fee||0) - (r.paid||0)) > 0.01; }).length;
+  // Deposits held = period-filtered active rentals (Reserved / Checked
+  // Out / Overdue). Returned rentals have had their deposits settled.
+  var active = pool.filter(function(r){ return !['Returned','Closed'].includes(r.st); });
+  var depHeld = active.reduce(function(a, r){ return a + (r.dep||0); }, 0);
+  return {
+    activeCount: active.length,
+    overdueCount: overdueCount,
+    returnedCount: returnedCount,
+    depHeld: depHeld,
+    earnedCount: earned.length,
+    rentRevenue: rentRevenue,
+    rentCash: rentCash,
+    rentAR: rentAR,
+    arCount: arCount,
+  };
+}
+
+// Patch tile values in place \u2014 cheaper than re-rendering the whole page
+// and avoids losing scroll position when the user switches periods.
+function _refreshRentalKPIs(){
+  var k = _computeRentalKPIs(_rentalsCurrentRange);
+  var fr = BIZ.language==='fr';
+  function _set(id, val){ var el = document.getElementById(id); if(el) el.textContent = val; }
+  _set('rkpi-active-val',   k.activeCount);
+  _set('rkpi-overdue-val',  k.overdueCount);
+  _set('rkpi-overdue-sub',  k.overdueCount>0 ? (fr?'Voir la liste \u2192':'View list \u2192') : (fr?'Tout est OK \u2713':'All clear \u2713'));
+  _set('rkpi-returned-val', k.returnedCount);
+  _set('rkpi-dep-val',      fmtKpi(k.depHeld));
+  _set('rkpi-dep-sub',      k.activeCount + ' ' + (fr?'actives':'active') + ' \u2192');
+  _set('rkpi-rev-val',      fmtKpi(k.rentRevenue));
+  _set('rkpi-rev-sub',      k.earnedCount + ' ' + (fr?'gagn\u00e9es':'earned') + ' \u2192');
+  _set('rkpi-cash-val',     fmtKpi(k.rentCash));
+  _set('rkpi-ar-val',       fmtKpi(k.rentAR));
+  _set('rkpi-ar-sub',       k.arCount>0
+      ? (k.arCount + ' ' + (fr?'locations':'rentals') + ' \u2192')
+      : (fr?'tout per\u00e7u \u2713':'all collected \u2713'));
 }
 
 function filterRentals(el, status){
