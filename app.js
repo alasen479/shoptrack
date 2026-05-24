@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779621903");
+console.log("ShopTrack v2.7 - build:1779623417");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -992,6 +992,20 @@ const fmtRaw = n => {
     default:   return '$' + val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   }
 };
+// Format a service price using its native amount when available (no
+// rate-multiply drift), falling back to the USD round-trip otherwise.
+// This is what should be used anywhere a service card or list shows the
+// price — `fmt(s.price)` always re-multiplies by today's rate, which is
+// the same drift bug the edit-modal fix was supposed to solve. Cards
+// kept showing 2,503 even after the user fixed the value because they
+// weren't reading priceNative.
+const fmtSvc = s => {
+  if(!s) return fmt(0);
+  if(s.priceNative != null && s.priceCurrency === CUR.code){
+    return fmtRaw(s.priceNative);
+  }
+  return fmt(s.price);
+};
 
 
 // Document formatting — same as fmt (consistent decimal handling)
@@ -1346,7 +1360,7 @@ function _csAddLine(){const _s=_L();
   var sellOpts = D.inv.filter(function(i){return (i.st==='For Sale'||i.st==='Both')&&((i.qty||0)-(i.rented||0))>0;})
     .map(function(i){return '<option value="inv:'+i.id+'" data-sp="'+Math.round((i.sp||0)*CUR.rate)+'" data-cost="'+Math.round((i.cost||0)*CUR.rate)+'" data-name="'+_esc(i.name+(i.sku?' ('+i.sku+')':''))+'">'+i.name+' ('+((i.qty||0)-(i.rented||0))+' avail) — '+fmt(i.sp)+'</option>';}).join('');
   var svcOpts = (D.services||[]).filter(function(s){return s.active!==false;})
-    .map(function(s){var pt=s.priceType||'flat';var ptSfx={'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'';return '<option value="svc:'+s.id+'" data-sp="'+Math.round((s.price||0)*CUR.rate)+'" data-cost="0" data-name="'+_esc(s.name)+'">'+s.name+(s.cat?' · '+s.cat:'')+' — '+fmt(s.price)+ptSfx+'</option>';}).join('');
+    .map(function(s){var pt=s.priceType||'flat';var ptSfx={'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'';return '<option value="svc:'+s.id+'" data-sp="'+Math.round((s.price||0)*CUR.rate)+'" data-cost="0" data-name="'+_esc(s.name)+'">'+s.name+(s.cat?' · '+s.cat:'')+' — '+fmtSvc(s)+ptSfx+'</option>';}).join('');
   row.innerHTML = '<select class="fs cs-inv-sel" onchange="_csLineChange(this);_csCheckMinSpWarn()">'
     +'<option value="">-- Select product or service --</option>'
     +(sellOpts?'<optgroup label="📦 Products">'+sellOpts+'</optgroup>':'')
@@ -5440,7 +5454,7 @@ async function mCreateSale(){const _s=_L();
   const sellable=D.inv.filter(function(i){return (i.st==='For Sale'||i.st==='Both')&&((i.qty||0)-(i.rented||0))>0;});
   const activeSvcs=(D.services||[]).filter(function(s){return s.active!==false;});
   const invOpts=sellable.map(i=>'<option value="inv:'+i.id+'" data-sp="'+Math.round((i.sp||0)*CUR.rate)+'" data-cost="'+Math.round((i.cost||0)*CUR.rate)+'" data-name="'+_esc(i.name+(i.sku?' ('+i.sku+')':''))+'">'+i.name+' ('+((i.qty||0)-(i.rented||0))+' avail) — '+fmt(i.sp)+'</option>').join('');
-  const svcOpts=activeSvcs.map(s=>{var pt=s.priceType||'flat';var ptSfx={'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'';return '<option value="svc:'+s.id+'" data-sp="'+Math.round((s.price||0)*CUR.rate)+'" data-cost="0" data-name="'+_esc(s.name)+'">'+s.name+(s.cat?' · '+s.cat:'')+' — '+fmt(s.price)+ptSfx+'</option>';}).join('');
+  const svcOpts=activeSvcs.map(s=>{var pt=s.priceType||'flat';var ptSfx={'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'';return '<option value="svc:'+s.id+'" data-sp="'+Math.round((s.price||0)*CUR.rate)+'" data-cost="0" data-name="'+_esc(s.name)+'">'+s.name+(s.cat?' · '+s.cat:'')+' — '+fmtSvc(s)+ptSfx+'</option>';}).join('');
   const firstLineOpts='<option value="">-- Select product or service --</option>'
     +(invOpts?'<optgroup label="📦 Products">'+invOpts+'</optgroup>':'')
     +(svcOpts?'<optgroup label="✂️ Services">'+svcOpts+'</optgroup>':'')
@@ -11798,7 +11812,7 @@ function pgCatalog(){const _s=_L();
   (D.services||[]).filter(function(s){return s.active!==false;}).forEach(function(s){
     var pt = s.priceType||'flat';
     var ptColor = {flat:'var(--a)',per_session:'#7c3aed',per_hour:'#0284c7',per_day:'#0891b2',per_week:'#0f766e',per_min:'#dc2626',starting:'#d97706'}[pt]||'var(--a)';
-    var priceLabel = pt==='starting' ? 'From '+fmt(s.price) : fmt(s.price)+({'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'');
+    var priceLabel = pt==='starting' ? 'From '+fmtSvc(s) : fmtSvc(s)+({'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'');
     var durLabel = (!s.duration||s.duration<=0) ? 'Duration TBD' : s.duration+' min';
     var imgHtml = s.imgDataUrl
       ? '<img loading="lazy" src="'+s.imgDataUrl+'" style="width:100%;height:100%;object-fit:cover;display:block"/>'
@@ -21088,7 +21102,7 @@ function _initModalSearchSelects(context){
   function custOpts(blank){ return (blank?[{val:'',label:blank}]:[]).concat(D.cust.map(function(c){ return {val:c.id, label:c.name+(c.phone?' · '+c.phone:'')+(c.vip?' ⭐':'')}; })); }
   function vendOpts(blank){ return (blank?[{val:'',label:blank}]:[]).concat(D.vendors.map(function(v){ return {val:v.id, label:v.name+(v.cat?' ('+v.cat+')':'')}; })); }
   function catOpts(cats,blank){ return (blank?[{val:'',label:blank}]:[]).concat((cats||[]).map(function(c){ return {val:c,label:c}; })); }
-  function svcOpts(blank){ return (blank?[{val:'',label:blank}]:[]).concat((D.services||[]).filter(function(s){return s.active!==false;}).map(function(s){ return {val:s.id,label:s.name+(s.cat?' · '+s.cat:'')+(s.price?' — '+fmt(s.price):'') }; })); }
+  function svcOpts(blank){ return (blank?[{val:'',label:blank}]:[]).concat((D.services||[]).filter(function(s){return s.active!==false;}).map(function(s){ return {val:s.id,label:s.name+(s.cat?' · '+s.cat:'')+(s.price?' — '+fmtSvc(s):'') }; })); }
 
   // ── Native customer selects (reliable, always visible) ─────────────────────
   function _nativeCustSel(wrapId, hiddenId, blank, onChangeFn){
@@ -30037,8 +30051,18 @@ async function _dbDelService(id){
     await _queueEnqueueDelete(SESSION.bizId,'services',id);
     var qc=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc); return;
   }
-  try{ await _sb.from('services').delete().eq('id',id).eq('biz_id',SESSION.bizId); }
+  try{
+    var delResult = await _sb.from('services').delete().eq('id',id).eq('biz_id',SESSION.bizId);
+    if(delResult && delResult.error){
+      console.error('[delService] Cloud delete returned error:', delResult.error.code, delResult.error.message);
+      // Queue for retry — but log loudly so the user sees this in console
+      await _queueEnqueueDelete(SESSION.bizId,'services',id).catch(function(){});
+    } else {
+      console.log('[delService] Cloud delete OK for', id);
+    }
+  }
   catch(e){
+    console.error('[delService] Cloud delete THREW:', e.message);
     await _queueEnqueueDelete(SESSION.bizId,'services',id).catch(function(){});
     var qc2=await _queueCount(SESSION.bizId); _queueUpdateBadge(qc2);
   }
@@ -30121,7 +30145,7 @@ function _computeSvcTotal(price, priceType, durationMins){
 
 // Format price label for display (e.g. "5,000 Frs/hr", "Starting from 10,000 Frs")
 function _fmtSvcPrice(s){
-  var base = fmt(s.price);
+  var base = fmtSvc(s);
   switch(s.priceType){
     case 'per_hour':    return base + '<span style="font-size:10px;font-weight:500;opacity:.7">/hr</span>';
     case 'per_min':     return base + '<span style="font-size:10px;font-weight:500;opacity:.7">/min</span>';
@@ -31306,10 +31330,12 @@ function pgServices(){const _s=_L();const _ui=_s;
     // Duration label — "TBD" if 0 or not set
     var durLabel = (!s.duration || s.duration<=0) ? 'Duration TBD' : (s.duration+' min');
 
-    // Price display
+    // Price display — uses fmtSvc which prefers s.priceNative when
+    // currency matches, so the card shows the user's typed value (2,500)
+    // not the drift-multiplied USD round-trip (2,503).
     var priceStr = '';
     if(ptPrefix[pt]) priceStr += '<span style="font-size:11px;font-weight:600;vertical-align:middle;letter-spacing:.2px;opacity:.75">'+ptPrefix[pt]+'</span>';
-    priceStr += '<span style="font-size:20px;font-weight:900;letter-spacing:-.5px">'+fmt(s.price)+'</span>';
+    priceStr += '<span style="font-size:20px;font-weight:900;letter-spacing:-.5px">'+fmtSvc(s)+'</span>';
     if(ptSuffix[pt]) priceStr += '<span style="font-size:11px;font-weight:600;vertical-align:middle;opacity:.75">'+ptSuffix[pt]+'</span>';
 
     // Card wrapper — tall image area if photo exists
@@ -31429,7 +31455,7 @@ function _apptQuickStatus(id, newSt){const _s=_L();
 // ── EDIT APPOINTMENT ─────────────────────────────────────────
 function mEditAppt(id){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a){toast(_L().t_not_found,'error');return;}
-  var svcOpts=D.services.filter(function(s){return s.active;}).map(function(s){var pt=s.priceType||'flat';var totalDisp=_computeSvcTotal(s.price,pt,s.duration)*CUR.rate;return '<option value="'+s.id+'" data-dur="'+s.duration+'" data-p="'+s.price+'" data-pt="'+pt+'"'+(s.id===a.serviceId?' selected':'')+'>'+s.name+' ('+s.duration+'min · '+fmt(s.price)+'/'+_ptLabel(pt)+')</option>';}).join('');
+  var svcOpts=D.services.filter(function(s){return s.active;}).map(function(s){var pt=s.priceType||'flat';var totalDisp=_computeSvcTotal(s.price,pt,s.duration)*CUR.rate;return '<option value="'+s.id+'" data-dur="'+s.duration+'" data-p="'+s.price+'" data-pt="'+pt+'"'+(s.id===a.serviceId?' selected':'')+'>'+s.name+' ('+s.duration+'min · '+fmtSvc(s)+'/'+_ptLabel(pt)+')</option>';}).join('');
   var custOpts=D.cust.map(function(c){return '<option value="'+c.id+'" data-ph="'+(c.phone||c.whatsapp||'')+'"'+(c.id===a.custId?' selected':'')+'>'+c.name+'</option>';}).join('');
   var stfOpts=BIZ_USERS.filter(function(u){return u.bizId===SESSION.bizId && (u.st!=='Inactive' || u.id===a.staffId);}).map(function(u){var inactive=u.st==='Inactive';return '<option value="'+u.id+'"'+(u.id===a.staffId?' selected':'')+'>'+u.name+(inactive?' (removed)':'')+'</option>';}).join('');
   var stList=['Reserved','Confirmed','In Progress','Completed','No-Show','Cancelled'].map(function(s){return '<option'+(s===a.st?' selected':'')+'>'+s+'</option>';}).join('');
@@ -32156,6 +32182,14 @@ function _delSvc(id){const _s=_L();
     if(btn) btn.onclick=function(){
       D.services=D.services.filter(function(x){return x.id!==mid;});
       _dbDelService(mid);
+      // Clear the localStorage backup so a recycled ID (the next new
+      // service will reuse this id if it was the max) doesn't inherit
+      // stale drifted data. Without this, deleting SVC-002 and creating
+      // a new service that gets SVC-002 again could see the OLD service's
+      // localStorage price restored on next load.
+      try {
+        localStorage.removeItem('stk:svcPriceNative:' + SESSION.bizId + ':' + mid);
+      } catch(_e) { /* non-fatal */ }
       refreshLiveKpis();
       addAudit('Service deleted',mid+' — '+mname);
       closeModal();
@@ -36269,7 +36303,7 @@ function _isSlotAvailable(date, startTime, endTime){
 
 function mNewAppt(date){const _s=_L();
   const td=date||localDateStr();
-  const so=D.services.filter(s=>s.active).map(s=>{const pt=s.priceType||'flat';return `<option value="${s.id}" data-dur="${s.duration}" data-p="${s.price}" data-pt="${pt}">${s.name} (${s.duration}min · ${fmt(s.price)}/${_ptLabel(pt)})</option>`;}).join('');
+  const so=D.services.filter(s=>s.active).map(s=>{const pt=s.priceType||'flat';return `<option value="${s.id}" data-dur="${s.duration}" data-p="${s.price}" data-pt="${pt}">${s.name} (${s.duration}min · ${fmtSvc(s)}/${_ptLabel(pt)})</option>`;}).join('');
   const co=D.cust.map(c=>`<option value="${c.id}" data-ph="${c.phone||c.whatsapp||''}">${c.name}</option>`).join('');
   const stO=BIZ_USERS.filter(u=>u.bizId===SESSION.bizId && u.st!=='Inactive').map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
   modal('📅 New Appointment',`
