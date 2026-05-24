@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779621401");
+console.log("ShopTrack v2.7 - build:1779621903");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -29913,31 +29913,59 @@ function filterLedger(el, type){
 // ── DB helpers ──────────────────────────────────────────────
 function _dbToService(r){
   var rec = {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceNative:r.price_native!=null?r.price_native:null,priceCurrency:r.price_currency||null,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,bookable:r.bookable!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null,costLines:r.cost_lines?JSON.parse(r.cost_lines):null};
-  // ── LEGACY-RECORD AUTO-CURE ─────────────────────────────────
+  // ── LEGACY-RECORD AUTO-CURE WITH localStorage BACKUP ─────────
   // Pre-v149 service records were stored only as USD-base floats. On
   // every edit the form computed display = price * CUR.rate, then save
   // computed back price = display / CUR.rate — and live FX rate ticks
   // between those two operations caused drift (2500 → 2503 → 2506 → …).
   //
-  // The v149 fix added priceNative + priceCurrency to stop drift for
-  // NEW records, but legacy records never got those fields populated.
-  // Worse, the user had to manually open + save each drifted record to
-  // pin its value, and during that opening the fallback path
-  // (price * CUR.rate) would already display the drifted number.
+  // The fix layers three storage tiers, in order of authority:
+  //   1) localStorage  — survives IDB wipes, SW updates, hard refresh.
+  //                      Keyed per-business-per-service. Stores
+  //                      "<nativeValue>:<currency>" string.
+  //   2) cloud columns — price_native / price_currency, written when
+  //                      the schema migration has been run.
+  //   3) IDB cache     — fast read on app start, written on every save.
   //
-  // Fix: on first load of any legacy record (priceNative still null),
-  // stamp it with the current display-currency value rounded to the
-  // currency's precision (XAF=0, USD=2, etc.) and tag it with the
-  // active currency. From that moment forward the record uses the
-  // priceNative path and drift stops. The cured value is whatever the
-  // user sees right now — which is what they'd type if forced to
-  // re-save anyway. Idempotent for already-cured records.
+  // Read priority: cloud columns > localStorage > auto-cure stamp.
+  // Write strategy: every save writes ALL THREE in parallel.
+  //
+  // This means even if (a) the cloud migration has not been run, (b)
+  // IDB gets cleared, and (c) the service worker serves old code, the
+  // localStorage entry survives — and on the very next load the
+  // priceNative is reconstituted before any drift math runs.
+  try {
+    var lsKey = 'stk:svcPriceNative:' + (SESSION.bizId||'global') + ':' + r.id;
+    var lsVal = localStorage.getItem(lsKey);
+    if(lsVal && rec.priceNative == null){
+      var parts = lsVal.split(':');
+      var lsNative = parseFloat(parts[0]);
+      var lsCur    = parts[1] || '';
+      if(!isNaN(lsNative) && lsCur === CUR.code){
+        rec.priceNative   = lsNative;
+        rec.priceCurrency = lsCur;
+      }
+    }
+  } catch(_e) { /* localStorage may be unavailable; non-fatal */ }
+  // Final fallback: stamp from current display rate if STILL null.
+  // This freezes whatever value is currently displayed so further
+  // drift stops, even if both cloud and localStorage are empty.
   if(rec.priceNative == null && rec.price > 0 && (CUR.rate||0) > 0){
     var d = CUR.decimals || 0;
     rec.priceNative = parseFloat((rec.price * CUR.rate).toFixed(d));
     rec.priceCurrency = CUR.code;
   }
   return rec;
+}
+
+// localStorage helper: write the native price for a service so it
+// survives IDB and SW resets. Called from save flows.
+function _lsSetSvcNative(bizId, svcId, nativeVal, currency){
+  if(!svcId || nativeVal == null || isNaN(nativeVal)) return;
+  try {
+    var lsKey = 'stk:svcPriceNative:' + (bizId||'global') + ':' + svcId;
+    localStorage.setItem(lsKey, nativeVal + ':' + (currency||CUR.code));
+  } catch(_e) { /* quota or disabled — non-fatal */ }
 }
 function _dbToAppt(r){ return {id:r.id,serviceId:r.service_id||'',serviceName:r.service_name||'',custId:r.customer_id||'',custName:r.customer_name||'',custPhone:r.customer_phone||'',staffId:r.staff_id||'',staffName:r.staff_name||'',date:r.date||'',startTime:r.start_time||'',endTime:r.end_time||'',st:r.status||'Reserved',notes:r.notes||'',walkIn:r.walk_in||false,totalAmt:r.total_amount||0,totalAmtNative:r.total_amount_native!=null?r.total_amount_native:null,totalAmtCurrency:r.total_amount_currency||null,payMethod:r.pay_method||'Cash',saleId:r.sale_id||'',createdAt:r.created_at||'',photos:Array.isArray(r.photos)?r.photos:(r.photos?(function(){try{return JSON.parse(r.photos);}catch(e){return [];}})():[])}; }
 function _serviceDB(s,bizId){ return {id:s.id,biz_id:bizId,name:s.name,duration_mins:s.duration,price:s.price||0,price_native:s.priceNative!=null?s.priceNative:null,price_currency:s.priceCurrency||null,price_type:s.priceType||'flat',category:s.cat||'',color:s.color||'#4361ee',staff_ids:s.staffIds||[],active:s.active!==false,bookable:s.bookable!==false,description:s.desc||'',img_data_url:s.imgDataUrl||null,cost_lines:s.costLines?JSON.stringify(s.costLines):null}; }
@@ -32075,6 +32103,7 @@ async function _saveSvc(){const _s=_L();
   const d=_getSvcData(); if(!d) return;
   const s={id:_newSvcId(),...d};
   D.services.push(s);
+  _lsSetSvcNative(SESSION.bizId, s.id, s.priceNative, s.priceCurrency);
   closeModal();
   toast(s.name+' saving to cloud…','info');
   await _dbSaveService(s);
@@ -32087,6 +32116,10 @@ async function _saveSvcEdit(id){const _s=_L();
   const d=_getSvcData(); if(!d) return;
   const s=D.services.find(x=>x.id===id); if(!s) return;
   Object.assign(s,d);
+  // Triple-write: localStorage backup ensures the native price survives
+  // IDB wipes, SW updates, and hard refreshes — the only failure modes
+  // that have caused this drift bug to recur in the wild.
+  _lsSetSvcNative(SESSION.bizId, id, s.priceNative, s.priceCurrency);
   closeModal();
   toast(s.name+' saving to cloud…','info');
   await _dbSaveService(s);
