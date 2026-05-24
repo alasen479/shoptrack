@@ -369,15 +369,26 @@ async function init(){
 }
 
 async function loadServices(bizId){
-  // Try with photo + bookable column first
+  // Try with photo + bookable + native-price columns (post-migration schema).
+  // price_native + price_currency are the drift-immune amounts captured at
+  // save time; we prefer them whenever they exist for the active currency.
+  try{
+    const {data, error} = await sb.from('services')
+      .select('id,name,duration_mins,price,price_native,price_currency,price_type,category,color,description,img_data_url,active,bookable')
+      .eq('biz_id', bizId)
+      .order('name');
+    if(error) throw error;
+    SERVICES = (data||[]).filter(s => s.active !== false && s.bookable !== false);
+    return;
+  }catch(e){ console.warn('Services query (with native price) failed:', e.message); }
+
+  // Fallback: no native-price columns yet (migration not run on this DB)
   try{
     const {data, error} = await sb.from('services')
       .select('id,name,duration_mins,price,price_type,category,color,description,img_data_url,active,bookable')
       .eq('biz_id', bizId)
       .order('name');
     if(error) throw error;
-    // Public booking page must hide both inactive AND non-bookable services.
-    // active===null is treated as active (legacy rows with no value set).
     SERVICES = (data||[]).filter(s => s.active !== false && s.bookable !== false);
     return;
   }catch(e){ console.warn('Services query (with photo+bookable) failed:', e.message); }
@@ -423,16 +434,25 @@ function computeSvcTotal(price, priceType, durationMins){
   }
 }
 function fmtSvcPrice(s){
-  // s is a raw Supabase service row (price_type, price, duration_mins)
+  // s is a raw Supabase service row (price_type, price, price_native, price_currency, duration_mins).
+  // When price_native is present and the saved currency matches the
+  // active currency, use it directly — no rate-multiply, no drift.
+  // Falls back to the legacy USD-base round-trip for older records.
   const pt = s.price_type || 'flat';
   const cur = BIZ.currency || 'XAF';
   const rate = RATES[cur] || 615;
   const sym  = SYMS[cur]  || 'Frs';
   const rawPrice = s.price || 0;
-  if(!rawPrice) return 'Free';
-  const dispPrice = rawPrice * rate;
+  if(!rawPrice && !s.price_native) return 'Free';
   const fmtAmt = n => (cur==='XAF'||cur==='XOF') ? fmt(Math.round(n))+' '+sym : sym+fmt(Math.round(n));
   const suffixMap = {per_hour:'/hr', per_min:'/min', per_day:'/day', per_week:'/wk', per_session:'/session'};
+  // Native-currency path (drift-immune)
+  let dispPrice;
+  if(s.price_native != null && s.price_currency === cur){
+    dispPrice = Number(s.price_native);
+  } else {
+    dispPrice = rawPrice * rate;
+  }
   if(pt === 'starting') return 'From ' + fmtAmt(dispPrice);
   const suffix = suffixMap[pt] || '';
   return fmtAmt(dispPrice) + suffix;
@@ -444,8 +464,13 @@ function fmtSvcTotal(s){
   const cur = BIZ.currency || 'XAF';
   const rate = RATES[cur] || 615;
   const sym  = SYMS[cur]  || 'Frs';
-  const total = computeSvcTotal(s.price||0, pt, s.duration_mins!=null?s.duration_mins:60) * rate;
   const fmtAmt = n => (cur==='XAF'||cur==='XOF') ? fmt(Math.round(n))+' '+sym : sym+fmt(Math.round(n));
+  // Use native amount as the per-unit base when available, so the total
+  // calculation (× duration units) stays drift-free as well.
+  const perUnit = (s.price_native != null && s.price_currency === cur)
+    ? Number(s.price_native) / rate   // convert native → USD-base for computeSvcTotal
+    : (s.price || 0);
+  const total = computeSvcTotal(perUnit, pt, s.duration_mins!=null?s.duration_mins:60) * rate;
   return fmtAmt(total);
 }
 
@@ -730,24 +755,45 @@ async function confirmBooking(){
     const dateObj  = new Date(selDate+'T12:00:00');
     const dateFmt  = dateObj.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
+    // Compute the booking total. Prefer the native price when available
+    // so the saved total matches exactly what the customer sees on the
+    // booking page (no drift from FX rate fluctuation).
+    const _bookCur  = BIZ.currency || 'XAF';
+    const _bookRate = RATES[_bookCur] || 615;
+    const _bookPerUnitUSD = (selSvc.price_native != null && selSvc.price_currency === _bookCur)
+      ? (Number(selSvc.price_native) / _bookRate)
+      : (selSvc.price || 0);
+    const _bookTotalUSD = computeSvcTotal(_bookPerUnitUSD, selSvc.price_type||'flat', selSvc.duration_mins!=null?selSvc.duration_mins:60);
+    const _bookTotalNative = parseFloat((_bookTotalUSD * _bookRate).toFixed((_bookCur==='XAF'||_bookCur==='XOF')?0:2));
+
     const appt = {
       id:            apptId,
       biz_id:        BIZ.id,
       service_id:    selSvc.id,
       service_name:  selSvc.name,
       customer_name: name,
-      customer_phone:phone,
+      customer_phone: phone,
       date:          selDate,
       start_time:    selTime,
       end_time:      selTimeEnd,
       status:        'Reserved',
       notes:         notes,
       walk_in:       false,
-      total_amount:  computeSvcTotal(selSvc.price||0, selSvc.price_type||'flat', selSvc.duration_mins!=null?selSvc.duration_mins:60),
+      total_amount:  _bookTotalUSD,
+      total_amount_native:   _bookTotalNative,
+      total_amount_currency: _bookCur,
     };
 
-    const {error} = await sb.from('appointments').insert(appt);
-    if(error) throw error;
+    let insertResult = await sb.from('appointments').insert(appt);
+    // If the native columns don't exist yet on this DB, retry without them.
+    if(insertResult.error && /total_amount_native|total_amount_currency/i.test(insertResult.error.message||'')){
+      console.warn('[booking] native columns not in schema; retrying without them.');
+      const apptBase = Object.assign({}, appt);
+      delete apptBase.total_amount_native;
+      delete apptBase.total_amount_currency;
+      insertResult = await sb.from('appointments').insert(apptBase);
+    }
+    if(insertResult.error) throw insertResult.error;
 
     // Add to local APPTS so double-booking is prevented if user books again
     APPTS.push({date:selDate, start_time:selTime, end_time:selTimeEnd});
