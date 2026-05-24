@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779624756");
+console.log("ShopTrack v2.7 - build:1779625228");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1028,6 +1028,49 @@ const fmtMoney = (rec, field) => {
     return fmt(rec.amt);
   }
   return fmt(rec[field] || 0);
+};
+
+// Appointment-specific formatter. Same as fmtMoney(a, 'totalAmt') but
+// adds a service-lookup fallback: when the appointment has no native
+// amount captured (legacy bookings made before v149), look up the
+// linked service and use its CURRENT corrected priceNative × duration.
+// This means an old Hair Cut appointment whose USD-base amount drifted
+// (a.totalAmt=4.0650, displaying as 2,503) will now display 2,500 once
+// the owner has corrected the service price.
+const fmtApptAmt = (a) => {
+  if(!a) return fmt(0);
+  // Tier 1: appointment has its own native amount → drift-immune
+  if(a.totalAmtNative != null && a.totalAmtCurrency === CUR.code){
+    return fmtRaw(a.totalAmtNative);
+  }
+  // Tier 2: derive from linked service's current native price. Match
+  // by serviceId first, falling back to serviceName for cases where
+  // the original service was deleted and recreated (the new service
+  // has a different id but the appointment still references the old
+  // one).
+  if(a.serviceId || a.serviceName){
+    let svc = a.serviceId ? (D.services||[]).find(function(x){return x.id===a.serviceId;}) : null;
+    if(!svc && a.serviceName){
+      svc = (D.services||[]).find(function(x){return x.name === a.serviceName;});
+    }
+    if(svc && svc.priceNative != null && svc.priceCurrency === CUR.code){
+      const pt    = svc.priceType || 'flat';
+      const dur   = (a.duration != null ? a.duration : (svc.duration||60));
+      const perUnitNative = Number(svc.priceNative);
+      let totalNative;
+      if(['flat','per_session','starting'].indexOf(pt) >= 0){
+        totalNative = perUnitNative;
+      } else if(typeof _computeSvcTotal === 'function'){
+        totalNative = _computeSvcTotal(perUnitNative, pt, dur);
+      } else {
+        totalNative = perUnitNative;
+      }
+      const d = CUR.decimals || 0;
+      return fmtRaw(parseFloat(totalNative.toFixed(d)));
+    }
+  }
+  // Tier 3: legacy USD round-trip (drift-prone)
+  return fmt(a.totalAmt || 0);
 };
 
 
@@ -5821,7 +5864,7 @@ function mRecordPayment(id){const _s=_L();
     var stTag = r2.st==='Returned' ? ' (returned, balance due)' : '';
     return '<option value="'+r2.id+'">[Rental] '+r2.id+' \u2014 '+_esc(r2.cust)+' \u2014 '+fmt(bal)+' due'+stTag+'</option>';
   }).join('');
-  const apptOpts   = (D.appointments||[]).filter(a=>a.st==='Completed'&&a.totalAmt>0).map(a=>`<option value="${a.id}">[Appt] ${a.id} — ${a.custName} — ${fmtMoney(a,"totalAmt")}</option>`).join('');
+  const apptOpts   = (D.appointments||[]).filter(a=>a.st==='Completed'&&a.totalAmt>0).map(a=>`<option value="${a.id}">[Appt] ${a.id} — ${a.custName} — ${fmtApptAmt(a)}</option>`).join('');
 
   // Pre-select if id was passed
   const preselVal  = id||'';
@@ -23047,7 +23090,7 @@ function _apptToIcs(a){
   if(a.custName)  descLines.push('Client: ' + a.custName);
   if(a.custPhone) descLines.push('Phone: '  + a.custPhone);
   if(a.staffName) descLines.push('Staff: '  + a.staffName);
-  if(a.totalAmt)  descLines.push('Amount: ' + fmtMoney(a,"totalAmt"));
+  if(a.totalAmt)  descLines.push('Amount: ' + fmtApptAmt(a));
   descLines.push('Status: '   + (a.st || ''));
   descLines.push('Ref: '      + (a.id || ''));
   if(a.notes)     descLines.push('', 'Notes:', a.notes);
@@ -27150,7 +27193,7 @@ function mServicesRevenue(){const _s=_L();
       <td style="font-size:11px">${_esc(a.serviceName)}</td>
       <td style="font-size:11px;color:var(--text2)">${a.staffName?_esc(a.staffName):'—'}</td>
       <td style="font-size:11px;color:var(--text2)">${svc?svc.duration+'min':'—'}</td>
-      <td>${mono(fmtMoney(a,"totalAmt"),'g')}</td>
+      <td>${mono(fmtApptAmt(a),'g')}</td>
       <td><button class="btn btn-g btn-xs" onclick="event.stopPropagation();genApptInvoice('${a.id}')">📄 Invoice</button></td>
     </tr>`;
   }).join('');
@@ -30454,7 +30497,7 @@ function _apptDayHTML(){
       + '<span style="font-size:10px;font-weight:700;color:'+col+';white-space:nowrap">'+_timeLabel(a.startTime)+'</span>'
       + '</div>'
       + (isCompact?'':'<div style="font-size:11px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(a.serviceName||'')+(a.staffName?' · 👤 '+_esc(a.staffName):'')+'</div>')
-      + (height>=70?'<div style="margin-top:4px"><span style="font-size:9px;font-weight:700;color:'+col+';background:'+col+'22;border-radius:10px;padding:1px 7px">'+a.st+'</span>'+(a.totalAmt>0?'<span style="font-size:10px;color:var(--g);font-family:var(--mono);font-weight:700;margin-left:6px">'+fmtMoney(a,"totalAmt")+'</span>':'')+'</div>':'')
+      + (height>=70?'<div style="margin-top:4px"><span style="font-size:9px;font-weight:700;color:'+col+';background:'+col+'22;border-radius:10px;padding:1px 7px">'+a.st+'</span>'+(a.totalAmt>0?'<span style="font-size:10px;color:var(--g);font-family:var(--mono);font-weight:700;margin-left:6px">'+fmtApptAmt(a)+'</span>':'')+'</div>':'')
       + '</div>';
   });
 
@@ -30591,7 +30634,7 @@ function _apptListHTML(){const _s=_L();
       <td style="font-size:12px">${_esc(a.serviceName||'—')}</td>
       <td style="font-size:12px;color:var(--text2)">${_esc(a.staffName||'Any')}</td>
       <td><span style="background:${_apptBg(a.st)};color:${_apptCol(a.st)};border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap">${a.st}</span></td>
-      <td><span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${a.totalAmt>0?'var(--g)':'var(--text3)'}">${a.totalAmt>0?fmtMoney(a,"totalAmt"):'—'}</span></td>
+      <td><span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${a.totalAmt>0?'var(--g)':'var(--text3)'}">${a.totalAmt>0?fmtApptAmt(a):'—'}</span></td>
       <td onclick="event.stopPropagation()">
         <div class="btn-row" style="gap:3px;flex-wrap:nowrap;justify-content:flex-end">
           ${a.st==='Reserved' && a.custPhone ? `<button class="btn btn-xs" style="background:var(--g);color:#fff;font-weight:700" onclick="_apptConfirmAndNotify('${a.id}')" title="Confirm &amp; notify customer">✓</button>` : ''}
@@ -30693,7 +30736,9 @@ function _apptCheckout(id){var _s=_L();
   //   1) appt.totalAmtNative (set at booking time on v149+)
   //   2) service.priceNative × duration units (recompute from the
   //      service's current native price — picks up any owner-side
-  //      correction since the appointment was booked)
+  //      correction since the appointment was booked). Match by id
+  //      first, then by name (covers cases where the original
+  //      service was deleted and recreated).
   //   3) appt.totalAmt × current rate (legacy fallback, drift-prone)
   //
   // Without this, completing a Hair Cut appointment booked when the
@@ -30705,18 +30750,18 @@ function _apptCheckout(id){var _s=_L();
   if(a.totalAmtNative != null && a.totalAmtCurrency === CUR.code){
     saleTotalNative = a.totalAmtNative;
     saleTotalUSD    = saleTotalNative / (CUR.rate || 1);
-  } else if(a.serviceId){
-    var svc = (D.services||[]).find(function(x){return x.id===a.serviceId;});
+  } else if(a.serviceId || a.serviceName){
+    var svc = a.serviceId ? (D.services||[]).find(function(x){return x.id===a.serviceId;}) : null;
+    if(!svc && a.serviceName){
+      svc = (D.services||[]).find(function(x){return x.name === a.serviceName;});
+    }
     if(svc && svc.priceNative != null && svc.priceCurrency === CUR.code){
       var pt    = svc.priceType||'flat';
       var dur   = a.duration || svc.duration || 60;
       var perUnitNative = Number(svc.priceNative);
-      // For time-based pricing, _computeSvcTotal works in any unit, so
-      // we can feed it the native per-unit price and get the native total.
       saleTotalNative = (typeof _computeSvcTotal === 'function')
         ? _computeSvcTotal(perUnitNative, pt, dur)
         : perUnitNative;
-      // Round to currency precision (XAF=0, USD=2, etc.)
       var _d = CUR.decimals || 0;
       saleTotalNative = parseFloat(saleTotalNative.toFixed(_d));
       saleTotalUSD    = saleTotalNative / (CUR.rate || 1);
@@ -30919,7 +30964,7 @@ function pgAppointments(){const _s=_L();
       var strtBtn = a.st==='Confirmed' ? '<button class="btn btn-xs" style="background:var(--g-dim);color:var(--g)" onclick="event.stopPropagation();_apptQuickStatus(\''+a.id+'\',\'In Progress\')" title="Start">▶ Start</button>' : '';
       var doneBtn = a.st==='In Progress' ? '<button class="btn btn-xs" style="background:var(--g-dim);color:var(--g)" onclick="event.stopPropagation();_apptQuickStatus(\''+a.id+'\',\'Completed\')" title="Complete">✅ Done</button>' : '';
       var coBtn   = (a.st==='Completed'&&!a.saleId&&(a.totalAmt||0)>0) ? '<button class="btn btn-p btn-xs" onclick="event.stopPropagation();_apptCheckout(\''+a.id+'\')" title="Checkout">💳 Pay</button>' : '';
-      var amtDiv  = (a.totalAmt||0)>0 ? '<div style="font-size:12px;font-weight:700;color:var(--g);flex-shrink:0">'+fmtMoney(a,"totalAmt")+'</div>' : '';
+      var amtDiv  = (a.totalAmt||0)>0 ? '<div style="font-size:12px;font-weight:700;color:var(--g);flex-shrink:0">'+fmtApptAmt(a)+'</div>' : '';
       todayRows += '<div onclick="mViewAppt(\''+a.id+'\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--r8);cursor:pointer;border-left:3px solid '+_apptCol(a.st)+'" onmouseover="this.style.background=\'var(--bg4)\'" onmouseout="this.style.background=\'var(--bg3)\'">'
         +'<div style="font-size:12px;font-weight:700;color:var(--text2);width:44px;flex-shrink:0">'+_timeLabel(a.startTime)+'</div>'
         +'<div style="flex:1;min-width:0">'
@@ -34822,7 +34867,7 @@ function exportAppointmentsPDF(){const _s=_L();
         <td>${a.custName}${a.walkIn?' <em style="font-size:10px;color:#64748b">(walk-in)</em>':''}</td>
         <td>${a.serviceName||'—'}</td>
         <td>${a.staffName||'Any'}</td>
-        <td class="num">${a.totalAmt>0?fmtMoney(a,"totalAmt"):'—'}</td>
+        <td class="num">${a.totalAmt>0?fmtApptAmt(a):'—'}</td>
         <td><span class="badge ${a.st==='Completed'?'badge-g':a.st==='No-Show'||a.st==='Cancelled'?'badge-r':a.st==='In Progress'?'badge-y':'badge-b'}">${a.st}</span></td>
       </tr>`).join('')}</tbody>
     </table>`;
@@ -35039,7 +35084,7 @@ function _waOwnerNewBooking(appt) {
     + 'Date: ' + (appt.date || '') + '\n'
     + 'Time: ' + timeLabel + '\n'
     + (appt.staffName ? 'Staff: ' + appt.staffName + '\n' : '')
-    + (appt.totalAmt > 0 ? 'Amount: ' + fmtMoney(appt,"totalAmt") + '\n' : '')
+    + (appt.totalAmt > 0 ? 'Amount: ' + fmtApptAmt(appt) + '\n' : '')
     + '\n_ShopTrack - ' + biz + '_';
   _waOwner(msg);
 }
@@ -35799,7 +35844,7 @@ function _deleteAppt(id){const _s=_L();
   var warnHtml='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(a.id)+'</strong> — '+_esc(a.custName)+' / '+_esc(a.serviceName)+' on '+a.date+'?</p>';
   if(isActive) warnHtml+='<div class="alrt alrt-y" style="margin-bottom:8px">This appointment is <strong>'+a.st+'</strong>. Consider cancelling instead.</div>';
   if(linkedSale) warnHtml+='<div class="alrt alrt-r" style="margin-bottom:8px">Linked sale <strong>'+linkedSale.id+'</strong> ('+fmt(linkedSale.amt)+') will NOT be deleted.</div>';
-  if(a.totalAmt>0&&!linkedSale) warnHtml+='<p style="font-size:12px;color:var(--text3)">Revenue of '+fmtMoney(a,"totalAmt")+' will be removed from KPIs.</p>';
+  if(a.totalAmt>0&&!linkedSale) warnHtml+='<p style="font-size:12px;color:var(--text3)">Revenue of '+fmtApptAmt(a)+' will be removed from KPIs.</p>';
   var mid=id;
   modal('Delete Appointment', warnHtml,
     '<button class="btn btn-s" onclick="closeModal()">'+_L().ui_cancel+'</button>'+
@@ -35993,7 +36038,7 @@ function mViewAppt(id){const _s=_L();
       +(svc?'<div style="font-size:11px;color:var(--text2)">'+svc.duration+' min</div>':'')+'</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px">'
       +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_L().ui_amount+'</div>'
-      +'<div style="font-weight:700;color:var(--ink)">'+(a.totalAmt>0?fmtMoney(a,"totalAmt"):'\u2014')+'</div>'
+      +'<div style="font-weight:700;color:var(--ink)">'+(a.totalAmt>0?fmtApptAmt(a):'\u2014')+'</div>'
       +(a.saleId?'<div style="font-size:11px;color:var(--g)">\u2713 Sale '+a.saleId+'</div>':canCheckout?'<div style="font-size:11px;color:var(--y)">'+_L().appt_pending_co+'</div>':'')+'</div>'
     +(a.staffName?'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_L().appt_staff+'</div><div style="font-weight:700;color:var(--ink)">'+a.staffName+'</div></div>':'')
     +'</div>';
