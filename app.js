@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779657400");
+console.log("ShopTrack v2.7 - build:1779658550");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1279,6 +1279,46 @@ function _addInvCat(){var _s=_L();
 // When the user picks Raw Material or Recipe Ingredient, the Selling
 // Price + Min Sell Price + Status fields fade and unflag their
 // required-ness — those items don't get sold to customers directly.
+// Shared dropdown for the inventory item-type selector. Used in
+// four places (add-item form, edit-item form, PO line type select
+// in both create+edit). Centralising the option list here keeps
+// the three values + their labels synchronised so we never get
+// drift between forms.
+//
+// The 'short' flag picks between long (descriptive) and short
+// (terse) labels — PO line forms use short because they're inside
+// a per-line row where space is tight; the inventory forms use
+// long because they're vertical and the descriptive text helps
+// the user pick correctly.
+function _itemTypeOptionsHTML(current, short){
+  var fr = BIZ.language === 'fr';
+  current = current || 'resale';
+  var opts;
+  if(short){
+    opts = [
+      ['resale',       fr ? 'Produit fini'   : 'Finished Product'],
+      ['raw_material', fr ? 'Matière première': 'Raw Material'],
+      ['bulk',         fr ? 'Lot — Vrac'      : 'Bulk / Batch']
+    ];
+  } else {
+    opts = [
+      ['resale',       fr
+        ? 'Produit fini — vendu aux clients (prix de vente requis)'
+        : 'Finished Product — sold to customers (sale price required)'],
+      ['raw_material', fr
+        ? 'Matière première — composant ou ingrédient consommé en production (pas de prix de vente)'
+        : 'Raw Material — component or ingredient consumed in production (no sale price required)'],
+      ['bulk', fr
+        ? 'Lot / Vrac — intermédiaire produit par lots, portionné en produits finis (pas de prix de vente)'
+        : 'Bulk / Batch — produced intermediate, portioned into Finished Products (no sale price required)']
+    ];
+  }
+  return opts.map(function(o){
+    var sel = o[0] === current ? ' selected' : '';
+    return '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
+  }).join('');
+}
+
 function _aiToggleItemTypeUI(){
   var typeEl = document.getElementById('ai-itemtype');
   if(!typeEl) return;
@@ -1864,9 +1904,7 @@ function _poAddLine(){const _s=_L();
     + '<div class="po-line-custom" style="display:none;gap:6px;align-items:center;padding-left:2px">'
     +   '<input class="fi po-line-name" type="text" placeholder="'+(BIZ.language==='fr'?'Nom du nouvel article':'New item name (will be auto-created on receive)')+'" style="flex:1;min-width:140px"/>'
     +   '<select class="fs po-line-type" title="'+(BIZ.language==='fr'?'Type d\'inventaire':'Inventory type')+'" style="width:170px">'
-    +     '<option value="resale">'+(BIZ.language==='fr'?'Revente':'For Resale')+'</option>'
-    +     '<option value="raw_material">'+(BIZ.language==='fr'?'Matière première':'Raw Material')+'</option>'
-    +     '<option value="recipe_ingredient">'+(BIZ.language==='fr'?'Ingrédient':'Recipe Ingredient')+'</option>'
+    +     _itemTypeOptionsHTML('resale', true)
     +   '</select>'
     + '</div>';
   var c=document.getElementById('po-line-rows'); if(c) c.appendChild(row);
@@ -3943,9 +3981,9 @@ function _buildInvGridFiltered(items){const _s=_L();
       : '';
     var typeBadge = (it.itemType && it.itemType !== 'resale')
       ? '<div style="background:#64748b;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">'
-        + (it.itemType==='raw_material'
-            ? (BIZ.language==='fr'?'MATIÈRE PREM.':'RAW MATERIAL')
-            : (BIZ.language==='fr'?'INGRÉDIENT':'INGREDIENT'))
+        + (it.itemType==='bulk'
+            ? (BIZ.language==='fr'?'LOT — VRAC':'BULK / BATCH')
+            : (BIZ.language==='fr'?'MATIÈRE PREM.':'RAW MATERIAL'))
         + '</div>'
       : '';
     var stockBadge=isOutOfStock
@@ -4700,10 +4738,12 @@ function _recipeHTML(prefix, existingLines, currentItemId){const _s=_L();
     +'<div id="'+prefix+'-rcp-wrap" style="margin-top:4px;border:1px solid var(--border2);border-radius:var(--r10);overflow:hidden">'
     +'<div onclick="_rcpToggle(\''+prefix+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer;background:var(--bg3);user-select:none;transition:background .15s" onmouseover="this.style.background=\'var(--bg4)\'" onmouseout="this.style.background=\'var(--bg3)\'">'
       +'<div style="display:flex;align-items:center;gap:8px">'
-        +'<span style="font-size:15px">\uD83E\uDDD1\u200D\uD83C\uDF73</span>'
+        +'<span style="font-size:15px">\uD83D\uDD27</span>'
         +'<div>'
-          +'<div style="font-size:12px;font-weight:700;color:var(--ink)">Recipe <span style="font-size:10px;font-weight:500;color:var(--text3)">(for manufactured / batch products)</span></div>'
-          +'<div style="font-size:11px;color:var(--text2);margin-top:1px">List the raw materials this product is made from. Logging a Production batch will deduct these from inventory.</div>'
+          +'<div style="font-size:12px;font-weight:700;color:var(--ink)">'+(BIZ.language==='fr'?'Composé de':'Made from')+' <span style="font-size:10px;font-weight:500;color:var(--text3)">'+(BIZ.language==='fr'?'(consommé en production / par vente)':'(consumed during production or sale)')+'</span></div>'
+          +'<div style="font-size:11px;color:var(--text2);margin-top:1px">'+(BIZ.language==='fr'
+            ? 'Listez les matières premières ou lots dont ce produit est composé. La production ou la vente en déduira automatiquement les quantités du stock.'
+            : 'List the raw materials or bulk items this product is made from. Producing a batch or selling a unit will deduct these from inventory automatically.')+'</div>'
         +'</div>'
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:10px">'
@@ -4893,9 +4933,7 @@ async function mAddItem(_returnSelectId){const _s=_L();
   <div class="fg" style="background:var(--bg3);padding:10px 12px;border-radius:8px;margin-bottom:10px">
     <label class="fl" style="margin-bottom:6px">${BIZ.language==='fr'?"Type d'article":'Item type'} <span style="font-size:10px;color:var(--text2);font-weight:400">— ${BIZ.language==='fr'?'détermine si un prix de vente est requis':'controls whether a sale price is required'}</span></label>
     <select class="fs" id="ai-itemtype" onchange="_aiToggleItemTypeUI()">
-      <option value="resale">${BIZ.language==='fr'?'Revente — Produit fini vendu aux clients':'For Resale — finished goods sold to customers'}</option>
-      <option value="raw_material">${BIZ.language==='fr'?'Matière première — composant, stock de réparation (pas de prix de vente requis)':'Raw Material — component or repair stock (no sale price required)'}</option>
-      <option value="recipe_ingredient">${BIZ.language==='fr'?'Ingrédient — utilisé dans une recette/production (pas de prix de vente requis)':'Recipe Ingredient — used in a recipe / production (no sale price required)'}</option>
+      ${_itemTypeOptionsHTML('resale', false)}
     </select>
   </div>
   <div class="fg-3">
@@ -5030,7 +5068,7 @@ function _saveNewItem(){var _s=_L();
   var _aiRpP    = curOutPair(document.getElementById('ai-rp').value);
   var _aiMinSpP = curOutPair(document.getElementById('ai-minsp').value);
   var _aiDepP   = curOutPair(document.getElementById('ai-dep').value);
-  // Item type ('resale' | 'raw_material' | 'recipe_ingredient')
+  // Item type ('resale' | 'raw_material' | 'bulk')
   // controls whether a sales price is required. Raw materials and
   // recipe ingredients can have sp=0 — they're consumed in production
   // or held for repair stock, not sold to customers directly.
@@ -5119,9 +5157,7 @@ async function mEditItem(id){const _s=_L();
   <div class="fg" style="background:var(--bg3);padding:10px 12px;border-radius:8px;margin-bottom:10px">
     <label class="fl" style="margin-bottom:6px">${BIZ.language==='fr'?"Type d'article":'Item type'} <span style="font-size:10px;color:var(--text2);font-weight:400">— ${BIZ.language==='fr'?'détermine si un prix de vente est requis':'controls whether a sale price is required'}</span></label>
     <select class="fs" id="ei-itemtype">
-      <option value="resale"${(it.itemType||'resale')==='resale'?' selected':''}>${BIZ.language==='fr'?'Revente — Produit fini vendu aux clients':'For Resale — finished goods sold to customers'}</option>
-      <option value="raw_material"${it.itemType==='raw_material'?' selected':''}>${BIZ.language==='fr'?'Matière première — composant, stock de réparation (pas de prix de vente requis)':'Raw Material — component or repair stock (no sale price required)'}</option>
-      <option value="recipe_ingredient"${it.itemType==='recipe_ingredient'?' selected':''}>${BIZ.language==='fr'?'Ingrédient — utilisé dans une recette/production (pas de prix de vente requis)':'Recipe Ingredient — used in a recipe / production (no sale price required)'}</option>
+      ${_itemTypeOptionsHTML(it.itemType||'resale', false)}
     </select>
   </div>
   <div class="fg-3">
@@ -9522,16 +9558,16 @@ function pgProduction(){const _s=_L();
     return '<div class="bc">ShopTrack / <span>Production</span></div>'
       +'<div class="ph-row"><h1>\uD83C\uDFED Production</h1></div>'
       +'<div class="card" style="text-align:center;padding:50px 30px;max-width:680px;margin:30px auto">'
-        +'<div style="font-size:46px;margin-bottom:14px">\uD83E\uDDD1\u200D\uD83C\uDF73</div>'
-        +'<div style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:10px">Set up a recipe to start logging batches</div>'
+        +'<div style="font-size:46px;margin-bottom:14px">\uD83D\uDD27</div>'
+        +'<div style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:10px">Set up a Made-from list to start logging batches</div>'
         +'<p style="font-size:13px;color:var(--text2);line-height:1.7;max-width:520px;margin:0 auto 22px">'
-          +'Production tracks <strong>batches</strong> you make from raw ingredients. A bakery making bread, an ice-cream maker churning a 5L tub, a restaurant pre-prepping a pot of sauce \u2014 each one is a batch.'
+          +'Production tracks <strong>batches</strong> you make from raw materials. A furniture maker assembling a chair, an ice-cream maker churning a 5L tub, a cosmetics producer mixing 20L of lotion, a restaurant pre-prepping a pot of sauce \u2014 each one is a batch.'
         +'</p>'
         +'<div style="text-align:left;max-width:480px;margin:0 auto 24px;background:var(--bg3);border-radius:10px;padding:16px 20px">'
           +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Three steps to get going</div>'
-          +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px"><div style="background:var(--a);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">1</div><div style="font-size:12.5px;color:var(--ink);line-height:1.5">Add raw ingredients as inventory items (e.g. \u201CHeavy cream\u201D, \u201CVanilla beans\u201D, \u201CSugar\u201D) with current stock &amp; unit cost.</div></div>'
-          +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px"><div style="background:var(--a);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">2</div><div style="font-size:12.5px;color:var(--ink);line-height:1.5">Add the finished product as its own inventory item (e.g. \u201CVanilla Ice Cream \u2014 5L\u201D), then Edit it and open the <strong>Recipe</strong> panel to list the ingredients used per batch.</div></div>'
-          +'<div style="display:flex;gap:12px;align-items:flex-start"><div style="background:var(--a);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">3</div><div style="font-size:12.5px;color:var(--ink);line-height:1.5">Come back here and click <strong>\u201C+ New Batch\u201D</strong> \u2014 ShopTrack auto-deducts ingredients and adds the finished product to your stock.</div></div>'
+          +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px"><div style="background:var(--a);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">1</div><div style="font-size:12.5px;color:var(--ink);line-height:1.5">Add the components as inventory items with type <strong>Raw Material</strong> (e.g. \u201COak boards\u201D, \u201CCream\u201D, \u201CShea butter\u201D) \u2014 current stock and unit cost.</div></div>'
+          +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px"><div style="background:var(--a);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">2</div><div style="font-size:12.5px;color:var(--ink);line-height:1.5">Add the batch output as its own inventory item with type <strong>Bulk / Batch</strong> (e.g. \u201C5L Vanilla Mix\u201D, \u201CAssembled chair frame\u201D), then Edit it and fill the <strong>Made from</strong> panel listing what each batch consumes.</div></div>'
+          +'<div style="display:flex;gap:12px;align-items:flex-start"><div style="background:var(--a);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">3</div><div style="font-size:12.5px;color:var(--ink);line-height:1.5">Come back here and click <strong>\u201C+ New Batch\u201D</strong> \u2014 ShopTrack auto-deducts the raw materials and adds the batch output to your stock.</div></div>'
         +'</div>'
         +'<button class="btn btn-p" onclick="nav(\'inventory\')">\u2192 Open Inventory</button>'
       +'</div>';
@@ -9978,9 +10014,7 @@ function mRecordPurchase(){const _s=_L();
         <div class="po-line-custom" style="display:none;gap:6px;align-items:center;padding-left:2px">
           <input class="fi po-line-name" type="text" placeholder="${BIZ.language==='fr'?'Nom du nouvel article':'New item name (will be auto-created on receive)'}" style="flex:1;min-width:140px"/>
           <select class="fs po-line-type" title="${BIZ.language==='fr'?"Type d'inventaire":'Inventory type'}" style="width:170px">
-            <option value="resale">${BIZ.language==='fr'?'Revente':'For Resale'}</option>
-            <option value="raw_material">${BIZ.language==='fr'?'Matière première':'Raw Material'}</option>
-            <option value="recipe_ingredient">${BIZ.language==='fr'?'Ingrédient':'Recipe Ingredient'}</option>
+            ${_itemTypeOptionsHTML('resale', true)}
           </select>
         </div>
       </div>
@@ -19801,20 +19835,33 @@ async function _dbSaveBizProfile(bizId){
 function _dbToInv(r){ return {
   id:r.id, sku:r.sku||'', name:r.name, cat:r.cat||'General', brand:r.brand||'',
   st:r.status||'For Sale', cond:r.condition||'Good',
-  // Item type controls validation + which UI sections apply:
-  //   'resale'             — finished goods sold to customers (default)
-  //   'raw_material'       — components/ingredients used in production
-  //                          or held as repair stock; sales price is
-  //                          optional, no sales-channel features apply
-  //   'recipe_ingredient'  — same as raw_material but explicitly tagged
-  //                          for use in product recipes (smoothie ops,
-  //                          assembled goods, kitchen). Treated as raw
-  //                          material for validation; the separate tag
-  //                          lets us filter recipe pickers later.
+  // Item type controls validation + which UI sections apply.
+  // Three values, intentionally industry-agnostic:
+  //   'resale'        — Finished Product. Sold to customers. Requires
+  //                     a sales price. Standard sellable inventory.
+  //   'raw_material'  — Component / ingredient / supply consumed in
+  //                     producing something else. No sales price
+  //                     required. Industry-agnostic: works for food
+  //                     ingredients, furniture parts, cosmetics
+  //                     components, hardware, etc.
+  //   'bulk'          — Mid-level produced intermediate. Made from
+  //                     raw materials via Production (a batch run),
+  //                     and then portioned/assembled into Finished
+  //                     Products via recipes (e.g. 5L ice cream that
+  //                     gets scooped, a frame that gets upholstered).
+  //                     No sales price required; not sold directly.
+  //
+  // MIGRATION: 'recipe_ingredient' (a redundant legacy value that
+  // confused users — it was just food-flavored 'raw_material') is
+  // auto-mapped to 'raw_material' on load. Any saved value is
+  // preserved through the next save cycle.
   // Defaults to 'resale' for legacy records to preserve existing
-  // behaviour: if you don't know what type something is, treat it as
-  // resale (which is what every inventory item was before this field).
-  itemType: r.item_type || 'resale',
+  // behaviour.
+  itemType: (function(t){
+    if(t === 'recipe_ingredient') return 'raw_material';
+    if(t === 'raw_material' || t === 'bulk' || t === 'resale') return t;
+    return 'resale';
+  })(r.item_type),
   // 'needsPrice' flag — set true when an item is auto-created from a
   // PO line at receive time. Forces the inventory list to surface
   // these items for the owner to fill in a sale price before they
@@ -30092,6 +30139,10 @@ function _saveReceiveItems(id){
       // flagged as needsPrice — they're consumed in production or
       // held for repair stock, not sold.
       var lineType = li.itemType || 'resale';
+      // Normalize the deprecated 'recipe_ingredient' value in case
+      // a stale PO line was saved before the taxonomy was
+      // simplified — see _dbToInv migration note.
+      if(lineType === 'recipe_ingredient') lineType = 'raw_material';
       var newItem = {
         id: newId,
         sku: '',
