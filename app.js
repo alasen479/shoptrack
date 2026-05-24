@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779624327");
+console.log("ShopTrack v2.7 - build:1779624756");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1005,6 +1005,29 @@ const fmtSvc = s => {
     return fmtRaw(s.priceNative);
   }
   return fmt(s.price);
+};
+// Generic native-aware formatter for any record + field pair. Pass the
+// record (sale, rental, expense, etc.) and the BASE field name (e.g.
+// 'total' for sale total). The helper checks for a <field>Native and
+// <field>Currency and uses them when present and matching the active
+// currency. Falls back to the USD round-trip otherwise. Use this
+// anywhere a saved money value is rendered into the UI to make the
+// display drift-immune.
+//   fmtMoney(sale, 'total')   // prefers sale.totalNative, falls back to sale.total or sale.amt
+//   fmtMoney(rental, 'paid')  // prefers rental.paidNative
+const fmtMoney = (rec, field) => {
+  if(!rec || !field) return fmt(0);
+  const nKey = field + 'Native';
+  const cKey = field + 'Currency';
+  if(rec[nKey] != null && rec[cKey] === CUR.code){
+    return fmtRaw(rec[nKey]);
+  }
+  // Special case: 'total' falls back to 'amt' for legacy sale rows that
+  // were stored under the older field name.
+  if(field === 'total' && (rec.total == null || rec.total === 0) && rec.amt != null){
+    return fmt(rec.amt);
+  }
+  return fmt(rec[field] || 0);
 };
 
 
@@ -2600,7 +2623,7 @@ function _buildRecentSalesRows(range){
     return '<tr style="cursor:pointer" data-sid="'+s.id+'" onclick="mInvoice(this.dataset.sid)" title="Click to view invoice">'
       +'<td>'+mono(s.id,'a')+'</td>'
       +'<td><strong>'+_esc(s.cust)+'</strong></td>'
-      +'<td>'+mono(fmt(s.total||s.amt))+'</td>'
+      +'<td>'+mono(fmtMoney(s,"total"))+'</td>'
       +'<td>'+badge(s.st)+'</td>'
       +'</tr>';
   }).join('');
@@ -2629,7 +2652,7 @@ function _updateDashRecentSales(periodSales){
     return '<tr style="cursor:pointer" data-sid="'+s.id+'" onclick="mInvoice(this.dataset.sid)" title="View invoice">'
       +'<td>'+mono(s.id,'a')+'</td>'
       +'<td><strong>'+_esc(s.cust)+'</strong></td>'
-      +'<td>'+mono(fmt(s.total||s.amt))+'</td>'
+      +'<td>'+mono(fmtMoney(s,"total"))+'</td>'
       +'<td>'+badge(s.st)+'</td>'
       +'</tr>';
   }).join('');
@@ -2746,7 +2769,7 @@ function _showProductSales(invId){const _s=_L();
       +'<td>'+mono(s.id,'a')+'</td>'
       +'<td><strong>'+_esc(s.cust)+'</strong></td>'
       +'<td style="font-family:var(--mono);font-size:12px">'+s.dt+'</td>'
-      +'<td style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--g)">'+fmt(s.total||s.amt)+'</td>'
+      +'<td style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--g)">'+fmtMoney(s,"total")+'</td>'
       +'<td>'+badge(s.st)+'</td>'
       +'</tr>';
   }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:14px">No sales in this period</td></tr>';
@@ -3382,7 +3405,7 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
   ${DC.sections.includes('overdueRentals')?`<div class="card">
     <div class="card-hd"><div class="card-ttl" style="color:var(--r)">${_s.dash_overdue}</div><button class="btn btn-g btn-sm" onclick="nav('rentals')">${_s.dash_view_all}</button></div>
     <div class="tbl-wrap"><table><thead><tr><th>${_s.dash_col_rental}</th><th>${_s.dash_col_cust}</th><th>${_s.dash_col_late}</th><th>${_s.dash_col_status}</th></tr></thead><tbody>
-    ${D.rentals.filter(r=>r.st==='Overdue').map(r=>`<tr style="cursor:pointer" onclick="mRentalDetail('${r.id}')"><td>${mono(r.id,'a')}</td><td><strong>${_esc(r.cust)}</strong></td><td>${mono(fmt(r.lf),'r')}</td><td>${badge(r.st)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--g);padding:12px">'+_s.dash_no_overdue_row+'</td></tr>'}
+    ${D.rentals.filter(r=>r.st==='Overdue').map(r=>`<tr style="cursor:pointer" onclick="mRentalDetail('${r.id}')"><td>${mono(r.id,'a')}</td><td><strong>${_esc(r.cust)}</strong></td><td>${mono(fmtMoney(r,"lf"),'r')}</td><td>${badge(r.st)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--g);padding:12px">'+_s.dash_no_overdue_row+'</td></tr>'}
     </tbody></table></div>
   </div>`:'<div></div>'}
 
@@ -3889,7 +3912,7 @@ function mItem(id){const _s=_L();
     ${D.rentals.filter(r=>r.itemId===it.id||r.item===it.name).slice(0,6).map(r=>`
     <div class="tl-item on">
       <div class="tl-meta">${r.start} \xB7 Rental ${r.id}</div>
-      <div class="tl-txt">${r.cust} \u2014 ${r.st} \xB7 ${fmt(r.fee)}</div>
+      <div class="tl-txt">${r.cust} \u2014 ${r.st} \xB7 ${fmtMoney(r,"fee")}</div>
     </div>`).join('')}
     ${D.sales.filter(s=>s.invId===it.id||(s.lineItems&&s.lineItems.some(function(li){return li.invId===it.id;}))).slice(0,6).map(s=>`
     <div class="tl-item">
@@ -5394,7 +5417,7 @@ ${(D.quotes && D.quotes.length) ? `
     <tbody id="sales-tbody">${D.sales.map(s=>`<tr data-cust="${s.cust}" data-status="${s.st}" data-date="${s.dt}" data-items="${(s.items||'').toLowerCase()}" class="sale-row" style="cursor:pointer" onclick="mViewSale('${s.id}')">
       <td>${mono(s.id,'a')}</td><td style="color:var(--text2)">${s.dt}</td><td><strong style="color:var(--ink)">${s.cust}</strong></td>
       <td class="w" style="font-size:12px">${s.items}</td>
-      <td>${mono(fmt(s.total||s.amt))}</td><td>${mono(fmt(s.paid),'g')}</td>
+      <td>${mono(fmtMoney(s,"total"))}</td><td>${mono(fmt(s.paid),'g')}</td>
       <td>${mono(fmt((s.total||s.amt)-s.paid),(s.total||s.amt)-s.paid>0?'r':'text3')}</td>
       <td>${mono(fmt(s.profit!==undefined?s.profit:(s.total||s.amt)-(s.cost||0)),'g')}</td>
       <td>${badge(s.st)}</td>
@@ -5798,7 +5821,7 @@ function mRecordPayment(id){const _s=_L();
     var stTag = r2.st==='Returned' ? ' (returned, balance due)' : '';
     return '<option value="'+r2.id+'">[Rental] '+r2.id+' \u2014 '+_esc(r2.cust)+' \u2014 '+fmt(bal)+' due'+stTag+'</option>';
   }).join('');
-  const apptOpts   = (D.appointments||[]).filter(a=>a.st==='Completed'&&a.totalAmt>0).map(a=>`<option value="${a.id}">[Appt] ${a.id} — ${a.custName} — ${fmt(a.totalAmt)}</option>`).join('');
+  const apptOpts   = (D.appointments||[]).filter(a=>a.st==='Completed'&&a.totalAmt>0).map(a=>`<option value="${a.id}">[Appt] ${a.id} — ${a.custName} — ${fmtMoney(a,"totalAmt")}</option>`).join('');
 
   // Pre-select if id was passed
   const preselVal  = id||'';
@@ -7244,7 +7267,7 @@ ${overdue.length>0?`<div class="alrt alrt-r">⚠ <strong>${overdue.length} overd
         +'<td>'+mono(fmt(r.paid||0),(r.paid||0)>0?'g':'text3')+'</td>'
         +'<td>'+mono(bal>0?fmt(bal):'\u2014', bal>0?'r':'text3')+'</td>'
         +'<td>'+mono(depHeldNow>0?fmt(depHeldNow):'\u2014', depHeldNow>0?'y':'text3')+'</td>'
-        +'<td>'+mono((r.lf||0)>0?fmt(r.lf):'\u2014', (r.lf||0)>0?'r':'text3')+'</td>'
+        +'<td>'+mono((r.lf||0)>0?fmtMoney(r,"lf"):'\u2014', (r.lf||0)>0?'r':'text3')+'</td>'
         +'<td onclick="event.stopPropagation()"><div class="btn-row">'
         +(bal>0?'<button class="btn btn-p btn-xs" onclick="mRecordPayment(\''+r.id+'\')" title="'+_s.rent_btn_payment+'">\uD83D\uDCB0</button>':'')
         +(r.st==='Overdue'?'<button class="btn btn-g btn-xs" onclick="_rentalWARemind(\''+r.id+'\')" title="'+_s.rent_send_wa+'">\uD83D\uDCAC</button>':'')
@@ -7274,7 +7297,7 @@ function _rentalWARemind(id){var _s=_L();
   var msg = 'Hi '+custName.split(' ')[0]+'! Your rental from *'+BIZ.name+'* is overdue.\n\n'
     + 'Item: '+r.item+'\n'
     + 'Due date: '+r.due+'\n'
-    + (r.lf>0?'Late fee: '+fmt(r.lf)+'\n':'')
+    + (r.lf>0?'Late fee: '+fmtMoney(r,"lf")+'\n':'')
     + '\nPlease return or contact us to arrange. Thank you!\n'
     + '_'+BIZ.name+'_';
   _sendWA(ph, msg);
@@ -7699,14 +7722,14 @@ function mReturn(id){const _s=_L();
   const unpaidFee=Math.max(0,(r.fee||0)-(r.paid||0));
   const estRefund=Math.max(0,(r.dep||0)-(r.lf||0));
   modal(`Return: ${id}`,`
-  <div class="alrt alrt-${r.lf>0?'r':'b'}">${r.lf>0?'⚠ Late fee: '+fmt(r.lf)+' accumulated':'On time ✓'}</div>
+  <div class="alrt alrt-${r.lf>0?'r':'b'}">${r.lf>0?'⚠ Late fee: '+fmtMoney(r,"lf")+' accumulated':'On time ✓'}</div>
   <div class="fg-2" style="margin-bottom:12px">
     <div><div class="fl">${_s.ui_customer}</div><div>${_esc(r.cust)}</div></div>
     <div><div class="fl">${_s.rent_item_lbl}</div><div style="font-size:12px">${_esc(r.item)}</div></div>
-    <div><div class="fl">${_s.rent_fee_lbl}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.fee)}</div></div>
+    <div><div class="fl">${_s.rent_fee_lbl}</div><div style="font-family:var(--mono);color:var(--g)">${fmtMoney(r,"fee")}</div></div>
     <div><div class="fl">${_s.rent_amt_paid}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.paid||0)}</div></div>
     <div><div class="fl">${_s.rent_cond_before2}</div><div>${r.cb}</div></div>
-    <div><div class="fl">${_s.rent_dep_held}</div><div style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</div></div>
+    <div><div class="fl">${_s.rent_dep_held}</div><div style="font-family:var(--mono);color:var(--y)">${fmtMoney(r,"dep")}</div></div>
   </div>
   <div class="fg"><label class="fl">${_s.rent_cond_after}</label>
     <select class="fs" id="ret-cond-${r.id}"><option selected>${_s.rent_cond_exc}</option><option>${_s.rent_cond_good}</option><option>${_s.rent_cond_fair}</option><option>${_s.rent_cond_worn}</option><option>${_s.rent_cond_damaged}</option></select>
@@ -7717,8 +7740,8 @@ function mReturn(id){const _s=_L();
   <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ret-notes-${r.id}" placeholder="Describe any damage…" style="min-height:48px"></textarea></div>
   <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r10);padding:13px;margin-top:4px" id="ret-settlement-${r.id}">
     <div class="fl" style="margin-bottom:9px">${_s.rent_dep_settle}</div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">${_s.rent_dep_held}</span><span style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</span></div>
-    ${r.lf>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">${_s.rent_late_lbl}</span><span style="font-family:var(--mono);color:var(--r)">− ${fmt(r.lf)}</span></div>`:''}
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">${_s.rent_dep_held}</span><span style="font-family:var(--mono);color:var(--y)">${fmtMoney(r,"dep")}</span></div>
+    ${r.lf>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">${_s.rent_late_lbl}</span><span style="font-family:var(--mono);color:var(--r)">− ${fmtMoney(r,"lf")}</span></div>`:''}
     ${unpaidFee>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">${_s.rent_unpaid_fee}</span><span style="font-family:var(--mono);color:var(--r)">− ${fmt(unpaidFee)}</span></div>`:''}
     <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">${_s.rent_damage}</span><span style="font-family:var(--mono);color:var(--r)" id="ret-dmg-display-${r.id}">− ${fmt(0)}</span></div>
     <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border)"><span style="font-weight:600">${_s.rent_refund}</span><span style="font-family:var(--mono);font-weight:700" id="ret-refund-display-${r.id}" style="color:var(--g)">${fmt(Math.max(0,(r.dep||0)-(r.lf||0)-unpaidFee))}</span></div>
@@ -7799,7 +7822,7 @@ function deleteRental(id){const _s=_L();
   var warnHtml='';
   if(isActive) warnHtml+='<div class="alrt alrt-r" style="margin-bottom:8px">This rental is <strong>'+r.st+'</strong>. Item will be marked as returned in inventory.</div>';
   if(unpaidFee>0) warnHtml+='<div class="alrt alrt-y" style="margin-bottom:8px">Unpaid rental fee of <strong>'+fmt(unpaidFee)+'</strong> will be written off and AR cancelled.</div>';
-  if(r.dep>0&&r.st!=='Returned') warnHtml+='<p style="font-size:12px;color:var(--text3);margin-bottom:6px">Deposit of '+fmt(r.dep)+' will be cleared.</p>';
+  if(r.dep>0&&r.st!=='Returned') warnHtml+='<p style="font-size:12px;color:var(--text3);margin-bottom:6px">Deposit of '+fmtMoney(r,"dep")+' will be cleared.</p>';
   if(!warnHtml) warnHtml='<p style="font-size:13px;color:var(--text2)">Delete rental <strong>'+id+'</strong> — '+_esc(r.cust)+' / '+_esc(r.item)+'?</p>';
   var mid=id;
   modal(_s.rent_del_title+' '+id, warnHtml,
@@ -7999,16 +8022,16 @@ function mRentalDetail(id){const _s=_L();
   </div>
   <div id="rd-timeline-${id}">
     <div class="tl">
-      <div class="tl-item on"><div class="tl-meta">${r.start} · Created</div><div class="tl-txt">Rental created &amp; reserved. Deposit ${fmt(r.dep)} collected.</div></div>
+      <div class="tl-item on"><div class="tl-meta">${r.start} · Created</div><div class="tl-txt">Rental created &amp; reserved. Deposit ${fmtMoney(r,"dep")} collected.</div></div>
       <div class="tl-item on"><div class="tl-meta">${r.start} · Item Released</div><div class="tl-txt">Checked out in <strong>${r.cb}</strong> condition. Pre-release photos taken.</div></div>
-      ${r.st==='Overdue'?`<div class="tl-item"><div class="tl-meta" style="color:var(--r)">${r.due} · OVERDUE</div><div class="tl-txt" style="color:var(--r)">Not returned by due date. Late fee: ${fmt(r.lf)} accumulating.</div></div>`:''}
+      ${r.st==='Overdue'?`<div class="tl-item"><div class="tl-meta" style="color:var(--r)">${r.due} · OVERDUE</div><div class="tl-txt" style="color:var(--r)">Not returned by due date. Late fee: ${fmtMoney(r,"lf")} accumulating.</div></div>`:''}
       ${r.st==='Returned'?`<div class="tl-item on"><div class="tl-meta">${_s.rent_st_returned}</div><div class="tl-txt">Returned in <strong>${r.ca}</strong> condition. Deposit settled.</div></div>`:''}
     </div>
     <div class="fg-2" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
       <div><div class="fl">${_s.rent_item_lbl}</div><div style="font-size:12px">${_qty>1?'<strong>'+_qty+'\u00d7</strong> ':''}${r.item}</div></div>
       <div><div class="fl">${_s.rent_period}</div><div style="font-size:12px">${r.start} \u2192 ${r.due}${_periodPretty?' <span style="color:var(--text2)">('+_periodPretty+')</span>':''}</div></div>
-      <div><div class="fl">${_s.rent_fee_lbl}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.fee)}</div></div>
-      <div><div class="fl">${_s.rent_dep_lbl}</div><div style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</div></div>
+      <div><div class="fl">${_s.rent_fee_lbl}</div><div style="font-family:var(--mono);color:var(--g)">${fmtMoney(r,"fee")}</div></div>
+      <div><div class="fl">${_s.rent_dep_lbl}</div><div style="font-family:var(--mono);color:var(--y)">${fmtMoney(r,"dep")}</div></div>
       ${r.method?`<div><div class="fl">${fr?'Mode de paiement':'Payment Method'}</div><div style="font-size:12px">${_esc(r.method)}</div></div>`:''}
     </div>
     <!-- Payment summary: total / paid / balance.
@@ -8018,7 +8041,7 @@ function mRentalDetail(id){const _s=_L();
     <div style="margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
       <div style="padding:10px 12px;background:var(--bg3);border-radius:8px">
         <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">${fr?'Loyer Total':'Rental Total'}</div>
-        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);margin-top:2px">${fmt(r.fee)}</div>
+        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);margin-top:2px">${fmtMoney(r,"fee")}</div>
       </div>
       <div style="padding:10px 12px;background:var(--g-dim);border-radius:8px">
         <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">${fr?'Pay\u00e9':'Paid'}</div>
@@ -8115,8 +8138,8 @@ function _fillContractPlaceholders(tpl, r){
     .replace(/{RENTAL_ID}/g,      r.id||'—')
     .replace(/{START_DATE}/g,     r.start||'—')
     .replace(/{DUE_DATE}/g,       r.due||'—')
-    .replace(/{RENTAL_FEE}/g,     fmt(r.fee))
-    .replace(/{DEPOSIT}/g,        fmt(r.dep))
+    .replace(/{RENTAL_FEE}/g,     fmtMoney(r,"fee"))
+    .replace(/{DEPOSIT}/g,        fmtMoney(r,"dep"))
     .replace(/{CONDITION_BEFORE}/g, r.cb||'Good');
 }
 
@@ -8203,8 +8226,8 @@ function _buildContractHTML(r, sigDataUrl){var _s=_L();
   <div class="sg-cell">${_s.ui_customer}</div><div class="sg-cell">${cust.name||r.cust}${cust.phone?` · ${cust.phone}`:''}</div>
   <div class="sg-cell">${_s.rent_item_lbl}</div><div class="sg-cell">${(r.qty||1)>1?'<strong>'+(r.qty||1)+'\u00d7</strong> ':''}${r.item}</div>
   <div class="sg-cell">${_s.rent_period}</div><div class="sg-cell">${r.start} \u2192 ${r.due}${(r.period && r.period!=='custom' && r.units && typeof _crPeriodLabel==='function')?` <span style="color:#6b7280">(${r.units} ${_crPeriodLabel(r.period, r.units)})</span>`:''}</div>
-  <div class="sg-cell">${_s.rent_fee_lbl}</div><div class="sg-cell"><strong style="color:${accent}">${fmt(r.fee)}</strong></div>
-  <div class="sg-cell">${_s.rent_sec_dep}</div><div class="sg-cell">${fmt(r.dep)}</div>
+  <div class="sg-cell">${_s.rent_fee_lbl}</div><div class="sg-cell"><strong style="color:${accent}">${fmtMoney(r,"fee")}</strong></div>
+  <div class="sg-cell">${_s.rent_sec_dep}</div><div class="sg-cell">${fmtMoney(r,"dep")}</div>
   <div class="sg-cell">${_s.rent_cond_release}</div><div class="sg-cell">${r.cb}</div>
 </div>
 
@@ -8249,7 +8272,7 @@ function mRentalContract(id){const _s=_L();
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <div>
       <div style="font-weight:700;color:var(--ink);font-size:14px">${r.item}</div>
-      <div style="font-size:12px;color:var(--text)">${cust.name||r.cust} · ${r.start} → ${r.due} · ${fmt(r.fee)}</div>
+      <div style="font-size:12px;color:var(--text)">${cust.name||r.cust} · ${r.start} → ${r.due} · ${fmtMoney(r,"fee")}</div>
     </div>
     ${r.contractSigned?`<span style="background:var(--g-dim);color:var(--g);border:1px solid rgba(45,212,160,.3);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700">✓ Signed ${r.contractSignedDate||''}</span>`:`<span style="background:var(--bg3);color:var(--text2);border-radius:20px;padding:4px 12px;font-size:12px">${_s.rent_unsigned}</span>`}
   </div>
@@ -8293,8 +8316,8 @@ function mRentalContract(id){const _s=_L();
         <div><strong>Ref:</strong> ${r.id}</div>
         <div><strong>Item:</strong> ${r.item}</div>
         <div><strong>Period:</strong> ${r.start} → ${r.due}</div>
-        <div><strong>Fee:</strong> ${fmt(r.fee)}</div>
-        <div><strong>Deposit:</strong> ${fmt(r.dep)}</div>
+        <div><strong>Fee:</strong> ${fmtMoney(r,"fee")}</div>
+        <div><strong>Deposit:</strong> ${fmtMoney(r,"dep")}</div>
       </div>
       <div style="font-size:11px;white-space:pre-wrap;color:#333">${(_fillContractPlaceholders(document.getElementById('contract-body-input')?.value||BIZ.contractTemplate||_CONTRACT_DEFAULT,r)).slice(0,800)}…</div>
     </div>
@@ -9616,7 +9639,7 @@ function mViewCustomer(id){const _s=_L();
     <span style="font-family:var(--mono);color:var(--a);flex-shrink:0">${s.id}</span>
     <span style="color:var(--text2);flex-shrink:0">${s.dt}</span>
     <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(s.items)}</span>
-    <span style="font-family:var(--mono);color:var(--g);flex-shrink:0">${fmt(s.total||s.amt)}</span>
+    <span style="font-family:var(--mono);color:var(--g);flex-shrink:0">${fmtMoney(s,"total")}</span>
     ${badge(s.st)}
   </div>`).join('')}</div>`:''}
   ${custRentals.length?`<div class="fl" style="margin-bottom:6px">Rental History (${custRentals.length})</div>
@@ -9625,7 +9648,7 @@ function mViewCustomer(id){const _s=_L();
     <span style="font-family:var(--mono);color:var(--a);flex-shrink:0">${r.id}</span>
     <span style="color:var(--text2);flex-shrink:0">${r.start}</span>
     <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(r.item)}</span>
-    <span style="font-family:var(--mono);color:var(--c);flex-shrink:0">${fmt(r.fee)}</span>
+    <span style="font-family:var(--mono);color:var(--c);flex-shrink:0">${fmtMoney(r,"fee")}</span>
     ${badge(r.st)}
   </div>`).join('')}</div>`:''}
   ${!custSales.length&&!custRentals.length?`<div style="text-align:center;padding:20px;color:var(--text2);font-size:13px">${_s.cust_no_history}</div>`:''}`,
@@ -9706,7 +9729,7 @@ function mCustomerStatement(id){const _s=_L();
       <span style="font-family:var(--mono);color:var(--a);flex-shrink:0">${s.id}</span>
       <span style="color:var(--text2);flex-shrink:0">${s.dt}</span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(s.items||'')}</span>
-      <span style="font-family:var(--mono);flex-shrink:0">${fmt(s.total||s.amt)}</span>
+      <span style="font-family:var(--mono);flex-shrink:0">${fmtMoney(s,"total")}</span>
       ${badge(s.st)}
     </div>`).join('')
     :'<div style="font-size:12px;color:var(--text2);padding:8px 0">'+_s.cust_no_sales+'</div>'}
@@ -10440,7 +10463,7 @@ function pgExp(){const _s=_L();const _ui=_s;
     +'<td style="color:var(--text2);white-space:nowrap">'+e.dt+'</td>'
     +'<td><span class="tag">'+_esc(e.cat)+'</span></td>'
     +'<td style="font-weight:500;color:var(--ink)">'+_esc(e.payee)+'</td>'
-    +'<td>'+mono(fmt(e.amt),'r')+'</td>'
+    +'<td>'+mono(fmtMoney(e,"amt"),'r')+'</td>'
     +'<td>'+bx(e.type,'bx-n')+'</td>'
     +'<td style="color:var(--text2);font-size:12px">'+_esc(e.method||'')+'</td>'
     +'<td style="font-size:11px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"'
@@ -10691,7 +10714,7 @@ function mDeleteExp(id){const _s=_L();
   var e=D.exp.find(function(x){return x.id===id;}); if(!e) return;
   modal('&#x1F5D1; Delete Expense',
     '<div class="alrt alrt-r" style="margin-bottom:12px">Delete <strong>'
-    +_esc(e.id)+'</strong> &#x2014; '+_esc(e.payee)+' &#x2014; <strong>'+fmt(e.amt)+'</strong>?'
+    +_esc(e.id)+'</strong> &#x2014; '+_esc(e.payee)+' &#x2014; <strong>'+fmtMoney(e,"amt")+'</strong>?'
     +'<br><span style="font-size:12px">'+_s.ui_this_cannot+'</span></div>',
     '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
     +'<button class="btn btn-d" onclick="closeModal();_doDeleteExp(\''+id+'\')">&#x1F5D1; Delete</button>'
@@ -10719,7 +10742,7 @@ function mViewExp(id){const _s=_L();
     <div><div class="fl">${_s.ui_date}</div><div style="font-size:13px;color:var(--ink)">${e.dt}</div></div>
     <div><div class="fl">${_s.ui_category}</div><span class="tag">${e.cat}</span></div>
     <div><div class="fl">${_s.exp_payee_lbl}</div><div style="font-size:13px;font-weight:600;color:var(--ink)">${e.payee}</div></div>
-    <div><div class="fl">${_s.ui_amount}</div><div style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--r)">${fmt(e.amt)}</div></div>
+    <div><div class="fl">${_s.ui_amount}</div><div style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--r)">${fmtMoney(e,"amt")}</div></div>
     <div><div class="fl">${_s.ui_type}</div>${bx(e.type,'bx-n')}</div>
     <div><div class="fl">${_s.ui_method}</div><div style="font-size:12px;color:var(--text)">${e.method}</div></div>
   </div>
@@ -11213,7 +11236,7 @@ function rptRentals(){const _s=_L();
     <td>${mono(r.id)}</td><td><strong style="color:var(--ink)">${r.cust}</strong></td>
     <td style="font-size:12px">${r.item}</td>
     <td>${r.start}</td><td>${r.due}</td>
-    <td>${mono(fmt(r.fee),'g')}</td><td>${mono(fmt(r.dep))}</td>
+    <td>${mono(fmtMoney(r,"fee"),'g')}</td><td>${mono(fmtMoney(r,"dep"))}</td>
     <td>${badge(r.st)}</td>
   </tr>`).join('');
   const totalFees=_rents.reduce((a,r)=>a+r.fee,0);
@@ -11242,7 +11265,7 @@ function rptDeposits(){const _s=_L();
   const open=D.rentals.filter(r=>r.st==='Checked Out'||r.st==='Reserved'||r.st==='Overdue');
   modal('📊 Deposit Liability Report',`
   <div class="tbl-wrap"><table><thead><tr><th>${_s.rent_col_id}</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.rpt_dep_held}</th><th>${_s.ui_status}</th></tr></thead><tbody>
-  ${open.map(r=>`<tr><td>${mono(r.id)}</td><td>${r.cust}</td><td style="font-size:12px">${r.item}</td><td>${mono(fmt(r.dep),'y')}</td><td>${badge(r.st)}</td></tr>`).join('')}
+  ${open.map(r=>`<tr><td>${mono(r.id)}</td><td>${r.cust}</td><td style="font-size:12px">${r.item}</td><td>${mono(fmtMoney(r,"dep"),'y')}</td><td>${badge(r.st)}</td></tr>`).join('')}
   <tr style="border-top:2px solid var(--border2)"><td colspan="3"><strong>${_s.rpt_total_liab}</strong></td><td>${mono(fmt(open.reduce((a,r)=>a+r.dep,0)),'r')}</td><td></td></tr>
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptDepositsPDF()">⬇ PDF</button>`);
@@ -11252,7 +11275,7 @@ function rptLateFees(){const _s=_L();
   const lf=D.rentals.filter(r=>r.lf>0);
   modal('📊 Late Fees Report',`
   <div class="tbl-wrap"><table><thead><tr><th>${_s.rent_col_id}</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>${_s.rpt_due_date}</th><th>${_s.rpt_late_fee}</th><th>${_s.ui_status}</th></tr></thead><tbody>
-  ${lf.map(r=>`<tr><td>${mono(r.id)}</td><td>${r.cust}</td><td style="font-size:12px">${r.item}</td><td style="color:var(--r)">${r.due}</td><td>${mono(fmt(r.lf),'r')}</td><td>${badge(r.st)}</td></tr>`).join('')}
+  ${lf.map(r=>`<tr><td>${mono(r.id)}</td><td>${r.cust}</td><td style="font-size:12px">${r.item}</td><td style="color:var(--r)">${r.due}</td><td>${mono(fmtMoney(r,"lf"),'r')}</td><td>${badge(r.st)}</td></tr>`).join('')}
   <tr style="border-top:2px solid var(--border2)"><td colspan="4"><strong>${_s.rpt_total_late}</strong></td><td>${mono(fmt(lf.reduce((a,r)=>a+r.lf,0)),'r')}</td><td></td></tr>
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptLateFeesPDF()">⬇ PDF</button>`);
@@ -11265,7 +11288,7 @@ function rptOverdue(){const _s=_L();
     ⚠ ${od.length} rental(s) are currently overdue. Total late fees: ${fmt(od.reduce((a,r)=>a+r.lf,0))}
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_customer}</th><th>${_s.rent_item_lbl}</th><th>Due</th><th>Fee</th><th>${_s.rpt_late_fee}</th></tr></thead><tbody>
-  ${od.map(r=>`<tr><td>${mono(r.id)}</td><td><strong style="color:var(--r)">${r.cust}</strong></td><td style="font-size:12px">${r.item}</td><td style="color:var(--r);font-weight:600">${r.due}</td><td>${mono(fmt(r.fee))}</td><td>${mono(fmt(r.lf),'r')}</td></tr>`).join('')}
+  ${od.map(r=>`<tr><td>${mono(r.id)}</td><td><strong style="color:var(--r)">${r.cust}</strong></td><td style="font-size:12px">${r.item}</td><td style="color:var(--r);font-weight:600">${r.due}</td><td>${mono(fmtMoney(r,"fee"))}</td><td>${mono(fmtMoney(r,"lf"),'r')}</td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptOverduePDF()">⬇ PDF</button><button class="btn btn-r btn-sm" onclick="toast(_L().t_reminders_sent,'success');closeModal()">📲 Send All Reminders</button>`);
 }
@@ -11392,7 +11415,7 @@ function rptNP(){const _s=_L();
     <div class="kpi r"><div class="kpi-lbl">COGS</div><div class="kpi-val r">${fmtKpi(k.cogs)}</div></div>
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>${_s.rpt_expense}</th><th>${_s.exp_col_payee}</th><th>${_s.ui_amount}</th><th>${_s.ui_type}</th></tr></thead><tbody>
-  ${k.expenses.filter(e=>e.cat!=='Vendor Payment').map(e=>`<tr><td>${_esc(e.cat)}</td><td style="font-size:12px;color:var(--text)">${_esc(e.payee||'')}</td><td>${mono(fmt(e.amt),'r')}</td><td>${bx(e.type||'','bx-n')}</td></tr>`).join('')}
+  ${k.expenses.filter(e=>e.cat!=='Vendor Payment').map(e=>`<tr><td>${_esc(e.cat)}</td><td style="font-size:12px;color:var(--text)">${_esc(e.payee||'')}</td><td>${mono(fmtMoney(e,"amt"),'r')}</td><td>${bx(e.type||'','bx-n')}</td></tr>`).join('')}
   <tr style="border-top:2px solid var(--border2)"><td colspan="2"><strong>${_s.rpt_total_oh}</strong></td><td>${mono(fmt(k.oh),'r')}</td><td></td></tr>
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptNPPDF()">⬇ PDF</button>`);
@@ -11654,7 +11677,7 @@ function _renderCustStmt(custId){const _s=_L();
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>${_s.ui_description}</th><th>Invoiced</th><th>Paid</th><th>${_s.ui_balance}</th></tr></thead><tbody>
   ${sales.map(s=>{const tot=s.total||s.amt;const bal=tot-(s.paid||0);return`<tr><td>${s.dt}</td><td>${bx('Sale','bx-g')}</td><td style="font-size:12px">${_esc(s.items)}</td><td>${mono(fmt(tot))}</td><td>${mono(fmt(s.paid||0),'g')}</td><td>${mono(fmt(bal),bal>0?'r':'g')}</td></tr>`;}).join('')}
-  ${rentals.map(r=>{const paid=r.paid||0;const bal=r.fee-paid;return`<tr><td>${r.start}</td><td>${bx('Rental','bx-c')}</td><td style="font-size:12px">${_esc(r.item)}</td><td>${mono(fmt(r.fee))}</td><td>${mono(fmt(paid),'g')}</td><td>${mono(fmt(bal),bal>0?'r':'g')}</td></tr>`;}).join('')}
+  ${rentals.map(r=>{const paid=r.paid||0;const bal=r.fee-paid;return`<tr><td>${r.start}</td><td>${bx('Rental','bx-c')}</td><td style="font-size:12px">${_esc(r.item)}</td><td>${mono(fmtMoney(r,"fee"))}</td><td>${mono(fmt(paid),'g')}</td><td>${mono(fmt(bal),bal>0?'r':'g')}</td></tr>`;}).join('')}
   ${appts.map(a=>{return`<tr><td>${a.date}</td><td>${bx('Service','bx-p')}</td><td style="font-size:12px">${_esc(a.serviceName||'')}</td><td>${mono(fmt(a.totalAmt||0))}</td><td>${mono(fmt(a.totalAmt||0),'g')}</td><td>${mono('—')}</td></tr>`;}).join('')}
   <tr style="border-top:2px solid var(--border2);font-weight:700"><td colspan="3">Totals</td><td>${mono(fmt(totalInvoiced),'b')}</td><td>${mono(fmt(totalPaid),'g')}</td><td>${mono(fmt(cust.bal||0),cust.bal>0?'r':'g')}</td></tr>
   </tbody></table></div>`;
@@ -11716,7 +11739,7 @@ function rptExpFull(){const _s=_L();
     <div class="kpi"><div class="kpi-lbl">${_s.rpt_transactions}</div><div class="kpi-val">${_expP.length}</div></div>
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>${_s.ui_date}</th><th>${_s.ui_category}</th><th>${_s.exp_col_payee}</th><th>${_s.ui_amount}</th><th>${_s.ui_type}</th><th>${_s.ui_method}</th></tr></thead><tbody>
-  ${_expP.map(e=>`<tr><td>${mono(e.id)}</td><td>${e.dt}</td><td>${e.cat}</td><td style="font-size:12px">${e.payee}</td><td>${mono(fmt(e.amt),'r')}</td><td>${bx(e.type,'bx-n')}</td><td style="font-size:11px;color:var(--text2)">${e.method}</td></tr>`).join('')}
+  ${_expP.map(e=>`<tr><td>${mono(e.id)}</td><td>${e.dt}</td><td>${e.cat}</td><td style="font-size:12px">${e.payee}</td><td>${mono(fmtMoney(e,"amt"),'r')}</td><td>${bx(e.type,'bx-n')}</td><td style="font-size:11px;color:var(--text2)">${e.method}</td></tr>`).join('')}
   <tr style="border-top:2px solid var(--border2)"><td colspan="4"><strong>${_s.adm_total}</strong></td><td>${mono(fmt(_expTotal),'r')}</td><td colspan="2"></td></tr>
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptExpFullPDF()">⬇ PDF</button><button class="btn btn-p" onclick="exportReportCSV('Full Expense Report')">⬇ Export CSV</button>`);
@@ -11728,7 +11751,7 @@ function rptRepairs(){const _s=_L();
   const rep=D.exp.filter(e=>inRange(e.dt,_rng)&&(e.cat==='Repairs'||e.cat==='Repairs & Maintenance'||e.cat==='Cleaning'||e.cat==='Maintenance'));
   modal('📊 Repairs & Maintenance',`
   <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.exp_col_payee}</th><th>${_s.ui_amount}</th><th>${_s.ui_method}</th></tr></thead><tbody>
-  ${rep.map(e=>`<tr><td>${e.dt}</td><td>${e.payee}</td><td>${mono(fmt(e.amt),'r')}</td><td>${e.method}</td></tr>`).join('')}
+  ${rep.map(e=>`<tr><td>${e.dt}</td><td>${e.payee}</td><td>${mono(fmtMoney(e,"amt"),'r')}</td><td>${e.method}</td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRepairsPDF()">⬇ PDF</button>`);
 }
@@ -23024,7 +23047,7 @@ function _apptToIcs(a){
   if(a.custName)  descLines.push('Client: ' + a.custName);
   if(a.custPhone) descLines.push('Phone: '  + a.custPhone);
   if(a.staffName) descLines.push('Staff: '  + a.staffName);
-  if(a.totalAmt)  descLines.push('Amount: ' + fmt(a.totalAmt));
+  if(a.totalAmt)  descLines.push('Amount: ' + fmtMoney(a,"totalAmt"));
   descLines.push('Status: '   + (a.st || ''));
   descLines.push('Ref: '      + (a.id || ''));
   if(a.notes)     descLines.push('', 'Notes:', a.notes);
@@ -25852,7 +25875,7 @@ function saveEditSale(id){var _s=_L();
   }
   _dbSaveSale(s);
   refreshLiveKpis();
-  addAudit('Sale edited',id+' \u2014 '+fmt(s.total||s.amt)+' paid:'+fmt(s.paid));
+  addAudit('Sale edited',id+' \u2014 '+fmtMoney(s,"total")+' paid:'+fmt(s.paid));
   closeModal();toast(_L().t_sale_prefix +id+' updated \u2713','success');nav('sales');
 }
 function _esAutoStatus(){
@@ -27127,7 +27150,7 @@ function mServicesRevenue(){const _s=_L();
       <td style="font-size:11px">${_esc(a.serviceName)}</td>
       <td style="font-size:11px;color:var(--text2)">${a.staffName?_esc(a.staffName):'—'}</td>
       <td style="font-size:11px;color:var(--text2)">${svc?svc.duration+'min':'—'}</td>
-      <td>${mono(fmt(a.totalAmt),'g')}</td>
+      <td>${mono(fmtMoney(a,"totalAmt"),'g')}</td>
       <td><button class="btn btn-g btn-xs" onclick="event.stopPropagation();genApptInvoice('${a.id}')">📄 Invoice</button></td>
     </tr>`;
   }).join('');
@@ -28248,8 +28271,8 @@ function _renderRentalCalendar(){
           </div>
           <div style="display:flex;gap:8px;margin-top:5px;font-size:10px;color:var(--text)">
             <span>📅 ${r.start}→${r.due}</span>
-            <span style="color:var(--g);font-family:var(--mono)">${fmt(r.fee)}</span>
-            ${r.lf>0?`<span style="color:var(--r)">⚠ ${fmt(r.lf)} late</span>`:''}
+            <span style="color:var(--g);font-family:var(--mono)">${fmtMoney(r,"fee")}</span>
+            ${r.lf>0?`<span style="color:var(--r)">⚠ ${fmtMoney(r,"lf")} late</span>`:''}
           </div>
           ${custObj.phone?`<div style="font-size:10px;color:var(--text2);margin-top:2px">📞 ${custObj.phone}</div>`:''}
           <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap">
@@ -29142,7 +29165,7 @@ function saveExpEdit(id){var _s=_L();
   _dbSaveExp(e); // ← was missing — edits now persist to Supabase
   refreshLiveKpis();
   closeModal();
-  addAudit('Expense updated', id+' — '+e.cat+' | '+e.payee+' | '+fmt(e.amt));
+  addAudit('Expense updated', id+' — '+e.cat+' | '+e.payee+' | '+fmtMoney(e,"amt"));
   toast(_L().t_expense_updated,'success');
   nav('expenses');
 }
@@ -30431,7 +30454,7 @@ function _apptDayHTML(){
       + '<span style="font-size:10px;font-weight:700;color:'+col+';white-space:nowrap">'+_timeLabel(a.startTime)+'</span>'
       + '</div>'
       + (isCompact?'':'<div style="font-size:11px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(a.serviceName||'')+(a.staffName?' · 👤 '+_esc(a.staffName):'')+'</div>')
-      + (height>=70?'<div style="margin-top:4px"><span style="font-size:9px;font-weight:700;color:'+col+';background:'+col+'22;border-radius:10px;padding:1px 7px">'+a.st+'</span>'+(a.totalAmt>0?'<span style="font-size:10px;color:var(--g);font-family:var(--mono);font-weight:700;margin-left:6px">'+fmt(a.totalAmt)+'</span>':'')+'</div>':'')
+      + (height>=70?'<div style="margin-top:4px"><span style="font-size:9px;font-weight:700;color:'+col+';background:'+col+'22;border-radius:10px;padding:1px 7px">'+a.st+'</span>'+(a.totalAmt>0?'<span style="font-size:10px;color:var(--g);font-family:var(--mono);font-weight:700;margin-left:6px">'+fmtMoney(a,"totalAmt")+'</span>':'')+'</div>':'')
       + '</div>';
   });
 
@@ -30568,7 +30591,7 @@ function _apptListHTML(){const _s=_L();
       <td style="font-size:12px">${_esc(a.serviceName||'—')}</td>
       <td style="font-size:12px;color:var(--text2)">${_esc(a.staffName||'Any')}</td>
       <td><span style="background:${_apptBg(a.st)};color:${_apptCol(a.st)};border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap">${a.st}</span></td>
-      <td><span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${a.totalAmt>0?'var(--g)':'var(--text3)'}">${a.totalAmt>0?fmt(a.totalAmt):'—'}</span></td>
+      <td><span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${a.totalAmt>0?'var(--g)':'var(--text3)'}">${a.totalAmt>0?fmtMoney(a,"totalAmt"):'—'}</span></td>
       <td onclick="event.stopPropagation()">
         <div class="btn-row" style="gap:3px;flex-wrap:nowrap;justify-content:flex-end">
           ${a.st==='Reserved' && a.custPhone ? `<button class="btn btn-xs" style="background:var(--g);color:#fff;font-weight:700" onclick="_apptConfirmAndNotify('${a.id}')" title="Confirm &amp; notify customer">✓</button>` : ''}
@@ -30666,31 +30689,66 @@ function _apptCheckout(id){var _s=_L();
   const a=D.appointments.find(x=>x.id===id); if(!a){ toast(_L().t_not_found,'error'); return; }
   var _mxSN=D.sales.reduce(function(m,s){var n=parseInt((s.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
   const sid='S-'+String(_mxSN+1).padStart(4,'0');
+  // Resolve the sale amount in a drift-immune way. Priority:
+  //   1) appt.totalAmtNative (set at booking time on v149+)
+  //   2) service.priceNative × duration units (recompute from the
+  //      service's current native price — picks up any owner-side
+  //      correction since the appointment was booked)
+  //   3) appt.totalAmt × current rate (legacy fallback, drift-prone)
+  //
+  // Without this, completing a Hair Cut appointment booked when the
+  // service had drifted to 2,503 USD-base would create a sale showing
+  // 2,503 even after the owner corrected the service price to 2,500.
+  var saleTotalUSD = a.totalAmt || 0;
+  var saleTotalNative = null;
+  var saleTotalCurrency = CUR.code;
+  if(a.totalAmtNative != null && a.totalAmtCurrency === CUR.code){
+    saleTotalNative = a.totalAmtNative;
+    saleTotalUSD    = saleTotalNative / (CUR.rate || 1);
+  } else if(a.serviceId){
+    var svc = (D.services||[]).find(function(x){return x.id===a.serviceId;});
+    if(svc && svc.priceNative != null && svc.priceCurrency === CUR.code){
+      var pt    = svc.priceType||'flat';
+      var dur   = a.duration || svc.duration || 60;
+      var perUnitNative = Number(svc.priceNative);
+      // For time-based pricing, _computeSvcTotal works in any unit, so
+      // we can feed it the native per-unit price and get the native total.
+      saleTotalNative = (typeof _computeSvcTotal === 'function')
+        ? _computeSvcTotal(perUnitNative, pt, dur)
+        : perUnitNative;
+      // Round to currency precision (XAF=0, USD=2, etc.)
+      var _d = CUR.decimals || 0;
+      saleTotalNative = parseFloat(saleTotalNative.toFixed(_d));
+      saleTotalUSD    = saleTotalNative / (CUR.rate || 1);
+    }
+  }
   const sale={id:sid,dt:a.date||localDateStr(),cust:a.custName,custId:a.custId||'',invId:'__custom__',
     items:a.serviceName+(a.staffName?' ('+a.staffName+')':''),
-    amt:a.totalAmt,total:a.totalAmt,paid:a.totalAmt,cost:0,
-    profit:a.totalAmt,st:'Paid',method:a.payMethod||'Cash',
+    amt:saleTotalUSD, total:saleTotalUSD, paid:saleTotalUSD, cost:0,
+    totalNative:saleTotalNative, totalCurrency:saleTotalNative!=null?saleTotalCurrency:null,
+    paidNative: saleTotalNative,  paidCurrency: saleTotalNative!=null?saleTotalCurrency:null,
+    profit:saleTotalUSD, st:'Paid', method:a.payMethod||'Cash',
     notes:'Appointment '+a.id};
   D.sales.unshift(sale);
   _dbSaveSale(sale);
   a.saleId=sid; _dbSaveAppt(a);
-  // Update customer stats
+  // Update customer stats — use USD-base amount for consistent storage
   if(a.custId){
     const cust=D.cust.find(c=>c.id===a.custId);
     if(cust){
-      cust.spent=(cust.spent||0)+a.totalAmt;
+      cust.spent=(cust.spent||0)+saleTotalUSD;
       cust.orders=(cust.orders||0)+1;
       cust.last=localDateStr();
       _dbSaveCust(cust);
     }
   }
   refreshLiveKpis();
-  addAudit('Appointment checkout',a.id+' → Sale '+sid+' '+fmt(a.totalAmt));
+  addAudit('Appointment checkout',a.id+' → Sale '+sid+' '+fmt(saleTotalUSD));
   toast(_L().t_sale_prefix +sid+' created for '+a.custName+' ✓','success');
   closeModal();
   setTimeout(function(){
     modal('Receipt Ready',
-      '<div class="alrt alrt-g" style="margin-bottom:12px">Payment of <strong>'+fmt(a.totalAmt)+'</strong> recorded for '+_esc(a.custName)+'.</div>',
+      '<div class="alrt alrt-g" style="margin-bottom:12px">Payment of <strong>'+(saleTotalNative!=null?fmtRaw(saleTotalNative):fmt(saleTotalUSD))+'</strong> recorded for '+_esc(a.custName)+'.</div>',
       '<button class="btn btn-s" onclick="closeModal()">Done</button>'
       +'<button class="btn btn-p" onclick="closeModal();genReceiptDoc(\''+sid+'\')">🧾 Generate Receipt</button>'
     );
@@ -30861,7 +30919,7 @@ function pgAppointments(){const _s=_L();
       var strtBtn = a.st==='Confirmed' ? '<button class="btn btn-xs" style="background:var(--g-dim);color:var(--g)" onclick="event.stopPropagation();_apptQuickStatus(\''+a.id+'\',\'In Progress\')" title="Start">▶ Start</button>' : '';
       var doneBtn = a.st==='In Progress' ? '<button class="btn btn-xs" style="background:var(--g-dim);color:var(--g)" onclick="event.stopPropagation();_apptQuickStatus(\''+a.id+'\',\'Completed\')" title="Complete">✅ Done</button>' : '';
       var coBtn   = (a.st==='Completed'&&!a.saleId&&(a.totalAmt||0)>0) ? '<button class="btn btn-p btn-xs" onclick="event.stopPropagation();_apptCheckout(\''+a.id+'\')" title="Checkout">💳 Pay</button>' : '';
-      var amtDiv  = (a.totalAmt||0)>0 ? '<div style="font-size:12px;font-weight:700;color:var(--g);flex-shrink:0">'+fmt(a.totalAmt)+'</div>' : '';
+      var amtDiv  = (a.totalAmt||0)>0 ? '<div style="font-size:12px;font-weight:700;color:var(--g);flex-shrink:0">'+fmtMoney(a,"totalAmt")+'</div>' : '';
       todayRows += '<div onclick="mViewAppt(\''+a.id+'\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--r8);cursor:pointer;border-left:3px solid '+_apptCol(a.st)+'" onmouseover="this.style.background=\'var(--bg4)\'" onmouseout="this.style.background=\'var(--bg3)\'">'
         +'<div style="font-size:12px;font-weight:700;color:var(--text2);width:44px;flex-shrink:0">'+_timeLabel(a.startTime)+'</div>'
         +'<div style="flex:1;min-width:0">'
@@ -34229,7 +34287,7 @@ function _rptProfitPDF(){const _s=_L();
 }
 
 function _rptRentalsPDF(){const _s=_L();
-  var rows=D.rentals.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.start+'</td><td>'+r.due+'</td><td class="num green">'+fmt(r.fee)+'</td><td class="num">'+fmt(r.dep)+'</td><td>'+r.st+'</td></tr>';}).join('');
+  var rows=D.rentals.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.start+'</td><td>'+r.due+'</td><td class="num green">'+fmtMoney(r,"fee")+'</td><td class="num">'+fmtMoney(r,"dep")+'</td><td>'+r.st+'</td></tr>';}).join('');
   var totFee=D.rentals.reduce(function(a,r){return a+r.fee;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Rental Revenue</div><div class="sum-val green">'+fmt(totFee)+'</div></div><div class="sum-box"><div class="sum-lbl">Active Rentals</div><div class="sum-val blue">'+D.rentals.filter(function(r){return r.st==='Checked Out';}).length+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.adm_overdue+'</div><div class="sum-val red">'+D.rentals.filter(function(r){return r.st==='Overdue';}).length+'</div></div></div>';
   var table='<table><thead><tr><th>ID</th><th>'+_s.ui_customer+'</th><th>'+_s.rent_item_lbl+'</th><th>'+_s.appt_start+'</th><th>Due</th><th class="num">Fee</th><th class="num">'+_s.rpt_deposit+'</th><th>'+_s.ui_status+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
@@ -34240,7 +34298,7 @@ function _rptDepositsPDF(){const _s=_L();
   var active=D.rentals.filter(function(r){return !['Returned','Closed'].includes(r.st);});
   var total=active.reduce(function(a,r){return a+r.dep;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Deposit Liability</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Active Rentals</div><div class="sum-val blue">'+active.length+'</div></div></div>';
-  var rows=active.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td class="num red">'+fmt(r.dep)+'</td><td>'+r.st+'</td></tr>';}).join('');
+  var rows=active.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td class="num red">'+fmtMoney(r,"dep")+'</td><td>'+r.st+'</td></tr>';}).join('');
   var table='<table><thead><tr><th>ID</th><th>'+_s.ui_customer+'</th><th>'+_s.rent_item_lbl+'</th><th class="num">'+_s.rpt_deposit+'</th><th>'+_s.ui_status+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Deposit Liability Report', summary, table);
 }
@@ -34249,14 +34307,14 @@ function _rptLateFeesPDF(){const _s=_L();
   var late=D.rentals.filter(function(r){return r.lf>0;});
   var total=late.reduce(function(a,r){return a+r.lf;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.rpt_total_late+'</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
-  var rows=late.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.due+'</td><td class="num red">'+fmt(r.lf)+'</td><td>'+r.st+'</td></tr>';}).join('');
+  var rows=late.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.due+'</td><td class="num red">'+fmtMoney(r,"lf")+'</td><td>'+r.st+'</td></tr>';}).join('');
   var table='<table><thead><tr><th>ID</th><th>'+_s.ui_customer+'</th><th>'+_s.rent_item_lbl+'</th><th>'+_s.rpt_due_date+'</th><th class="num">'+_s.rpt_late_fee+'</th><th>'+_s.ui_status+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Late Fees Report', summary, table);
 }
 
 function _rptOverduePDF(){const _s=_L();
   var od=D.rentals.filter(function(r){return r.st==='Overdue';});
-  var rows=od.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.due+'</td><td class="num red">'+fmt(r.lf)+'</td></tr>';}).join('');
+  var rows=od.map(function(r){return '<tr><td>'+r.id+'</td><td>'+_esc(r.cust)+'</td><td>'+_esc(r.item)+'</td><td>'+r.due+'</td><td class="num red">'+fmtMoney(r,"lf")+'</td></tr>';}).join('');
   var table='<table><thead><tr><th>ID</th><th>'+_s.ui_customer+'</th><th>'+_s.rent_item_lbl+'</th><th>'+_s.rpt_due_date+'</th><th class="num">'+_s.rpt_late_fee+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Overdue Rentals', null, table);
 }
@@ -34302,7 +34360,7 @@ function _rptGPPDF(){const _s=_L();
 function _rptNPPDF(){const _s=_L();
   var k=refreshLiveKpis();
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.rpt_gp+'</div><div class="sum-val green">'+fmt(k.gp)+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.rpt_overhead+'</div><div class="sum-val red">'+fmt(k.oh)+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.rpt_np+'</div><div class="sum-val '+(k.np>=0?'green':'red')+'">'+fmt(k.np)+'</div></div></div>';
-  var rows=D.exp.map(function(e){return '<tr><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee)+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+e.method+'</td></tr>';}).join('');
+  var rows=D.exp.map(function(e){return '<tr><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee)+'</td><td class="num red">'+fmtMoney(e,"amt")+'</td><td>'+e.method+'</td></tr>';}).join('');
   var table='<table><thead><tr><th>'+_s.ui_date+'</th><th>'+_s.ui_category+'</th><th>'+_s.exp_col_payee+'</th><th class="num">'+_s.ui_amount+'</th><th>'+_s.ui_method+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Net Profit Report', summary, table);
 }
@@ -34378,7 +34436,7 @@ function _rptCustStmtPDF(){const _s=_L();
     +'<div class="sum-box"><div class="sum-lbl">Outstanding</div><div class="sum-val '+(cust.bal>0?'red':'green')+'">'+fmt(cust.bal||0)+'</div></div>'
     +'</div>';
   var rows=sales.map(function(s){var tot=s.total||s.amt;var bal=tot-(s.paid||0);return '<tr><td>'+s.dt+'</td><td>Sale</td><td>'+_esc(s.items.substring(0,40))+'</td><td class="num">'+fmt(tot)+'</td><td class="num green">'+fmt(s.paid||0)+'</td><td class="num '+(bal>0?'red':'')+'">'+fmt(bal)+'</td></tr>';}).join('');
-  rows+=rentals.map(function(r){var bal=r.fee-(r.paid||0);return '<tr><td>'+r.start+'</td><td>Rental</td><td>'+_esc(r.item)+'</td><td class="num">'+fmt(r.fee)+'</td><td class="num green">'+fmt(r.paid||0)+'</td><td class="num '+(bal>0?'red':'')+'">'+fmt(bal)+'</td></tr>';}).join('');
+  rows+=rentals.map(function(r){var bal=r.fee-(r.paid||0);return '<tr><td>'+r.start+'</td><td>Rental</td><td>'+_esc(r.item)+'</td><td class="num">'+fmtMoney(r,"fee")+'</td><td class="num green">'+fmt(r.paid||0)+'</td><td class="num '+(bal>0?'red':'')+'">'+fmt(bal)+'</td></tr>';}).join('');
   var table='<table><thead><tr><th>'+_s.ui_date+'</th><th>'+_s.ui_type+'</th><th>'+_s.ui_description+'</th><th class="num">Invoiced</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Customer Statement — '+_esc(cust.name), summary, table);
 }
@@ -34404,7 +34462,7 @@ function _rptPayHistPDF(){const _s=_L();
 function _rptExpFullPDF(){const _s=_L();
   var total=D.exp.reduce(function(a,e){return a+e.amt;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.exp_kpi_total+'</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Entries</div><div class="sum-val blue">'+D.exp.length+'</div></div></div>';
-  var rows=D.exp.map(function(e){return '<tr><td>'+e.id+'</td><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee||'')+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+_esc(e.method||'')+'</td></tr>';}).join('');
+  var rows=D.exp.map(function(e){return '<tr><td>'+e.id+'</td><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee||'')+'</td><td class="num red">'+fmtMoney(e,"amt")+'</td><td>'+_esc(e.method||'')+'</td></tr>';}).join('');
   var table='<table><thead><tr><th>ID</th><th>'+_s.ui_date+'</th><th>'+_s.ui_category+'</th><th>'+_s.exp_col_payee+'</th><th class="num">'+_s.ui_amount+'</th><th>'+_s.ui_method+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Full Expense Report', summary, table);
 }
@@ -34413,7 +34471,7 @@ function _rptRepairsPDF(){const _s=_L();
   var rep=D.exp.filter(function(e){return e.cat==='Repairs'||e.cat==='Cleaning'||e.cat==='Maintenance';});
   var total=rep.reduce(function(a,e){return a+e.amt;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.adm_total+'</div><div class="sum-val red">'+fmt(total)+'</div></div></div>';
-  var rows=rep.map(function(e){return '<tr><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee||'')+'</td><td class="num red">'+fmt(e.amt)+'</td><td>'+_esc(e.method||'')+'</td></tr>';}).join('');
+  var rows=rep.map(function(e){return '<tr><td>'+e.dt+'</td><td>'+_esc(e.cat)+'</td><td>'+_esc(e.payee||'')+'</td><td class="num red">'+fmtMoney(e,"amt")+'</td><td>'+_esc(e.method||'')+'</td></tr>';}).join('');
   var table='<table><thead><tr><th>'+_s.ui_date+'</th><th>'+_s.ui_category+'</th><th>'+_s.exp_col_payee+'</th><th class="num">'+_s.ui_amount+'</th><th>'+_s.ui_method+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Repairs & Maintenance Report', summary, table);
 }
@@ -34561,7 +34619,7 @@ function exportSalesPDF(){const _s=_L();
         <td>${s.dt}</td>
         <td>${s.cust}</td>
         <td style="max-width:180px">${(s.items||'').substring(0,60)}${s.items&&s.items.length>60?'…':''}</td>
-        <td class="num">${fmt(s.total||s.amt)}</td>
+        <td class="num">${fmtMoney(s,"total")}</td>
         <td class="num">${fmt(s.paid)}</td>
         <td>${s.method||'—'}</td>
         <td><span class="badge ${s.st==='Paid'?'badge-g':s.st==='Partial'?'badge-y':'badge-r'}">${s.st}</span></td>
@@ -34591,7 +34649,7 @@ function exportRentalsPDF(){const _s=_L();
         <td>${r.item}</td>
         <td>${r.start}</td>
         <td>${r.due}</td>
-        <td class="num">${fmt(r.fee)}</td>
+        <td class="num">${fmtMoney(r,"fee")}</td>
         <td class="num">${fmt(r.dep||0)}</td>
         <td><span class="badge ${r.st==='Returned'?'badge-g':r.st==='Overdue'?'badge-r':r.st==='Checked Out'?'badge-b':'badge-y'}">${r.st}</span></td>
       </tr>`).join('')}</tbody>
@@ -34706,7 +34764,7 @@ function exportExpensesPDF(){const _s=_L();
         <td>${e.dt}</td>
         <td>${e.cat}</td>
         <td>${e.payee||'—'}</td>
-        <td class="num red">${fmt(e.amt)}</td>
+        <td class="num red">${fmtMoney(e,"amt")}</td>
         <td>${e.type||'—'}</td>
         <td>${e.method||'—'}</td>
         <td><span class="badge ${e.st==='Paid'?'badge-g':'badge-y'}">${e.st||'Paid'}</span></td>
@@ -34764,7 +34822,7 @@ function exportAppointmentsPDF(){const _s=_L();
         <td>${a.custName}${a.walkIn?' <em style="font-size:10px;color:#64748b">(walk-in)</em>':''}</td>
         <td>${a.serviceName||'—'}</td>
         <td>${a.staffName||'Any'}</td>
-        <td class="num">${a.totalAmt>0?fmt(a.totalAmt):'—'}</td>
+        <td class="num">${a.totalAmt>0?fmtMoney(a,"totalAmt"):'—'}</td>
         <td><span class="badge ${a.st==='Completed'?'badge-g':a.st==='No-Show'||a.st==='Cancelled'?'badge-r':a.st==='In Progress'?'badge-y':'badge-b'}">${a.st}</span></td>
       </tr>`).join('')}</tbody>
     </table>`;
@@ -34981,7 +35039,7 @@ function _waOwnerNewBooking(appt) {
     + 'Date: ' + (appt.date || '') + '\n'
     + 'Time: ' + timeLabel + '\n'
     + (appt.staffName ? 'Staff: ' + appt.staffName + '\n' : '')
-    + (appt.totalAmt > 0 ? 'Amount: ' + fmt(appt.totalAmt) + '\n' : '')
+    + (appt.totalAmt > 0 ? 'Amount: ' + fmtMoney(appt,"totalAmt") + '\n' : '')
     + '\n_ShopTrack - ' + biz + '_';
   _waOwner(msg);
 }
@@ -35254,7 +35312,7 @@ function _checkAllNotifConditions(){
       if(!_notifSeen.has(key)){
         _notifSeen.add(key);
         const days = Math.floor((now - new Date(s.dt))/86400000);
-        _notifEvent('arOutstanding', {cust:s.cust, amt:fmt(s.total||s.amt), days});
+        _notifEvent('arOutstanding', {cust:s.cust, amt:fmtMoney(s,"total"), days});
         if(NOTIF_PREFS.waArReminder) _queueWAReminder('ar', s);
       }
     });
@@ -35384,12 +35442,12 @@ function _bulkWAReminders(type){var _s=_L();
       const msg = encodeURIComponent(
         `Hi ${s.cust.split(' ')[0]}! 👋\n\n`+
         `Friendly payment reminder from *${BIZ.name}*.\n\n`+
-        `💰 Outstanding balance: *${fmt(s.total||s.amt)}*\n`+
+        `💰 Outstanding balance: *${fmtMoney(s,"total")}*\n`+
         `📋 Ref: ${s.id} · ${s.dt}\n\n`+
         `Please arrange payment at your earliest convenience. Thank you! 🙏\n\n`+
         `📞 ${BIZ.phone||BIZ.whatsapp||''}\n_${BIZ.name}_`
       );
-      return {ph, msg, label: s.cust+' — '+fmt(s.total||s.amt)};
+      return {ph, msg, label: s.cust+' — '+fmtMoney(s,"total")};
     };
   }
 
@@ -35741,7 +35799,7 @@ function _deleteAppt(id){const _s=_L();
   var warnHtml='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(a.id)+'</strong> — '+_esc(a.custName)+' / '+_esc(a.serviceName)+' on '+a.date+'?</p>';
   if(isActive) warnHtml+='<div class="alrt alrt-y" style="margin-bottom:8px">This appointment is <strong>'+a.st+'</strong>. Consider cancelling instead.</div>';
   if(linkedSale) warnHtml+='<div class="alrt alrt-r" style="margin-bottom:8px">Linked sale <strong>'+linkedSale.id+'</strong> ('+fmt(linkedSale.amt)+') will NOT be deleted.</div>';
-  if(a.totalAmt>0&&!linkedSale) warnHtml+='<p style="font-size:12px;color:var(--text3)">Revenue of '+fmt(a.totalAmt)+' will be removed from KPIs.</p>';
+  if(a.totalAmt>0&&!linkedSale) warnHtml+='<p style="font-size:12px;color:var(--text3)">Revenue of '+fmtMoney(a,"totalAmt")+' will be removed from KPIs.</p>';
   var mid=id;
   modal('Delete Appointment', warnHtml,
     '<button class="btn btn-s" onclick="closeModal()">'+_L().ui_cancel+'</button>'+
@@ -35935,7 +35993,7 @@ function mViewAppt(id){const _s=_L();
       +(svc?'<div style="font-size:11px;color:var(--text2)">'+svc.duration+' min</div>':'')+'</div>'
     +'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px">'
       +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_L().ui_amount+'</div>'
-      +'<div style="font-weight:700;color:var(--ink)">'+(a.totalAmt>0?fmt(a.totalAmt):'\u2014')+'</div>'
+      +'<div style="font-weight:700;color:var(--ink)">'+(a.totalAmt>0?fmtMoney(a,"totalAmt"):'\u2014')+'</div>'
       +(a.saleId?'<div style="font-size:11px;color:var(--g)">\u2713 Sale '+a.saleId+'</div>':canCheckout?'<div style="font-size:11px;color:var(--y)">'+_L().appt_pending_co+'</div>':'')+'</div>'
     +(a.staffName?'<div style="background:var(--bg3);border-radius:var(--r8);padding:11px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px">'+_L().appt_staff+'</div><div style="font-weight:700;color:var(--ink)">'+a.staffName+'</div></div>':'')
     +'</div>';
