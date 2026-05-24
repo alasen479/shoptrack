@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779652636");
+console.log("ShopTrack v2.7 - build:1779653202");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -8829,6 +8829,144 @@ function rdTab(el, showId){const _s=_L();
 // PURCHASES
 // ============================================================
 
+// ── Audit-log PO reconstruction ──────────────────────────────────
+// Last-ditch recovery. The audit_log table is independent from
+// the purchases table — it survives even when purchases get
+// deleted by an external process, RLS change, or manual cleanup.
+// This helper scans D.audit for PO-related entries and rebuilds
+// skeleton purchase records from them.
+//
+// Audit entry shapes we parse:
+//   action='PO created'   detail='P-0001 - Davido Wholesale - 452,000 Frs'
+//   action='PO edited'    detail='P-0001 — Vendor — Status — 452,000 Frs (paid 300,000)'
+//   action='PO payment recorded'  detail='P-0001 — 100,000 Frs via Cash'
+//   action='PO received'  detail='P-0001 — Vendor'
+//   action='PO partial receipt'  detail='P-0001 — 10× item, 5× item2'
+//
+// Reconstructed records are flagged with _reconstructed=true so the
+// UI can later show a 'verify this' badge. Totals are PARSED from
+// the audit detail text — they are the user's responsibility to
+// double-check before re-using.
+function _reconstructPOsFromAudit(){
+  if(!D.audit || !D.audit.length){
+    console.log('[reconstructPO] audit log empty');
+    return [];
+  }
+  // Parse a money string from the detail, e.g. '452,000 Frs' → 452000.
+  // Handles thousand separators (comma, space, dot), strips currency
+  // symbol words. Returns 0 if no money found.
+  function _parseMoney(s){
+    if(!s) return 0;
+    var m = s.match(/([\d.,\s]+)\s*(?:Frs|XAF|FCFA|\$|€|£|₦|NGN|GBP|EUR|USD)?\s*$/i);
+    if(!m) {
+      m = s.match(/([\d.,\s]+)/);
+      if(!m) return 0;
+    }
+    var raw = m[1].replace(/[,\s]/g,'').replace(/\.(\d{1,2})$/, '__DEC__$1').replace(/\./g,'').replace('__DEC__','.');
+    var n = parseFloat(raw);
+    return isNaN(n) ? 0 : n;
+  }
+
+  // Parse a PO id from anywhere in a detail string.
+  function _parsePOId(s){
+    if(!s) return null;
+    var m = s.match(/\b(P-?\d{3,5}|PO-?\d{3,5})\b/i);
+    return m ? m[1].toUpperCase() : null;
+  }
+
+  // Group audit entries by PO id, sorted oldest → newest so the most
+  // recent state wins.
+  var byId = {};
+  D.audit.forEach(function(a){
+    if(!a || !a.action) return;
+    if(a.action.indexOf('PO') !== 0 && a.action.indexOf('Purchases') !== 0) return;
+    if(/recovered|reconstructed|deleted/i.test(a.action)) return; // skip our own bookkeeping
+    var id = _parsePOId(a.detail||'');
+    if(!id) return;
+    if(!byId[id]) byId[id] = [];
+    byId[id].push(a);
+  });
+
+  console.log('[reconstructPO] candidate PO ids:', Object.keys(byId));
+
+  var reconstructed = [];
+  Object.keys(byId).forEach(function(id){
+    var entries = byId[id].slice().sort(function(a,b){
+      return (a.ts||a.timestamp||'').localeCompare(b.ts||b.timestamp||'');
+    });
+    var created = entries.find(function(e){ return e.action === 'PO created'; });
+    if(!created){
+      console.warn('[reconstructPO] no PO created entry for '+id+' — skipping');
+      return;
+    }
+    // Parse: 'P-0001 - Davido Wholesale - 452,000 Frs'
+    // The vendor is between the first ' - ' and the last ' - '.
+    var detail = created.detail || '';
+    // Split on hyphen-surrounded-by-spaces or em-dash
+    var parts = detail.split(/\s+[-—]\s+/);
+    var vendor = parts.length >= 3 ? parts[1].trim() : 'Unknown vendor';
+    var totalStr = parts[parts.length-1] || '';
+    var total = _parseMoney(totalStr);
+
+    // Date — pull from the audit timestamp
+    var dt = (created.ts || created.timestamp || '').slice(0,10);
+
+    // Walk later entries to figure out paid amount and status
+    var paid = 0;
+    var status = 'Pending';
+    entries.forEach(function(e){
+      if(e.action === 'PO payment recorded'){
+        var pdtl = e.detail || '';
+        var pparts = pdtl.split(/\s+[-—]\s+/);
+        // Format: 'P-0001 — 100,000 Frs via Cash'
+        var amtTxt = (pparts[1] || '').split(/\s+via\s+/i)[0];
+        paid += _parseMoney(amtTxt);
+      } else if(e.action === 'PO received' || e.action === 'PO partial receipt'){
+        if(status === 'Pending') status = 'Received';
+      } else if(e.action === 'PO paid'){
+        status = 'Paid';
+      } else if(e.action === 'PO edited'){
+        // Edited entries can include the new total + paid in detail.
+        // Format: 'P-0001 — Vendor — Status — 452,000 Frs (paid 300,000)'
+        var edt = e.detail || '';
+        var paidMatch = edt.match(/\(paid\s+([\d.,\s]+)/i);
+        if(paidMatch) paid = Math.max(paid, _parseMoney(paidMatch[1]));
+        var statMatch = edt.match(/—\s+(Pending|Partial|Paid|Received|Unpaid)\s+—/i);
+        if(statMatch) status = statMatch[1];
+      }
+    });
+
+    // Reconcile paid vs status — paid >= total ⇒ Paid, paid > 0 ⇒ Partial, else as derived
+    if(paid >= total - 0.01 && total > 0) status = 'Paid';
+    else if(paid > 0 && status === 'Pending') status = 'Partial';
+
+    reconstructed.push({
+      id: id,
+      dt: dt,
+      vendor: vendor,
+      vendorId: '',
+      items: '(reconstructed from audit log — please verify)',
+      qty: 1,
+      sub: total,           // best guess; landed costs unknown
+      freight: 0, duties: 0, taxes: 0, other: 0,
+      total: total,
+      paid: paid,
+      bal: Math.max(0, total - paid),
+      st: status,
+      method: '',
+      lines: [],
+      linesReceived: [],
+      delivery: dt,
+      invId: '',
+      notes: '⚠ Reconstructed from audit log. Verify subtotal/landed costs and re-save.',
+      _reconstructed: true
+    });
+  });
+
+  console.log('[reconstructPO] reconstructed', reconstructed.length, 'POs');
+  return reconstructed;
+}
+
 // ── Recovery: re-fetch POs directly from Supabase with a series ──
 // of progressively-slimmer SELECTs. Used when the standard load
 // path returns 500 or the IDB cache is empty. Tries:
@@ -9025,12 +9163,41 @@ async function _recoverPurchases(){
         ? "Le serveur n'a aucune commande, mais "+localCount+" trouvée(s) localement. Conservées."
         : 'Server has 0 POs but '+localCount+' found in local cache — kept local copy.',
         'warn');
-    } else {
-      toast(fr
-        ? 'Aucune commande trouvée — ni sur le serveur, ni localement, ni dans IndexedDB.'
-        : 'No purchase orders found — server, memory, and IndexedDB all empty. The records may have been deleted.',
-        'error');
+      return;
     }
+
+    // ── LAST-RESORT: AUDIT LOG RECONSTRUCTION ─────────────────
+    // Cloud is empty, in-memory empty, IDB raw empty. But the
+    // audit_log is a separate table that survives even when
+    // purchases are deleted. Every PO event was logged with the
+    // ID, vendor and total. Parse those entries to reconstruct
+    // skeleton purchase records that the user can verify and
+    // (if correct) re-save to cloud.
+    console.log('[recoverPurchases] === AUDIT RECONSTRUCTION ===');
+    var reconstructed = _reconstructPOsFromAudit();
+    if(reconstructed.length > 0){
+      D.purchases = reconstructed;
+      try { await _idbSave(bizId, 'purchases', D.purchases); } catch(_){}
+      // Save each one back to cloud so the rows exist again — best
+      // effort; failures are tolerated since the skeleton at least
+      // lives in IDB and the UI.
+      for(var ri=0; ri<reconstructed.length; ri++){
+        try { await _dbSavePurchase(reconstructed[ri]); }
+        catch(saveErr){ console.warn('[recoverPurchases] re-save failed for '+reconstructed[ri].id+':', saveErr.message); }
+      }
+      toast(fr
+        ? "Reconstruit "+reconstructed.length+" commande(s) depuis le journal d'audit. Vérifiez les montants."
+        : 'Reconstructed '+reconstructed.length+' PO(s) from audit log. PLEASE VERIFY totals and re-save corrected versions.',
+        'warn');
+      addAudit('Purchases reconstructed from audit log', reconstructed.length+' POs');
+      if(curPage === 'purchases') setTimeout(function(){ nav('purchases'); }, 800);
+      return;
+    }
+
+    toast(fr
+      ? "Aucune commande trouvée — ni sur le serveur, ni localement, ni dans IndexedDB, ni dans le journal d'audit."
+      : 'No purchase orders found anywhere — server, memory, IndexedDB, and audit log all empty. The records appear to have been deleted before any audit entry was created.',
+      'error');
     return;
   }
 
@@ -9140,7 +9307,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
     const fr = BIZ.language==='fr';
     return '<tr data-date="'+p.dt+'" data-vendor="'+_esc(p.vendor)+'" data-st="'+(p.st||'')+'"'
       +' class="po-row" style="cursor:pointer" onclick="mViewPurchase(\''+p.id+'\')">'
-      +'<td>'+mono(p.id,'a')+'</td>'
+      +'<td>'+mono(p.id,'a')+(p._reconstructed?' <span title="Reconstructed from audit log — verify and re-save" style="font-size:9px;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:3px;font-weight:700">⚠ AUDIT</span>':'')+'</td>'
       +'<td style="color:var(--text2);white-space:nowrap">'+p.dt+'</td>'
       +'<td style="font-weight:600;color:var(--ink)">'+_esc(p.vendor)+'</td>'
       +'<td style="font-size:12px;color:var(--text);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"'
