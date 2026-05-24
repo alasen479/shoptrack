@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779625504");
+console.log("ShopTrack v2.7 - build:1779625974");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1047,11 +1047,14 @@ const fmtApptAmt = (a) => {
   // by serviceId first, falling back to serviceName for cases where
   // the original service was deleted and recreated (the new service
   // has a different id but the appointment still references the old
-  // one).
+  // one). Name match is case-insensitive + whitespace-normalized
+  // because the recreated service often has slightly different
+  // capitalization ('Adult hair cut' vs 'Adult Hair Cut').
   if(a.serviceId || a.serviceName){
     let svc = a.serviceId ? (D.services||[]).find(function(x){return x.id===a.serviceId;}) : null;
     if(!svc && a.serviceName){
-      svc = (D.services||[]).find(function(x){return x.name === a.serviceName;});
+      const target = String(a.serviceName).trim().toLowerCase();
+      svc = (D.services||[]).find(function(x){return String(x.name||'').trim().toLowerCase() === target;});
     }
     if(svc && svc.priceNative != null && svc.priceCurrency === CUR.code){
       const pt    = svc.priceType || 'flat';
@@ -7851,8 +7854,19 @@ function deleteSale(id){const _s=_L();
         }
       }
       D.sales=D.sales.filter(function(x){return x.id!==mid;});
-      _dbDelSale(mid); refreshLiveKpis();
-      addAudit('Sale deleted',mid);
+      _dbDelSale(mid);
+      // If a completed appointment was the source of this sale, unlink
+      // it so the user can either re-checkout (creating a fresh sale
+      // with the correct amount) or just remove the appointment too.
+      // Without this, the appointment shows "Sale S-xxxx" but that sale
+      // no longer exists — a confusing dangling pointer.
+      var _linkedAppts = (D.appointments||[]).filter(function(x){return x.saleId===mid;});
+      _linkedAppts.forEach(function(_a){
+        _a.saleId = '';
+        if(typeof _dbSaveAppt === 'function') _dbSaveAppt(_a);
+      });
+      refreshLiveKpis();
+      addAudit('Sale deleted',mid + (_linkedAppts.length ? ' (unlinked '+_linkedAppts.length+' appt)' : ''));
       closeModal(); toast(_L().t_sale_prefix +mid+' deleted','success'); nav('sales');
     };
   },30);
@@ -30757,7 +30771,8 @@ function _apptCheckout(id){var _s=_L();
     var svc = a.serviceId ? (D.services||[]).find(function(x){return x.id===a.serviceId;}) : null;
     var svcMatchVia = svc ? 'id' : null;
     if(!svc && a.serviceName){
-      svc = (D.services||[]).find(function(x){return x.name === a.serviceName;});
+      var target = String(a.serviceName).trim().toLowerCase();
+      svc = (D.services||[]).find(function(x){return String(x.name||'').trim().toLowerCase() === target;});
       if(svc) svcMatchVia = 'name';
     }
     console.log('[apptCheckout] service lookup | matchedVia=', svcMatchVia, '| svc=', svc ? {
@@ -30977,7 +30992,11 @@ function pgAppointments(){const _s=_L();
   var upcoming  = appts.filter(function(a){return a.date>today && a.st!=='Cancelled' && a.st!=='No-Show';});
   var completed = appts.filter(function(a){return a.st==='Completed';});
   var noShows   = appts.filter(function(a){return a.st==='No-Show';});
-  var pending   = appts.filter(function(a){return (a.st==='Reserved'||a.st==='Confirmed')&&a.date>=today;});
+  // "Pending — Needs confirmation" should count ONLY Reserved appointments.
+  // Confirmed appointments are already confirmed and don't need owner action,
+  // so including them inflates the count and the click-through filter (which
+  // shows Reserved-only) doesn't match the KPI number.
+  var pending   = appts.filter(function(a){return a.st==='Reserved' && a.date>=today;});
   var cancelled = appts.filter(function(a){return a.st==='Cancelled';});
   var totalRev  = completed.reduce(function(s,a){return s+(a.totalAmt||0);},0);
   var todayRev  = todayList.filter(function(a){return a.st==='Completed';}).reduce(function(s,a){return s+(a.totalAmt||0);},0);
@@ -35876,7 +35895,20 @@ function _deleteAppt(id){const _s=_L();
   var isActive=a.st!=='Completed'&&a.st!=='Cancelled';
   var warnHtml='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Delete <strong>'+_esc(a.id)+'</strong> — '+_esc(a.custName)+' / '+_esc(a.serviceName)+' on '+a.date+'?</p>';
   if(isActive) warnHtml+='<div class="alrt alrt-y" style="margin-bottom:8px">This appointment is <strong>'+a.st+'</strong>. Consider cancelling instead.</div>';
-  if(linkedSale) warnHtml+='<div class="alrt alrt-r" style="margin-bottom:8px">Linked sale <strong>'+linkedSale.id+'</strong> ('+fmt(linkedSale.amt)+') will NOT be deleted.</div>';
+  if(linkedSale){
+    // Default checked: when deleting a completed appointment, the sale
+    // it created is almost certainly something the user also wants
+    // gone (otherwise the Sales list keeps the orphan row with the
+    // appointment's amount, which is the most common cause of phantom
+    // revenue and broken AR balances).
+    warnHtml+='<div class="alrt alrt-r" style="margin-bottom:8px">'
+      +'<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">'
+      +'<input type="checkbox" id="del-cascade-sale" checked style="width:16px;height:16px;accent-color:var(--r)"/>'
+      +'<span>Also delete linked sale <strong>'+linkedSale.id+'</strong> ('+fmtMoney(linkedSale,'total')+')</span>'
+      +'</label>'
+      +'<div style="font-size:11px;color:var(--text2);margin-top:6px;padding-left:24px">Customer balance & revenue KPIs will be adjusted accordingly. Uncheck to keep the sale as a standalone record.</div>'
+      +'</div>';
+  }
   if(a.totalAmt>0&&!linkedSale) warnHtml+='<p style="font-size:12px;color:var(--text3)">Revenue of '+fmtApptAmt(a)+' will be removed from KPIs.</p>';
   var mid=id;
   modal('Delete Appointment', warnHtml,
@@ -35885,6 +35917,26 @@ function _deleteAppt(id){const _s=_L();
   setTimeout(function(){
     var btn=document.getElementById('confirm-del-appt-btn');
     if(btn) btn.onclick=function(){
+      // Cascade-delete the linked sale FIRST so the customer balance
+      // and KPIs are updated before the appointment vanishes.
+      if(linkedSale){
+        var cascadeEl = document.getElementById('del-cascade-sale');
+        var doCascade = cascadeEl ? cascadeEl.checked : true;
+        if(doCascade){
+          // Reverse the customer's spent/orders/balance impact
+          if(linkedSale.custId){
+            var cust = D.cust.find(function(c){return c.id===linkedSale.custId;});
+            if(cust){
+              cust.spent = Math.max(0,(cust.spent||0) - (linkedSale.total||linkedSale.amt||0));
+              cust.orders = Math.max(0,(cust.orders||1) - 1);
+              _dbSaveCust(cust);
+            }
+          }
+          D.sales = (D.sales||[]).filter(function(s){return s.id !== linkedSale.id;});
+          if(typeof _dbDelSale === 'function'){ _dbDelSale(linkedSale.id); }
+          addAudit('Sale deleted (cascade)', linkedSale.id+' — appointment '+mid+' removed');
+        }
+      }
       D.appointments=(D.appointments||[]).filter(function(x){return x.id!==mid;});
       _dbDelAppt(mid); refreshLiveKpis();
       addAudit('Appointment deleted',mid);
