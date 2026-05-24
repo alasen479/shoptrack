@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779654085");
+console.log("ShopTrack v2.7 - build:1779655170");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -9297,6 +9297,7 @@ function pgPurchases(){const _s=_L();const _ui=_s;
     // Quick-action visibility — only show buttons when the action is
     // actually applicable. Keeps the row tight when a PO is fully closed.
     const showPay  = _outstanding > 0.01;
+    const fr = BIZ.language==='fr';
     const _linesReceived = p.linesReceived || (p.st==='Received' || p.st==='Paid'
       ? (p.lines||[]).map(function(l){return l.qty||1;})
       : []);
@@ -9336,7 +9337,6 @@ function pgPurchases(){const _s=_L();const _ui=_s;
         + '</div>';
     }
 
-    const fr = BIZ.language==='fr';
     return '<tr data-date="'+p.dt+'" data-vendor="'+_esc(p.vendor)+'" data-st="'+(p.st||'')+'"'
       +' class="po-row" style="cursor:pointer" onclick="mViewPurchase(\''+p.id+'\')">'
       +'<td>'+mono(p.id,'a')+(p._reconstructed?' <span title="Reconstructed from audit log — verify and re-save" style="font-size:9px;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:3px;font-weight:700">⚠ AUDIT</span>':'')+'</td>'
