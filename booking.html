@@ -640,9 +640,18 @@ function renderTimeSlots(){
   }
 
   // Helper: does this slot overlap an existing appointment?
+  // Uses proper range-overlap math (start < other.end AND end > other.start).
+  // The previous logic only checked whether slot.start fell INSIDE an
+  // existing appointment, which missed cases like a new 9:30 slot
+  // overlapping with an existing 10:00 booking — the 9:30 was offered
+  // even though it ran into the 10:00 appointment.
   const dayAppts = APPTS.filter(a=>a.date===selDate);
   function isBooked(slot){
-    return dayAppts.some(a => a.start_time <= slot.start && a.end_time > slot.start);
+    return dayAppts.some(function(a){
+      var as = a.start_time || '00:00';
+      var ae = a.end_time   || a.start_time || '23:59';
+      return slot.start < ae && slot.end > as;
+    });
   }
 
   // Build the full list with disabled flags for blocked slots — so the customer

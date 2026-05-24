@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779619910");
+console.log("ShopTrack v2.7 - build:1779620757");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -17388,26 +17388,33 @@ async function _dbLoadBizData(bizId){
     // Only update D.xxx if query succeeded (no error) — never overwrite with empty on failure
     if(!_invResult.error && (!_is107 || (_invResult.data||[]).length)){
       var _freshInv = (_invResult.data||[]).map(_dbToInv);
-      if(_invRetryStripped && D.inv && D.inv.length){
-        // Slim retry omits img_data_url/photo_data_urls/photoDataUrls — so
-        // the fresh rows have null images. Pictures would disappear from
-        // the UI even though they're saved in IDB locally. Overlay image
-        // fields from the local copy where we have a match by id.
-        var _localImgMap = {};
-        D.inv.forEach(function(li){
-          _localImgMap[li.id] = {
-            imgDataUrl:     li.imgDataUrl,
-            photoDataUrls:  li.photoDataUrls,
-            img:            li.img,
-            imgC:           li.imgC
-          };
-        });
+      // Build a local lookup if we'll need it
+      if(D.inv && D.inv.length){
+        var _localInvMap = {};
+        D.inv.forEach(function(li){ _localInvMap[li.id] = li; });
         _freshInv = _freshInv.map(function(fr){
-          var loc = _localImgMap[fr.id];
+          var loc = _localInvMap[fr.id];
           if(!loc) return fr;
-          // Preserve only the fields the slim retry stripped; fresh data wins for everything else
-          if(!fr.imgDataUrl    && loc.imgDataUrl)    fr.imgDataUrl    = loc.imgDataUrl;
-          if((!fr.photoDataUrls || !fr.photoDataUrls.length) && loc.photoDataUrls && loc.photoDataUrls.length) fr.photoDataUrls = loc.photoDataUrls;
+          // (1) Preserve image fields if the slim retry stripped them
+          if(_invRetryStripped){
+            if(!fr.imgDataUrl    && loc.imgDataUrl)    fr.imgDataUrl    = loc.imgDataUrl;
+            if((!fr.photoDataUrls || !fr.photoDataUrls.length) && loc.photoDataUrls && loc.photoDataUrls.length){
+              fr.photoDataUrls = loc.photoDataUrls;
+            }
+          }
+          // (2) Preserve native + currency fields if cloud rows lack them
+          // (user hasn't run the inventory migration yet — see the
+          // priceNative+priceCurrency drift-fix pattern). Without this,
+          // a fresh page load wipes the in-memory native amounts and the
+          // drift returns on the next price edit.
+          ['cost','sp','rp','minSp','dep'].forEach(function(f){
+            var nKey = f + 'Native';
+            var cKey = f + 'Currency';
+            if(fr[nKey] == null && loc[nKey] != null){
+              fr[nKey] = loc[nKey];
+              fr[cKey] = loc[cKey] || fr[cKey];
+            }
+          });
           return fr;
         });
       }
@@ -17424,11 +17431,51 @@ async function _dbLoadBizData(bizId){
       }
     }
       _cacheCust(); // update cache with fresh DB data
-    if(!sales.error && (!_is107 || (sales.data||[]).length))     D.sales     = _mergeData(D.sales, (sales.data||[]).map(_dbToSale));
-    if(!rentals.error && (!_is107 || (rentals.data||[]).length))   D.rentals   = _mergeData(D.rentals, (rentals.data||[]).map(_dbToRental));
-    if(!exp.error && (!_is107 || (exp.data||[]).length))       D.exp       = _mergeData(D.exp, (exp.data||[]).map(_dbToExp));
+    // Preserve *Native + *Currency fields from local IDB copies when the
+    // cloud row lacks them. This happens whenever the user hasn't yet run
+    // the column-migration SQL — the row exists in Supabase without the
+    // new columns, so the fresh data has null natives. Without this
+    // preservation, every page load wipes the in-memory native amounts
+    // and the FX-drift bug returns.
+    function _preserveNativeFromLocal(localArr, freshArr, fields){
+      if(!localArr || !localArr.length || !freshArr) return freshArr;
+      var locMap = {};
+      localArr.forEach(function(l){ locMap[l.id] = l; });
+      return freshArr.map(function(fr){
+        var loc = locMap[fr.id];
+        if(!loc) return fr;
+        fields.forEach(function(f){
+          var nKey = f + 'Native';
+          var cKey = f + 'Currency';
+          if(fr[nKey] == null && loc[nKey] != null){
+            fr[nKey] = loc[nKey];
+            fr[cKey] = loc[cKey] || fr[cKey];
+          }
+        });
+        return fr;
+      });
+    }
+    if(!sales.error && (!_is107 || (sales.data||[]).length)){
+      var _freshSales = (sales.data||[]).map(_dbToSale);
+      _freshSales = _preserveNativeFromLocal(D.sales, _freshSales, ['total','paid','cost','freight','taxes']);
+      D.sales = _mergeData(D.sales, _freshSales);
+    }
+    if(!rentals.error && (!_is107 || (rentals.data||[]).length)){
+      var _freshRentals = (rentals.data||[]).map(_dbToRental);
+      _freshRentals = _preserveNativeFromLocal(D.rentals, _freshRentals, ['fee','dep','paid','lf']);
+      D.rentals = _mergeData(D.rentals, _freshRentals);
+    }
+    if(!exp.error && (!_is107 || (exp.data||[]).length)){
+      var _freshExp = (exp.data||[]).map(_dbToExp);
+      _freshExp = _preserveNativeFromLocal(D.exp, _freshExp, ['amt']);
+      D.exp = _mergeData(D.exp, _freshExp);
+    }
     if(!vendors.error && (!_is107 || (vendors.data||[]).length))   D.vendors   = _mergeData(D.vendors, (vendors.data||[]).map(_dbToVendor));
-    if(!purchases.error && (!_is107 || (purchases.data||[]).length)) D.purchases = _mergeData(D.purchases, (purchases.data||[]).map(_dbToPurchase));
+    if(!purchases.error && (!_is107 || (purchases.data||[]).length)){
+      var _freshPurchases = (purchases.data||[]).map(_dbToPurchase);
+      _freshPurchases = _preserveNativeFromLocal(D.purchases, _freshPurchases, ['sub','freight','duties','taxes','other','total','paid']);
+      D.purchases = _mergeData(D.purchases, _freshPurchases);
+    }
     if(!audit.error && (!_is107 || (audit.data||[]).length))     D.audit     = (audit.data||[]).map(_dbToAudit);
 
     // ── Batches (manufacturing) ──────────────────────────────
@@ -17447,11 +17494,43 @@ async function _dbLoadBizData(bizId){
     // Services and appointments — always load from Supabase for real businesses
     if(!_is107 || (_svcResult.data||[]).length){
       if(_svcResult.error) console.error('Services load error:', _svcResult.error.message);
-      else D.services = (_svcResult.data||[]).map(function(r){ return {id:r.id,name:r.name,duration:r.duration_mins!=null?r.duration_mins:60,price:r.price||0,priceType:r.price_type||'flat',cat:r.category||'',color:r.color||'#4361ee',staffIds:r.staff_ids||[],active:r.active!==false,bookable:r.bookable!==false,desc:r.description||'',imgDataUrl:r.img_data_url||null}; });
+      else {
+        // Use the proper _dbToService mapper which reads priceNative /
+        // priceCurrency / costLines columns. The earlier inline mapper
+        // omitted these, so even after the schema migration runs, fresh
+        // loads would have ignored them.
+        var _freshSvcs = (_svcResult.data||[]).map(_dbToService);
+        // If the user hasn't run the migration yet, cloud rows have no
+        // price_native / price_currency / cost_lines columns at all (they
+        // come back undefined → null in our mapper). Preserve those fields
+        // from the IDB-cached local copy, otherwise the drift-protection
+        // gets wiped on every page load and the user sees 2,503 again.
+        if(D.services && D.services.length){
+          var _localSvcMap = {};
+          D.services.forEach(function(ls){ _localSvcMap[ls.id] = ls; });
+          _freshSvcs = _freshSvcs.map(function(fr){
+            var loc = _localSvcMap[fr.id];
+            if(!loc) return fr;
+            if(fr.priceNative == null && loc.priceNative != null){
+              fr.priceNative   = loc.priceNative;
+              fr.priceCurrency = loc.priceCurrency || fr.priceCurrency;
+            }
+            if(!fr.costLines && loc.costLines) fr.costLines = loc.costLines;
+            // Also preserve service photo if cloud lacks it
+            if(!fr.imgDataUrl && loc.imgDataUrl) fr.imgDataUrl = loc.imgDataUrl;
+            return fr;
+          });
+        }
+        D.services = _freshSvcs;
+      }
     }
     if(!_is107 || (appts.data||[]).length){
       if(appts.error) console.error('Appointments load error:', appts.error.message);
-      else D.appointments = (appts.data||[]).map(_dbToAppt);
+      else {
+        var _freshAppts = (appts.data||[]).map(_dbToAppt);
+        _freshAppts = _preserveNativeFromLocal(D.appointments, _freshAppts, ['totalAmt']);
+        D.appointments = _freshAppts;
+      }
     }
     // For BIZ-107: also merge any individually saved inventory items (e.g. updated photos)
     if(_is107 && (inv.data||[]).length){
@@ -18655,12 +18734,35 @@ async function _sbUpsertWithFallback(table, payload, ctx){var _s=_L();
     }
   }
 
-  // 42P10: constraint not found — try without onConflict (let DB use default PK)
+  // 42P10: constraint not found — try without onConflict (let DB use default PK).
+  // Use the SAFE payload (with already-stripped missing columns), not the
+  // original — otherwise all the column-stripping work in the loop above is
+  // discarded and the column-error returns. This was the latent bug that
+  // kept service prices drifting: after the loop stripped cost_lines /
+  // price_currency / price_native progressively, this branch reverted to
+  // the original payload and the PGRST204 came back.
   if(error.code==='42P10'){
-    console.warn('['+ctx+'] 42P10 with id,biz_id — trying plain upsert');
-    var r3 = await _sb.from(table).upsert(payload).select();
+    console.warn('['+ctx+'] 42P10 with id,biz_id — trying plain upsert with stripped payload');
+    var _safeForRetry = (typeof safe !== 'undefined') ? safe : payload;
+    var r3 = await _sb.from(table).upsert(_safeForRetry).select();
     if(!r3.error){ return {ok:true, data:r3.data}; }
     error = r3.error;
+    // Even the plain upsert can hit PGRST204 if the column-stripping loop
+    // never ran (because the first error was 42P10, not PGRST204). Strip
+    // any remaining missing columns and retry one more time.
+    if(error.code==='PGRST204' || (error.message||'').includes('column')){
+      var stripCount = 0;
+      while((error.code==='PGRST204' || (error.message||'').includes('column')) && stripCount < 10){
+        var cm2 = (error.message||'').match(/the '(\w+)' column/);
+        if(!cm2 || !cm2[1]) break;
+        console.warn('['+ctx+'] (post-42P10) Stripping missing column: '+cm2[1]);
+        delete _safeForRetry[cm2[1]];
+        var r4 = await _sb.from(table).upsert(_safeForRetry).select();
+        if(!r4.error) return {ok:true, data:r4.data};
+        error = r4.error;
+        stripCount++;
+      }
+    }
   }
 
   console.error('['+ctx+'] FAILED:', error.code, error.message);
