@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779582109");
+console.log("ShopTrack v2.7 - build:1779584161");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5890,6 +5890,16 @@ function _saveRecordPayment(){var _s=_L();
     if(rental){
       const prevRentPaid = rental.paid||0;
       rental.paid = prevRentPaid + amtUsd;
+      // Append to payments[] audit trail so the View modal can show a
+      // running history of partial payments (essential for monthly
+      // rentals, layaway-style payments, etc.).
+      if(!rental.payments) rental.payments = [];
+      rental.payments.push({
+        dt: dt,
+        amount: amtUsd,
+        method: method,
+        note: notes || refno || ''
+      });
       const totalCollected = (rental.dep||0) + rental.paid;
       if(totalCollected>=rental.fee && rental.st!=='Returned') rental.st='Checked Out';
       _dbSaveRental(rental);
@@ -7379,8 +7389,11 @@ async function mCreateRental(startDate){const _s=_L();
     <div class="fg"><label class="fl">${BIZ.language==='fr'?'Frais Total':'Total Rental Fee'} <span style="font-size:10px;color:var(--text2)">(${sym}) <span id="cr-fee-summary" style="color:var(--text2)"></span></span></label>
       <input class="fi" type="number" id="cr-fee" placeholder="0" step="any" oninput="this.dataset.touched='1'" style="font-weight:700;color:var(--g)"/>
     </div>
-    <div class="fg"><label class="fl">Deposit <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+    <div class="fg"><label class="fl">${BIZ.language==='fr'?'Caution (remboursable)':'Security Deposit (refundable)'} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
       <input class="fi" type="number" id="cr-dep" placeholder="0" step="any" oninput="this.dataset.touched='1'"/>
+    </div>
+    <div class="fg"><label class="fl">${BIZ.language==='fr'?'Paiement Initial du Loyer':'Initial Rent Payment'} <span style="font-size:10px;color:var(--text2)">(${sym}) \u2014 ${BIZ.language==='fr'?'optionnel, payable plus tard si vide':'optional, can be paid later'}</span></label>
+      <input class="fi" type="number" id="cr-paid" placeholder="0" step="any"/>
     </div>
   </div>
   <div class="fg"><label class="fl">${_s.rent_cond_before}</label>
@@ -7389,7 +7402,7 @@ async function mCreateRental(startDate){const _s=_L();
   <div class="fg"><label class="fl">${_s.rent_pre_damage}</label>
     <textarea class="ft" id="cr-notes" placeholder="Note any existing marks or repairs\u2026" style="min-height:48px"></textarea>
   </div>
-  <div class="fg"><label class="fl">${_s.rent_dep_method}</label>
+  <div class="fg"><label class="fl">${BIZ.language==='fr'?'Mode de Paiement':'Payment Method'} <span style="font-size:10px;color:var(--text2)">${BIZ.language==='fr'?'(pour caution + paiement initial)':'(for deposit + initial payment)'}</span></label>
     <select class="fs" id="cr-method"><option>${_s.ui_cash}</option><option>${_s.ui_card}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option></select>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
@@ -7421,14 +7434,16 @@ async function mCreateRental(startDate){const _s=_L();
     var r2=CUR.rate;
     var fee=(parseFloat(document.getElementById('cr-fee').value)||0)/r2;
     var dep=(parseFloat(document.getElementById('cr-dep').value)||0)/r2;
+    var initPaid=(parseFloat(document.getElementById('cr-paid').value)||0)/r2;
     var cond=document.getElementById('cr-cond').value;
     var notes=document.getElementById('cr-notes').value;
     var method=document.getElementById('cr-method').value;
     // Plan gate before creating records
     if(_isFreePlan()){ _showPremiumUpgradePrompt('rentals'); return; }
     if(_planWriteBlocked('Creating a rental','rentals')) return;
-    // Allocate fee + deposit across line totals (weighted by rp \u00d7 qty so
-    // a 70k\u00d7day x qty1 row and a 30k\u00d7day x qty2 row split fairly).
+    // Allocate fee + deposit + initial payment across line totals,
+    // weighted by rp\u00d7qty so a 70k/day\u00d71-qty row and a 30k/day\u00d72-qty
+    // row split fairly.
     var weights=crLines.map(function(l){return ((l.item.rp||0)*l.qty);});
     var weightSum=weights.reduce(function(a,b){return a+b;},0)||crLines.length;
     var maxRNum=D.rentals.reduce(function(m,r){var n=parseInt((r.id||'').replace(/\\D/g,''),10)||0;return n>m?n:m;},0);
@@ -7439,16 +7454,34 @@ async function mCreateRental(startDate){const _s=_L();
       var w=weights[idx]||1;
       var itemFee=crLines.length>1?Math.round((fee*w/weightSum)*100)/100:fee;
       var itemDep=crLines.length>1?Math.round((dep*w/weightSum)*100)/100:dep;
+      var itemPaid=crLines.length>1?Math.round((initPaid*w/weightSum)*100)/100:initPaid;
+      // If an initial payment was made, seed the payments[] audit trail
+      // so the View modal and statements can show 'when was this paid'.
+      // The deposit is tracked separately (r.dep) and isn't a payment
+      // toward the rent itself.
+      var initialPayments=itemPaid>0?[{
+        dt:start,
+        amount:itemPaid,
+        method:method,
+        note:(BIZ.language==='fr'?'Paiement initial':'Initial payment')
+      }]:[];
       D.rentals.unshift({id:newId,cust,custId,item:line.item.name,itemId:line.item.id,
         qty:line.qty,period:period,units:units,
-        start,due,fee:itemFee,dep:itemDep,lf:0,st:'Checked Out',cb:cond,ca:'',notes,method});
+        start,due,fee:itemFee,dep:itemDep,paid:itemPaid,payments:initialPayments,
+        lf:0,st:'Checked Out',cb:cond,ca:'',notes,method});
       _dbSaveRental(D.rentals[0]);
-      addAudit('Rental created',newId+' - '+cust+' - '+line.qty+'\u00d7 '+line.item.name);
+      addAudit('Rental created',newId+' - '+cust+' - '+line.qty+'\u00d7 '+line.item.name+(itemPaid>0?' (paid '+fmt(itemPaid)+')':''));
+      // Reduce customer balance by initial payment (just like Record Payment)
+      if(custObj && itemPaid>0){
+        custObj.spent=(custObj.spent||0)+itemPaid;
+        custObj.spend=custObj.spent;
+        if(_dbSaveCust) _dbSaveCust(custObj);
+      }
     });
     if(custObj){custObj.visits=(custObj.visits||0)+1;custObj.last=start;}
     refreshLiveKpis();
     closeModal();
-    toast(crLines.length+' item(s) checked out to '+cust,'success');
+    toast(crLines.length+' item(s) checked out to '+cust+(initPaid>0?' \u2014 '+fmt(initPaid)+' collected':''),'success');
     nav('rentals');
    ">${_s.rent_btn_create}</button>`);
   // Init searchable customer select \u2014 retry to handle modal render delay
@@ -7802,9 +7835,40 @@ function mRentalDetail(id){const _s=_L();
       <div><div class="fl">${_s.rent_period}</div><div style="font-size:12px">${r.start} \u2192 ${r.due}${_periodPretty?' <span style="color:var(--text2)">('+_periodPretty+')</span>':''}</div></div>
       <div><div class="fl">${_s.rent_fee_lbl}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.fee)}</div></div>
       <div><div class="fl">${_s.rent_dep_lbl}</div><div style="font-family:var(--mono);color:var(--y)">${fmt(r.dep)}</div></div>
-      ${(r.paid||0)>0?`<div><div class="fl">${fr?'Pay\u00e9':'Amount Paid'}</div><div style="font-family:var(--mono);color:var(--g)">${fmt(r.paid)}</div></div>`:''}
       ${r.method?`<div><div class="fl">${fr?'Mode de paiement':'Payment Method'}</div><div style="font-size:12px">${_esc(r.method)}</div></div>`:''}
     </div>
+    <!-- Payment summary: total / paid / balance.
+         Computed live from r.fee minus r.paid (running total of all
+         logged payments). Lets the user see at a glance how much rent
+         still needs to be collected. -->
+    <div style="margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div style="padding:10px 12px;background:var(--bg3);border-radius:8px">
+        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">${fr?'Loyer Total':'Rental Total'}</div>
+        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);margin-top:2px">${fmt(r.fee)}</div>
+      </div>
+      <div style="padding:10px 12px;background:var(--g-dim);border-radius:8px">
+        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">${fr?'Pay\u00e9':'Paid'}</div>
+        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--g);margin-top:2px">${fmt(r.paid||0)}</div>
+      </div>
+      <div style="padding:10px 12px;background:${((r.fee||0)-(r.paid||0))>0.01?'var(--r-dim)':'var(--bg3)'};border-radius:8px">
+        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">${fr?'Solde D\u00fb':'Balance Due'}</div>
+        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:${((r.fee||0)-(r.paid||0))>0.01?'var(--r)':'var(--g)'};margin-top:2px">${fmt(Math.max(0,(r.fee||0)-(r.paid||0)))}</div>
+      </div>
+    </div>
+    <!-- Payment history list \u2014 one row per recorded payment.
+         Essential for partial-payment scenarios (monthly rent, layaway,
+         deposits + scheduled payments). -->
+    ${(r.payments||[]).length ? `<div class="fl" style="margin-top:14px;margin-bottom:6px">${fr?'Historique des Paiements':'Payment History'}</div>
+    <div style="border:1px solid var(--border2);border-radius:8px;overflow:hidden">
+      ${(r.payments||[]).map(function(py,idx){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;'
+          +(idx>0?'border-top:1px solid var(--border)':'')+';font-size:12px">'
+          +'<div><span style="color:var(--text2)">'+_esc(py.dt||'')+'</span> \u00b7 <span style="font-weight:600">'+_esc(py.method||'\u2014')+'</span>'
+          +(py.note?' \u00b7 <span style="color:var(--text3);font-style:italic">'+_esc(py.note)+'</span>':'')+'</div>'
+          +'<div style="font-family:var(--mono);font-weight:700;color:var(--g)">'+fmt(py.amount||0)+'</div>'
+        +'</div>';
+      }).join('')}
+    </div>` : ''}
     ${r.notes?`<div style="margin-top:14px;padding:12px 14px;background:var(--bg3);border-left:3px solid var(--a);border-radius:6px">
       <div style="font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${fr?'Notes':'Notes'} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">${fr?'(d\u00e9g\u00e2ts pr\u00e9existants & autres)':'(pre-existing damage &amp; other)'}</span></div>
       <div style="font-size:12px;color:var(--text);white-space:pre-line;line-height:1.55">${_esc(r.notes)}</div>
@@ -7823,6 +7887,7 @@ function mRentalDetail(id){const _s=_L();
     </div>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button>
+   ${((r.fee||0)-(r.paid||0))>0.01?`<button class="btn btn-b btn-sm" onclick="closeModal();mRecordPayment('${id}')">\uD83D\uDCB0 ${fr?'Enregistrer Paiement':'Record Payment'}</button>`:''}
    ${r.st==='Overdue'||r.st==='Checked Out'?`<button class="btn btn-p btn-sm" onclick="closeModal();mReturn('${id}')">↩ Process Return</button>`:''}
    ${BIZ.contractEnabled?`<button class="btn btn-c btn-sm" onclick="mRentalContract('${id}')">📋 Contract</button>`:''}
    <button class="btn btn-g btn-sm" onclick="genRentalReceiptDoc('${id}')">🧾 Receipt</button>
@@ -18538,6 +18603,12 @@ function _dbToRental(r){ return {
   units: r.units != null ? r.units : 1,
   start:r.start_date, due:r.due_date,
   fee:r.fee||0, dep:r.deposit||0, paid:r.paid||0,
+  payments: r.payments
+    ? (typeof r.payments === 'string'
+        ? (function(){ try{return JSON.parse(r.payments);}catch(e){return [];} })()
+        : r.payments)
+    : [],
+  method: r.method||'',
   st:r.status||'Reserved', cb:r.condition_before||'Good',
   ca:r.condition_after||'', lf:r.late_fee||0, returnDate:r.return_date||null,
   contractSigned:r.contract_signed||false, contractSigUrl:r.contract_sig_url||null,
@@ -18718,6 +18789,8 @@ function _rentalToDB(r, bizId){ return {
   qty: r.qty||1, period: r.period||'day', units: r.units != null ? r.units : 1,
   start_date:r.start, due_date:r.due, fee:r.fee||0,
   deposit:r.dep||0, paid:r.paid||0,
+  payments: r.payments ? JSON.stringify(r.payments) : null,
+  method: r.method||'',
   status:r.st||'Reserved',
   condition_before:r.cb||'Good', condition_after:r.ca||'',
   late_fee:r.lf||0, return_date:r.returnDate||null,
@@ -19015,14 +19088,16 @@ async function _dbSaveRental(r){
   var result = await _safeUpsert('rentals', _rentalToDB(r, SESSION.bizId), 'saveRental');
   if(result && !result.ok){
     var errMsg = (result.error && (result.error.message || result.error.code)) || '';
-    // If the qty/period/units columns aren't yet in the schema, retry
-    // without them. Local copy keeps the values, syncs once migration runs.
-    if(/\b(qty|period|units)\b/i.test(errMsg)){
-      console.warn('[saveRental] qty/period/units columns not yet in schema; retrying without them.');
+    // If the new columns aren't yet in the schema, retry without them.
+    // Local IDB copy keeps the values, syncs once migration runs.
+    if(/\b(qty|period|units|payments|method)\b/i.test(errMsg)){
+      console.warn('[saveRental] new columns not yet in schema; retrying without them.');
       var payload = _rentalToDB(r, SESSION.bizId);
       delete payload.qty;
       delete payload.period;
       delete payload.units;
+      delete payload.payments;
+      delete payload.method;
       var retry = await _safeUpsert('rentals', payload, 'saveRental');
       if(retry && retry.ok) return;
       if(retry) console.error('[saveRental] retry FAILED for '+r.id+':', retry.error);
@@ -25841,23 +25916,72 @@ function mDuplicateExp(id){const _s=_L();
 function mEditRental(id){const _s=_L();
   if(!requireRight('edit_rentals','Edit Rentals')) return;
   const r=D.rentals.find(x=>x.id===id);if(!r)return;
+  const fr = BIZ.language==='fr';
+  const sym = CUR.symbol;
   const custOpts = D.cust.map(c=>`<option value="${c.id}"${(c.id===r.custId||c.name===r.cust)?' selected':''}>${_esc(c.name)}</option>`).join('');
-  modal(`✏️ Edit Rental — ${r.id}`,`
+  const period = r.period || 'day';
+  const units  = r.units != null ? r.units : 1;
+  const qty    = r.qty || 1;
+  const method = r.method || 'Cash';
+  const cb     = r.cb || 'Excellent';
+  const methodOpts = ['Cash','Bank Transfer','Mobile Money (MTN)','Orange Money','Credit Card']
+    .map(m=>'<option'+(m===method?' selected':'')+'>'+m+'</option>').join('');
+  const condOpts = ['New','Excellent','Good','Fair']
+    .map(c=>'<option'+(c===cb?' selected':'')+'>'+c+'</option>').join('');
+  const periodOpts = [
+    {v:'day',   l: fr?'Par jour':'Per Day'},
+    {v:'hour',  l: fr?'Par heure':'Per Hour'},
+    {v:'week',  l: fr?'Par semaine':'Per Week'},
+    {v:'month', l: fr?'Par mois':'Per Month'},
+    {v:'custom',l: fr?'Personnalis\u00e9':'Custom (flat amount)'}
+  ].map(p=>'<option value="'+p.v+'"'+(p.v===period?' selected':'')+'>'+p.l+'</option>').join('');
+
+  // Build payment history (read-only — to add another payment user uses
+  // Record Payment from the View modal). Just shown here for visibility
+  // so the user understands current state.
+  const payRows = (r.payments||[]).map(function(p){
+    return '<div style="display:flex;justify-content:space-between;padding:6px 10px;font-size:11px;border-bottom:1px solid var(--border)">'
+      +'<span style="color:var(--text2)">'+_esc(p.dt||'')+(p.method?' \u00b7 '+_esc(p.method):'')+(p.note?' \u00b7 <em style="color:var(--text3)">'+_esc(p.note)+'</em>':'')+'</span>'
+      +'<span style="font-family:var(--mono);color:var(--g);font-weight:600">'+fmt(p.amount||0)+'</span>'
+    +'</div>';
+  }).join('');
+  const payHistoryHTML = payRows
+    ? '<div class="fl" style="margin-top:8px;margin-bottom:4px">'+(fr?'Historique des paiements':'Payment History')+' <span style="font-size:10px;color:var(--text3);font-weight:400">'+(fr?'(lecture seule \u2014 utiliser \uD83D\uDCB0 pour ajouter)':'(read-only \u2014 use \uD83D\uDCB0 to add)')+'</span></div>'
+      +'<div style="border:1px solid var(--border2);border-radius:6px;overflow:hidden">'+payRows+'</div>'
+    : '';
+
+  modal(`\u270f\ufe0f Edit Rental \u2014 ${r.id}`,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.ui_customer}</label><select class="fs" id="er-cust">${custOpts}</select></div>
-    <div class="fg"><label class="fl">${_s.rent_item_lbl}</label><input class="fi" id="er-item" value="${_esc(r.item)}" readonly style="background:var(--bg3);opacity:.7" title="Item cannot be changed — delete and re-create to change item"/></div>
+    <div class="fg"><label class="fl">${_s.rent_item_lbl}</label><input class="fi" id="er-item" value="${_esc(r.item)}" readonly style="background:var(--bg3);opacity:.7" title="Item cannot be changed \u2014 delete and re-create to change item"/></div>
+    <div class="fg"><label class="fl">${fr?'Quantit\u00e9':'Quantity'} <span style="font-size:10px;color:var(--text2)">${fr?'(unit\u00e9s du m\u00eame article)':'(units of same item)'}</span></label>
+      <input class="fi" type="number" id="er-qty" min="1" step="1" value="${qty}"/></div>
+    <div class="fg"><label class="fl">${fr?'P\u00e9riode':'Period'}</label>
+      <select class="fs" id="er-period">${periodOpts}</select></div>
     <div class="fg"><label class="fl">${_s.rpt_start_date}</label><input class="fi" type="date" id="er-start" value="${r.start}"/></div>
     <div class="fg"><label class="fl">${_s.inv_modal_due}</label><input class="fi" type="date" id="er-due" value="${r.due}"/></div>
-    <div class="fg"><label class="fl">Rental Fee <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="er-fee" value="${Math.round((r.fee||0)*CUR.rate)}"/></div>
-    <div class="fg"><label class="fl">Deposit <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="er-dep" value="${Math.round((r.dep||0)*CUR.rate)}"/></div>
-    <div class="fg"><label class="fl">Amount Paid <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="er-paid" value="${Math.round((r.paid||0)*CUR.rate)}"/></div>
-    <div class="fg"><label class="fl">Late Fee <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="er-lf" value="${Math.round((r.lf||0)*CUR.rate)}"/></div>
+    <div class="fg"><label class="fl">${fr?'Dur\u00e9e':'Duration'} <span style="font-size:10px;color:var(--text2)">${fr?'(unit\u00e9s de p\u00e9riode)':'(period units)'}</span></label>
+      <input class="fi" type="number" id="er-units" min="1" step="any" value="${units}"/></div>
+    <div class="fg"><label class="fl">${fr?'Condition au D\u00e9part':'Condition Before Release'}</label>
+      <select class="fs" id="er-cb">${condOpts}</select></div>
+    <div class="fg"><label class="fl">${fr?'Frais Total':'Total Rental Fee'} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+      <input class="fi" type="number" id="er-fee" value="${Math.round((r.fee||0)*CUR.rate)}"/></div>
+    <div class="fg"><label class="fl">${fr?'Caution':'Security Deposit'} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+      <input class="fi" type="number" id="er-dep" value="${Math.round((r.dep||0)*CUR.rate)}"/></div>
+    <div class="fg"><label class="fl">${fr?'Total Pay\u00e9':'Total Paid'} <span style="font-size:10px;color:var(--text2)">(${sym}) ${(r.payments||[]).length?' \u2014 <span style="color:var(--y)">'+(fr?'\u26a0 modifier ici n\'affecte pas l\'historique':'\u26a0 editing here won\'t affect history')+'</span>':''}</span></label>
+      <input class="fi" type="number" id="er-paid" value="${Math.round((r.paid||0)*CUR.rate)}"/></div>
+    <div class="fg"><label class="fl">${fr?'Frais de Retard':'Late Fee'} <span style="font-size:10px;color:var(--text2)">(${sym})</span></label>
+      <input class="fi" type="number" id="er-lf" value="${Math.round((r.lf||0)*CUR.rate)}"/></div>
+    <div class="fg"><label class="fl">${fr?'Mode de Paiement':'Payment Method'}</label>
+      <select class="fs" id="er-method">${methodOpts}</select></div>
     <div class="fg"><label class="fl">${_s.ui_status}</label><select class="fs" id="er-st"><option${r.st==='Reserved'?' selected':''}>${_s.rent_st_reserved}</option><option${r.st==='Checked Out'?' selected':''}>${_s.rent_st_out}</option><option${r.st==='Overdue'?' selected':''}>${_s.rent_kpi_overdue}</option><option${r.st==='Returned'?' selected':''}>${_s.rent_st_returned}</option></select></div>
   </div>
-  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="er-notes" style="min-height:48px">${_esc(r.notes||'')}</textarea></div>`,
-  `<button class="btn btn-d btn-sm" onclick="closeModal();deleteRental('${id}')">🗑 Delete</button>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="er-notes" style="min-height:48px">${_esc(r.notes||'')}</textarea></div>
+  ${payHistoryHTML}`,
+  `<button class="btn btn-d btn-sm" onclick="closeModal();deleteRental('${id}')">\uD83D\uDDD1 Delete</button>
    <button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
-   <button class="btn btn-p" onclick="saveEditRental('${id}')">💾 Save</button>`);
+   ${((r.fee||0)-(r.paid||0))>0.01?`<button class="btn btn-b btn-sm" onclick="closeModal();mRecordPayment('${id}')">\uD83D\uDCB0 ${fr?'Enregistrer Paiement':'Record Payment'}</button>`:''}
+   <button class="btn btn-p" onclick="saveEditRental('${id}')">\uD83D\uDCBE ${fr?'Sauvegarder':'Save'}</button>`);
 }
 function saveEditRental(id){var _s=_L();
   var _erPrevPaid=D.rentals.find(function(x){return x.id===id;})?.paid||0;
@@ -25877,6 +26001,32 @@ function saveEditRental(id){var _s=_L();
   const lf=document.getElementById('er-lf')?.value; if(lf!==undefined&&lf!=='') r.lf=(parseFloat(lf)||0)/rER;
   const st=document.getElementById('er-st')?.value; if(st) r.st=st;
   const notes=document.getElementById('er-notes')?.value; if(notes!==undefined) r.notes=notes;
+  // New fields: qty / period / units / condition before / method.
+  // Qty changes adjust the inventory rented count by the diff so we don't
+  // double-count or under-count availability.
+  const newQtyRaw = document.getElementById('er-qty')?.value;
+  if(newQtyRaw!==undefined && newQtyRaw!==''){
+    var newQty = Math.max(1, parseInt(newQtyRaw)||1);
+    var oldQty = r.qty || 1;
+    if(newQty !== oldQty){
+      var inv = D.inv.find(function(i){return i.id===r.itemId;});
+      if(inv){
+        // Available = total - rented. Cap the new qty so we don't oversell.
+        var freeBeforeChange = (inv.qty||0) - (inv.rented||0) + oldQty; // free if this rental released
+        if(newQty > freeBeforeChange) newQty = freeBeforeChange;
+        inv.rented = (inv.rented||0) + (newQty - oldQty);
+        if(inv.rented < 0) inv.rented = 0;
+        _dbSaveInv(inv, newQty - oldQty);
+      }
+      r.qty = newQty;
+    }
+  }
+  const pVal = document.getElementById('er-period')?.value; if(pVal) r.period = pVal;
+  const uVal = document.getElementById('er-units')?.value;
+  if(uVal!==undefined && uVal!=='') r.units = parseFloat(uVal) || 1;
+  const cbVal = document.getElementById('er-cb')?.value; if(cbVal) r.cb = cbVal;
+  const mVal = document.getElementById('er-method')?.value; if(mVal) r.method = mVal;
+
   if(typeof r.paid==='undefined') r.paid=0;
   // Update customer AR if paid amount changed
   if(typeof _erPrevPaid!=='undefined'){
@@ -25888,7 +26038,7 @@ function saveEditRental(id){var _s=_L();
       _dbSaveCust(_erCu);
     }
   }
-  addAudit('Rental edited',id+' — '+r.cust);
+  addAudit('Rental edited',id+' \u2014 '+r.cust);
   _dbSaveRental(D.rentals.find(x=>x.id===id));
   refreshLiveKpis();
   closeModal();toast(_L().t_rental_updated,'success');nav('rentals');
