@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779673707");
+console.log("ShopTrack v2.7 - build:1779674506");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -2991,38 +2991,63 @@ function _updateDashRecentRentals(periodRentals){
 
 function _buildTopProducts(range){
   var periodSales = range ? D.sales.filter(function(s){return inRange(s.dt,range);}) : D.sales;
-  var revenueMap = {}; // invId → {rev, count, inv}
+  var revenueMap = {}; // key → {rev, count, kind:'inv'|'svc', inv/svc reference}
+
+  // Helper: bump a revenue bucket for either an inv item or a service.
+  // `kind` is 'inv' or 'svc'; the corresponding ref is stored as inv/svc.
+  function _bump(kind, ref, rev){
+    var key = kind + ':' + ref.id;
+    if(!revenueMap[key]){
+      revenueMap[key] = {rev:0, count:0, kind:kind, invId:ref.id, inv: kind==='inv'?ref:null, svc: kind==='svc'?ref:null};
+    }
+    revenueMap[key].rev   += rev;
+    revenueMap[key].count += 1;
+  }
 
   periodSales.forEach(function(s){
     var rev = s.total||s.amt||0;
-    // Strategy 1: use stored invId if valid
+    // Strategy 1: use stored invId if it points to a real inventory item
     if(s.invId && s.invId!=='__custom__' && s.invId!=='__deleted__' && s.invId!=='__none__'){
-      if(!revenueMap[s.invId]) revenueMap[s.invId]={rev:0,count:0,invId:s.invId,inv:D.inv.find(function(x){return x.id===s.invId;})};
-      revenueMap[s.invId].rev += rev;
-      revenueMap[s.invId].count += 1;
-    } else {
-      // Strategy 2: match inventory items by name in the items string
-      // For multi-item sales, split by comma and match each part
-      var itemStr = (s.items||'').toLowerCase();
-      var matched = false;
-      D.inv.forEach(function(inv){
-        var invWord = inv.name.split(' ')[0].toLowerCase();
-        if(invWord.length > 2 && itemStr.indexOf(invWord) >= 0){
-          if(!revenueMap[inv.id]) revenueMap[inv.id]={rev:0,count:0,invId:inv.id,inv:inv};
-          // Distribute revenue evenly if multiple items
-          var itemCount = (s.items||'').split(',').length || 1;
-          revenueMap[inv.id].rev += rev / itemCount;
-          revenueMap[inv.id].count += 1;
-          matched = true;
-        }
-      });
-      // Strategy 3: no match — show as generic sale in "Other Products"
-      if(!matched && rev > 0){
+      var direct = D.inv.find(function(x){return x.id===s.invId;});
+      if(direct){ _bump('inv', direct, rev); return; }
+      // Could also be a service-only sale where invId stored a svc ref —
+      // fall through to name-matching below.
+    }
+    // Strategy 2: match against inventory + services by name keywords
+    var itemStr = (s.items||'').toLowerCase();
+    if(!itemStr){
+      // No item description either — bucket as Other
+      if(rev > 0){
         var k = '__other__';
-        if(!revenueMap[k]) revenueMap[k]={rev:0,count:0,invId:'__other__',inv:null,label:s.items||'Direct Sales'};
+        if(!revenueMap[k]) revenueMap[k]={rev:0,count:0,kind:'other',invId:'__other__',inv:null,label:'Direct Sales'};
         revenueMap[k].rev += rev;
         revenueMap[k].count += 1;
       }
+      return;
+    }
+    var matched = false;
+    var itemCount = (s.items||'').split(',').length || 1;
+    // Try inventory first
+    D.inv.forEach(function(inv){
+      var invWord = (inv.name||'').split(' ')[0].toLowerCase();
+      if(invWord.length > 2 && itemStr.indexOf(invWord) >= 0){
+        _bump('inv', inv, rev / itemCount);
+        matched = true;
+      }
+    });
+    // Then services (lets haircuts, consultations etc. show up with their own photos)
+    (D.services||[]).forEach(function(svc){
+      var svcWord = (svc.name||'').split(' ')[0].toLowerCase();
+      if(svcWord.length > 2 && itemStr.indexOf(svcWord) >= 0){
+        _bump('svc', svc, rev / itemCount);
+        matched = true;
+      }
+    });
+    if(!matched && rev > 0){
+      var k2 = '__other__';
+      if(!revenueMap[k2]) revenueMap[k2]={rev:0,count:0,kind:'other',invId:'__other__',inv:null,label:s.items||'Direct Sales'};
+      revenueMap[k2].rev += rev;
+      revenueMap[k2].count += 1;
     }
   });
 
@@ -3040,14 +3065,36 @@ function _buildTopProducts(range){
   return ranked.map(function(r, i){
     var rankNum = i + 1;
     var pct = Math.round(r.rev / maxRev * 100);
-    var it = r.inv;
-    var name = it ? it.name : (r.label||'Direct Sales');
-    var cat  = it ? it.cat  : 'Sales';
-    var photo = it && (it.photoDataUrls&&it.photoDataUrls.length)
-      ? '<img loading="lazy" src="'+it.photoDataUrls[0]+'" style="width:100%;height:100%;object-fit:cover"/>'
-      : (it ? itemPhoto(it.img||'gown-aline', it.imgC&&it.imgC[0], it.imgC&&it.imgC[1], it.imgC&&it.imgC[2])
-            : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px">🛒</div>');
-    var clickable = r.invId && r.invId!=='__other__';
+    // Resolve display fields based on kind. For inventory: use inv.name +
+    // inv.cat; check photoDataUrls then imgDataUrl then svg placeholder.
+    // For services: use svc.name + 'Service'; check photoDataUrls then
+    // imgDataUrl then a 🔧 emoji (services don't have the gown-* SVGs).
+    var name, cat, photo, clickable;
+    if(r.kind === 'inv' && r.inv){
+      var it = r.inv;
+      name = it.name;
+      cat  = it.cat || 'Sales';
+      var invPic = (it.photoDataUrls && it.photoDataUrls.length) ? it.photoDataUrls[0] : (it.imgDataUrl || null);
+      photo = invPic
+        ? '<img loading="lazy" src="'+invPic+'" style="width:100%;height:100%;object-fit:cover"/>'
+        : itemPhoto(it.img||'gown-aline', it.imgC&&it.imgC[0], it.imgC&&it.imgC[1], it.imgC&&it.imgC[2]);
+      clickable = true;
+    } else if(r.kind === 'svc' && r.svc){
+      var sv = r.svc;
+      name = sv.name;
+      cat  = sv.cat || 'Service';
+      var svcPic = (sv.photoDataUrls && sv.photoDataUrls.length) ? sv.photoDataUrls[0] : (sv.imgDataUrl || null);
+      photo = svcPic
+        ? '<img loading="lazy" src="'+svcPic+'" style="width:100%;height:100%;object-fit:cover"/>'
+        : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px;background:'+(sv.color||'var(--bg4)')+';color:#fff">\u{1F527}</div>';
+      clickable = false; // service drill-down not built yet — keep row inert
+    } else {
+      // 'other' bucket — no specific item to drill into
+      name = r.label || 'Direct Sales';
+      cat  = 'Sales';
+      photo = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px">\u{1F6D2}</div>';
+      clickable = false;
+    }
     return '<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);'+(clickable?'cursor:pointer':'')+'" '
       +(clickable ? 'data-inv-id="'+r.invId+'" onclick="_showProductSales(this.dataset.invId)" title="View all sales"' : '')
       +'>'
@@ -3076,8 +3123,12 @@ function _showProductSales(invId){const _s=_L();
     return s.invId===invId && (!range||inRange(s.dt,range));
   }).sort(function(a,b){ return b.dt>a.dt?1:-1; });
 
-  var photoHtml = (inv.photoDataUrls&&inv.photoDataUrls.length)
-    ? '<img loading="lazy" src="'+inv.photoDataUrls[0]+'" style="height:52px;width:52px;object-fit:cover;border-radius:8px"/>'
+  // Resolve photo with full fallback chain (multi-photo array → legacy
+  // single imgDataUrl → svg placeholder). Mirrors the inventory card
+  // and top-products render for consistency.
+  var _spPic = (inv.photoDataUrls && inv.photoDataUrls.length) ? inv.photoDataUrls[0] : (inv.imgDataUrl || null);
+  var photoHtml = _spPic
+    ? '<img loading="lazy" src="'+_spPic+'" style="height:52px;width:52px;object-fit:cover;border-radius:8px"/>'
     : '<div style="height:52px;width:52px;border-radius:8px;overflow:hidden;flex-shrink:0">'+itemPhoto(inv.img||'gown-aline',inv.imgC?.[0],inv.imgC?.[1],inv.imgC?.[2])+'</div>';
 
   var totalRev = sales.reduce(function(a,s){return a+(s.total||s.amt||0);},0);
