@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779674506");
+console.log("ShopTrack v2.7 - build:1779707146");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -12765,18 +12765,49 @@ function pgCatalog(){const _s=_L();
   var allCats = [...new Set([...invCats,...svcCats])];
   var catCount = allCats.length;
 
+  // Persisted user selections.
+  //   BIZ.catalogExcludedIds — array of inv/svc ids to LEAVE OUT of the
+  //     printed catalog. Default empty = include everything. Stored as
+  //     exclude-list rather than include-list so that newly-added items
+  //     are automatically picked up without the user having to revisit
+  //     this page every time.
+  //   BIZ.catalogKindFilter — 'all' | 'products' | 'services'. Filters
+  //     both what's shown in the picker AND what ends up in the PDF.
+  var _excluded = new Set(BIZ.catalogExcludedIds || []);
+  var _kindFilter = BIZ.catalogKindFilter || 'all';
+  function _isIncluded(id){ return !_excluded.has(id); }
+
   // Category filter options built safely
   var catFilterOpts = '<option value="">'+_s.cat_all_cats+'</option>'
     + allCats.map(function(c){ return '<option value="'+_esc(c)+'">'+_esc(c)+'</option>'; }).join('');
 
-  // Build product+service cards safely (string concat, no nested templates)
+  // Build product+service cards with a top-right checkbox each.
+  // The whole card is clickable to toggle the checkbox so users on
+  // mobile don't need to hit the tiny tick precisely. Each card carries:
+  //   data-id    — the inv or svc id (used to track exclusion)
+  //   data-kind  — 'inv' or 'svc' (used by the Products/Services filter)
+  //   data-cat   — the item's category (used by the category filter)
   var itemCards = '';
   D.inv.forEach(function(it){
     var _src = (it.photoDataUrls&&it.photoDataUrls.length) ? it.photoDataUrls[0] : (it.imgDataUrl||null);
     var _imgHtml = _src
       ? '<img loading="lazy" src="'+_src+'" style="width:100%;height:100%;object-fit:cover;display:block"/>'
-      : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;background:var(--bg3)">📦</div>';
-    itemCards += '<div class="icard" data-cat="'+_esc(it.cat||'')+'" onclick="mItem(\''+it.id+'\')"><div class="icard-img" style="height:140px;overflow:hidden">'+_imgHtml+'</div><div class="icard-body"><div class="icard-name">'+_esc(it.name)+'</div><div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(it.cat||'')+'</div><div style="display:flex;gap:7px;flex-wrap:wrap">'+(it.sp?'<span style="font-size:11px;color:var(--g)">💳 '+fmt(it.sp)+'</span>':'')+(it.rp?'<span style="font-size:11px;color:var(--c)">🕐 '+fmt(it.rp)+'/day</span>':'')+'</div></div></div>';
+      : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;background:var(--bg3)">\uD83D\uDCE6</div>';
+    var checked = _isIncluded(it.id) ? 'checked' : '';
+    itemCards += '<div class="icard catpick-card'+(_isIncluded(it.id)?' on':'')+'" data-id="'+_esc(it.id)+'" data-kind="inv" data-cat="'+_esc(it.cat||'')+'" onclick="_catTogglePick(this)" style="position:relative;cursor:pointer;user-select:none">'
+      +'<div style="position:absolute;top:7px;right:7px;z-index:2;background:rgba(255,255,255,.92);border-radius:4px;padding:2px 5px;font-size:11px;display:flex;align-items:center;gap:4px;box-shadow:0 1px 2px rgba(0,0,0,.08);pointer-events:none">'
+        +'<input type="checkbox" '+checked+' style="margin:0;cursor:pointer;width:14px;height:14px" tabindex="-1"/>'
+      +'</div>'
+      +'<div class="icard-img" style="height:140px;overflow:hidden">'+_imgHtml+'</div>'
+      +'<div class="icard-body">'
+        +'<div class="icard-name">'+_esc(it.name)+'</div>'
+        +'<div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(it.cat||'Uncategorized')+'</div>'
+        +'<div style="display:flex;gap:7px;flex-wrap:wrap">'
+          +(it.sp?'<span style="font-size:11px;color:var(--g)">\uD83D\uDCB3 '+fmt(it.sp)+'</span>':'')
+          +(it.rp?'<span style="font-size:11px;color:var(--c)">\uD83D\uDD50 '+fmt(it.rp)+'/day</span>':'')
+        +'</div>'
+      +'</div>'
+    +'</div>';
   });
   (D.services||[]).filter(function(s){return s.active!==false;}).forEach(function(s){
     var pt = s.priceType||'flat';
@@ -12785,19 +12816,37 @@ function pgCatalog(){const _s=_L();
     var durLabel = (!s.duration||s.duration<=0) ? 'Duration TBD' : s.duration+' min';
     var imgHtml = s.imgDataUrl
       ? '<img loading="lazy" src="'+s.imgDataUrl+'" style="width:100%;height:100%;object-fit:cover;display:block"/>'
-      : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;background:'+s.color+'18">✂️</div>';
-    itemCards += '<div class="icard" data-cat="'+_esc(s.cat||'')+'" onclick="mNewAppt();setTimeout(function(){var el=document.getElementById(\'na-s\');if(el){el.value=\''+s.id+'\';_naSync();}},100)" title="'+_s.cat_book+'"><div class="icard-img" style="height:140px;overflow:hidden">'+imgHtml+'</div><div class="icard-body"><div class="icard-name">'+_esc(s.name)+'</div><div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(s.cat||'')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;font-weight:700;color:'+ptColor+'">'+_esc(priceLabel)+'</span><span style="font-size:10px;color:var(--text3)">· '+_esc(durLabel)+'</span></div></div></div>';
+      : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;background:'+(s.color||'#999')+'18">\u2702\uFE0F</div>';
+    var checked = _isIncluded(s.id) ? 'checked' : '';
+    itemCards += '<div class="icard catpick-card'+(_isIncluded(s.id)?' on':'')+'" data-id="'+_esc(s.id)+'" data-kind="svc" data-cat="'+_esc(s.cat||'')+'" onclick="_catTogglePick(this)" style="position:relative;cursor:pointer;user-select:none">'
+      +'<div style="position:absolute;top:7px;right:7px;z-index:2;background:rgba(255,255,255,.92);border-radius:4px;padding:2px 5px;font-size:11px;display:flex;align-items:center;gap:4px;box-shadow:0 1px 2px rgba(0,0,0,.08);pointer-events:none">'
+        +'<input type="checkbox" '+checked+' style="margin:0;cursor:pointer;width:14px;height:14px" tabindex="-1"/>'
+      +'</div>'
+      +'<div class="icard-img" style="height:140px;overflow:hidden">'+imgHtml+'</div>'
+      +'<div class="icard-body">'
+        +'<div class="icard-name">'+_esc(s.name)+'</div>'
+        +'<div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(s.cat||'Service')+'</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+          +'<span style="font-size:12px;font-weight:700;color:'+ptColor+'">'+_esc(priceLabel)+'</span>'
+          +'<span style="font-size:10px;color:var(--text3)">\u00B7 '+_esc(durLabel)+'</span>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
   });
 
   if(!itemCards){
     itemCards = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text2);font-size:13px">No products or services yet — add inventory or services to include them in the catalog.</div>';
   }
 
+  // Selected-count summary so users see at a glance how many will print
+  var _totalSelectable = invCount + svcCount;
+  var _totalSelected = _totalSelectable - _excluded.size;
+
   return '<div class="ph">'
     +'<div class="bc">'+_esc(BIZ.name||'ShopTrack')+' / <span>'+_s.cat_tab+'</span></div>'
     +'<div class="ph-row"><h1>'+_s.cat_title+'</h1><div class="btn-row">'
-    +'<button class="btn btn-s btn-sm" onclick="genCatalogDoc()">👁 Preview</button>'
-    +'<button class="btn btn-p btn-sm" onclick="genCatalogDoc()">⬇ Generate PDF</button>'
+    +'<button class="btn btn-s btn-sm" onclick="genCatalogDoc()">\uD83D\uDC41 Preview</button>'
+    +'<button class="btn btn-p btn-sm" onclick="genCatalogDoc()">\u2B07 Generate PDF</button>'
     +'</div></div>'
     +'<p>Build and publish customer-facing catalogs with pricing and photos</p>'
     +'</div>'
@@ -12807,31 +12856,171 @@ function pgCatalog(){const _s=_L();
     +'<div class="fg"><label class="fl">'+_s.cat_name+'</label><input class="fi" id="cat-name-input" value="'+_esc(catName)+'"/></div>'
     +'<div class="fg"><label class="fl">'+_s.cat_tagline+'</label><input class="fi" id="cat-tagline-input" value="'+_esc(catTagline)+'"/></div>'
     +'<div class="fg-2">'
-    +'<div class="fg"><label class="fl">'+_s.cat_show_p+'</label><select class="fs" id="cat-show-prices"><option value="all">'+_s.cat_show_all+'</option><option value="sale">'+_s.cat_sale_only+'</option><option value="rent">'+_s.cat_rent_only+'</option><option value="hide">'+_s.cat_hide_prices+'</option></select></div>'
-    +'<div class="fg"><label class="fl">'+_s.cat_filter_status+'</label><select class="fs" id="cat-filter-status"><option value="both">Both Sale &amp; Rent</option><option value="sale">'+_s.cat_for_sale_only+'</option><option value="rent">'+_s.cat_for_rent_only+'</option></select></div>'
+    +'<div class="fg"><label class="fl">'+_s.cat_show_p+'</label><select class="fs" id="cat-show-prices"><option value="all"'+((BIZ.catalogPrices||'all')==='all'?' selected':'')+'>'+_s.cat_show_all+'</option><option value="sale"'+(BIZ.catalogPrices==='sale'?' selected':'')+'>'+_s.cat_sale_only+'</option><option value="rent"'+(BIZ.catalogPrices==='rent'?' selected':'')+'>'+_s.cat_rent_only+'</option><option value="hide"'+(BIZ.catalogPrices==='hide'?' selected':'')+'>'+_s.cat_hide_prices+'</option></select></div>'
+    +'<div class="fg"><label class="fl">'+_s.cat_filter_status+'</label><select class="fs" id="cat-filter-status"><option value="both"'+((BIZ.catalogStatus||'both')==='both'?' selected':'')+'>Both Sale &amp; Rent</option><option value="sale"'+(BIZ.catalogStatus==='sale'?' selected':'')+'>'+_s.cat_for_sale_only+'</option><option value="rent"'+(BIZ.catalogStatus==='rent'?' selected':'')+'>'+_s.cat_for_rent_only+'</option></select></div>'
     +'</div>'
     +'<div class="fg"><label class="fl">'+_s.cat_contact+'</label><input class="fi" id="cat-contact" value="'+_esc((BIZ.email||'')+(BIZ.phone?' | '+BIZ.phone:''))+'"/></div>'
-    +'<button class="btn btn-p" onclick="BIZ.catalogContact=document.getElementById(\'cat-contact\')?.value||BIZ.catalogContact||\'\';BIZ.catalogPrices=document.getElementById(\'cat-show-prices\')?.value||BIZ.catalogPrices||\'\';BIZ.catalogStatus=document.getElementById(\'cat-filter-status\')?.value||BIZ.catalogStatus||\'\';BIZ.catalogName=document.getElementById(\'cat-name-input\')?.value||BIZ.catalogName||\''+_esc(defaultCatName)+'\';BIZ.catalogTagline=document.getElementById(\'cat-tagline-input\')?.value||\'\';_dbSaveBizProfile(SESSION.bizId);toast(\'Catalog settings saved \u2713\',\'success\')">'+_s.cat_save+'</button>'
+    +'<button class="btn btn-p" onclick="_catSaveSettings()">'+_s.cat_save+'</button>'
     +'</div>'
     +'<div class="card" style="background:linear-gradient(135deg,var(--bg3),var(--bg4));border-style:dashed;text-align:center;padding:28px">'
-    +'<div style="font-size:44px;margin-bottom:10px">📋</div>'
+    +'<div style="font-size:44px;margin-bottom:10px">\uD83D\uDCCB</div>'
     +'<div style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--ink);margin-bottom:4px">'+_esc(catName)+'</div>'
-    +'<div style="font-size:12px;color:var(--text2);margin-bottom:14px">'+_esc(BIZ.name||'ShopTrack')+' · '+totalItems+' item'+(totalItems!==1?'s':'')+' · '+catCount+' categor'+(catCount!==1?'ies':'y')+'</div>'
-    +'<button class="btn btn-p btn-sm" onclick="genCatalogDoc()">⬇ Generate PDF Catalog</button>'
-    +'<div style="margin-top:8px"><button class="btn btn-s btn-sm" onclick="var _u=window.location.href.split(\'#\')[0];navigator.clipboard?.writeText(_u).then(function(){toast(\'Catalog link copied! \u2713\',\'success\');}).catch(function(){toast(\'Link: \'+_u,\'info\');})">🔗 Share Digital Link</button></div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-bottom:6px"><span id="cat-selcount">'+_totalSelected+'</span> of '+_totalSelectable+' item'+(_totalSelectable!==1?'s':'')+' selected \u00B7 '+catCount+' categor'+(catCount!==1?'ies':'y')+'</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">Tick the items below to choose what appears in your catalog</div>'
+    +'<button class="btn btn-p btn-sm" onclick="genCatalogDoc()">\u2B07 Generate PDF Catalog</button>'
+    +'<div style="margin-top:8px"><button class="btn btn-s btn-sm" onclick="var _u=window.location.href.split(\'#\')[0];navigator.clipboard?.writeText(_u).then(function(){toast(\'Catalog link copied! \u2713\',\'success\');}).catch(function(){toast(\'Link: \'+_u,\'info\');})">\uD83D\uDD17 Share Digital Link</button></div>'
     +'</div>'
     +'</div>'
     +'<div class="card">'
     +'<div class="card-hd"><div class="card-ttl">'+_s.cat_items+'</div>'
-    +'<div class="btn-row">'
-    +'<button id="cat-cat-all" class="btn btn-g btn-sm cat-filter-btn on" onclick="document.querySelectorAll(\'.icard\').forEach(function(c){c.style.display=\'\';});document.querySelectorAll(\'.cat-filter-btn\').forEach(function(b){b.classList.remove(\'on\');});this.classList.add(\'on\')">All</button>'
-    +(allCats.map(function(c){ return '<button class="btn btn-s btn-sm cat-filter-btn" onclick="var cat=\''+c.replace(/'/g,"\\'")+'\'  ;document.querySelectorAll(\'.icard\').forEach(function(el){el.style.display=(el.dataset.cat===cat)?\'\'  :\'none\';});document.querySelectorAll(\'.cat-filter-btn\').forEach(function(b){b.classList.remove(\'on\');});this.classList.add(\'on\')">'+_esc(c)+'</button>'; }).join(''))
+    +'<div class="btn-row" style="flex-wrap:wrap">'
+    // Kind filter (Products / Services / All) — segmented
+    +'<button id="cat-kind-all" class="btn btn-sm cat-kind-btn '+(_kindFilter==='all'?'btn-g on':'btn-s')+'" onclick="_catSetKindFilter(\'all\')">All</button>'
+    +'<button id="cat-kind-products" class="btn btn-sm cat-kind-btn '+(_kindFilter==='products'?'btn-g on':'btn-s')+'" onclick="_catSetKindFilter(\'products\')">\uD83D\uDCE6 Products only</button>'
+    +'<button id="cat-kind-services" class="btn btn-sm cat-kind-btn '+(_kindFilter==='services'?'btn-g on':'btn-s')+'" onclick="_catSetKindFilter(\'services\')">\u2702\uFE0F Services only</button>'
+    +'<span style="width:1px;background:var(--border);margin:0 4px"></span>'
+    +'<button class="btn btn-s btn-sm" onclick="_catSelectShown(true)" title="Tick every card currently visible">\u2713 Select shown</button>'
+    +'<button class="btn btn-s btn-sm" onclick="_catSelectShown(false)" title="Untick every card currently visible">\u2715 Clear shown</button>'
+    +'</div></div>'
+    // Category sub-filter row
+    +'<div class="btn-row" style="margin-bottom:12px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:11px">'
+    +'<span style="font-size:11px;font-weight:600;color:var(--text2);align-self:center;margin-right:4px">Category:</span>'
+    +'<button id="cat-cat-all" class="btn btn-g btn-sm cat-filter-btn on" onclick="_catSetCatFilter(\'\',this)">All</button>'
+    +(allCats.map(function(c){ return '<button class="btn btn-s btn-sm cat-filter-btn" onclick="_catSetCatFilter(\''+c.replace(/'/g,"\\'")+'\',this)">'+_esc(c)+'</button>'; }).join(''))
     +'</div>'
-    +'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:11px">'
+    +'<div id="cat-pick-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:11px">'
     +itemCards
     +'</div>'
-    +'</div>';
+    +'<style>'
+      +'.catpick-card{transition:opacity .12s,box-shadow .12s,border-color .12s;border:2px solid var(--border)}'
+      +'.catpick-card.on{border-color:var(--a)}'
+      +'.catpick-card:not(.on){opacity:.45;border-style:dashed}'
+      +'.catpick-card:not(.on) .icard-img{filter:grayscale(.6)}'
+    +'</style>'
+    +'</div>'
+    // Apply the persisted kind filter on first render
+    +'<script>(function(){'
+      +'try{ if(typeof _catApplyKindFilterDom===\'function\') _catApplyKindFilterDom('+JSON.stringify(_kindFilter)+'); }catch(e){}'
+    +'})();</script>';
+}
+
+// Toggle a single card's include/exclude state. Updates BIZ.catalogExcludedIds
+// in memory only — the user must hit Save Settings to persist.
+function _catTogglePick(el){
+  var id = el.dataset.id;
+  if(!id) return;
+  var excluded = BIZ.catalogExcludedIds || [];
+  var set = new Set(excluded);
+  if(set.has(id)){
+    set.delete(id);
+    el.classList.add('on');
+    var cb = el.querySelector('input[type="checkbox"]'); if(cb) cb.checked = true;
+  } else {
+    set.add(id);
+    el.classList.remove('on');
+    var cb2 = el.querySelector('input[type="checkbox"]'); if(cb2) cb2.checked = false;
+  }
+  BIZ.catalogExcludedIds = Array.from(set);
+  _catUpdateSelCount();
+}
+
+// Tick or untick every card currently visible (respecting both kind
+// and category filters). Useful when the user wants "all services
+// EXCEPT a couple" — they kind-filter to services, hit Select all,
+// then individually untick the exceptions.
+function _catSelectShown(select){
+  var cards = document.querySelectorAll('#cat-pick-grid .catpick-card');
+  var excluded = new Set(BIZ.catalogExcludedIds || []);
+  cards.forEach(function(card){
+    // Skip cards hidden by either kind or category filter
+    if(card.style.display === 'none') return;
+    var id = card.dataset.id;
+    if(!id) return;
+    if(select){
+      excluded.delete(id);
+      card.classList.add('on');
+      var cb = card.querySelector('input[type="checkbox"]'); if(cb) cb.checked = true;
+    } else {
+      excluded.add(id);
+      card.classList.remove('on');
+      var cb2 = card.querySelector('input[type="checkbox"]'); if(cb2) cb2.checked = false;
+    }
+  });
+  BIZ.catalogExcludedIds = Array.from(excluded);
+  _catUpdateSelCount();
+}
+
+// Set the products-vs-services filter. Updates UI + saved value.
+function _catSetKindFilter(kind){
+  BIZ.catalogKindFilter = kind;
+  _catApplyKindFilterDom(kind);
+}
+
+// Apply the kind filter to the visible cards. Pulled out into a helper
+// because pgCatalog's initial render needs to call it too.
+function _catApplyKindFilterDom(kind){
+  // Update button visual state
+  ['all','products','services'].forEach(function(k){
+    var btn = document.getElementById('cat-kind-'+k);
+    if(btn){
+      if(k===kind){ btn.classList.remove('btn-s'); btn.classList.add('btn-g','on'); }
+      else { btn.classList.remove('btn-g','on'); btn.classList.add('btn-s'); }
+    }
+  });
+  // Hide/show cards
+  var cards = document.querySelectorAll('#cat-pick-grid .catpick-card');
+  cards.forEach(function(card){
+    var k = card.dataset.kind; // 'inv' or 'svc'
+    var match = (kind === 'all')
+      || (kind === 'products' && k === 'inv')
+      || (kind === 'services' && k === 'svc');
+    // Also respect the category sub-filter if it has a value set
+    var catFilter = card.dataset._activeCat || '';
+    var catMatch = !catFilter || card.dataset.cat === catFilter;
+    card.style.display = (match && catMatch) ? '' : 'none';
+  });
+}
+
+// Category sub-filter — mirrors the old behaviour but stores the
+// active category on each card so the kind filter can respect it.
+function _catSetCatFilter(cat, btn){
+  document.querySelectorAll('.cat-filter-btn').forEach(function(b){
+    b.classList.remove('on');
+    b.classList.remove('btn-g');
+    b.classList.add('btn-s');
+  });
+  if(btn){
+    btn.classList.remove('btn-s');
+    btn.classList.add('btn-g','on');
+  }
+  document.querySelectorAll('#cat-pick-grid .catpick-card').forEach(function(card){
+    card.dataset._activeCat = cat;
+  });
+  // Re-apply kind filter (which now considers cat too)
+  _catApplyKindFilterDom(BIZ.catalogKindFilter || 'all');
+}
+
+function _catUpdateSelCount(){
+  var el = document.getElementById('cat-selcount');
+  if(!el) return;
+  var invCount = D.inv.length;
+  var svcCount = (D.services||[]).filter(function(s){return s.active!==false;}).length;
+  var total = invCount + svcCount;
+  var excluded = (BIZ.catalogExcludedIds||[]).length;
+  el.textContent = (total - excluded);
+}
+
+function _catSaveSettings(){
+  var fr = BIZ.language==='fr';
+  BIZ.catalogContact = document.getElementById('cat-contact')?.value || BIZ.catalogContact || '';
+  BIZ.catalogPrices  = document.getElementById('cat-show-prices')?.value || BIZ.catalogPrices || 'all';
+  BIZ.catalogStatus  = document.getElementById('cat-filter-status')?.value || BIZ.catalogStatus || 'both';
+  BIZ.catalogName    = document.getElementById('cat-name-input')?.value || BIZ.catalogName || ((BIZ.name||'Our')+' Service Catalog');
+  BIZ.catalogTagline = document.getElementById('cat-tagline-input')?.value || '';
+  // catalogExcludedIds and catalogKindFilter were already updated in
+  // BIZ as the user interacted; just persist now.
+  _dbSaveBizProfile(SESSION.bizId);
+  toast(fr?'Paramètres du catalogue enregistrés ✓':'Catalog settings saved ✓', 'success');
 }
 
 
@@ -24311,17 +24500,41 @@ function genCatalogDoc(){
   // Read catalog settings saved by Save Settings
   var _catPrices = BIZ.catalogPrices || 'all'; // all | sale | rent | hide
   var _catStatus = BIZ.catalogStatus || 'both'; // both | sale | rent
-  // Apply status filter to inventory
-  var invItems = D.inv.filter(function(i){
-    if(i.st==='Archived') return false;
-    if(_catStatus==='sale') return i.st==='For Sale'||i.st==='Both';
-    if(_catStatus==='rent') return i.st==='For Rent'||i.st==='Both';
-    return i.sp||i.rp; // both: show anything priced
-  });
-  const svcItems = (D.services||[]).filter(s=>s.active!==false);
+  var _catKind   = BIZ.catalogKindFilter || 'all'; // all | products | services
+  var _excluded  = new Set(BIZ.catalogExcludedIds || []);
+  function _isIncluded(id){ return !_excluded.has(id); }
+
+  // Apply status filter + per-item include/exclude + kind filter to inventory
+  var invItems = (_catKind === 'services')
+    ? []  // services-only catalog — drop products entirely
+    : D.inv.filter(function(i){
+        if(i.st==='Archived') return false;
+        if(!_isIncluded(i.id)) return false;
+        if(_catStatus==='sale') return i.st==='For Sale'||i.st==='Both';
+        if(_catStatus==='rent') return i.st==='For Rent'||i.st==='Both';
+        return i.sp||i.rp; // both: show anything priced
+      });
+  const svcItems = (_catKind === 'products')
+    ? []  // products-only catalog — drop services entirely
+    : (D.services||[]).filter(function(s){
+        if(s.active===false) return false;
+        if(!_isIncluded(s.id)) return false;
+        return true;
+      });
   const catName  = BIZ.catalogName   || ((BIZ.name||'Our') + ' Service Catalog');
   const tagline  = BIZ.catalogTagline|| BIZ.tagline || '';
   const totalCount = invItems.length + svcItems.length;
+
+  // Bail early if nothing selected — opening an empty catalog is
+  // a worse experience than a clear warning.
+  if(totalCount === 0){
+    var fr = BIZ.language==='fr';
+    toast(fr
+      ? 'Aucun article sélectionné. Cochez au moins un produit ou service avant de générer le catalogue.'
+      : 'No items selected. Tick at least one product or service before generating the catalog.',
+      'warn');
+    return;
+  }
 
   const footerContact = (BIZ.catalogContact && BIZ.catalogContact.trim())
     ? BIZ.catalogContact
@@ -24333,6 +24546,16 @@ function genCatalogDoc(){
     BIZ.tiktok    ? '\u{1F3B5} @'+BIZ.tiktok   : '',
   ].filter(Boolean).join('   ');
 
+  // ── Equal-column layout helper ──────────────────────────────────
+  // The catalog uses a fixed 2-column grid. When a category section
+  // has an odd number of items, the last row would otherwise have a
+  // single card on the left and a gap on the right — looks unbalanced.
+  // Solution: detect odd counts and tag the last card with `cat-card-wide`
+  // so it spans both columns. The wide card also gets a horizontal
+  // layout (photo on the left, body on the right) so it reads
+  // naturally rather than looking like a stretched square.
+  function _isWideLast(arr, idx){ return arr.length % 2 === 1 && idx === arr.length - 1; }
+
   // Build service cards section
   const svcCatsList = [...new Set(svcItems.map(s=>s.cat||'Services').filter(Boolean))];
   var svcSections = '';
@@ -24340,15 +24563,16 @@ function genCatalogDoc(){
     var catSvcs = svcItems.filter(function(s){return (s.cat||'Services')===cat;});
     svcSections += '<div class="cat-section-hd">'+_esc(cat)+' <span style="font-weight:400;opacity:.6">('+catSvcs.length+' service'+(catSvcs.length>1?'s':'')+')</span></div>';
     svcSections += '<div class="cat-grid">';
-    catSvcs.forEach(function(s){
+    catSvcs.forEach(function(s, idx){
       var pt = s.priceType||'flat';
       var ptSfx = {'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'';
       var priceDisp = pt==='starting' ? 'From '+fmtDoc(s.price) : fmtDoc(s.price)+ptSfx;
       var dur = (!s.duration||s.duration<=0) ? 'Duration TBD' : s.duration+' min';
       var imgHtml = s.imgDataUrl
         ? '<img src="'+s.imgDataUrl+'" style="width:100%;height:100%;object-fit:cover;display:block;background:#f9fafb"/>'
-        : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,'+(s.color||primary)+'22,'+(s.color||primary)+'11);font-size:52px">✂️</div>';
-      svcSections += '<div class="cat-card">'
+        : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,'+(s.color||primary)+'22,'+(s.color||primary)+'11);font-size:52px">\u2702\uFE0F</div>';
+      var wideClass = _isWideLast(catSvcs, idx) ? ' cat-card-wide' : '';
+      svcSections += '<div class="cat-card'+wideClass+'">'
         +'<div class="cat-card-photo">'+imgHtml+'</div>'
         +'<div class="cat-card-body">'
         +'<div class="cat-card-name">'+_esc(s.name)+'</div>'
@@ -24373,14 +24597,15 @@ function genCatalogDoc(){
     var catLabel = cat==='__uncategorized__' ? 'Other Items' : cat;
     invSections += '<div class="cat-section-hd">'+_esc(catLabel)+' <span style="font-weight:400;opacity:.6">('+catItems.length+' item'+(catItems.length>1?'s':'')+')</span></div>';
     invSections += '<div class="cat-grid">';
-    catItems.forEach(function(it){
+    catItems.forEach(function(it, idx){
       var avail=(it.qty||0)-(it.rented||0);
       var _src=(it.photoDataUrls&&it.photoDataUrls.length)?it.photoDataUrls[0]:(it.imgDataUrl||null);
       var imgHtml=_src
         ?'<img src="'+_src+'" style="width:100%;height:100%;object-fit:contain;display:block;background:#f9fafb"/>'
         :'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#f0f0f8,#e8e8f0);font-size:52px">&#x1F457;</div>';
       var meta=[it.color,it.sz?'Size '+it.sz:null,it.cond,it.brand].filter(Boolean).join(' · ');
-      invSections += '<div class="cat-card">'
+      var wideClass = _isWideLast(catItems, idx) ? ' cat-card-wide' : '';
+      invSections += '<div class="cat-card'+wideClass+'">'
         +'<div class="cat-card-photo">'+imgHtml+'</div>'
         +'<div class="cat-card-body">'
         +'<div class="cat-card-name">'+_esc(it.name)+'</div>'
@@ -24405,15 +24630,25 @@ function genCatalogDoc(){
   .cat-cover::before{content:'';position:absolute;top:-80px;right:-80px;width:300px;height:300px;background:rgba(255,255,255,.08);border-radius:50%}
   .cat-cover::after{content:'';position:absolute;bottom:-60px;left:-60px;width:200px;height:200px;background:rgba(255,255,255,.05);border-radius:50%}
   .cat-section-hd{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:${p};border-bottom:1.5px solid ${p}33;padding-bottom:6px;margin:28px 0 16px}
-  .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-  .cat-card{border:1px solid #e8ecf1;border-radius:12px;overflow:hidden;page-break-inside:avoid;break-inside:avoid;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+  .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:stretch}
+  .cat-card{display:flex;flex-direction:column;border:1px solid #e8ecf1;border-radius:12px;overflow:hidden;page-break-inside:avoid;break-inside:avoid;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+  /* Wide card — spans both columns. Used when a category has an
+     odd number of items so the last row stays balanced. Layout
+     switches to photo-on-the-left, body-on-the-right so the wide
+     proportions read intentional, not stretched. */
+  .cat-card-wide{grid-column:1 / -1;flex-direction:row}
+  .cat-card-wide .cat-card-photo{width:50%;height:auto;min-height:240px;flex-shrink:0;border-bottom:none;border-right:1px solid #f1f5f9}
+  .cat-card-wide .cat-card-body{flex:1;display:flex;flex-direction:column;justify-content:center}
   .cat-card-photo{width:100%;height:280px;background:#f9fafb;display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid #f1f5f9}
   .cat-card-photo img{width:100%;height:100%;object-fit:contain;display:block}
-  .cat-card-body{padding:13px 15px 14px}
+  /* Card body uses flex so the price row sticks to the bottom even
+     when the description is short. Keeps multi-card rows visually
+     aligned along the price baseline. */
+  .cat-card-body{padding:13px 15px 14px;flex:1;display:flex;flex-direction:column}
   .cat-card-name{font-size:13.5px;font-weight:800;color:#0f172a;letter-spacing:-.2px;margin-bottom:3px;line-height:1.3}
   .cat-card-meta{font-size:10px;color:#94a3b8;margin-bottom:8px;line-height:1.5}
-  .cat-card-desc{font-size:10.5px;color:#475569;line-height:1.55;margin-bottom:10px}
-  .cat-card-prices{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;border-top:1px solid #f1f5f9;padding-top:9px;margin-top:4px}
+  .cat-card-desc{font-size:10.5px;color:#475569;line-height:1.55;margin-bottom:10px;flex:1}
+  .cat-card-prices{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;border-top:1px solid #f1f5f9;padding-top:9px;margin-top:auto}
   .cat-price-sale{font-size:15px;font-weight:900;color:${p};font-family:'JetBrains Mono',monospace;letter-spacing:-.5px}
   .cat-price-rent{font-size:11px;font-weight:600;color:#059669;font-family:'JetBrains Mono',monospace}
   .cat-price-label{font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;align-self:flex-end;margin-left:1px}
