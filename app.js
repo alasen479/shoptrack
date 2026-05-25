@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779707146");
+console.log("ShopTrack v2.7 - build:1779709414");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -2774,6 +2774,7 @@ function afterRender(p){
   if(p==='customers') setTimeout(function(){ filterCustTable(); }, 20);
   if(p==='vendors')   setTimeout(function(){ filterVendTable(); }, 20);
   if(p==='ai-studio') setTimeout(_aiLoadHistory, 60);
+  if(p==='catalog')   setTimeout(_catInit, 30);
   // Always apply locale to any forms on the new page
   setTimeout(()=>_applyLocaleToForms(CUR.code), 30);
   // Show currency preview in financial settings
@@ -12787,6 +12788,9 @@ function pgCatalog(){const _s=_L();
   //   data-id    — the inv or svc id (used to track exclusion)
   //   data-kind  — 'inv' or 'svc' (used by the Products/Services filter)
   //   data-cat   — the item's category (used by the category filter)
+  // We DO NOT use the .icard class to avoid colliding with any global
+  // delegated click handlers attached to inventory cards elsewhere in
+  // the app. The 'catpick-card' class is unique to this picker.
   var itemCards = '';
   D.inv.forEach(function(it){
     var _src = (it.photoDataUrls&&it.photoDataUrls.length) ? it.photoDataUrls[0] : (it.imgDataUrl||null);
@@ -12794,13 +12798,13 @@ function pgCatalog(){const _s=_L();
       ? '<img loading="lazy" src="'+_src+'" style="width:100%;height:100%;object-fit:cover;display:block"/>'
       : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;background:var(--bg3)">\uD83D\uDCE6</div>';
     var checked = _isIncluded(it.id) ? 'checked' : '';
-    itemCards += '<div class="icard catpick-card'+(_isIncluded(it.id)?' on':'')+'" data-id="'+_esc(it.id)+'" data-kind="inv" data-cat="'+_esc(it.cat||'')+'" onclick="_catTogglePick(this)" style="position:relative;cursor:pointer;user-select:none">'
-      +'<div style="position:absolute;top:7px;right:7px;z-index:2;background:rgba(255,255,255,.92);border-radius:4px;padding:2px 5px;font-size:11px;display:flex;align-items:center;gap:4px;box-shadow:0 1px 2px rgba(0,0,0,.08);pointer-events:none">'
-        +'<input type="checkbox" '+checked+' style="margin:0;cursor:pointer;width:14px;height:14px" tabindex="-1"/>'
+    itemCards += '<div class="catpick-card'+(_isIncluded(it.id)?' on':'')+'" data-id="'+_esc(it.id)+'" data-kind="inv" data-cat="'+_esc(it.cat||'')+'" style="position:relative;cursor:pointer;user-select:none;border-radius:8px;overflow:hidden;background:var(--bg2)">'
+      +'<div style="position:absolute;top:7px;right:7px;z-index:2;background:rgba(255,255,255,.95);border-radius:4px;padding:3px 6px;font-size:11px;display:flex;align-items:center;gap:4px;box-shadow:0 1px 3px rgba(0,0,0,.15);pointer-events:none">'
+        +'<input type="checkbox" '+checked+' style="margin:0;pointer-events:none;width:14px;height:14px" tabindex="-1"/>'
       +'</div>'
-      +'<div class="icard-img" style="height:140px;overflow:hidden">'+_imgHtml+'</div>'
-      +'<div class="icard-body">'
-        +'<div class="icard-name">'+_esc(it.name)+'</div>'
+      +'<div style="height:140px;overflow:hidden;pointer-events:none">'+_imgHtml+'</div>'
+      +'<div style="padding:8px 10px;pointer-events:none">'
+        +'<div style="font-size:12.5px;font-weight:700;color:var(--ink);line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(it.name)+'</div>'
         +'<div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(it.cat||'Uncategorized')+'</div>'
         +'<div style="display:flex;gap:7px;flex-wrap:wrap">'
           +(it.sp?'<span style="font-size:11px;color:var(--g)">\uD83D\uDCB3 '+fmt(it.sp)+'</span>':'')
@@ -12818,13 +12822,13 @@ function pgCatalog(){const _s=_L();
       ? '<img loading="lazy" src="'+s.imgDataUrl+'" style="width:100%;height:100%;object-fit:cover;display:block"/>'
       : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;background:'+(s.color||'#999')+'18">\u2702\uFE0F</div>';
     var checked = _isIncluded(s.id) ? 'checked' : '';
-    itemCards += '<div class="icard catpick-card'+(_isIncluded(s.id)?' on':'')+'" data-id="'+_esc(s.id)+'" data-kind="svc" data-cat="'+_esc(s.cat||'')+'" onclick="_catTogglePick(this)" style="position:relative;cursor:pointer;user-select:none">'
-      +'<div style="position:absolute;top:7px;right:7px;z-index:2;background:rgba(255,255,255,.92);border-radius:4px;padding:2px 5px;font-size:11px;display:flex;align-items:center;gap:4px;box-shadow:0 1px 2px rgba(0,0,0,.08);pointer-events:none">'
-        +'<input type="checkbox" '+checked+' style="margin:0;cursor:pointer;width:14px;height:14px" tabindex="-1"/>'
+    itemCards += '<div class="catpick-card'+(_isIncluded(s.id)?' on':'')+'" data-id="'+_esc(s.id)+'" data-kind="svc" data-cat="'+_esc(s.cat||'')+'" style="position:relative;cursor:pointer;user-select:none;border-radius:8px;overflow:hidden;background:var(--bg2)">'
+      +'<div style="position:absolute;top:7px;right:7px;z-index:2;background:rgba(255,255,255,.95);border-radius:4px;padding:3px 6px;font-size:11px;display:flex;align-items:center;gap:4px;box-shadow:0 1px 3px rgba(0,0,0,.15);pointer-events:none">'
+        +'<input type="checkbox" '+checked+' style="margin:0;pointer-events:none;width:14px;height:14px" tabindex="-1"/>'
       +'</div>'
-      +'<div class="icard-img" style="height:140px;overflow:hidden">'+imgHtml+'</div>'
-      +'<div class="icard-body">'
-        +'<div class="icard-name">'+_esc(s.name)+'</div>'
+      +'<div style="height:140px;overflow:hidden;pointer-events:none">'+imgHtml+'</div>'
+      +'<div style="padding:8px 10px;pointer-events:none">'
+        +'<div style="font-size:12.5px;font-weight:700;color:var(--ink);line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(s.name)+'</div>'
         +'<div style="font-size:10px;color:var(--text2);margin-bottom:4px">'+_esc(s.cat||'Service')+'</div>'
         +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
           +'<span style="font-size:12px;font-weight:700;color:'+ptColor+'">'+_esc(priceLabel)+'</span>'
@@ -12893,21 +12897,41 @@ function pgCatalog(){const _s=_L();
     +'</div>'
     +'<style>'
       +'.catpick-card{transition:opacity .12s,box-shadow .12s,border-color .12s;border:2px solid var(--border)}'
-      +'.catpick-card.on{border-color:var(--a)}'
+      +'.catpick-card.on{border-color:var(--a);box-shadow:0 2px 8px rgba(0,0,0,.05)}'
       +'.catpick-card:not(.on){opacity:.45;border-style:dashed}'
-      +'.catpick-card:not(.on) .icard-img{filter:grayscale(.6)}'
+      +'.catpick-card:not(.on) img{filter:grayscale(.6)}'
     +'</style>'
-    +'</div>'
-    // Apply the persisted kind filter on first render
-    +'<script>(function(){'
-      +'try{ if(typeof _catApplyKindFilterDom===\'function\') _catApplyKindFilterDom('+JSON.stringify(_kindFilter)+'); }catch(e){}'
-    +'})();</script>';
+    +'</div>';
+}
+
+// Wire up the catalog picker after render. Called from afterRender.
+// We use event delegation on the grid container so we (a) avoid inline
+// onclick attribute conflicts and (b) handle dynamically-rendered
+// cards uniformly. Cards have all inner content set to
+// pointer-events:none so the event.target is always the card itself
+// (or near it) — we walk up to .catpick-card with .closest() for safety.
+function _catInit(){
+  var grid = document.getElementById('cat-pick-grid');
+  if(grid && !grid._catWired){
+    grid._catWired = true;
+    grid.addEventListener('click', function(e){
+      var card = e.target.closest('.catpick-card');
+      if(!card || !grid.contains(card)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      _catTogglePick(card);
+    });
+  }
+  // Apply the persisted kind filter — the inline <script> in pgCatalog's
+  // returned HTML doesn't execute when set via innerHTML, so we do it
+  // here from a proper post-render hook.
+  try{ _catApplyKindFilterDom(BIZ.catalogKindFilter || 'all'); }catch(e){}
 }
 
 // Toggle a single card's include/exclude state. Updates BIZ.catalogExcludedIds
 // in memory only — the user must hit Save Settings to persist.
 function _catTogglePick(el){
-  var id = el.dataset.id;
+  var id = el && el.dataset && el.dataset.id;
   if(!id) return;
   var excluded = BIZ.catalogExcludedIds || [];
   var set = new Set(excluded);
