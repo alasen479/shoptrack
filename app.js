@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779837052");
+console.log("ShopTrack v2.7 - build:1779837740");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -18551,11 +18551,30 @@ async function _dbLoadBizData(bizId){
     // Track whether we had to use the slim retry (no image columns) so the
     // merge below can preserve image fields from the IDB-cached local copy.
     var _invRetryStripped = false;
-    if(inv.error && (inv.error.message||'').includes('timeout')){
-      console.warn('[DB] Retrying inventory query without photos...');
-      _invResult = await _sb.from('inventory').select('id,biz_id,sku,name,cat,brand,status,condition,sp,cost,rp,deposit,min_sp,min_stock,qty,color,size,description,rented,img,img_color').eq('biz_id', bizId).limit(2000);
+    // Triggers on any error that suggests the response was too large or
+    // timed out. Supabase 500s are usually statement_timeout messages on
+    // a large photo response. Also catches plain 'timeout' for back-compat.
+    var _invErr = inv.error && (inv.error.message||'');
+    var _invShouldRetry = _invErr && (
+      _invErr.includes('timeout') ||
+      _invErr.includes('500') ||
+      _invErr.includes('canceling statement') ||
+      _invErr.includes('statement timeout') ||
+      inv.status === 500
+    );
+    if(_invShouldRetry){
+      console.warn('[DB] Inventory full SELECT failed ('+(_invErr||'500')+') — retrying without photos...');
+      _invResult = await _sb.from('inventory').select('id,biz_id,sku,name,cat,brand,status,condition,sp,cost,rp,deposit,min_sp,min_stock,qty,color,size,description,rented,img,img_color,item_type,needs_price,vendor_id,recipe,sp_native,sp_currency,cost_native,cost_currency,rp_native,rp_currency,min_sp_native,min_sp_currency,dep_native,dep_currency,cost_lines').eq('biz_id', bizId).limit(2000);
       if(_invResult.error) console.error('[DB] inventory retry also failed:', _invResult.error.message);
-      else { console.log('[DB] inventory retry OK:', (_invResult.data||[]).length, 'items'); _invRetryStripped = true; }
+      else {
+        console.log('[DB] inventory retry OK:', (_invResult.data||[]).length, 'items — will backfill photos in background');
+        _invRetryStripped = true;
+        // Schedule background photo backfill. Don't await — fire-and-forget.
+        // Runs after the page renders so the user sees inventory immediately,
+        // then photos pop in as each batch returns.
+        var _itemIds = (_invResult.data||[]).map(function(r){return r.id;});
+        setTimeout(function(){ _backfillInventoryPhotos(bizId, _itemIds); }, 800);
+      }
     }
     var _svcResult = svcs;
     if(svcs.error && (svcs.error.message||'').includes('timeout')){
@@ -20697,6 +20716,115 @@ function _consumeRecipe(product, multiplier, saleRef){
     console.warn('[consumeRecipe] '+(saleRef||'')+' '+msg);
   }
 }
+
+// ── BACKGROUND PHOTO BACKFILL ────────────────────────────────────
+// Fired when the inventory full-SELECT 500s and the slim retry succeeds
+// without photos. Fetches photo columns in small batches (5 items at a
+// time) so each response stays under Supabase's row-size limit. As each
+// batch comes back, items in D.inv are updated in place AND IDB is
+// rewritten so subsequent loads see photos immediately.
+//
+// Why batches of 5: photos are base64-encoded data URLs that can be
+// 200KB-2MB each. A 5-item batch keeps the response under ~10MB, well
+// inside the PostgREST default response cap. With 38 items that's 8
+// batches; with 100 items, 20 batches. Each batch takes ~300-800ms so
+// the entire backfill completes in a few seconds.
+async function _backfillInventoryPhotos(bizId, itemIds){
+  if(!_sb || !bizId || !itemIds || !itemIds.length) return;
+  console.log('[backfill] Starting photo backfill for '+itemIds.length+' items in biz '+bizId);
+  var BATCH_SIZE = 5;
+  var totalLoaded = 0;
+  var errors = 0;
+
+  for(var i = 0; i < itemIds.length; i += BATCH_SIZE){
+    // Stop if the user navigated to a different business
+    if(SESSION.bizId !== bizId){
+      console.warn('[backfill] biz changed during backfill — stopping');
+      return;
+    }
+    var batchIds = itemIds.slice(i, i + BATCH_SIZE);
+    try {
+      var res = await _sb.from('inventory')
+        .select('id,img_data_url,photo_data_urls')
+        .eq('biz_id', bizId)
+        .in('id', batchIds);
+      if(res.error){
+        // If even a 5-item batch fails, log and skip. Common cause:
+        // one item has a massive multi-photo payload. Try one at a time.
+        console.warn('[backfill] batch of '+batchIds.length+' failed:', res.error.message, '— retrying singly');
+        for(var j = 0; j < batchIds.length; j++){
+          try {
+            var single = await _sb.from('inventory')
+              .select('id,img_data_url,photo_data_urls')
+              .eq('biz_id', bizId)
+              .eq('id', batchIds[j])
+              .maybeSingle();
+            if(single.error){ errors++; console.warn('[backfill] '+batchIds[j]+' singly failed:', single.error.message); continue; }
+            if(single.data) _applyPhotoToInv(single.data);
+            totalLoaded++;
+          } catch(se){
+            errors++; console.warn('[backfill] '+batchIds[j]+' threw:', se.message);
+          }
+        }
+        continue;
+      }
+      (res.data||[]).forEach(function(row){ _applyPhotoToInv(row); totalLoaded++; });
+    } catch(e){
+      errors++;
+      console.warn('[backfill] batch threw:', e.message);
+    }
+    // Persist IDB after every batch so photos survive a refresh mid-backfill
+    if((i / BATCH_SIZE) % 4 === 3 || i + BATCH_SIZE >= itemIds.length){
+      _idbSave(bizId, 'inv', D.inv).catch(function(){});
+    }
+    // Trigger a re-render of the inventory page if user is looking at it
+    if(curPage === 'inventory' && (i % (BATCH_SIZE * 4) === 0 || i + BATCH_SIZE >= itemIds.length)){
+      try { if(typeof nav === 'function') nav('inventory'); } catch(_){}
+    }
+  }
+  console.log('[backfill] DONE. Loaded photos for '+totalLoaded+'/'+itemIds.length+' items ('+errors+' errors)');
+  // Final IDB save + re-render
+  _idbSave(bizId, 'inv', D.inv).catch(function(){});
+  if(curPage === 'inventory'){
+    try { nav('inventory'); } catch(_){}
+  } else if(curPage === 'dashboard'){
+    try { nav('dashboard'); } catch(_){}
+  }
+  if(totalLoaded > 0){
+    toast('Loaded '+totalLoaded+' product photo'+(totalLoaded!==1?'s':''), 'success');
+  }
+}
+
+// Helper: write a freshly-fetched photo row onto the matching D.inv item.
+// Used by _backfillInventoryPhotos and the diagnostic recovery tool.
+function _applyPhotoToInv(row){
+  if(!row || !row.id) return;
+  var it = D.inv.find(function(x){return x.id === row.id;});
+  if(!it) return;
+  if(row.img_data_url) it.imgDataUrl = row.img_data_url;
+  if(row.photo_data_urls){
+    try {
+      var parsed = typeof row.photo_data_urls === 'string'
+        ? JSON.parse(row.photo_data_urls)
+        : row.photo_data_urls;
+      if(Array.isArray(parsed) && parsed.length){
+        it.photoDataUrls = parsed;
+        if(!it.imgDataUrl) it.imgDataUrl = parsed[0];
+      }
+    } catch(_){}
+  }
+}
+
+// Manual trigger so the user can kick off photo backfill on demand
+// without waiting for the natural retry path. Useful for businesses
+// whose inventory loaded slim previously and now have empty photos.
+window.backfillPhotos = function(){
+  if(!SESSION.bizId){ console.error('[backfillPhotos] no biz session'); return; }
+  var itemIds = D.inv.map(function(i){return i.id;});
+  if(!itemIds.length){ console.warn('[backfillPhotos] no inventory items'); return; }
+  console.log('[backfillPhotos] triggering for '+itemIds.length+' items');
+  _backfillInventoryPhotos(SESSION.bizId, itemIds);
+};
 
 // ── PHOTO DIAGNOSTIC ─────────────────────────────────────────────
 // Available from the console as: diagnosePhotos()
