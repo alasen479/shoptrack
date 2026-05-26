@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779837740");
+console.log("ShopTrack v2.7 - build:1779837874");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -20735,6 +20735,11 @@ async function _backfillInventoryPhotos(bizId, itemIds){
   var BATCH_SIZE = 5;
   var totalLoaded = 0;
   var errors = 0;
+  // Track which item IDs have had photos patched so we can update the DOM
+  // in place at the end without doing a disruptive full re-render that
+  // would close any modal the user has open. Full re-renders only happen
+  // as a fallback if direct DOM patching can't find a target.
+  var patchedIds = [];
 
   for(var i = 0; i < itemIds.length; i += BATCH_SIZE){
     // Stop if the user navigated to a different business
@@ -20760,40 +20765,85 @@ async function _backfillInventoryPhotos(bizId, itemIds){
               .eq('id', batchIds[j])
               .maybeSingle();
             if(single.error){ errors++; console.warn('[backfill] '+batchIds[j]+' singly failed:', single.error.message); continue; }
-            if(single.data) _applyPhotoToInv(single.data);
-            totalLoaded++;
+            if(single.data && (single.data.img_data_url || single.data.photo_data_urls)){
+              _applyPhotoToInv(single.data);
+              patchedIds.push(batchIds[j]);
+              totalLoaded++;
+            }
           } catch(se){
             errors++; console.warn('[backfill] '+batchIds[j]+' threw:', se.message);
           }
         }
         continue;
       }
-      (res.data||[]).forEach(function(row){ _applyPhotoToInv(row); totalLoaded++; });
+      (res.data||[]).forEach(function(row){
+        if(row.img_data_url || row.photo_data_urls){
+          _applyPhotoToInv(row);
+          patchedIds.push(row.id);
+          totalLoaded++;
+        }
+      });
     } catch(e){
       errors++;
       console.warn('[backfill] batch threw:', e.message);
     }
-    // Persist IDB after every batch so photos survive a refresh mid-backfill
-    if((i / BATCH_SIZE) % 4 === 3 || i + BATCH_SIZE >= itemIds.length){
+    // Persist IDB periodically so photos survive a refresh mid-backfill.
+    // Every 4 batches (~20 items) or on the final batch.
+    if(((i / BATCH_SIZE) | 0) % 4 === 3 || i + BATCH_SIZE >= itemIds.length){
       _idbSave(bizId, 'inv', D.inv).catch(function(){});
     }
-    // Trigger a re-render of the inventory page if user is looking at it
-    if(curPage === 'inventory' && (i % (BATCH_SIZE * 4) === 0 || i + BATCH_SIZE >= itemIds.length)){
-      try { if(typeof nav === 'function') nav('inventory'); } catch(_){}
-    }
   }
+
   console.log('[backfill] DONE. Loaded photos for '+totalLoaded+'/'+itemIds.length+' items ('+errors+' errors)');
-  // Final IDB save + re-render
+  // Final IDB save — guarantee persistence
   _idbSave(bizId, 'inv', D.inv).catch(function(){});
-  if(curPage === 'inventory'){
-    try { nav('inventory'); } catch(_){}
-  } else if(curPage === 'dashboard'){
-    try { nav('dashboard'); } catch(_){}
+
+  // Update visible images in place. This avoids re-rendering the whole
+  // page (which would close modals, lose scroll position, etc.). If the
+  // user is on a page that shows photos, look up each card by its
+  // data-inv-id and swap in the new image element.
+  if(patchedIds.length){
+    var swapped = _patchInventoryImagesInDOM(patchedIds);
+    console.log('[backfill] patched '+swapped+' visible card image(s) in place');
   }
   if(totalLoaded > 0){
     toast('Loaded '+totalLoaded+' product photo'+(totalLoaded!==1?'s':''), 'success');
   }
 }
+
+// Surgically swap photo placeholders for the real <img> on each item
+// card without re-rendering the entire page. Returns the number of
+// cards successfully patched. Safe no-op if the user isn't on a page
+// that shows inventory photos.
+function _patchInventoryImagesInDOM(itemIds){
+  var swapped = 0;
+  itemIds.forEach(function(id){
+    var it = D.inv.find(function(x){return x.id === id;});
+    if(!it) return;
+    var src = (it.photoDataUrls && it.photoDataUrls.length)
+      ? it.photoDataUrls[0]
+      : (it.imgDataUrl || null);
+    if(!src) return;
+    // Find any card on the current page that references this item
+    var cards = document.querySelectorAll('[data-inv-id="'+id+'"]');
+    cards.forEach(function(card){
+      // The first child div with class icard-img holds the photo SVG/img
+      var imgWrap = card.querySelector('.icard-img');
+      if(!imgWrap) return;
+      // Replace only if there's no <img> already (i.e. an SVG placeholder)
+      if(!imgWrap.querySelector('img')){
+        // Preserve any status badge that sits next to the photo
+        var badge = imgWrap.querySelector('div[style*="position:absolute"]');
+        imgWrap.innerHTML = '<img loading="lazy" src="'+src+'" style="width:100%;height:100%;object-fit:cover;display:block"/>';
+        if(badge) imgWrap.appendChild(badge);
+        swapped++;
+      }
+    });
+  });
+  return swapped;
+}
+
+// Helper: write a freshly-fetched photo row onto the matching D.inv item.
 
 // Helper: write a freshly-fetched photo row onto the matching D.inv item.
 // Used by _backfillInventoryPhotos and the diagnostic recovery tool.
