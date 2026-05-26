@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779830923");
+console.log("ShopTrack v2.7 - build:1779837052");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -20697,6 +20697,147 @@ function _consumeRecipe(product, multiplier, saleRef){
     console.warn('[consumeRecipe] '+(saleRef||'')+' '+msg);
   }
 }
+
+// ── PHOTO DIAGNOSTIC ─────────────────────────────────────────────
+// Available from the console as: diagnosePhotos()
+// Reports exactly where photos are for the current business:
+//   - Cloud Supabase row counts with non-empty photo fields
+//   - IDB local cache row counts with non-empty photo fields
+//   - In-memory D.inv row counts with non-empty photo fields
+// Use this to figure out WHICH layer lost the photos before
+// deciding what to recover from. Safe — read-only, no writes.
+window.diagnosePhotos = async function(){
+  if(!SESSION.bizId){ console.error('[diagnosePhotos] no biz session'); return; }
+  console.log('═══════════════════════════════════════════════');
+  console.log('  PHOTO DIAGNOSTIC — biz_id:', SESSION.bizId);
+  console.log('═══════════════════════════════════════════════');
+
+  // (1) IN-MEMORY
+  var memTotal = D.inv.length;
+  var memWithImg = D.inv.filter(function(i){return !!i.imgDataUrl;}).length;
+  var memWithPhotos = D.inv.filter(function(i){return i.photoDataUrls && i.photoDataUrls.length;}).length;
+  console.log('[1] IN-MEMORY (D.inv):');
+  console.log('    Total items: '+memTotal);
+  console.log('    With imgDataUrl: '+memWithImg);
+  console.log('    With photoDataUrls[]: '+memWithPhotos);
+
+  // (2) IDB LOCAL CACHE
+  try {
+    var idbInv = await _idbLoad(SESSION.bizId, 'inv');
+    if(idbInv && Array.isArray(idbInv)){
+      var idbTotal = idbInv.length;
+      var idbWithImg = idbInv.filter(function(i){return !!i.imgDataUrl;}).length;
+      var idbWithPhotos = idbInv.filter(function(i){return i.photoDataUrls && i.photoDataUrls.length;}).length;
+      console.log('[2] IDB LOCAL CACHE:');
+      console.log('    Total items: '+idbTotal);
+      console.log('    With imgDataUrl: '+idbWithImg);
+      console.log('    With photoDataUrls[]: '+idbWithPhotos);
+    } else {
+      console.log('[2] IDB LOCAL CACHE: EMPTY (no items cached)');
+    }
+  } catch(e){
+    console.warn('[2] IDB load failed:', e.message);
+  }
+
+  // (3) CLOUD SUPABASE
+  if(!_sb){
+    console.log('[3] CLOUD: not connected');
+    return;
+  }
+  try {
+    var cloudRes = await _sb.from('inventory')
+      .select('id,name,img_data_url,photo_data_urls')
+      .eq('biz_id', SESSION.bizId)
+      .limit(2000);
+    if(cloudRes.error){
+      console.error('[3] CLOUD query failed:', cloudRes.error.message);
+      return;
+    }
+    var cloud = cloudRes.data || [];
+    var cloudTotal = cloud.length;
+    var cloudWithImg = cloud.filter(function(r){return !!r.img_data_url;}).length;
+    var cloudWithPhotos = cloud.filter(function(r){return !!r.photo_data_urls;}).length;
+    console.log('[3] CLOUD SUPABASE:');
+    console.log('    Total items: '+cloudTotal);
+    console.log('    With img_data_url (single): '+cloudWithImg);
+    console.log('    With photo_data_urls (multi): '+cloudWithPhotos);
+
+    // Sample IDs with/without photos
+    var sampleMissing = cloud.filter(function(r){return !r.img_data_url && !r.photo_data_urls;}).slice(0,5);
+    var sampleHas = cloud.filter(function(r){return !!r.img_data_url || !!r.photo_data_urls;}).slice(0,5);
+    if(sampleMissing.length){
+      console.log('    Sample WITHOUT photos:', sampleMissing.map(function(r){return r.id+' "'+r.name+'"';}).join(', '));
+    }
+    if(sampleHas.length){
+      console.log('    Sample WITH photos:', sampleHas.map(function(r){return r.id+' "'+r.name+'"';}).join(', '));
+    }
+  } catch(e){
+    console.error('[3] CLOUD query threw:', e.message);
+  }
+
+  console.log('═══════════════════════════════════════════════');
+  console.log('  HOW TO RECOVER:');
+  console.log('  - If IDB has photos but cloud does not → reload the page; v186 will auto-restore.');
+  console.log('  - If neither IDB nor cloud have photos → data lost; must re-upload from source.');
+  console.log('═══════════════════════════════════════════════');
+};
+
+// Also expose a forced recovery trigger so the user can manually
+// push IDB-cached photos back to cloud without waiting for next
+// page load. Same logic as the auto-recovery in _dbLoadBizData but
+// callable on demand.
+window.forcePhotoRecovery = async function(){
+  if(!SESSION.bizId){ console.error('[forcePhotoRecovery] no biz session'); return; }
+  console.log('[forcePhotoRecovery] Starting…');
+  var idbInv;
+  try { idbInv = await _idbLoad(SESSION.bizId, 'inv'); }
+  catch(e){ console.error('[forcePhotoRecovery] IDB load failed:', e.message); return; }
+  if(!idbInv || !idbInv.length){
+    console.warn('[forcePhotoRecovery] IDB is empty — no photos to recover from local cache');
+    return;
+  }
+  // Build a map of IDB photos
+  var idbMap = {};
+  idbInv.forEach(function(it){
+    if(it.imgDataUrl || (it.photoDataUrls && it.photoDataUrls.length)){
+      idbMap[it.id] = it;
+    }
+  });
+  console.log('[forcePhotoRecovery] IDB has photos for '+Object.keys(idbMap).length+' items');
+
+  // For each in-memory item missing photos, restore from IDB and re-save
+  var recovered = 0, failed = 0;
+  for(var i=0; i<D.inv.length; i++){
+    var mem = D.inv[i];
+    var src = idbMap[mem.id];
+    if(!src) continue;
+    var needsImg   = !mem.imgDataUrl && !!src.imgDataUrl;
+    var needsMulti = (!mem.photoDataUrls || !mem.photoDataUrls.length)
+                  && src.photoDataUrls && src.photoDataUrls.length;
+    if(!needsImg && !needsMulti) continue;
+    if(needsImg) mem.imgDataUrl = src.imgDataUrl;
+    if(needsMulti){
+      mem.photoDataUrls = src.photoDataUrls.slice();
+      if(!mem.imgDataUrl) mem.imgDataUrl = src.photoDataUrls[0];
+    }
+    try {
+      await _dbSaveInv(mem);
+      recovered++;
+      console.log('[forcePhotoRecovery] ✓ '+mem.id+' "'+mem.name+'"');
+    } catch(e){
+      failed++;
+      console.warn('[forcePhotoRecovery] ✗ '+mem.id+' '+e.message);
+    }
+  }
+  console.log('═══════════════════════════════════════════════');
+  console.log('[forcePhotoRecovery] DONE. Recovered: '+recovered+', Failed: '+failed);
+  if(recovered){
+    toast('Recovered photos for '+recovered+' item'+(recovered!==1?'s':'')+' ✓', 'success');
+    if(curPage==='inventory') setTimeout(function(){ nav('inventory'); }, 800);
+  } else {
+    toast('No photos found in local cache to recover', 'info');
+  }
+};
 
 async function _dbSaveInv(item, qtyDelta){
   if(!SESSION.bizId||SESSION.isSuperAdmin) return;
