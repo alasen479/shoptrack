@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779837874");
+console.log("ShopTrack v2.7 - build:1779838360");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -18564,9 +18564,43 @@ async function _dbLoadBizData(bizId){
     );
     if(_invShouldRetry){
       console.warn('[DB] Inventory full SELECT failed ('+(_invErr||'500')+') — retrying without photos...');
-      _invResult = await _sb.from('inventory').select('id,biz_id,sku,name,cat,brand,status,condition,sp,cost,rp,deposit,min_sp,min_stock,qty,color,size,description,rented,img,img_color,item_type,needs_price,vendor_id,recipe,sp_native,sp_currency,cost_native,cost_currency,rp_native,rp_currency,min_sp_native,min_sp_currency,dep_native,dep_currency,cost_lines').eq('biz_id', bizId).limit(2000);
-      if(_invResult.error) console.error('[DB] inventory retry also failed:', _invResult.error.message);
-      else {
+      // CORE COLUMNS — these have shipped since v1 and are guaranteed
+      // to exist on every deployment. The slim retry starts here and
+      // only adds the post-launch columns that don't fail.
+      var _coreCols = ['id','biz_id','sku','name','cat','brand','status','condition',
+                       'sp','cost','rp','deposit','min_sp','min_stock','qty',
+                       'color','size','description','rented','img','img_color'];
+      // OPTIONAL COLUMNS — added in later versions. May not exist on
+      // older Supabase deployments. We start by requesting all of them,
+      // and strip individually if Postgres complains. Each strip-and-
+      // retry needs one round trip, so this is bounded at ~10 retries.
+      var _optionalCols = ['item_type','needs_price','vendor_id','recipe',
+                           'sp_native','sp_currency','cost_native','cost_currency',
+                           'rp_native','rp_currency','min_sp_native','min_sp_currency',
+                           'dep_native','dep_currency','cost_lines'];
+      var _slimCols = _coreCols.concat(_optionalCols);
+      var _slimRetries = 0;
+      var _slimMaxRetries = 15;
+      while(_slimRetries++ < _slimMaxRetries){
+        _invResult = await _sb.from('inventory').select(_slimCols.join(',')).eq('biz_id', bizId).limit(2000);
+        if(!_invResult.error) break;
+        // Parse the missing column name out of the error
+        // Format: 'column inventory.X does not exist'
+        var _missMatch = (_invResult.error.message||'').match(/column inventory\.(\w+) does not exist/i);
+        if(_missMatch && _missMatch[1]){
+          var _miss = _missMatch[1];
+          var _origIdx = _slimCols.indexOf(_miss);
+          if(_origIdx >= 0){
+            console.warn('[DB] Slim retry: column "'+_miss+'" missing — dropping and retrying');
+            _slimCols.splice(_origIdx, 1);
+            continue;
+          }
+        }
+        // Some other error (not a missing column) — bail
+        console.error('[DB] inventory slim retry failed:', _invResult.error.message);
+        break;
+      }
+      if(!_invResult.error){
         console.log('[DB] inventory retry OK:', (_invResult.data||[]).length, 'items — will backfill photos in background');
         _invRetryStripped = true;
         // Schedule background photo backfill. Don't await — fire-and-forget.
