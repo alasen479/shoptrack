@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779709414");
+console.log("ShopTrack v2.7 - build:1779830923");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -18616,13 +18616,30 @@ async function _dbLoadBizData(bizId){
         _freshInv = _freshInv.map(function(fr){
           var loc = _localInvMap[fr.id];
           if(!loc) return fr;
-          // (1) Preserve image fields if the slim retry stripped them
-          if(_invRetryStripped){
-            if(!fr.imgDataUrl    && loc.imgDataUrl)    fr.imgDataUrl    = loc.imgDataUrl;
-            if((!fr.photoDataUrls || !fr.photoDataUrls.length) && loc.photoDataUrls && loc.photoDataUrls.length){
-              fr.photoDataUrls = loc.photoDataUrls;
-            }
+          // (1) PHOTO PRESERVATION — runs ALWAYS, not just on slim retry.
+          // If the cloud copy has NULL/empty photo fields but the local
+          // IDB copy has photos, prefer local. This protects against
+          // past bad saves that stripped photo columns (rare but
+          // catastrophic — see _dbSaveInv comments). The user can
+          // explicitly delete a photo via removeItemPhoto(); that path
+          // sets photoDataUrls=[] and imgDataUrl=null, and writes
+          // immediately, so this merge can't resurrect deleted photos
+          // (because the local IDB would also have nulls by then).
+          // Items where photos were restored get _photosRecovered=true
+          // so the caller can re-save them back to cloud.
+          var _recoveredPhoto = false;
+          if(!fr.imgDataUrl && loc.imgDataUrl){
+            fr.imgDataUrl = loc.imgDataUrl;
+            _recoveredPhoto = true;
           }
+          if((!fr.photoDataUrls || !fr.photoDataUrls.length) && loc.photoDataUrls && loc.photoDataUrls.length){
+            fr.photoDataUrls = loc.photoDataUrls;
+            _recoveredPhoto = true;
+            // If we restored multi-photos but imgDataUrl is still empty,
+            // sync them so both fields are populated for downstream code.
+            if(!fr.imgDataUrl) fr.imgDataUrl = loc.photoDataUrls[0];
+          }
+          if(_recoveredPhoto) fr._photosRecovered = true;
           // (2) Preserve native + currency fields if cloud rows lack them
           // (user hasn't run the inventory migration yet — see the
           // priceNative+priceCurrency drift-fix pattern). Without this,
@@ -18640,6 +18657,28 @@ async function _dbLoadBizData(bizId){
         });
       }
       D.inv = _mergeData(D.inv, _freshInv);
+
+      // If we restored photos from local IDB onto cloud rows that had
+      // NULL photo fields, write them back so the recovery is permanent.
+      // Otherwise every page load would silently restore photos in
+      // memory but the cloud copy would stay broken — and a load from
+      // a fresh device (where IDB is empty) would lose the photos
+      // forever. Save back asynchronously, fire-and-forget.
+      if(D.inv && D.inv.length){
+        var _recoveredCount = 0;
+        D.inv.forEach(function(it){
+          if(it._photosRecovered){
+            delete it._photosRecovered;
+            _recoveredCount++;
+            _dbSaveInv(it).catch(function(e){
+              console.warn('[photo-recovery] resave failed for '+it.id+':', e.message);
+            });
+          }
+        });
+        if(_recoveredCount){
+          console.log('[photo-recovery] restored photos for '+_recoveredCount+' item(s) from local IDB cache — re-saving to cloud');
+        }
+      }
     }
     else {
       // Overlay: apply saved photos/edits onto demo items from Supabase
@@ -19960,17 +19999,21 @@ async function _sbUpsertWithFallback(table, payload, ctx){var _s=_L();
         console.warn('['+ctx+'] Stripping missing column: '+badCol+' (retry '+(_retry+1)+')');
         delete safe[badCol];
       } else {
-        // Can't detect column — strip all known optional columns as fallback
-        console.warn('['+ctx+'] Column error but could not parse name — stripping all optional');
+        // Can't detect column — strip all known optional columns as fallback.
+        // EXCLUDES: img_data_url and photo_data_urls (photo data loss is
+        // unrecoverable). Also excludes id/biz_id/name (would corrupt
+        // the row). If the error truly requires stripping one of these,
+        // it's better to fail this save than silently destroy data.
+        console.warn('['+ctx+'] Column error but could not parse name — stripping optional cols (photos preserved)');
         ['dob','birthday','docs','contract_sig_url','contract_signed_date',
-         'contract_signed','photo_data_urls','line_items','cost_lines',
+         'contract_signed','line_items','cost_lines',
          '_storedProfit','profit','terms','freight','taxes','other',
          'dmg_deduction','refund','return_notes','return_date',
          'img_color','min_sp','min_stock','deposit','rented','notes',
          'condition_before','condition_after','late_fee','inv_id',
          'customer_id','item_id','vendor_id','delivery_date','lines',
          'duties','subtotal','rp','sp','cost','color','size','description',
-         'sku','brand','img','img_data_url','whatsapp','city','address',
+         'sku','brand','img','whatsapp','city','address',
          'tier','vip','last_visit','visits','orders','spent','balance',
          'payee','type','method','country','contact','qty','fee',
          'start_date','due_date','items'].forEach(function(k){ delete safe[k]; });
@@ -20672,6 +20715,25 @@ async function _dbSaveInv(item, qtyDelta){
   // Iterative strip-and-retry — see _dbSavePurchase for the rationale.
   // Avoids needing to maintain a hardcoded allow-list of missing-column
   // names every time we add a new field.
+  //
+  // PROTECTED COLUMNS (NEVER STRIP)
+  // If Postgres reports any of these as missing, abort the save instead
+  // of dropping them. Stripping them destroys data the user can't easily
+  // re-enter:
+  //   - img_data_url, photo_data_urls: product photos. Lost photos
+  //     can't be recovered without re-uploading from the customer's
+  //     device. Two businesses lost ALL their product photos to this
+  //     bug when PostgREST's schema cache briefly reported these
+  //     columns as missing during normal operation. Schema cache misses
+  //     are transient (recover in 10-30s) — far better to fail this one
+  //     save and retry than to wipe photos that may take weeks to
+  //     re-photograph.
+  //   - id, biz_id, name: identifiers. Save is meaningless without them.
+  // The schema cache will normally settle within a few seconds, so a
+  // subsequent save (e.g. from the user's next edit or a periodic
+  // reconcile) will succeed. We'd rather have a temporary save failure
+  // than permanent data loss.
+  var _PROTECTED_COLS = ['img_data_url','photo_data_urls','id','biz_id','name'];
   var payload = _invToDB(item, SESSION.bizId);
   var attempts = 0;
   var maxAttempts = 16;
@@ -20694,6 +20756,22 @@ async function _dbSaveInv(item, qtyDelta){
     var col = colMatch[1];
     if(!(col in payload)){
       console.error('[saveInv] reported missing column "'+col+'" not in payload:', result.error);
+      return;
+    }
+    // CRITICAL: never strip a protected column. Better to fail the save
+    // and let the user retry than destroy photos / identifiers.
+    if(_PROTECTED_COLS.indexOf(col) >= 0){
+      console.error('[saveInv] REFUSING TO STRIP protected column "'+col+
+        '" — likely a transient schema cache miss. Item:', item.id, item.name,
+        '| Save will retry on next edit or reconcile.');
+      // Queue the save so it retries when the schema cache recovers
+      try{
+        await _queueEnqueue(SESSION.bizId, 'inventory', payload, qtyDelta);
+        var _qc = await _queueCount(SESSION.bizId); _queueUpdateBadge(_qc);
+        console.warn('[saveInv] queued for retry. Queue size:', _qc);
+      }catch(_qe){
+        console.error('[saveInv] queue fallback failed:', _qe.message);
+      }
       return;
     }
     delete payload[col];
