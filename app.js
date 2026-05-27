@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779898155");
+console.log("ShopTrack v2.7 - build:1779898394");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5213,12 +5213,15 @@ function _recipeRowHTML(prefix, idx, line, ingOpts){
     // doesn't type into this; their job is just qty. We keep it as an
     // <input> rather than a <div> so saveEditItem's _cbReadLines-style
     // readers still find it via .rcp-unit.value, but visually it reads
-    // as a static label: no border, no background, muted text.
+    // as a static chip — clearly visible (solid background, bold dark
+    // text) but clearly non-editable (no border focus, no caret).
     +'<input class="fi rcp-unit" readonly tabindex="-1" value="'+_esc(line.unit||'')+'" '
       +'title="Auto-filled from the ingredient\'s Unit of measurement. '
       +'Edit the inventory item to change the unit."'
-      +' style="font-size:12px;padding:6px;border:none;background:transparent;'
-      +'color:var(--text2);cursor:default;text-align:center;font-weight:600"/>'
+      +' style="font-size:12px;padding:6px 8px;'
+      +'background:var(--bg3);border:1px solid var(--border);border-radius:6px;'
+      +'color:var(--ink);font-weight:700;text-align:center;'
+      +'cursor:default;user-select:none"/>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_rcpRemoveLine(this,\''+prefix+'\')" style="padding:4px 6px">\u2715</button>'
     // Second-line annotation under the row that shows on-hand stock
     // for the currently-selected ingredient. Spans the first column only
