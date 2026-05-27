@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779904384");
+console.log("ShopTrack v2.7 - build:1779904890");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4032,6 +4032,15 @@ function pgInv(){const _s=_L();const _ui=_s;
           // they appear in the same Copy SQL block as the other fixes.
           // Postgres will ignore SQL comments cleanly, so even if the
           // user pastes the whole thing, the comment is harmless.
+          //
+          // The RLS policy uses 'TO anon' because the client uses the
+          // anon key (verified at runtime — the JWT's 'role' claim is
+          // 'anon'). Granting to 'authenticated' would silently fail
+          // for the actual session: uploads would return 'new row
+          // violates row-level security policy'. Anon write here is
+          // consistent with how the rest of the app's tables already
+          // accept writes — the bucket shouldn't be more locked-down
+          // than the database tables it serves.
           return '-- ──────────────────────────────────────────────────\n'
             +'-- MANUAL STEP — Create Storage bucket "'+bucket+'":\n'
             +'--   1. Open Supabase dashboard → Storage\n'
@@ -4040,12 +4049,11 @@ function pgInv(){const _s=_L();const _ui=_s;
             +'--   4. Public: YES (toggle on)\n'
             +'--   5. Click Create\n'
             +'--\n'
-            +'-- Then add this SQL policy (paste below) so authenticated\n'
-            +'-- users can upload, and anyone can view:\n'
+            +'-- Then run this SQL to allow uploads + public reads:\n'
             +'CREATE POLICY "Public read '+bucket+'" ON storage.objects\n'
             +'  FOR SELECT USING (bucket_id = \''+bucket+'\');\n'
-            +'CREATE POLICY "Auth write '+bucket+'" ON storage.objects\n'
-            +'  FOR ALL TO authenticated\n'
+            +'CREATE POLICY "Anon write '+bucket+'" ON storage.objects\n'
+            +'  FOR ALL TO anon\n'
             +'  USING (bucket_id = \''+bucket+'\')\n'
             +'  WITH CHECK (bucket_id = \''+bucket+'\');\n'
             +'-- ──────────────────────────────────────────────────';
