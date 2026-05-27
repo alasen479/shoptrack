@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779906163");
+console.log("ShopTrack v2.7 - build:1779908208");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5080,11 +5080,6 @@ function _cbRecalc(prefix){
   var container = document.getElementById(prefix+'-cb-rows');
   var grandEl   = document.getElementById(prefix+'-cb-grand');
   var pillEl    = document.getElementById(prefix+'-cb-total-pill');
-  var costField; // the main cost field to auto-fill
-  if(prefix==='ci')      costField = document.getElementById('ai-cost');  // add item
-  else if(prefix==='cei') costField = document.getElementById('ei-cost'); // edit item
-  else if(prefix==='cs')  costField = document.getElementById('sv-cost'); // new service
-  else if(prefix==='ces') costField = document.getElementById('sv-cost'); // edit service
 
   if(!container) return;
   var total = 0;
@@ -5119,43 +5114,96 @@ function _cbRecalc(prefix){
       : '<span style="font-size:12px;color:var(--text3)">0</span>';
   }
 
-  // Auto-fill the cost price field with PER-UNIT cost.
-  // Divisor = sum of qty across PURCHASE / MATERIALS / IMPORT rows only.
-  // If none exist, treat the whole entry as one unit acquisition (rare —
-  // means the user only logged overhead costs without specifying what
-  // they bought; still a sensible fallback).
-  if(costField && total > 0){
-    var divisor = unitQty > 0 ? unitQty : 1;
-    var perUnit = total / divisor;
-    costField.value = Math.round(perUnit * 100) / 100;
-    // Auto-populate Qty on Hand for Add Item form using the SAME divisor.
-    // Preserve decimal qtys for businesses tracking fractional units
-    // (e.g. 2.5 kg flour, 1.75 m fabric). Trim float noise to 3 decimals
-    // then strip trailing zeros.
-    //
-    // The Cost Breakdown is the source of truth for qty acquired — when
-    // the user enters a purchase / materials / import line for 10 units,
-    // the form's Qty on Hand should reflect that. A previous safeguard
-    // (data-touched) skipped this overwrite when the user had typed
-    // anything into the qty field, but that broke the more common flow
-    // where users type a temporary placeholder, then go fill in the
-    // breakdown and expect qty to update. Reverted that guard per user
-    // request — breakdown always wins.
-    if(prefix === 'ci' && unitQty > 0){
-      var qtyField = document.getElementById('ai-qty');
-      if(qtyField){
-        var qtyDisplay = parseFloat(unitQty.toFixed(3)); // strip noise
-        qtyField.value = qtyDisplay;
-        qtyField.style.transition = 'background .3s';
-        qtyField.style.background = 'var(--g-dim)';
-        setTimeout(function(){ qtyField.style.background = ''; }, 600);
-      }
+  // Cache the breakdown's contribution for the combined cost calc.
+  // Both this panel and the Made-from recipe panel contribute to the
+  // final Cost Price field; _invRecalcTotalCost reads both caches and
+  // writes the sum.
+  if(!window._invCostParts) window._invCostParts = {};
+  window._invCostParts[prefix] = {
+    breakdownTotal: totalBase, // in base currency (USD)
+    unitQty: unitQty
+  };
+
+  // Auto-populate Qty on Hand for Add Item form using the breakdown's
+  // qty-bearing total. Preserve decimal qtys for businesses tracking
+  // fractional units (2.5 kg flour, 1.75 m fabric). Cost Breakdown is
+  // the source of truth for qty acquired — breakdown always wins.
+  if(prefix === 'ci' && unitQty > 0){
+    var qtyField = document.getElementById('ai-qty');
+    if(qtyField){
+      var qtyDisplay = parseFloat(unitQty.toFixed(3)); // strip float noise
+      qtyField.value = qtyDisplay;
+      qtyField.style.transition = 'background .3s';
+      qtyField.style.background = 'var(--g-dim)';
+      setTimeout(function(){ qtyField.style.background = ''; }, 600);
     }
-    // Flash highlight to show it was updated
-    costField.style.transition = 'background .3s';
-    costField.style.background = 'var(--g-dim)';
-    setTimeout(function(){ costField.style.background = ''; }, 600);
   }
+
+  // Write the combined cost (breakdown + recipe) to the Cost Price field.
+  _invRecalcTotalCost(prefix);
+}
+
+// Combined cost recalc — sums Cost Breakdown overhead + Made-from recipe
+// ingredients, writes the per-unit cost into the Cost Price field.
+//
+//   per-unit cost = (breakdown total + recipe total) / divisor
+//
+// Where divisor = qty-bearing rows in the breakdown (purchase/materials/
+// import), or 1 if none. This handles three cases cleanly:
+//
+//   Raw material (Beef, 10 kg purchase):
+//     breakdown total = 3500 + 200 transport = 3700 XAF
+//     recipe total    = 0 (raw materials have no recipe)
+//     divisor         = 10 (the purchase qty)
+//     per-unit cost   = 370 per kg ✓
+//
+//   Bulk Batch (Ndolé Beef Batch — 20 plates):
+//     breakdown total = 5000 (labor + gas + packaging)
+//     recipe total    = 15215 (3 kg beef × cost + ... summed)
+//     divisor         = 1 (overhead categories have no purchase qty)
+//     batch cost      = 20215 per batch ✓
+//
+//   Finished Product (Ndolé Beef Plate — Plantain):
+//     breakdown total = 0 (or small — disposable plate, etc.)
+//     recipe total    = ~1011 (0.4 of batch × batch-cost + 2 × plantain)
+//     divisor         = 1
+//     per-plate cost  = ~1011 per plate ✓
+//
+// Called by _cbRecalc and _rcpRecalc as their final step.
+function _invRecalcTotalCost(prefix){
+  // Normalize: recipe prefixes ('ri', 'rei') share their cost field with
+  // the corresponding cost-breakdown prefix ('ci', 'cei') — the recipe
+  // and breakdown panels live in the same modal, writing to the same
+  // Cost Price input.
+  var normalized = prefix;
+  if(prefix === 'ri')  normalized = 'ci';
+  else if(prefix === 'rei') normalized = 'cei';
+
+  var costField;
+  if(normalized === 'ci')       costField = document.getElementById('ai-cost');
+  else if(normalized === 'cei') costField = document.getElementById('ei-cost');
+  else if(normalized === 'cs')  costField = document.getElementById('sv-cost');
+  else if(normalized === 'ces') costField = document.getElementById('sv-cost');
+  if(!costField) return;
+
+  if(!window._invCostParts) window._invCostParts = {};
+  var bdParts = window._invCostParts[normalized]
+    || { breakdownTotal: 0, unitQty: 0 };
+  // Recipe prefix derives from breakdown prefix: 'cei' → 'rei', 'ci' → 'ri'
+  var recipePrefix = normalized.replace(/^c/, 'r');
+  var rcpParts = window._invCostParts[recipePrefix] || { recipeTotal: 0 };
+
+  var totalBase = (bdParts.breakdownTotal || 0) + (rcpParts.recipeTotal || 0);
+  if(totalBase <= 0) return; // nothing to fill — leave field as-is
+
+  var divisor = (bdParts.unitQty && bdParts.unitQty > 0) ? bdParts.unitQty : 1;
+  var perUnitBase = totalBase / divisor;
+  var perUnitDisplay = perUnitBase * CUR.rate;
+
+  costField.value = Math.round(perUnitDisplay * 100) / 100;
+  costField.style.transition = 'background .3s';
+  costField.style.background = 'var(--g-dim)';
+  setTimeout(function(){ costField.style.background = ''; }, 600);
 }
 
 // Read cost lines back out of the DOM for saving
@@ -5469,6 +5517,18 @@ function _rcpRecalc(prefix){
   if(bodyEl) bodyEl.textContent = fmt(totalDisplay/CUR.rate);
   var pillEl = document.getElementById(prefix+'-rcp-cost-pill');
   if(pillEl) pillEl.innerHTML = '<span style="font-family:var(--mono);font-size:13px;font-weight:800;color:var(--p)">'+fmt(totalDisplay/CUR.rate)+'</span>';
+
+  // Cache recipe contribution for the combined cost calc that writes
+  // the final Cost Price field. Recipe total + cost-breakdown total =
+  // full cost; per-unit divides by the breakdown's unitQty (or 1).
+  if(!window._invCostParts) window._invCostParts = {};
+  window._invCostParts[prefix] = {
+    recipeTotal: totalDisplay / CUR.rate // in base currency (USD)
+  };
+
+  // Trigger combined cost recalc — adds this to the cost-breakdown
+  // contribution and writes the sum to the Cost Price field.
+  _invRecalcTotalCost(prefix);
 }
 
 function _rcpReadLines(prefix){
@@ -5591,7 +5651,13 @@ async function mAddItem(_returnSelectId){const _s=_L();
   // ('resale' on a fresh Add, but a user may have a saved preference
   // in the future). Same call also fires on dropdown change via the
   // onchange="_aiToggleItemTypeUI()" attribute on the select.
-  setTimeout(function(){ _invToggleItemTypeUI('ai'); }, 80);
+  setTimeout(function(){
+    _invToggleItemTypeUI('ai');
+    // Initial recalc so the combined-cost cache is populated even if
+    // the form opens with default empty values. No-op when both panels
+    // are empty.
+    try { _cbRecalc('ci'); } catch(_){}
+  }, 80);
 }
 function _previewNewItemPhotos(input){
   const files = Array.from(input.files);
@@ -5848,6 +5914,14 @@ async function mEditItem(id){const _s=_L();
     // already correct.
     _invToggleItemTypeUI('ei');
     setTimeout(function(){ _invToggleItemTypeUI('ei'); }, 100);
+    // Fire initial recalc on both Cost Breakdown and Made-from panels.
+    // This populates window._invCostParts cache so the combined cost
+    // calculation has both halves to sum. Without these initial firings,
+    // the cost field would only update when the user edits one of the
+    // panels — and opening an item with existing recipe + breakdown data
+    // would show a stale cost price until something changed.
+    try { _cbRecalc('cei'); } catch(_){}
+    try { _rcpRecalc('rei'); } catch(_){}
     // Diagnostic log so the user (or me, when debugging) can see in
     // the console what itemType the modal opened with. If they expect
     // raw_material and see 'resale', they know to check the underlying
@@ -10442,6 +10516,19 @@ function _nbPreview(){
     }
   });
 
+  // Add product-level overhead from its Cost Breakdown (labor, gas,
+  // packaging). Mirrors the calc in _saveBatch so the preview shows the
+  // same number that will be saved. Multiplier applies to overhead too.
+  var _QTY_BEARING_NB = { purchase:1, materials:1, import:1 };
+  var overheadUSD = 0;
+  if(Array.isArray(product.costLines)){
+    product.costLines.forEach(function(cl){
+      if(_QTY_BEARING_NB[cl.cat||'']) return;
+      overheadUSD += (cl.qty || 1) * (cl.unitCost || 0);
+    });
+  }
+  totalCostUSD += overheadUSD * mult;
+
   var canProduce = shortages.length === 0;
 
   var rowsHtml = rows.map(function(r){
@@ -10546,6 +10633,23 @@ async function _saveBatch(){
     });
     totalCostUSD += (ing.cost||0) * needed;
   });
+
+  // Add product-level overhead from its Cost Breakdown (labor, gas,
+  // packaging, etc.) — same multiplier as the recipe so producing 2x
+  // batches incurs 2x overhead. costLines store unitCost in BASE
+  // currency (USD). Categories that represent units acquired (purchase/
+  // materials/import) are skipped here — those would be ingredient
+  // costs, which are already counted via the recipe lines above.
+  var QTY_BEARING = { purchase:1, materials:1, import:1 };
+  var overheadUSD = 0;
+  if(Array.isArray(product.costLines)){
+    product.costLines.forEach(function(cl){
+      if(QTY_BEARING[cl.cat||'']) return; // skip "purchase" lines
+      var lineCost = (cl.qty || 1) * (cl.unitCost || 0);
+      overheadUSD += lineCost;
+    });
+  }
+  totalCostUSD += overheadUSD * mult;
 
   if(shortages.length){
     toast('Stock changed since preview \u2014 cannot produce. Refresh and check.', 'error');
