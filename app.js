@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779878519");
+console.log("ShopTrack v2.7 - build:1779880930");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -19015,17 +19015,24 @@ async function _dbLoadBizData(bizId){
         _freshInv = _freshInv.map(function(fr){
           var loc = _localInvMap[fr.id];
           if(!loc) return fr;
-          // (1) PHOTO PRESERVATION — runs ALWAYS, not just on slim retry.
-          // If the cloud copy has NULL/empty photo fields but the local
-          // IDB copy has photos, prefer local. This protects against
-          // past bad saves that stripped photo columns (rare but
-          // catastrophic — see _dbSaveInv comments). The user can
-          // explicitly delete a photo via removeItemPhoto(); that path
-          // sets photoDataUrls=[] and imgDataUrl=null, and writes
-          // immediately, so this merge can't resurrect deleted photos
-          // (because the local IDB would also have nulls by then).
-          // Items where photos were restored get _photosRecovered=true
-          // so the caller can re-save them back to cloud.
+          // (1) PHOTO PRESERVATION — runs ALWAYS, but the save-back step
+          // only fires when the FULL select succeeded (i.e. cloud
+          // genuinely returned NULL photo fields, suggesting data loss
+          // from a past bad save). When the slim retry was used, the
+          // photo columns were deliberately stripped from the SELECT
+          // to dodge the response-size timeout — they're absent from
+          // the result, but they DO exist on the cloud row. We must
+          // NOT re-save in that case, because:
+          //   a) the cloud already has the photos — re-save is wasted work
+          //   b) each save sends ~1-2 MB of base64 per row
+          //   c) with N items, that's N simultaneous fat upserts —
+          //      Supabase choked under this storm with statement_timeout
+          //      errors (57014) on every single one
+          //   d) AND the subsequent reload re-triggers the same storm
+          // The backfill path (_backfillInventoryPhotos) is what
+          // re-hydrates photos into memory + IDB after a slim retry. It
+          // doesn't try to save back to cloud — and it shouldn't, since
+          // the cloud rows already have the photos.
           var _recoveredPhoto = false;
           if(!fr.imgDataUrl && loc.imgDataUrl){
             fr.imgDataUrl = loc.imgDataUrl;
@@ -19038,7 +19045,12 @@ async function _dbLoadBizData(bizId){
             // sync them so both fields are populated for downstream code.
             if(!fr.imgDataUrl) fr.imgDataUrl = loc.photoDataUrls[0];
           }
-          if(_recoveredPhoto) fr._photosRecovered = true;
+          // CRITICAL: only flag for re-save when the FULL select succeeded.
+          // _invRetryStripped is true iff we used the slim retry — which
+          // means absent photo data is expected, not a recovery signal.
+          if(_recoveredPhoto && !_invRetryStripped){
+            fr._photosRecovered = true;
+          }
           // (3) PRESERVE OPTIONAL FIELDS THAT WERE STRIPPED BY SLIM RETRY
           // The slim retry drops schema-missing columns. For each absent
           // column, _dbToInv inserts a tag in fr._missingCols. We use
@@ -21173,8 +21185,28 @@ function _consumeRecipe(product, multiplier, saleRef){
 // the entire backfill completes in a few seconds.
 async function _backfillInventoryPhotos(bizId, itemIds){
   if(!_sb || !bizId || !itemIds || !itemIds.length) return;
-  console.log('[backfill] Starting photo backfill for '+itemIds.length+' items in biz '+bizId);
-  var BATCH_SIZE = 5;
+  // Skip items that already have photos in memory (typically loaded from
+  // IDB cache by the preservation merge above). Refetching is wasted
+  // network. After this filter, we only fetch for items the cache also
+  // couldn't supply — those are the genuine cold-cache cases.
+  var needFetch = itemIds.filter(function(id){
+    var it = D.inv.find(function(x){return x.id === id;});
+    if(!it) return true; // not in memory — fetch to be safe
+    var hasImg   = !!it.imgDataUrl;
+    var hasMulti = !!(it.photoDataUrls && it.photoDataUrls.length);
+    return !hasImg && !hasMulti; // only fetch if both are empty
+  });
+  if(!needFetch.length){
+    console.log('[backfill] All '+itemIds.length+' items already have photos in memory — nothing to fetch');
+    return;
+  }
+  console.log('[backfill] Starting photo backfill for '+needFetch.length+' items (of '+itemIds.length+' total) in biz '+bizId);
+  // Batch size reduced from 5 to 3 — accounts where the inventory table
+  // is large enough to time out a full SELECT will also time out on
+  // batches that try to fetch too many heavy photo payloads at once.
+  // 3 is conservative; the inter-batch delay below keeps Supabase from
+  // queuing them too tightly.
+  var BATCH_SIZE = 3;
   var totalLoaded = 0;
   var errors = 0;
   // Track which item IDs have had photos patched so we can update the DOM
@@ -21183,21 +21215,25 @@ async function _backfillInventoryPhotos(bizId, itemIds){
   // as a fallback if direct DOM patching can't find a target.
   var patchedIds = [];
 
-  for(var i = 0; i < itemIds.length; i += BATCH_SIZE){
+  for(var i = 0; i < needFetch.length; i += BATCH_SIZE){
     // Stop if the user navigated to a different business
     if(SESSION.bizId !== bizId){
       console.warn('[backfill] biz changed during backfill — stopping');
       return;
     }
-    var batchIds = itemIds.slice(i, i + BATCH_SIZE);
+    var batchIds = needFetch.slice(i, i + BATCH_SIZE);
     try {
       var res = await _sb.from('inventory')
         .select('id,img_data_url,photo_data_urls')
         .eq('biz_id', bizId)
         .in('id', batchIds);
       if(res.error){
-        // If even a 5-item batch fails, log and skip. Common cause:
+        // If even a 3-item batch fails, log and skip. Common cause:
         // one item has a massive multi-photo payload. Try one at a time.
+        // Some items just won't be loadable and we skip them — the
+        // alternative is an infinite retry loop that keeps Supabase
+        // saturated. The user will still see photos for everything that
+        // CAN be loaded; bad items remain blank until manually re-saved.
         console.warn('[backfill] batch of '+batchIds.length+' failed:', res.error.message, '— retrying singly');
         for(var j = 0; j < batchIds.length; j++){
           try {
@@ -21215,7 +21251,11 @@ async function _backfillInventoryPhotos(bizId, itemIds){
           } catch(se){
             errors++; console.warn('[backfill] '+batchIds[j]+' threw:', se.message);
           }
+          // Small breather between single fetches too — Supabase may be
+          // close to its concurrent-statement ceiling already.
+          await new Promise(function(r){ setTimeout(r, 150); });
         }
+        // Already paused inside the loop above
         continue;
       }
       (res.data||[]).forEach(function(row){
@@ -21230,13 +21270,17 @@ async function _backfillInventoryPhotos(bizId, itemIds){
       console.warn('[backfill] batch threw:', e.message);
     }
     // Persist IDB periodically so photos survive a refresh mid-backfill.
-    // Every 4 batches (~20 items) or on the final batch.
-    if(((i / BATCH_SIZE) | 0) % 4 === 3 || i + BATCH_SIZE >= itemIds.length){
+    // Every 4 batches (~12 items at BATCH_SIZE=3) or on the final batch.
+    if(((i / BATCH_SIZE) | 0) % 4 === 3 || i + BATCH_SIZE >= needFetch.length){
       _idbSave(bizId, 'inv', D.inv).catch(function(){});
     }
+    // Inter-batch breather. Without this the batches stack up at Supabase
+    // and contribute to statement_timeout pressure. 200ms keeps the
+    // throughput sensible while letting other queries land.
+    await new Promise(function(r){ setTimeout(r, 200); });
   }
 
-  console.log('[backfill] DONE. Loaded photos for '+totalLoaded+'/'+itemIds.length+' items ('+errors+' errors)');
+  console.log('[backfill] DONE. Loaded photos for '+totalLoaded+'/'+needFetch.length+' items ('+errors+' errors)');
   // Final IDB save — guarantee persistence
   _idbSave(bizId, 'inv', D.inv).catch(function(){});
 
