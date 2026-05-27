@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779845746");
+console.log("ShopTrack v2.7 - build:1779846361");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -18784,6 +18784,43 @@ async function _dbLoadBizData(bizId){
             if(!fr.imgDataUrl) fr.imgDataUrl = loc.photoDataUrls[0];
           }
           if(_recoveredPhoto) fr._photosRecovered = true;
+          // (3) PRESERVE OPTIONAL FIELDS THAT WERE STRIPPED BY SLIM RETRY
+          // The slim retry drops schema-missing columns. For each absent
+          // column, _dbToInv inserts a tag in fr._missingCols. We use
+          // that tag to keep the local IDB value rather than overwriting
+          // with the _dbToInv default. Without this, items the user
+          // marked as 'raw_material' or 'bulk' lose their type on every
+          // page reload when the schema is missing 'item_type'.
+          // costLines isn't preserved here because the editor saves it
+          // back on every edit cycle; if cloud has a row with no
+          // costLines but local does, the local-only items still flow
+          // through _mergeData below as 'local-only'. Same for recipe.
+          if(fr._missingCols && fr._missingCols.length){
+            fr._missingCols.forEach(function(field){
+              // itemType: any of 'resale'|'raw_material'|'bulk'
+              if(field === 'itemType' && loc.itemType && loc.itemType !== 'resale'){
+                fr.itemType = loc.itemType;
+              }
+              // recipe: non-empty array
+              if(field === 'recipe' && loc.recipe && loc.recipe.length){
+                fr.recipe = loc.recipe;
+              }
+              // vendorId: any truthy id
+              if(field === 'vendorId' && loc.vendorId){
+                fr.vendorId = loc.vendorId;
+              }
+              // needsPrice: only restore if local was true
+              if(field === 'needsPrice' && loc.needsPrice){
+                fr.needsPrice = true;
+              }
+              // costLines: non-empty array
+              if(field === 'costLines' && loc.costLines && loc.costLines.length){
+                fr.costLines = loc.costLines;
+              }
+            });
+            // Tag scrubbed so it doesn't accumulate or hit save paths
+            delete fr._missingCols;
+          }
           // (2) Preserve native + currency fields if cloud rows lack them
           // (user hasn't run the inventory migration yet — see the
           // priceNative+priceCurrency drift-fix pattern). Without this,
@@ -20350,12 +20387,37 @@ function _dbToInv(r){ return {
         ? (function(){ try{return JSON.parse(r.recipe);}catch(e){return [];} })()
         : (Array.isArray(r.recipe) ? r.recipe : []))
     : [],
+  // cost_lines was previously not loaded by _dbToInv at all (only saved),
+  // which meant the cost breakdown disappeared from view/edit modals on
+  // every page reload even though Supabase had it. Now loaded with the
+  // same JSON-or-array tolerance as recipe.
+  costLines: r.cost_lines
+    ? (typeof r.cost_lines === 'string'
+        ? (function(){ try{return JSON.parse(r.cost_lines);}catch(e){return [];} })()
+        : (Array.isArray(r.cost_lines) ? r.cost_lines : []))
+    : [],
   rented:r.rented||0, img:r.img||'gown-aline',
   imgC:r.img_color||['#a8b4c8','#c8b4a0','#e0d4bc'],
   imgDataUrl:r.img_data_url||null,
   photoDataUrls: (()=>{
     try{ return r.photo_data_urls ? JSON.parse(r.photo_data_urls) : (r.img_data_url?[r.img_data_url]:[]); }
     catch(e){ return r.img_data_url?[r.img_data_url]:[]; }
+  })(),
+  // Track which optional columns were ABSENT from the SELECT result.
+  // The slim retry strips missing-schema columns, so a row without the
+  // 'item_type' key (vs explicitly null) means we couldn't load that
+  // field — preserve the value from local IDB if any. Same logic for
+  // 'recipe'. This is the type-filter-not-working fix: items that the
+  // user manually marked as raw_material/bulk would default back to
+  // 'resale' on every page load when the column was missing.
+  _missingCols: (function(){
+    var m = [];
+    if(!('item_type' in r))      m.push('itemType');
+    if(!('recipe' in r))         m.push('recipe');
+    if(!('vendor_id' in r))      m.push('vendorId');
+    if(!('needs_price' in r))    m.push('needsPrice');
+    if(!('cost_lines' in r))     m.push('costLines');
+    return m;
   })()
 }; }
 function _dbToCust(r){ return {
@@ -21009,6 +21071,65 @@ window.backfillPhotos = function(){
 //   - In-memory D.inv row counts with non-empty photo fields
 // Use this to figure out WHICH layer lost the photos before
 // deciding what to recover from. Safe — read-only, no writes.
+// ── ITEM TYPE DIAGNOSTIC ──────────────────────────────────────
+// Helps debug the inventory type-filter. Reports the distribution
+// of itemType values across in-memory inventory and (separately)
+// what cloud actually returns. If cloud rows lack an item_type
+// column at all, the report says 'column missing'.
+window.diagnoseItemTypes = async function(){
+  if(!SESSION.bizId){ console.error('[diagnoseItemTypes] no biz session'); return; }
+  console.log('═══════════════════════════════════════════════');
+  console.log('  ITEM TYPE DIAGNOSTIC — biz_id:', SESSION.bizId);
+  console.log('═══════════════════════════════════════════════');
+  var dist = {};
+  D.inv.forEach(function(i){
+    var t = i.itemType || '(undefined)';
+    dist[t] = (dist[t]||0) + 1;
+  });
+  console.log('[1] IN-MEMORY D.inv item-type distribution:');
+  Object.keys(dist).sort().forEach(function(t){
+    console.log('    '+t+': '+dist[t]+' item(s)');
+  });
+  if(!_sb){ console.log('[2] CLOUD: not connected'); return; }
+  try {
+    var res = await _sb.from('inventory')
+      .select('id,name,item_type')
+      .eq('biz_id', SESSION.bizId)
+      .limit(2000);
+    if(res.error){
+      if(/column .*item_type.* does not exist/i.test(res.error.message||'')){
+        console.log('[2] CLOUD: column "item_type" DOES NOT EXIST on this Supabase schema');
+        console.log('    → Items will always load with itemType=\'resale\' (default)');
+        console.log('    → Run this SQL in Supabase: ALTER TABLE inventory ADD COLUMN IF NOT EXISTS item_type TEXT DEFAULT \'resale\';');
+      } else {
+        console.error('[2] CLOUD query failed:', res.error.message);
+      }
+      return;
+    }
+    var cloudDist = {};
+    (res.data||[]).forEach(function(r){
+      var t = r.item_type == null ? '(null)' : r.item_type;
+      cloudDist[t] = (cloudDist[t]||0) + 1;
+    });
+    console.log('[2] CLOUD item_type distribution:');
+    Object.keys(cloudDist).sort().forEach(function(t){
+      console.log('    '+t+': '+cloudDist[t]+' row(s)');
+    });
+    // Highlight mismatch
+    var memNonResale = D.inv.filter(function(i){return i.itemType && i.itemType !== 'resale';}).length;
+    var cloudNonResale = (res.data||[]).filter(function(r){return r.item_type && r.item_type !== 'resale';}).length;
+    if(memNonResale > 0 && cloudNonResale === 0){
+      console.warn('[MISMATCH] In-memory has '+memNonResale+' non-resale items, but cloud has 0.');
+      console.warn('           Likely cause: edits not yet synced, or save path stripped the column.');
+    } else if(memNonResale === 0 && cloudNonResale > 0){
+      console.warn('[MISMATCH] Cloud has '+cloudNonResale+' non-resale items, but in-memory has 0.');
+      console.warn('           Likely cause: slim retry stripped item_type from the load.');
+      console.warn('           Try a hard refresh to re-run the load.');
+    }
+  } catch(e){ console.error('[2] CLOUD query threw:', e.message); }
+  console.log('═══════════════════════════════════════════════');
+};
+
 window.diagnosePhotos = async function(){
   if(!SESSION.bizId){ console.error('[diagnosePhotos] no biz session'); return; }
   console.log('═══════════════════════════════════════════════');
