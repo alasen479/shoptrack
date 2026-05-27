@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779898394");
+console.log("ShopTrack v2.7 - build:1779898594");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5210,18 +5210,28 @@ function _recipeRowHTML(prefix, idx, line, ingOpts){
     +'<input class="fi rcp-qty" type="number" step="any" min="0" placeholder="0" value="'+(line.qty||'')+'" style="font-size:12px;padding:6px;text-align:right" oninput="_rcpRecalc(\''+prefix+'\')"/>'
     // Unit field is READ-ONLY — populated automatically from the picked
     // ingredient's underlying 'sz' (Unit of measurement) field. User
-    // doesn't type into this; their job is just qty. We keep it as an
-    // <input> rather than a <div> so saveEditItem's _cbReadLines-style
-    // readers still find it via .rcp-unit.value, but visually it reads
-    // as a static chip — clearly visible (solid background, bold dark
-    // text) but clearly non-editable (no border focus, no caret).
-    +'<input class="fi rcp-unit" readonly tabindex="-1" value="'+_esc(line.unit||'')+'" '
-      +'title="Auto-filled from the ingredient\'s Unit of measurement. '
-      +'Edit the inventory item to change the unit."'
-      +' style="font-size:12px;padding:6px 8px;'
-      +'background:var(--bg3);border:1px solid var(--border);border-radius:6px;'
-      +'color:var(--ink);font-weight:700;text-align:center;'
-      +'cursor:default;user-select:none"/>'
+    // doesn't type into this; their job is just qty.
+    //
+    // Visible chip styling: hardcoded colors instead of CSS variables.
+    // The previous attempts used var(--bg3) for the chip background,
+    // but .fi (the class on other inputs in the same row) ALSO uses
+    // var(--bg3) — so the chip blended invisibly into the adjacent
+    // qty input. Hardcoded values give us a guaranteed contrast that
+    // works in both light and dark themes.
+    //
+    // Also dropped the .fi class — it was forcing the .fi background
+    // and border via specificity which competed with the inline styles.
+    +'<div class="rcp-unit-wrap" style="display:flex;align-items:center;justify-content:center;'
+      +'background:#fde68a;border:1px solid #d97706;border-radius:6px;'
+      +'padding:6px 8px;min-height:32px;'
+      +'color:#451a03;font-weight:700;font-size:12px;text-align:center;'
+      +'user-select:none"'
+      +' title="Auto-filled from the ingredient\'s Unit of measurement. Edit the inventory item to change the unit.">'
+      +'<span class="rcp-unit-val">'+_esc(line.unit||'')+'</span>'
+      // Keep a hidden input so existing readers that query .rcp-unit by
+      // value still work (saveEditItem reads rows via .rcp-unit.value)
+      +'<input type="hidden" class="rcp-unit" value="'+_esc(line.unit||'')+'"/>'
+    +'</div>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_rcpRemoveLine(this,\''+prefix+'\')" style="padding:4px 6px">\u2715</button>'
     // Second-line annotation under the row that shows on-hand stock
     // for the currently-selected ingredient. Spans the first column only
@@ -5272,40 +5282,36 @@ function _rcpAddLine(prefix, currentItemId){
 
 function _rcpRowChange(sel, prefix){
   // When the user picks (or changes) an ingredient, two things refresh:
-  //   1. The unit field — auto-fills from data-unit on the picked option,
-  //      which is set from the ingredient's underlying 'sz' (Unit of
-  //      measurement) field. The unit input is read-only — the user
-  //      doesn't touch it. If the ingredient has no unit on file,
-  //      the field is blank and the user is expected to fix that on the
-  //      inventory item itself (run diagnoseMissingUnits() in F12 to
-  //      list any items needing the fix). We do NOT make the user
-  //      type the unit per recipe line — that's the wrong place.
+  //   1. The unit chip — set from data-unit on the picked option (which
+  //      comes from the ingredient's underlying 'sz' field). The chip
+  //      shows a visible label; we ALSO update a hidden input with the
+  //      same value so saveEditItem's row reader (.rcp-unit.value) still
+  //      finds the unit when the recipe gets saved. If the ingredient
+  //      has no unit on file, the chip is blank — the user is expected
+  //      to fix that on the inventory item itself (run
+  //      diagnoseMissingUnits() in F12 to list items needing fixes).
   //   2. The on-hand display under the row — shows available stock so
   //      the user can sanity-check before typing a quantity. Updates
   //      from data-avail on the picked option (qty - rented).
   var row = sel.closest('.rcp-row');
   if(!row) return;
   var opt = sel.options[sel.selectedIndex];
-  var unitInp = row.querySelector('.rcp-unit');
+  var unitInp = row.querySelector('.rcp-unit');   // hidden input
+  var unitVal = row.querySelector('.rcp-unit-val'); // visible span
   var availWrap = row.querySelector('.rcp-avail-wrap');
   var availVal = row.querySelector('.rcp-avail-val');
   if(opt && opt.value){
-    // Real ingredient picked — set both fields
-    if(unitInp){
-      unitInp.value = opt.dataset.unit || '';
-      // If the ingredient has no unit on file, log it once so power
-      // users see in F12 which inventory item still needs its unit set.
-      // No visual fuss in the row itself — keeps the UI calm.
-      if(!opt.dataset.unit){
-        var ingName = opt.text.split('·')[0].trim();
-        console.warn('[recipe] Ingredient "'+ingName+'" has no Unit of measurement on its inventory record. Run diagnoseMissingUnits() to list all items needing fixes.');
-      }
+    var u = opt.dataset.unit || '';
+    if(unitInp) unitInp.value = u;
+    if(unitVal) unitVal.textContent = u;
+    if(!u){
+      var ingName = opt.text.split('·')[0].trim();
+      console.warn('[recipe] Ingredient "'+ingName+'" has no Unit of measurement on its inventory record. Run diagnoseMissingUnits() to list all items needing fixes.');
     }
     if(availWrap && availVal){
       var av = opt.dataset.avail;
       if(av != null){
-        var unit = opt.dataset.unit || '';
-        availVal.textContent = av + (unit ? ' '+unit : '');
+        availVal.textContent = av + (u ? ' '+u : '');
         availWrap.style.display = '';
       } else {
         availWrap.style.display = 'none';
@@ -5316,6 +5322,7 @@ function _rcpRowChange(sel, prefix){
     if(availWrap) availWrap.style.display = 'none';
     if(availVal) availVal.textContent = '';
     if(unitInp) unitInp.value = '';
+    if(unitVal) unitVal.textContent = '';
   }
   _rcpRecalc(prefix);
 }
