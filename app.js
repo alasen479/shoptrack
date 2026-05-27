@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779849019");
+console.log("ShopTrack v2.7 - build:1779878519");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4969,12 +4969,18 @@ function _cbRecalc(prefix){
     // Preserve decimal qtys for businesses tracking fractional units
     // (e.g. 2.5 kg flour, 1.75 m fabric). Trim float noise to 3 decimals
     // then strip trailing zeros.
-    // SKIP overwrite if the user has already typed a value into the qty
-    // field manually — `data-touched` is set by the input's oninput
-    // handler. They had a reason for the value they typed.
+    //
+    // The Cost Breakdown is the source of truth for qty acquired — when
+    // the user enters a purchase / materials / import line for 10 units,
+    // the form's Qty on Hand should reflect that. A previous safeguard
+    // (data-touched) skipped this overwrite when the user had typed
+    // anything into the qty field, but that broke the more common flow
+    // where users type a temporary placeholder, then go fill in the
+    // breakdown and expect qty to update. Reverted that guard per user
+    // request — breakdown always wins.
     if(prefix === 'ci' && unitQty > 0){
       var qtyField = document.getElementById('ai-qty');
-      if(qtyField && qtyField.dataset.touched !== '1'){
+      if(qtyField){
         var qtyDisplay = parseFloat(unitQty.toFixed(3)); // strip noise
         qtyField.value = qtyDisplay;
         qtyField.style.transition = 'background .3s';
@@ -5258,7 +5264,7 @@ async function mAddItem(_returnSelectId){const _s=_L();
     <div class="fg"><label class="fl">Rental Price/Day <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="ai-rp" placeholder="0"/></div>
     <div class="fg"><label class="fl">Min. Sell Price 🔒</label><input class="fi" type="number" id="ai-minsp" placeholder="0"/><div class="fh">${_s.inv_hidden_staff}</div></div>
     <div class="fg"><label class="fl">${_s.inv_deposit_lbl}</label><input class="fi" type="number" id="ai-dep" placeholder="0"/></div>
-    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" type="number" step="any" min="0" id="ai-qty" value="1" oninput="this.dataset.touched='1'"/></div>
+    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" type="number" step="any" min="0" id="ai-qty" value="1"/></div>
     <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">Optional — triggers low stock warning</span></label><input class="fi" type="number" step="any" id="ai-minstock" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert fires when available qty falls to or below this number. Leave blank or set 0 to disable.</div></div>
   </div>
   <div class="fg-2">
