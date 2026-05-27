@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779845242");
+console.log("ShopTrack v2.7 - build:1779845746");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4257,7 +4257,18 @@ function mItem(id){const _s=_L();
     <div><div class="fl">${_s.ui_category}</div><div>${it.cat}</div></div>
     <div><div class="fl">${_s.inv_brand_lbl}</div><div>${it.brand||'—'}</div></div>
     <div><div class="fl">${_s.inv_color_lbl}</div><div>${it.color||'—'}</div></div>
-    <div><div class="fl">${_s.inv_size_lbl}</div><div>${it.sz||'—'}</div></div>
+    ${(function(){
+      // The 'sz' field doubles as Size (clothing/wigs/finished products) and
+      // Unit of Measurement (raw materials/bulk batches: g, ml, kg, each, m²).
+      // Pick the label based on itemType so raw materials don't show
+      // 'Size: kg' — that reads weirdly.
+      var typ = it.itemType || 'resale';
+      var lbl = (typ === 'raw_material' || typ === 'bulk')
+        ? (BIZ.language==='fr' ? 'Unité de mesure' : 'Unit of measurement')
+        : _s.inv_size_lbl;
+      var val = it.sz || '<span style="color:var(--text3);font-style:italic">— not set —</span>';
+      return '<div><div class="fl">'+lbl+'</div><div>'+val+'</div></div>';
+    })()}
     ${(function(){
       var v = it.vendorId ? D.vendors.find(function(x){return x.id===it.vendorId;}) : null;
       return '<div><div class="fl">Preferred vendor</div><div>'+(v?_esc(v.name):'<span style="color:var(--text3);font-style:italic">— not set —</span>')+'</div></div>';
@@ -4294,6 +4305,7 @@ function mItem(id){const _s=_L();
     <input class="fi" id="mi-minsp-${it.id}" value="${curInNative(it,'minSp','minSpNative','minSpCurrency')}" type="number"/>
   </div>
   <button class="btn btn-p btn-sm" style="margin-top:8px" onclick="_saveItemPrices('${it.id}')">💾 Save Prices</button>
+  ${_costBreakdownReadOnlyHTML(it.costLines)}
   </div>
 
   <div id="mi-photos" style="display:none">
@@ -4530,6 +4542,71 @@ function _costLineRowHTML(prefix, idx, line, catOpts){const _s=_L();
     +'<input class="fi cb-qty" type="number" value="'+qty+'" min="0.001" step="any" style="font-size:12px;height:34px;padding:6px 8px;text-align:right" oninput="_cbRecalc(\''+prefix+'\')" />'
     +'<input class="fi cb-uc" type="number" placeholder="0.00" value="'+uc+'" min="0" step="any" style="font-size:12px;height:34px;padding:6px 8px;text-align:right" oninput="_cbRecalc(\''+prefix+'\')" />'
     +'<button type="button" onclick="_cbRemoveLine(this,\''+prefix+'\')" style="width:28px;height:28px;background:var(--r-dim);border:none;border-radius:6px;color:var(--r);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="'+_s.inv_remove+'">✕</button>'
+    +'</div>';
+}
+
+// Read-only cost-breakdown display for the inventory VIEW modal.
+// Renders the same line data as the editor (_costBreakdownHTML) but
+// without inputs — just a clean table. Returns an empty string if the
+// item has no costLines so the caller can decide whether to show
+// any wrapping section at all.
+//   lines: array of {cat, desc, unit, qty, unitCost} from it.costLines
+//          (unitCost is stored in base USD, multiplied by CUR.rate for display)
+function _costBreakdownReadOnlyHTML(lines){const _s=_L();
+  if(!lines || !lines.length) return '';
+  var cats = _getCostCats();
+  var catMap = {};
+  cats.forEach(function(c){ catMap[c.id] = c; });
+  var fr = BIZ.language === 'fr';
+  // Compute the total in display currency. Same formula as the editor.
+  var total = lines.reduce(function(s,l){
+    return s + ((parseFloat(l.qty)||1) * (parseFloat(l.unitCost)||0) * CUR.rate);
+  }, 0);
+  // Convert back to base currency for fmt() (which applies CUR.rate itself).
+  var totalBase = total / CUR.rate;
+
+  var rowsHTML = lines.map(function(l){
+    var cat = catMap[l.cat] || {icon:'📋', label:(l.cat||'Other')};
+    var lineTotal = (parseFloat(l.qty)||1) * (parseFloat(l.unitCost)||0); // base USD
+    var qtyDisp = l.qty || 1;
+    var unitDisp = l.unit ? _esc(l.unit) : '<span style="color:var(--text3)">—</span>';
+    var ucDisp = fmt(parseFloat(l.unitCost) || 0);
+    return '<div style="display:grid;grid-template-columns:130px 1fr 80px 110px 110px;gap:8px;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);font-size:12px">'
+      +'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:14px">'+cat.icon+'</span><span style="font-size:11px;color:var(--text2);font-weight:600">'+_esc(cat.label)+'</span></div>'
+      +'<div style="color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(_esc(l.desc||'')||'<span style="color:var(--text3);font-style:italic">no description</span>')+'</div>'
+      +'<div style="text-align:right;font-family:var(--mono);color:var(--text2)">'+qtyDisp+' '+unitDisp+'</div>'
+      +'<div style="text-align:right;font-family:var(--mono);color:var(--text2)">'+ucDisp+'</div>'
+      +'<div style="text-align:right;font-family:var(--mono);font-weight:700;color:var(--ink)">'+fmt(lineTotal)+'</div>'
+    +'</div>';
+  }).join('');
+
+  return ''
+    +'<div style="margin-top:18px;border:1px solid var(--border2);border-radius:var(--r10);overflow:hidden;background:var(--bg)">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:var(--bg3);border-bottom:1px solid var(--border)">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:15px">📊</span>'
+        +'<div>'
+          +'<div style="font-size:12px;font-weight:700;color:var(--ink)">'+(fr?'Détail du coût (saisi initialement)':'Cost Breakdown (as originally entered)')+'</div>'
+          +'<div style="font-size:11px;color:var(--text2);margin-top:1px">'+(fr?'Décomposition saisie lors de l\u2019ajout ou de la modification de cet article':'The line items captured when this item was added or last edited')+'</div>'
+        +'</div>'
+      +'</div>'
+      +'<div style="font-size:11px;background:var(--bg5);padding:4px 10px;border-radius:10px;border:1px solid var(--border2);font-family:var(--mono);font-weight:800;color:var(--g)">'+fmt(totalBase)+'</div>'
+    +'</div>'
+    // Header row
+    +'<div style="display:grid;grid-template-columns:130px 1fr 80px 110px 110px;gap:8px;padding:9px 10px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">'
+      +'<div>'+_s.ui_category+'</div>'
+      +'<div>'+_s.ui_description+'</div>'
+      +'<div style="text-align:right">'+(fr?'Qté · Unité':'Qty · Unit')+'</div>'
+      +'<div style="text-align:right">'+(fr?'Coût unitaire':'Unit cost')+'</div>'
+      +'<div style="text-align:right">'+(fr?'Sous-total':'Line total')+'</div>'
+    +'</div>'
+    +rowsHTML
+    // Footer total
+    +'<div style="display:grid;grid-template-columns:130px 1fr 80px 110px 110px;gap:8px;padding:11px 10px;background:var(--bg3);font-size:12px;font-weight:800">'
+      +'<div></div><div></div><div></div>'
+      +'<div style="text-align:right;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-size:10px;align-self:center">'+(fr?'Total':'Total')+'</div>'
+      +'<div style="text-align:right;font-family:var(--mono);color:var(--g);font-size:14px">'+fmt(totalBase)+'</div>'
+    +'</div>'
     +'</div>';
 }
 
@@ -5249,7 +5326,9 @@ async function mEditItem(id){const _s=_L();
     </select>
   </div>
   <div class="fg"><label class="fl">${_s.ui_description}</label><textarea class="ft" id="ei-desc">${it.desc||''}</textarea></div>
-  ${editCost ? `<div class="fg">${_costBreakdownHTML('cei', it.costLines||[])}</div>` : ''}
+  ${editCost
+    ? `<div class="fg">${_costBreakdownHTML('cei', it.costLines||[])}</div>`
+    : _costBreakdownReadOnlyHTML(it.costLines)}
   <div class="fg">${_recipeHTML('rei', it.recipe||[], it.id)}</div>
   <div class="fg">
     <label class="fl" style="margin-bottom:8px">Product Photos</label>
