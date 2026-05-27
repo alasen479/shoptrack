@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779847458");
+console.log("ShopTrack v2.7 - build:1779848462");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1319,34 +1319,93 @@ function _itemTypeOptionsHTML(current, short){
   }).join('');
 }
 
-function _aiToggleItemTypeUI(){
-  var typeEl = document.getElementById('ai-itemtype');
-  if(!typeEl) return;
+// Apply or remove the 'raw-material / bulk' UI state on the sale-side
+// fields (selling price, min sell, rental price, deposit). Used by both
+// the Add Item modal (prefix='ai') and the Edit Item modal (prefix='ei').
+//
+// When itemType is not 'resale':
+//   - Field labels appear muted
+//   - Inputs get a 'not applicable' look (reduced opacity, disabled
+//     interaction) so the user can't accidentally type a price
+//   - A small italic helper line appears under the dropdown
+// When itemType is 'resale':
+//   - Everything returns to normal interactive state
+//
+// Called on initial modal render AND on every dropdown change, so the
+// UI matches the saved itemType when the user opens an existing item.
+function _invToggleItemTypeUI(prefix){
+  var typeEl = document.getElementById(prefix+'-itemtype');
+  if(!typeEl){
+    console.warn('[itemType-toggle] '+prefix+'-itemtype not found in DOM');
+    return;
+  }
   var isResale = typeEl.value === 'resale';
-  // Selectors for fields that only make sense for resale items
-  var saleFieldIds = ['ai-sp','ai-minsp','ai-rp','ai-dep'];
+  var fr = BIZ.language === 'fr';
+  console.log('[itemType-toggle] prefix='+prefix+' value="'+typeEl.value+'" → '+(isResale?'enable':'DISABLE')+' sale fields');
+  // Sale-side fields that only make sense for resale items.
+  // ai-dep doesn't exist in the Edit modal so the loop guards each.
+  var saleFieldIds = [prefix+'-sp', prefix+'-minsp', prefix+'-rp', prefix+'-dep'];
   saleFieldIds.forEach(function(id){
     var el = document.getElementById(id);
     if(!el) return;
-    el.parentElement.style.opacity = isResale ? '1' : '0.55';
-    el.disabled = !isResale && id === 'ai-sp' ? false : el.disabled;
-    // Only disable strictly when raw — sp can still be 0/empty for raw
-    if(!isResale && el.value === '') el.placeholder = (BIZ.language==='fr'?'Optionnel':'Optional');
-  });
-  // Update the Status select default: raw materials default to "For Sale"
-  // is misleading — show a soft hint via the label text instead.
-  var stEl = document.getElementById('ai-st');
-  if(stEl && !isResale){
-    // Add a small visual cue if the label exists
-    var stLbl = stEl.parentElement.querySelector('.fl');
-    if(stLbl && stLbl.dataset._origText == null){
-      stLbl.dataset._origText = stLbl.textContent;
+    var wrap = el.parentElement;
+    if(isResale){
+      // Restore
+      wrap.style.opacity = '1';
+      el.disabled = false;
+      el.readOnly = false;
+      el.style.background = '';
+      el.style.cursor = '';
+      el.title = '';
+      // Remove the n/a placeholder we may have set
+      if(el.dataset._naPlaceholder){
+        el.placeholder = el.dataset._origPlaceholder || '';
+        delete el.dataset._naPlaceholder;
+      }
+    } else {
+      // Disable for raw_material / bulk
+      wrap.style.opacity = '0.45';
+      el.disabled = true;
+      el.readOnly = true;
+      el.style.background = 'var(--bg3)';
+      el.style.cursor = 'not-allowed';
+      el.title = fr
+        ? "Non applicable pour ce type d'article"
+        : 'Not applicable for this item type';
+      if(!el.dataset._naPlaceholder){
+        el.dataset._origPlaceholder = el.placeholder || '';
+        el.dataset._naPlaceholder = '1';
+      }
+      el.placeholder = fr ? 'N/A' : 'N/A';
     }
-  } else if(stEl){
-    var stLbl2 = stEl.parentElement.querySelector('.fl');
-    if(stLbl2 && stLbl2.dataset._origText) stLbl2.textContent = stLbl2.dataset._origText;
+  });
+  // Show/hide a small helper note next to the type dropdown so users
+  // immediately understand why the SP field is greyed out. Placed
+  // inside the wrap so it appears under the dropdown.
+  var noteId = prefix+'-itemtype-note';
+  var note = document.getElementById(noteId);
+  if(!isResale){
+    var msg = fr
+      ? 'Le prix de vente est désactivé — ce type n\u2019est pas vendu directement aux clients.'
+      : 'Sale price is disabled — this item type is not sold to customers directly.';
+    if(!note){
+      note = document.createElement('div');
+      note.id = noteId;
+      note.style.cssText = 'font-size:11px;color:var(--text2);margin-top:6px;font-style:italic;line-height:1.4';
+      typeEl.parentElement.appendChild(note);
+    }
+    note.textContent = msg;
+    note.style.display = '';
+  } else if(note){
+    note.style.display = 'none';
   }
 }
+
+// Backwards-compat shim — the Add Item modal's <select> still has
+// onchange="_aiToggleItemTypeUI()". Forward it to the unified helper
+// rather than rip up the modal's existing markup. Same name kept
+// available for any other inline handlers that might call it.
+function _aiToggleItemTypeUI(){ _invToggleItemTypeUI('ai'); }
 
 function _renderInvCatPills(){
   var html='<div id="inv-cats-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">'
@@ -3886,8 +3945,60 @@ let _invFilterQ='', _invFilterCat='', _invFilterSt='', _invFilterCond='', _invFi
 
 function pgInv(){const _s=_L();const _ui=_s;
   var _invOverBanner = _overLimitBanner('inv');
+  // Schema-drift banner — alerts the owner when the slim-retry stripped
+  // columns from the inventory load. Items missing item_type (the
+  // taxonomy column added with the v2.7 refactor) silently fall back to
+  // 'resale', which breaks the type filter and the raw-material UI rules
+  // (greying out the sale-price field, exempting from the SP-required
+  // rule). The banner shows the exact SQL to copy-paste into Supabase
+  // SQL Editor. Dismissible — saved in localStorage so it doesn't
+  // re-appear once the user has run the migration.
+  var _missing = (window._invMissingCols || []).filter(function(c){
+    // Only show banner for columns that meaningfully affect UX. The
+    // _native / _currency drift columns are nice-to-have; missing them
+    // doesn't break a visible rule. Skip those.
+    return ['item_type','recipe','vendor_id','needs_price','cost_lines'].indexOf(c) >= 0;
+  });
+  var _migBanner = '';
+  if(_missing.length){
+    var _dismissed = false;
+    try { _dismissed = localStorage.getItem('st_invmig_dismissed_'+(SESSION.bizId||'')+'_'+_missing.sort().join(',')) === '1'; } catch(_){}
+    if(!_dismissed){
+      var _fr = BIZ.language === 'fr';
+      var _sql = _missing.map(function(c){
+        // Match the column name to the right TYPE.
+        var typeMap = {
+          item_type:'TEXT DEFAULT \'resale\'',
+          needs_price:'BOOLEAN DEFAULT FALSE',
+          vendor_id:'TEXT',
+          recipe:'JSONB',
+          cost_lines:'JSONB'
+        };
+        return 'ALTER TABLE inventory ADD COLUMN IF NOT EXISTS '+c+' '+(typeMap[c]||'TEXT')+';';
+      }).join('\n');
+      var _bid = 'invmig-'+_missing.join('-').replace(/_/g,'');
+      _migBanner = '<div id="'+_bid+'" style="background:#fef3c7;border-left:4px solid #d97706;border-radius:8px;padding:13px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start">'
+        +'<div style="font-size:20px;line-height:1">⚠️</div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">'
+            +(_fr?'Schéma de base de données obsolète':'Database schema is out of date')
+          +'</div>'
+          +'<div style="font-size:12px;color:#78350f;line-height:1.5;margin-bottom:8px">'
+            +(_fr
+              ?'Votre base Supabase n\u2019a pas les colonnes suivantes&nbsp;: <code>'+_missing.join('</code>, <code>')+'</code>. Cela casse&nbsp;: filtre par type, prix de vente désactivé pour matières premières, recettes, et catégorie de coût. Exécutez ce SQL dans Supabase&nbsp;:'
+              :'Your Supabase database is missing these columns: <code>'+_missing.join('</code>, <code>')+'</code>. This breaks: type filter, sale-price greying-out for raw materials, recipes, and cost-line tracking. Run this SQL in your Supabase SQL Editor:')
+          +'</div>'
+          +'<pre style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-size:11px;color:#451a03;margin:0 0 8px;overflow-x:auto;white-space:pre-wrap;word-break:break-word">'+_esc(_sql)+'</pre>'
+          +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+            +'<button class="btn btn-s btn-xs" onclick="navigator.clipboard&amp;&amp;navigator.clipboard.writeText('+JSON.stringify(_sql)+').then(function(){toast(\''+(_fr?'SQL copié':'SQL copied')+' \u2713\',\'success\');})">'+(_fr?'Copier le SQL':'Copy SQL')+'</button>'
+            +'<button class="btn btn-s btn-xs" onclick="try{localStorage.setItem(\'st_invmig_dismissed_'+(SESSION.bizId||'')+'_'+_missing.sort().join(',')+'\',\'1\');document.getElementById(\''+_bid+'\').remove();}catch(e){}">'+(_fr?'Plus tard':'Dismiss')+'</button>'
+          +'</div>'
+        +'</div>'
+      +'</div>';
+    }
+  }
   return `
-${_invOverBanner}<div class="ph">
+${_invOverBanner}${_migBanner}<div class="ph">
   <div class="bc">ShopTrack / <span>${_ui.nav_inventory}</span></div>
   <div class="ph-row">
     <h1>${_ui.nav_inventory}</h1>
@@ -5122,6 +5233,12 @@ async function mAddItem(_returnSelectId){const _s=_L();
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
    <button class="btn btn-p" onclick="_saveNewItem()">${_s.inv_add_item}</button>`);
   window._retSelAI=_returnSelectId||null;
+  // Defer until after the modal HTML has been mounted, then sync the
+  // sale-fields visual state with whatever the dropdown defaults to
+  // ('resale' on a fresh Add, but a user may have a saved preference
+  // in the future). Same call also fires on dropdown change via the
+  // onchange="_aiToggleItemTypeUI()" attribute on the select.
+  setTimeout(function(){ _invToggleItemTypeUI('ai'); }, 80);
 }
 function _previewNewItemPhotos(input){
   const files = Array.from(input.files);
@@ -5305,7 +5422,7 @@ async function mEditItem(id){const _s=_L();
   </div>
   <div class="fg" style="background:var(--bg3);padding:10px 12px;border-radius:8px;margin-bottom:10px">
     <label class="fl" style="margin-bottom:6px">${BIZ.language==='fr'?"Type d'article":'Item type'} <span style="font-size:10px;color:var(--text2);font-weight:400">— ${BIZ.language==='fr'?'détermine si un prix de vente est requis':'controls whether a sale price is required'}</span></label>
-    <select class="fs" id="ei-itemtype">
+    <select class="fs" id="ei-itemtype" onchange="_invToggleItemTypeUI('ei')">
       ${_itemTypeOptionsHTML(it.itemType||'resale', false)}
     </select>
   </div>
@@ -5359,6 +5476,27 @@ async function mEditItem(id){const _s=_L();
     _mkSearchSelect('ei-cat-wrap', catOpts, _eiCatVal, function(val){
       var h = document.getElementById('ei-cat'); if(h) h.value = val;
     }, 'Search or type category…');
+    // Apply the disabled-sale-fields state for raw_material / bulk items
+    // so the SP / Min SP / Rental / Deposit fields are visibly inert
+    // on initial open, not just when the user changes the dropdown.
+    // Same call also fires when the user toggles the dropdown (via the
+    // onchange="_invToggleItemTypeUI('ei')" attribute on the select).
+    //
+    // Called TWICE: once immediately and once after another 80ms tick.
+    // The second tick guards against the modal DOM not being fully
+    // mounted at 80ms on slower devices (we saw this on PC). If both
+    // calls land successfully, the second is a no-op because state is
+    // already correct.
+    _invToggleItemTypeUI('ei');
+    setTimeout(function(){ _invToggleItemTypeUI('ei'); }, 100);
+    // Diagnostic log so the user (or me, when debugging) can see in
+    // the console what itemType the modal opened with. If they expect
+    // raw_material and see 'resale', they know to check the underlying
+    // data — likely the slim retry stripped item_type on load.
+    var _curIt = D.inv.find(function(x){return x.id===id;});
+    if(_curIt){
+      console.log('[mEditItem] '+id+' "'+_curIt.name+'" opened with itemType="'+(_curIt.itemType||'resale')+'"');
+    }
   }, 80);
 }
 
@@ -18659,6 +18797,11 @@ function _dbErr(ctx, err){
 // ── Load all business data from Supabase into D ──────────────
 async function _dbLoadBizData(bizId){
   if(!_sb || !bizId) return;
+  // Reset the schema-drift tracker. The slim retry below repopulates this
+  // if it has to strip any columns, and saveInv pushes to it on column-
+  // missing errors. Banner on inventory page reads it. Reset on every
+  // load so a fixed schema clears the banner without a reload.
+  window._invMissingCols = [];
   try {
     const [inv, cust, sales, rentals, exp, vendors, purchases, audit, cats, svcs, appts] = await Promise.all([
       _sb.from('inventory').select('*').eq('biz_id', bizId).limit(2000),
@@ -18712,6 +18855,13 @@ async function _dbLoadBizData(bizId){
                            'rp_native','rp_currency','min_sp_native','min_sp_currency',
                            'dep_native','dep_currency','cost_lines'];
       var _slimCols = _coreCols.concat(_optionalCols);
+      // Track which optional columns we stripped from the slim retry's
+      // SELECT — exposed via window._invMissingCols so the inventory
+      // page renderer can show a one-line "schema is behind" banner
+      // pointing the owner at the SQL to run. Without this, the user
+      // sees broken type filters / missing recipes / etc. with no
+      // obvious cause, and has to dig through console logs.
+      window._invMissingCols = [];
       var _slimRetries = 0;
       var _slimMaxRetries = 15;
       while(_slimRetries++ < _slimMaxRetries){
@@ -18726,6 +18876,7 @@ async function _dbLoadBizData(bizId){
           if(_origIdx >= 0){
             console.warn('[DB] Slim retry: column "'+_miss+'" missing — dropping and retrying');
             _slimCols.splice(_origIdx, 1);
+            window._invMissingCols.push(_miss);
             continue;
           }
         }
@@ -21383,6 +21534,14 @@ async function _dbSaveInv(item, qtyDelta){
     }
     delete payload[col];
     stripped.push(col);
+    // Mirror to window._invMissingCols so the inventory page's migration
+    // banner shows the missing column even if it was first detected on
+    // a save (rather than the initial load). The banner uses a Set
+    // semantically so dupes are fine — we just need it visible there.
+    try {
+      window._invMissingCols = window._invMissingCols || [];
+      if(window._invMissingCols.indexOf(col) < 0) window._invMissingCols.push(col);
+    } catch(_){}
     console.warn('[saveInv] Stripping missing column: '+col+' (retry '+attempts+')');
   }
   console.error('[saveInv] gave up after '+maxAttempts+' retries; missing cols:', stripped.join(','));
