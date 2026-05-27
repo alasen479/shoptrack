@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779880930");
+console.log("ShopTrack v2.7 - build:1779888240");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -3957,7 +3957,14 @@ function pgInv(){const _s=_L();const _ui=_s;
     // Only show banner for columns that meaningfully affect UX. The
     // _native / _currency drift columns are nice-to-have; missing them
     // doesn't break a visible rule. Skip those.
-    return ['item_type','recipe','vendor_id','needs_price','cost_lines'].indexOf(c) >= 0;
+    //
+    // Synthetic markers ending in '_int_to_numeric' come from the
+    // 22P02 detection path in _dbSaveInv — they signal that a column
+    // exists but its TYPE is integer instead of numeric, blocking
+    // decimal-quantity saves. Treat them as banner-worthy.
+    return ['item_type','recipe','vendor_id','needs_price','cost_lines',
+            'qty_int_to_numeric','min_stock_int_to_numeric','rented_int_to_numeric']
+            .indexOf(c) >= 0;
   });
   var _migBanner = '';
   if(_missing.length){
@@ -3965,8 +3972,20 @@ function pgInv(){const _s=_L();const _ui=_s;
     try { _dismissed = localStorage.getItem('st_invmig_dismissed_'+(SESSION.bizId||'')+'_'+_missing.sort().join(',')) === '1'; } catch(_){}
     if(!_dismissed){
       var _fr = BIZ.language === 'fr';
-      var _sql = _missing.map(function(c){
-        // Match the column name to the right TYPE.
+      // Group missing entries into two SQL kinds: ADD COLUMN for genuinely
+      // absent columns, and ALTER COLUMN TYPE for existing columns whose
+      // type rejects decimals. Banner text changes if it's an integer-type
+      // problem so the user understands WHY saves are failing.
+      var _hasIntType = false;
+      var _sqlLines = _missing.map(function(c){
+        if(c.endsWith('_int_to_numeric')){
+          _hasIntType = true;
+          // Strip the suffix to recover the column name
+          var col = c.slice(0, -'_int_to_numeric'.length);
+          // USING clause lets Postgres convert existing integer values to
+          // numeric without manual data manipulation.
+          return 'ALTER TABLE inventory ALTER COLUMN '+col+' TYPE NUMERIC USING '+col+'::NUMERIC;';
+        }
         var typeMap = {
           item_type:'TEXT DEFAULT \'resale\'',
           needs_price:'BOOLEAN DEFAULT FALSE',
@@ -3975,7 +3994,8 @@ function pgInv(){const _s=_L();const _ui=_s;
           cost_lines:'JSONB'
         };
         return 'ALTER TABLE inventory ADD COLUMN IF NOT EXISTS '+c+' '+(typeMap[c]||'TEXT')+';';
-      }).join('\n');
+      });
+      var _sql = _sqlLines.join('\n');
       var _bid = 'invmig-'+_missing.join('-').replace(/_/g,'');
       // Stash the SQL on a global so the button click handlers don't
       // have to embed it in their inline HTML — JSON-encoded strings
@@ -3986,17 +4006,34 @@ function pgInv(){const _s=_L();const _ui=_s;
       window._invMigSql = _sql;
       window._invMigKey = 'st_invmig_dismissed_'+(SESSION.bizId||'')+'_'+_missing.sort().join(',');
       window._invMigBannerId = _bid;
+      // Banner title + body adjust depending on whether the issue is
+      // missing columns vs wrong column types vs both.
+      var _displayMissing = _missing.filter(function(c){return !c.endsWith('_int_to_numeric');});
+      var _intTypeCols = _missing.filter(function(c){return c.endsWith('_int_to_numeric');})
+        .map(function(c){return c.slice(0,-'_int_to_numeric'.length);});
+      var _bodyText = '';
+      if(_displayMissing.length && _intTypeCols.length){
+        _bodyText = _fr
+          ? 'Votre base Supabase a&nbsp;: (1) des colonnes manquantes&nbsp;<code>'+_displayMissing.join('</code>, <code>')+'</code> et (2) des colonnes de type entier qui refusent les décimales&nbsp;<code>'+_intTypeCols.join('</code>, <code>')+'</code>. Cela cause des échecs de sauvegarde et casse plusieurs filtres. Exécutez ce SQL dans Supabase&nbsp;:'
+          : 'Your Supabase database has: (1) missing columns <code>'+_displayMissing.join('</code>, <code>')+'</code> and (2) integer-typed columns rejecting decimals <code>'+_intTypeCols.join('</code>, <code>')+'</code>. This causes save failures and breaks several filters. Run this SQL in Supabase:';
+      } else if(_intTypeCols.length){
+        _bodyText = _fr
+          ? 'Vos sauvegardes échouent parce que les colonnes <code>'+_intTypeCols.join('</code>, <code>')+'</code> sont de type INTEGER et refusent les quantités décimales (ex.&nbsp;0,5&nbsp;kg de poivre). Exécutez ce SQL dans Supabase pour les convertir en NUMERIC&nbsp;:'
+          : 'Your saves are failing because the columns <code>'+_intTypeCols.join('</code>, <code>')+'</code> are typed INTEGER and reject decimal quantities (e.g. 0.5 kg of pepper). Run this SQL in Supabase to convert them to NUMERIC:';
+      } else {
+        _bodyText = _fr
+          ? 'Votre base Supabase n\u2019a pas les colonnes suivantes&nbsp;: <code>'+_displayMissing.join('</code>, <code>')+'</code>. Cela casse certaines fonctions (filtre par type, prix de vente désactivé pour matières premières, recettes). Exécutez ce SQL dans Supabase&nbsp;:'
+          : 'Your Supabase database is missing these columns: <code>'+_displayMissing.join('</code>, <code>')+'</code>. This breaks: type filter, sale-price greying for raw materials, recipes. Run this SQL in your Supabase SQL Editor:';
+      }
       _migBanner = '<div id="'+_bid+'" style="background:#fef3c7;border-left:4px solid #d97706;border-radius:8px;padding:13px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start">'
         +'<div style="font-size:20px;line-height:1">⚠️</div>'
         +'<div style="flex:1;min-width:0">'
           +'<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">'
-            +(_fr?'Schéma de base de données obsolète':'Database schema is out of date')
+            +(_hasIntType
+                ? (_fr?'Type de colonne incorrect — sauvegardes bloquées':'Wrong column type — saves blocked')
+                : (_fr?'Schéma de base de données obsolète':'Database schema is out of date'))
           +'</div>'
-          +'<div style="font-size:12px;color:#78350f;line-height:1.5;margin-bottom:8px">'
-            +(_fr
-              ?'Votre base Supabase n\u2019a pas les colonnes suivantes&nbsp;: <code>'+_missing.join('</code>, <code>')+'</code>. Cela casse certaines fonctions (filtre par type, prix de vente désactivé pour matières premières, recettes). Exécutez ce SQL dans Supabase&nbsp;:'
-              :'Your Supabase database is missing these columns: <code>'+_missing.join('</code>, <code>')+'</code>. This breaks: type filter, sale-price greying for raw materials, recipes. Run this SQL in your Supabase SQL Editor:')
-          +'</div>'
+          +'<div style="font-size:12px;color:#78350f;line-height:1.5;margin-bottom:8px">'+_bodyText+'</div>'
           +'<pre style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-size:11px;color:#451a03;margin:0 0 8px;overflow-x:auto;white-space:pre-wrap;word-break:break-word">'+_esc(_sql)+'</pre>'
           +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
             +'<button class="btn btn-s btn-xs" onclick="_invMigCopy()">'+(_fr?'Copier le SQL':'Copy SQL')+'</button>'
@@ -21612,6 +21649,47 @@ async function _dbSaveInv(item, qtyDelta){
       return;
     }
     var errMsg = (result.error && (result.error.message || result.error.code)) || '';
+    var errCode = result.error && result.error.code;
+    // 22P02 = invalid input syntax. Most commonly: user typed a decimal
+    // (e.g. 0.5 kg of pepper) into a column the schema typed as integer.
+    // We can't tell which column from the error message — Postgres only
+    // surfaces the type ("integer") and the bad value ("0.5"), not the
+    // field name. But we know the only fields on the inventory payload
+    // that accept user-entered numerics AND defaulted to integer in
+    // older schemas are qty, min_stock, and rented. Surface all three
+    // as candidates for migration so the user can run one SQL statement
+    // to fix all of them at once.
+    if(errCode === '22P02' && /integer/i.test(errMsg)){
+      console.error('[saveInv] FAILED for '+item.id+' ('+item.name+'): integer-column rejection — '+errMsg);
+      // Surface the suspect columns to the inventory migration banner.
+      // The user's items show 0.5 typically means qty is the offender,
+      // but we add all three so a one-shot ALTER fixes everything.
+      try {
+        window._invMissingCols = window._invMissingCols || [];
+        ['qty_int_to_numeric','min_stock_int_to_numeric','rented_int_to_numeric']
+          .forEach(function(c){
+            if(window._invMissingCols.indexOf(c) < 0) window._invMissingCols.push(c);
+          });
+        // Show a one-time loud toast so the user knows immediately that
+        // saves are failing because of column types — and what to do.
+        // Subsequent failures stay quiet via a session flag.
+        if(!window._intColToastShown){
+          window._intColToastShown = true;
+          var fr = BIZ.language === 'fr';
+          toast(fr
+            ? 'Sauvegarde échouée : votre base de données n\u2019accepte pas les quantités décimales. Voir la bannière en haut de la page Stock.'
+            : 'Save failed: your database doesn\u2019t accept decimal quantities. See the banner at the top of the Inventory page.',
+            'error');
+          // Re-render the inventory page if user is there so the banner
+          // appears immediately, without requiring them to navigate away
+          // and back.
+          if(typeof curPage !== 'undefined' && curPage === 'inventory'){
+            try { nav('inventory'); } catch(_){}
+          }
+        }
+      } catch(_){}
+      return;
+    }
     var colMatch = errMsg.match(/Could not find the '([^']+)' column/i);
     if(!colMatch){
       console.error('[saveInv] FAILED for '+item.id+' ('+item.name+'):', result.error);
