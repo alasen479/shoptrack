@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779846361");
+console.log("ShopTrack v2.7 - build:1779847458");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5557,16 +5557,58 @@ function mDuplicateItem(id){var _s=_L();
   },0);
   const newId='INV-'+String(maxNum+1).padStart(3,'0');
   const newSku=(src.sku||'ITEM')+'-COPY';
-  // Deep copy photoDataUrls so original is not affected
+  // Build the duplicate to mirror what mAddItem would produce for a
+  // fresh entry — NOT a verbatim clone. The differences:
+  //
+  //  qty: 1 (not 0) — matches mAddItem's default qty input value of 1.
+  //    Using qty:0 made every duplicate immediately show the red
+  //    'OUT OF STOCK' badge in the grid even though the user just
+  //    created the item and hadn't tried to stock it. Out-of-stock
+  //    means 'we ran out', not 'never had any'. Defaulting to 1 lets
+  //    the user adjust in the edit modal (which opens automatically
+  //    below) and is harmless since they're about to set the real value.
+  //
+  //  rented: 0 — fresh items aren't rented out.
+  //
+  //  needsPrice: false — needsPrice is set true only by PO auto-creation
+  //    to flag the owner that they need to enter a sale price. A user-
+  //    initiated duplicate is an explicit action with full context, so
+  //    this flag should reset (otherwise duplicating a flagged item
+  //    would propagate the flag forever, even after the source got
+  //    its price set).
+  //
+  //  itemType: preserved from source — this is the whole point of
+  //    duplication (raw material → another raw material). The source
+  //    might have lost its itemType to the slim-retry bug fixed in
+  //    v193; in that case it'll be 'resale' by default. Once the
+  //    source is re-saved with the right type, future duplicates will
+  //    pick it up correctly.
+  //
+  //  photoDataUrls / imgDataUrl: deep-copied so deleting a photo on
+  //    the duplicate doesn't affect the source.
+  //
+  //  costLines / recipe: shallow-spread via ...src is fine — these are
+  //    arrays of plain objects and the user can adjust independently
+  //    in the edit modal. Worst case both items mutate together until
+  //    one is saved, at which point Supabase write+next-load realigns.
   const dup={
     ...src,
-    qty:0,rented:0,
     id:newId,
     sku:newSku,
     name:'Copy of '+src.name,
-    rented:0,
+    qty: 1,
+    rented: 0,
+    needsPrice: false,
+    itemType: src.itemType || 'resale',
     photoDataUrls: src.photoDataUrls ? [...src.photoDataUrls] : [],
-    imgDataUrl: src.imgDataUrl||null
+    imgDataUrl: src.imgDataUrl||null,
+    // Strip any in-memory tag fields that shouldn't propagate to a
+    // brand-new item. _missingCols is set by _dbToInv to track which
+    // columns the slim retry stripped on the source row — pre-cleaning
+    // here prevents the merge step from incorrectly "preserving" the
+    // source's values onto the duplicate.
+    _missingCols: undefined,
+    _photosRecovered: undefined,
   };
   D.inv.push(dup);
   // NOTE: do NOT call _dbSaveInv here — saveEditItem will be the first write
