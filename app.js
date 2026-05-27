@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779921272");
+console.log("ShopTrack v2.7 - build:1779922610");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1720,15 +1720,18 @@ function _csAddLine(){const _s=_L();
   var row = document.createElement('div');
   row.className = 'cs-line-row';
   row.style.cssText = 'display:grid;grid-template-columns:1fr auto auto auto;gap:6px;margin-bottom:6px;align-items:center';
-  var sellOpts = D.inv.filter(function(i){return (i.st==='For Sale'||i.st==='Both')&&((i.qty||0)-(i.rented||0))>0;})
-    .map(function(i){return '<option value="inv:'+i.id+'" data-sp="'+Math.round((i.sp||0)*CUR.rate)+'" data-cost="'+Math.round((i.cost||0)*CUR.rate)+'" data-name="'+_esc(i.name+(i.sku?' ('+i.sku+')':''))+'">'+i.name+' ('+((i.qty||0)-(i.rented||0))+' avail) — '+fmt(i.sp)+'</option>';}).join('');
+  var sellable = _sellableInvItems();
+  var sellOpts = _groupOptsByCat(sellable, function(i){
+    var avail = _invAvailable(i);
+    return '<option value="inv:'+i.id+'" data-sp="'+Math.round((i.sp||0)*CUR.rate)+'" data-cost="'+Math.round((i.cost||0)*CUR.rate)+'" data-name="'+_esc(i.name+(i.sku?' ('+i.sku+')':''))+'">'+_esc(i.name)+' ('+_fmtQty(avail)+' avail) \u2014 '+fmt(i.sp)+'</option>';
+  });
   var svcOpts = (D.services||[]).filter(function(s){return s.active!==false;})
-    .map(function(s){var pt=s.priceType||'flat';var ptSfx={'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'';return '<option value="svc:'+s.id+'" data-sp="'+Math.round((s.price||0)*CUR.rate)+'" data-cost="0" data-name="'+_esc(s.name)+'">'+s.name+(s.cat?' · '+s.cat:'')+' — '+fmtSvc(s)+ptSfx+'</option>';}).join('');
+    .map(function(s){var pt=s.priceType||'flat';var ptSfx={'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'';return '<option value="svc:'+s.id+'" data-sp="'+Math.round((s.price||0)*CUR.rate)+'" data-cost="0" data-name="'+_esc(s.name)+'">'+_esc(s.name)+(s.cat?' \u00B7 '+_esc(s.cat):'')+' \u2014 '+fmtSvc(s)+ptSfx+'</option>';}).join('');
   row.innerHTML = '<select class="fs cs-inv-sel" onchange="_csLineChange(this);_csCheckMinSpWarn()">'
     +'<option value="">-- Select product or service --</option>'
-    +(sellOpts?'<optgroup label="📦 Products">'+sellOpts+'</optgroup>':'')
-    +(svcOpts?'<optgroup label="✂️ Services">'+svcOpts+'</optgroup>':'')
-    +'<option value="__custom__">── Custom item ──</option></select>'
+    +(sellOpts||'')
+    +(svcOpts?'<optgroup label="\u2702 Services">'+svcOpts+'</optgroup>':'')
+    +'<option value="__custom__">\u2500\u2500 Custom item \u2500\u2500</option></select>'
     +'<input class="fi cs-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" oninput="_csRecalcTotal();_csRecalcCOGS()" placeholder="Qty"/>'
     +'<input class="fi cs-line-price" type="number" placeholder="'+_s.sal_price_lbl+'" style="width:90px" oninput="_csRecalcTotal();_csCheckMinSpWarn()"/>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_csRemoveLine(this)" style="padding:6px 8px">✕</button>';
@@ -2010,8 +2013,10 @@ function _poAddLine(){const _s=_L();
   var row=document.createElement('div');
   row.className='po-line-row';
   row.style.cssText='display:flex;flex-direction:column;gap:6px;margin-bottom:8px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2)';
-  var invOpts=D.inv.map(function(i){return '<option value="'+i.id+'" data-cost="'+Math.round((i.cost||0)*CUR.rate)+'" data-name="'+i.name+(i.sku?' ('+i.sku+')':'')+'">'
-    +i.name+' (stock: '+(i.qty||0)+') — '+fmt(i.cost||0)+'/unit</option>';}).join('');
+  var invOpts = _groupOptsByCat(D.inv, function(i){
+    return '<option value="'+i.id+'" data-cost="'+Math.round((i.cost||0)*CUR.rate)+'" data-name="'+_esc(i.name+(i.sku?' ('+i.sku+')':''))+'">'
+      +_esc(i.name)+' (stock: '+_fmtQty(i.qty||0)+') \u2014 '+fmt(i.cost||0)+'/unit</option>';
+  });
   // Top row: inventory select + qty + cost + remove (same layout as before)
   // Second row (hidden until 'Custom' is selected): item name + type selector
   // for auto-creating the inventory record on receive.
@@ -4504,7 +4509,7 @@ function _buildInvGridFiltered(items){const _s=_L();
         stockBadge = '<div style="background:var(--r);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">'+_s.inv_oos+'</div>';
       }
     } else if(isLowStock){
-      stockBadge = '<div style="background:var(--y);color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">⚠ LOW STOCK ('+avail+' left)</div>';
+      stockBadge = '<div style="background:var(--y);color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">⚠ LOW STOCK ('+_fmtQty(avail)+' left)</div>';
     }
     // The card outline echoes the badge color. For "ready" (green
     // recipe-fulfilled) we don't outline the card — only stock
@@ -4537,11 +4542,11 @@ function _buildInvGridFiltered(items){const _s=_L();
           // existing "Avail: N" label.
           + ((_itemTypeForStock === 'resale' && _hasRecipe)
               ? (fr?'Disponible: ':'Ready: ')+_recipeReady
-              : _s.inv_col_avail+': '+avail)
+              : _s.inv_col_avail+': '+_fmtQty(avail))
         +'</span>'
       +'</div>'
       +(stockVal>0?'<div style="font-size:10px;color:var(--text2);margin-top:3px">Stock value: <strong style="color:var(--ink)">'+fmt(stockVal)+'</strong></div>':'')
-      +(it.rented>0?'<div style="font-size:10px;color:var(--c);margin-top:2px">🔄 '+(it.rented||0)+' rented out</div>':'')
+      +(it.rented>0?'<div style="font-size:10px;color:var(--c);margin-top:2px">🔄 '+_fmtQty(it.rented||0)+' rented out</div>':'')
       +'<div class="btn-row" style="margin-top:7px">'
         +'<button class="btn btn-g btn-xs" data-edit-id="'+it.id+'" title="Edit">✏ Edit</button>'
         +'<button class="btn btn-g btn-xs" data-dup-id="'+it.id+'" title="Duplicate">⧉ Dup</button>'
@@ -5273,7 +5278,7 @@ function _cbRecalc(prefix){
     if(_aiType !== 'bulk'){
       var qtyField = document.getElementById('ai-qty');
       if(qtyField){
-        var qtyDisplay = parseFloat(unitQty.toFixed(3)); // strip float noise
+        var qtyDisplay = parseFloat(unitQty.toFixed(2)); // strip float noise (2dp matches _fmtQty)
         qtyField.value = qtyDisplay;
         qtyField.style.transition = 'background .3s';
         qtyField.style.background = 'var(--g-dim)';
@@ -5379,6 +5384,104 @@ function _cbReadLines(prefix){const _s=_L();
 //
 // The caller (recipe row builder, recipe row change handler) uses the
 // returned value to auto-fill the recipe row's unit display.
+// ── Inventory display helpers ─────────────────────────────────────
+// Centralised so all the dropdown builders and stock badges agree on
+// the same logic. Before this, each call site had its own qty/recipe
+// filter, leading to drift (e.g. sale dropdown excluded plates because
+// it only checked qty>0, never recipe readiness).
+
+// Trim float noise on a number for display. Pulls in at most 2 decimal
+// places and strips trailing zeros. 1.0 → "1", 0.50 → "0.5", 3.14159 → "3.14".
+// Used on every inventory qty rendered to humans so we never show
+// floating-point artifacts like 0.4999999 or 19.999999999999996.
+function _fmtQty(n){
+  if(n == null || isNaN(n)) return '0';
+  var rounded = Math.round((parseFloat(n) || 0) * 100) / 100;
+  // toFixed(2) gives '1.00', then parseFloat strips trailing zeros → '1'.
+  // For values like 0.5 this stays '0.5', for 3.14 stays '3.14'.
+  return parseFloat(rounded.toFixed(2)).toString();
+}
+
+// How many of this item can the user actually serve/ship right now?
+// For plain inventory: (qty - rented). For recipe-bearing finished
+// products: the minimum across each recipe line of (ingredient_avail /
+// qty_needed). Same math as in the inventory card stock badge — kept
+// in one place so badge and dropdowns agree.
+function _invAvailable(item){
+  if(!item) return 0;
+  var plain = (item.qty || 0) - (item.rented || 0);
+  if(!Array.isArray(item.recipe) || !item.recipe.length){
+    return plain;
+  }
+  // Recipe-bearing: lowest assemble-ability across all lines.
+  var ready = Infinity;
+  for(var i = 0; i < item.recipe.length; i++){
+    var line = item.recipe[i];
+    if(!line || !line.ingredientId || !line.qty) continue;
+    var ing = (D.inv||[]).find(function(x){return x.id === line.ingredientId;});
+    if(!ing){ ready = 0; break; }
+    var ingAvail = (ing.qty||0) - (ing.rented||0);
+    var possible = Math.floor(ingAvail / line.qty);
+    if(possible < ready) ready = possible;
+  }
+  if(ready === Infinity) ready = 0;
+  // For recipe items, the maximum we can serve is the recipe readiness;
+  // their own qty may also be > 0 if they're partially stocked (rare in
+  // restaurant context, common for prebuilt kits). Combine: own stock
+  // first, then recipe assembly. Plates of ndolé have qty=0, so this is
+  // just the recipe readiness.
+  return Math.max(0, plain) + ready;
+}
+
+// Build category-grouped <optgroup> options for an inventory list.
+// Args:
+//   items   — pre-filtered array of inventory items to include
+//   buildOpt(item) — fn that returns the <option> HTML for one item
+// Returns a string with <optgroup label="..."> blocks, one per category,
+// sorted alphabetically. Items inside each group are sorted by name.
+// Uncategorised items (no .cat or .cat===' ') land in 'Uncategorised'.
+function _groupOptsByCat(items, buildOpt){
+  if(!items || !items.length) return '';
+  // Bucket by category. Use a Map to preserve insertion order until
+  // we sort.
+  var groups = {};
+  items.forEach(function(it){
+    var cat = (it.cat||'').trim() || 'Uncategorised';
+    if(!groups[cat]) groups[cat] = [];
+    groups[cat].push(it);
+  });
+  var catNames = Object.keys(groups).sort(function(a,b){
+    // 'Uncategorised' always last
+    if(a === 'Uncategorised') return 1;
+    if(b === 'Uncategorised') return -1;
+    return a.localeCompare(b);
+  });
+  return catNames.map(function(cat){
+    var sorted = groups[cat].slice().sort(function(a,b){
+      return (a.name||'').localeCompare(b.name||'');
+    });
+    return '<optgroup label="'+_esc(cat)+'">'+sorted.map(buildOpt).join('')+'</optgroup>';
+  }).join('');
+}
+
+// Sellable-items filter for sale dropdowns. Two kinds qualify:
+//   (a) Items with own stock available (qty - rented > 0).
+//   (b) Recipe-bearing items whose ingredients can fulfill ≥ 1 serve —
+//       the "Ndolé Plate" case where item.qty is always 0 but the
+//       underlying batch + sides exist in raw material inventory.
+// Items not For Sale (or Both) are always excluded regardless of stock.
+function _sellableInvItems(){
+  return (D.inv||[]).filter(function(i){
+    if(i.st !== 'For Sale' && i.st !== 'Both') return false;
+    var avail = _invAvailable(i);
+    return avail > 0;
+  });
+}
+
+// Resolve the unit-of-measurement for an ingredient by checking:
+//   1. costLines for a qty-bearing line with a unit (kg, L, g, etc.)
+//   2. ing.sz (item size field) as fallback
+//   3. Empty string if neither has it.
 function _ingredientUnit(ing){
   if(!ing) return '';
   if(Array.isArray(ing.costLines) && ing.costLines.length){
@@ -5442,20 +5545,19 @@ function _recipeHTML(prefix, existingLines, currentItemId){const _s=_L();
     if(x.id === currentItemId) return false;
     var t = x.itemType || 'resale';
     return t === 'raw_material' || t === 'bulk';
-  }).sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
-  var ingOpts = '<option value="">— Pick ingredient —</option>'
-    + ingredients.map(function(x){
+  });
+  var ingOpts = '<option value="">\u2014 Pick ingredient \u2014</option>'
+    + _groupOptsByCat(ingredients, function(x){
         var u = _ingredientUnit(x);
         var avail = (x.qty||0) - (x.rented||0);
-        // Trim float noise. Available qty often arrives as 4.9999999.
-        var availDisp = parseFloat(avail.toFixed(3));
-        var cost = x.cost ? ' · '+fmt(x.cost) : '';
-        var stockLabel = ' · '+availDisp+(u?' '+u:'')+' in stock';
+        var availDisp = _fmtQty(avail);
+        var cost = x.cost ? ' \u00B7 '+fmt(x.cost) : '';
+        var stockLabel = ' \u00B7 '+availDisp+(u?' '+u:'')+' in stock';
         return '<option value="'+x.id+'"'
           +(u?' data-unit="'+_esc(u)+'"':'')
           +' data-avail="'+availDisp+'"'
           +'>'+_esc(x.name)+(u?' ['+_esc(u)+']':'')+stockLabel+cost+'</option>';
-      }).join('');
+      });
 
   var existingRowsHTML = lines.map(function(l,i){
     return _recipeRowHTML(prefix, i, l, ingOpts);
@@ -5529,7 +5631,7 @@ function _recipeRowHTML(prefix, idx, line, ingOpts){
     var ing = (D.inv||[]).find(function(x){return x.id === line.ingredientId;});
     if(ing){
       unitDisp = _ingredientUnit(ing) || line.unit || '';
-      var availInit = parseFloat(((ing.qty||0) - (ing.rented||0)).toFixed(3));
+      var availInit = _fmtQty((ing.qty||0) - (ing.rented||0));
       availPill = availInit + (unitDisp ? ' '+unitDisp : '');
     } else {
       unitDisp = line.unit || '';
@@ -5579,19 +5681,19 @@ function _rcpAddLine(prefix, currentItemId){
     if(x.id === currentItemId) return false;
     var t = x.itemType || 'resale';
     return t === 'raw_material' || t === 'bulk';
-  }).sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
-  var ingOpts = '<option value="">— Pick ingredient —</option>'
-    + ingredients.map(function(x){
+  });
+  var ingOpts = '<option value="">\u2014 Pick ingredient \u2014</option>'
+    + _groupOptsByCat(ingredients, function(x){
         var u = _ingredientUnit(x);
         var avail = (x.qty||0) - (x.rented||0);
-        var availDisp = parseFloat(avail.toFixed(3));
-        var cost = x.cost ? ' · '+fmt(x.cost) : '';
-        var stockLabel = ' · '+availDisp+(u?' '+u:'')+' in stock';
+        var availDisp = _fmtQty(avail);
+        var cost = x.cost ? ' \u00B7 '+fmt(x.cost) : '';
+        var stockLabel = ' \u00B7 '+availDisp+(u?' '+u:'')+' in stock';
         return '<option value="'+x.id+'"'
           +(u?' data-unit="'+_esc(u)+'"':'')
           +' data-avail="'+availDisp+'"'
           +'>'+_esc(x.name)+(u?' ['+_esc(u)+']':'')+stockLabel+cost+'</option>';
-      }).join('');
+      });
   var idx = rows.querySelectorAll('.rcp-row').length;
   rows.insertAdjacentHTML('beforeend', _recipeRowHTML(prefix, idx, {}, ingOpts));
   // Auto-focus the new ingredient select
@@ -6773,14 +6875,17 @@ async function mCreateSale(){const _s=_L();
   }
   const today=localDateStr();
   const sym=CUR.symbol;
-  const sellable=D.inv.filter(function(i){return (i.st==='For Sale'||i.st==='Both')&&((i.qty||0)-(i.rented||0))>0;});
+  const sellable=_sellableInvItems();
   const activeSvcs=(D.services||[]).filter(function(s){return s.active!==false;});
-  const invOpts=sellable.map(i=>'<option value="inv:'+i.id+'" data-sp="'+Math.round((i.sp||0)*CUR.rate)+'" data-cost="'+Math.round((i.cost||0)*CUR.rate)+'" data-name="'+_esc(i.name+(i.sku?' ('+i.sku+')':''))+'">'+i.name+' ('+((i.qty||0)-(i.rented||0))+' avail) — '+fmt(i.sp)+'</option>').join('');
-  const svcOpts=activeSvcs.map(s=>{var pt=s.priceType||'flat';var ptSfx={'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'';return '<option value="svc:'+s.id+'" data-sp="'+Math.round((s.price||0)*CUR.rate)+'" data-cost="0" data-name="'+_esc(s.name)+'">'+s.name+(s.cat?' · '+s.cat:'')+' — '+fmtSvc(s)+ptSfx+'</option>';}).join('');
+  const invOpts=_groupOptsByCat(sellable, function(i){
+    var avail = _invAvailable(i);
+    return '<option value="inv:'+i.id+'" data-sp="'+Math.round((i.sp||0)*CUR.rate)+'" data-cost="'+Math.round((i.cost||0)*CUR.rate)+'" data-name="'+_esc(i.name+(i.sku?' ('+i.sku+')':''))+'">'+_esc(i.name)+' ('+_fmtQty(avail)+' avail) \u2014 '+fmt(i.sp)+'</option>';
+  });
+  const svcOpts=activeSvcs.map(s=>{var pt=s.priceType||'flat';var ptSfx={'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'';return '<option value="svc:'+s.id+'" data-sp="'+Math.round((s.price||0)*CUR.rate)+'" data-cost="0" data-name="'+_esc(s.name)+'">'+_esc(s.name)+(s.cat?' \u00B7 '+_esc(s.cat):'')+' \u2014 '+fmtSvc(s)+ptSfx+'</option>';}).join('');
   const firstLineOpts='<option value="">-- Select product or service --</option>'
-    +(invOpts?'<optgroup label="📦 Products">'+invOpts+'</optgroup>':'')
-    +(svcOpts?'<optgroup label="✂️ Services">'+svcOpts+'</optgroup>':'')
-    +'<option value="__custom__">── Custom item ──</option>';
+    +(invOpts||'')
+    +(svcOpts?'<optgroup label="\u2702 Services">'+svcOpts+'</optgroup>':'')
+    +'<option value="__custom__">\u2500\u2500 Custom item \u2500\u2500</option>';
   modal(_s.sal_create_title,`
   <div class="fg-2">
     <div class="fg">
@@ -7050,7 +7155,7 @@ function _saveSale(){var _s=_L();
       var invObj2=D.inv.find(function(x){return x.id===li.invId;});
       if(invObj2){
         var _soldQty = li.qty || 1;
-        invObj2.qty=Math.max(0,(invObj2.qty||0)-_soldQty);
+        invObj2.qty=Math.round(Math.max(0,(invObj2.qty||0)-_soldQty)*100)/100;
         _dbSaveInv(invObj2, -_soldQty);
         // If this SKU has a recipe, consume the ingredients too.
         // _consumeRecipe handles missing ingredients gracefully
@@ -7765,12 +7870,16 @@ function _saveInvoice(){var _s=_L();
 // by sharing the same DOM IDs. Save handler differs (_saveQuote).
 function mQuoteNew(prefill){
   var _s = _L();
-  var saleItems = D.inv.filter(function(i){return i.st==='For Sale'||i.st==='Both';})
-    .map(function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.sp||0)*CUR.rate)+'" data-unit="each">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' — '+fmt(i.sp||0)+'</option>';}).join('');
-  var rentalItems = D.inv.filter(function(i){return i.st==='For Rent'||i.st==='Both';})
-    .map(function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.rp||0)*CUR.rate)+'" data-unit="per day">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' — '+fmt(i.rp||0)+'/day</option>';}).join('');
+  var saleItems = _groupOptsByCat(
+    D.inv.filter(function(i){return i.st==='For Sale'||i.st==='Both';}),
+    function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.sp||0)*CUR.rate)+'" data-unit="each">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' \u2014 '+fmt(i.sp||0)+'</option>';}
+  );
+  var rentalItems = _groupOptsByCat(
+    D.inv.filter(function(i){return i.st==='For Rent'||i.st==='Both';}),
+    function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.rp||0)*CUR.rate)+'" data-unit="per day">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' \u2014 '+fmt(i.rp||0)+'/day</option>';}
+  );
   var svcItems = (D.services||[]).filter(function(s){return s.active!==false;})
-    .map(function(s){var u=_ptUnit(s.priceType||'flat');return '<option value="'+_esc(s.name)+'" data-price="'+Math.round((s.price||0)*CUR.rate)+'" data-unit="'+_esc(u)+'">'+_esc(s.name)+' — '+fmt(s.price||0)+(u!=='each'?' '+u:'')+'</option>';}).join('');
+    .map(function(s){var u=_ptUnit(s.priceType||'flat');return '<option value="'+_esc(s.name)+'" data-price="'+Math.round((s.price||0)*CUR.rate)+'" data-unit="'+_esc(u)+'">'+_esc(s.name)+' \u2014 '+fmt(s.price||0)+(u!=='each'?' '+u:'')+'</option>';}).join('');
 
   // Default valid-until = today + 14 days
   var validUntil = new Date(); validUntil.setDate(validUntil.getDate()+14);
@@ -8640,11 +8749,11 @@ function _crAddLine(){
   row.className='cr-line-row';
   row.style.cssText='display:grid;grid-template-columns:1fr 70px auto;gap:6px;margin-bottom:6px;align-items:center';
   var rentable=D.inv.filter(function(i){return (i.st==='For Rent'||i.st==='Both')&&((i.qty||0)-(i.rented||0))>0;});
-  var opts=rentable.map(function(i){
+  var opts=_groupOptsByCat(rentable, function(i){
     var avail = (i.qty||0)-(i.rented||0);
-    return '<option value="'+i.id+'" data-avail="'+avail+'" data-rp="'+Math.round((i.rp||0)*CUR.rate)+'" data-dep="'+Math.round((i.dep||0)*CUR.rate)+'" data-name="'+i.name+'">'
-      +i.name+' ('+avail+' avail)'+(i.rp?' — '+fmt(i.rp)+' /'+_crPeriodSingular((document.getElementById('cr-period')||{value:'day'}).value):'')+' </option>';
-  }).join('');
+    return '<option value="'+i.id+'" data-avail="'+avail+'" data-rp="'+Math.round((i.rp||0)*CUR.rate)+'" data-dep="'+Math.round((i.dep||0)*CUR.rate)+'" data-name="'+_esc(i.name)+'">'
+      +_esc(i.name)+' ('+_fmtQty(avail)+' avail)'+(i.rp?' \u2014 '+fmt(i.rp)+' /'+_crPeriodSingular((document.getElementById('cr-period')||{value:'day'}).value):'')+'</option>';
+  });
   // Per-line qty: defaults to 1, capped to available stock via max attr
   // set when the user picks an item (data-avail). The fee recompute reads
   // qty from this input on every change.
@@ -8852,6 +8961,10 @@ async function mCreateRental(startDate){const _s=_L();
   const sym=CUR.symbol;
   const rate=CUR.rate;
   const rentable=D.inv.filter(function(i){return (i.st==='For Rent'||i.st==='Both')&&((i.qty||0)-(i.rented||0))>0;});
+  const rentableOpts = _groupOptsByCat(rentable, function(i){
+    var av=(i.qty||0)-(i.rented||0);
+    return '<option value="'+i.id+'" data-avail="'+av+'" data-rp="'+Math.round((i.rp||0)*CUR.rate)+'" data-dep="'+Math.round((i.dep||0)*CUR.rate)+'" data-name="'+_esc(i.name)+'">'+_esc(i.name)+' ('+_fmtQty(av)+' avail)'+(i.rp?' \u2014 '+fmt(i.rp)+' /'+(BIZ.language==='fr'?'jour':'day'):'')+'</option>';
+  });
   modal(_s.rent_create_title,`
   <div class="fg-2">
     <div class="fg">
@@ -8868,7 +8981,7 @@ async function mCreateRental(startDate){const _s=_L();
         <div class="cr-line-row" style="display:grid;grid-template-columns:1fr 70px auto;gap:6px;margin-bottom:6px;align-items:center">
           <select class="fs cr-item-sel" onchange="_crLineChange(this)">
             <option value="">-- Select Item --</option>
-            ${rentable.map(i=>{var av=(i.qty||0)-(i.rented||0);return `<option value="${i.id}" data-avail="${av}" data-rp="${Math.round((i.rp||0)*CUR.rate)}" data-dep="${Math.round((i.dep||0)*CUR.rate)}" data-name="${i.name}">${i.name} (${av} avail)${i.rp?" \u2014 "+fmt(i.rp)+' /'+(BIZ.language==='fr'?'jour':'day'):""}</option>`;}).join('')}
+            ${rentableOpts}
           </select>
           <input class="fi cr-line-qty" type="number" min="1" step="1" value="1" style="text-align:center" oninput="_crUpdateFee()" title="Qty"/>
           <button type="button" class="btn btn-d btn-xs" onclick="_crRemoveLine(this)" style="padding:6px 8px">\u2715</button>
@@ -10779,14 +10892,13 @@ function _nbPreview(){
 }
 
 // Small helper: format a number with trimmed trailing zeros — used for
-// recipe quantities which can be either whole (3 vanilla beans) or
-// fractional (0.5 kg sugar). Avoid forcing decimals.
+// recipe quantities and inventory qtys. Maximum 2 decimal places.
+// 1.0 → "1", 0.50 → "0.5", 3.14159 → "3.14". Avoid forcing decimals.
 function _fmtNum(n){
   if(n == null) return '0';
   var num = Number(n);
   if(!isFinite(num)) return '0';
-  // Up to 3 decimals, then strip trailing zeros
-  return parseFloat(num.toFixed(3)).toString();
+  return parseFloat(num.toFixed(2)).toString();
 }
 
 // Apply the batch: deduct ingredients, increment finished product, save batch.
@@ -10887,12 +10999,14 @@ async function _saveBatch(){
   // so 10 simultaneous upserts complete in well under a second with no
   // risk of statement_timeout. Fire-and-forget keeps the UI snappy.
   deductions.forEach(function(d){
-    d.ingredient.qty = Math.max(0, (d.ingredient.qty||0) - d.qty);
+    // Round to 2dp to prevent float drift from accumulating across saves.
+    d.ingredient.qty = Math.round(Math.max(0, (d.ingredient.qty||0) - d.qty) * 100) / 100;
     _dbSaveInv(d.ingredient).catch(function(){});
   });
 
-  // Increment finished product
-  product.qty = (product.qty||0) + mult;
+  // Increment finished product. Round to 2dp to prevent float drift
+  // from accumulating across batches (e.g. mult=0.1 ten times → 1.0000000000000002).
+  product.qty = Math.round(((product.qty||0) + mult) * 100) / 100;
   // Update finished-product cost = batch cost / qty produced (latest-batch basis).
   // This keeps COGS accurate when the product is sold.
   if(mult > 0) product.cost = totalCostUSD / mult;
@@ -11100,14 +11214,14 @@ async function _doBatchDelete(id){
   (b.ingredients||[]).forEach(function(li){
     var ing = D.inv.find(function(x){return x.id===li.ingredientId;});
     if(ing){
-      ing.qty = (ing.qty||0) + (li.qty||0);
+      ing.qty = Math.round(((ing.qty||0) + (li.qty||0)) * 100) / 100;
       _dbSaveInv(ing).catch(function(){});
     }
   });
   // Remove the produced qty from the finished product
   var product = D.inv.find(function(x){return x.id===b.productId;});
   if(product){
-    product.qty = Math.max(0, (product.qty||0) - (b.qtyProduced||b.multiplier||1));
+    product.qty = Math.round(Math.max(0, (product.qty||0) - (b.qtyProduced||b.multiplier||1)) * 100) / 100;
     _dbSaveInv(product).catch(function(){});
   }
   await _dbDelBatch(id);
@@ -13377,10 +13491,10 @@ function rptLowStock(){const _s=_L();
       return '<tr>'
         +'<td>'+mono(i.sku||'—')+'</td>'
         +'<td style="font-weight:500;color:var(--ink)">'+_esc(i.name)+'</td>'
-        +'<td style="text-align:center">'+(i.qty||0)+'</td>'
-        +'<td style="text-align:center;color:var(--c)">'+(i.rented||0)+'</td>'
-        +'<td style="text-align:center;font-weight:700;color:'+(isOOS?'var(--r)':'var(--y)')+'">'+avail+'</td>'
-        +'<td style="text-align:center;font-size:11px;color:var(--text2)">'+(thr>0?'≤ '+thr:'Out of stock')+'</td>'
+        +'<td style="text-align:center">'+_fmtQty(i.qty||0)+'</td>'
+        +'<td style="text-align:center;color:var(--c)">'+_fmtQty(i.rented||0)+'</td>'
+        +'<td style="text-align:center;font-weight:700;color:'+(isOOS?'var(--r)':'var(--y)')+'">'+_fmtQty(avail)+'</td>'
+        +'<td style="text-align:center;font-size:11px;color:var(--text2)">'+(thr>0?'≤ '+_fmtQty(thr):'Out of stock')+'</td>'
         +'<td>'+badge(isOOS?'Out of Stock':'Low Stock')+'</td>'
       +'</tr>';
     }).join('')}
@@ -21929,7 +22043,10 @@ function _consumeRecipe(product, multiplier, saleRef){
     var needed = (line.qty||0) * multiplier;
     var have = ing.qty || 0;
     var consume = Math.min(needed, have);
-    ing.qty = Math.max(0, have - needed);
+    // Round to 2 decimal places to prevent JavaScript float drift
+    // (e.g. 1 - 0.1 yields 0.9000000000000001). Without this, repeated
+    // sales accumulate noise and the stored qty grows long ugly decimals.
+    ing.qty = Math.round(Math.max(0, have - needed) * 100) / 100;
     _dbSaveInv(ing, -consume);
     if(needed > have + 0.0001){
       shortages.push({name:ing.name, needed:needed, have:have, unit:line.unit||ing.sz||''});
@@ -38302,8 +38419,9 @@ function _rptOverduePDF(){const _s=_L();
 
 function _rptInvValPDF(){const _s=_L();
   var total=D.inv.reduce(function(a,i){return a+(i.cost||0)*(i.qty||0);},0);
-  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Inventory Value</div><div class="sum-val green">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.inv_total_items+'</div><div class="sum-val blue">'+D.inv.length+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.inv_rented_out+'</div><div class="sum-val">'+D.inv.reduce(function(a,i){return a+i.rented;},0)+'</div></div></div>';
-  var rows=D.inv.map(function(i){return '<tr><td>'+_esc(i.name)+'</td><td>'+_esc(i.cat)+'</td><td>'+i.sku+'</td><td class="num">'+fmt(i.cost)+'</td><td>'+i.qty+'</td><td>'+i.rented+'</td><td class="num green">'+fmt((i.cost||0)*(i.qty||0))+'</td></tr>';}).join('');
+  var totalRented=D.inv.reduce(function(a,i){return a+(i.rented||0);},0);
+  var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">Total Inventory Value</div><div class="sum-val green">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.inv_total_items+'</div><div class="sum-val blue">'+D.inv.length+'</div></div><div class="sum-box"><div class="sum-lbl">'+_s.inv_rented_out+'</div><div class="sum-val">'+_fmtQty(totalRented)+'</div></div></div>';
+  var rows=D.inv.map(function(i){return '<tr><td>'+_esc(i.name)+'</td><td>'+_esc(i.cat)+'</td><td>'+_esc(i.sku||'')+'</td><td class="num">'+fmt(i.cost)+'</td><td>'+_fmtQty(i.qty||0)+'</td><td>'+_fmtQty(i.rented||0)+'</td><td class="num green">'+fmt((i.cost||0)*(i.qty||0))+'</td></tr>';}).join('');
   var table='<table><thead><tr><th>'+_s.rent_item_lbl+'</th><th>'+_s.ui_category+'</th><th>SKU</th><th class="num">Cost</th><th>Qty</th><th>'+_s.inv_rented+'</th><th class="num">Value</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Inventory Valuation', summary, table);
 }
@@ -38321,9 +38439,9 @@ function _rptLowStockPDF(){const _s=_L();
     var thr=i.minStock||i.minQty||0;
     var status=i._oos||avail<=0?'Out of Stock':'Low Stock';
     return '<tr><td>'+_esc(i.name)+'</td><td>'+_esc(i.cat||'')+'</td><td>'+_esc(i.sku||'')+'</td>'
-      +'<td class="num red">'+avail+'</td>'
-      +'<td class="num">'+(i.qty||0)+'</td>'
-      +'<td class="num">'+(thr>0?'≤ '+thr:'—')+'</td>'
+      +'<td class="num red">'+_fmtQty(avail)+'</td>'
+      +'<td class="num">'+_fmtQty(i.qty||0)+'</td>'
+      +'<td class="num">'+(thr>0?'≤ '+_fmtQty(thr):'—')+'</td>'
       +'<td>'+status+'</td></tr>';
   }).join('');
   var table='<table><thead><tr><th>'+_s.rent_item_lbl+'</th><th>'+_s.ui_category+'</th><th>SKU</th><th class="num">'+_s.rpt_available+'</th><th class="num">'+_s.rpt_total_qty+'</th><th class="num">'+_s.rpt_threshold+'</th><th>'+_s.ui_status+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
@@ -38459,14 +38577,14 @@ function _rptRepairsPDF(){const _s=_L();
 
 function _rptRentalUtilPDF(){const _s=_L();
   var util=D.inv.filter(function(i){return i.rp;}).map(function(i){return {name:i.name,qty:i.qty,rented:i.rented||0,rate:Math.round((i.rented||0)/Math.max(i.qty,1)*100)};}).sort(function(a,b){return b.rate-a.rate;});
-  var rows=util.map(function(u){return '<tr><td>'+_esc(u.name)+'</td><td class="num">'+u.qty+'</td><td class="num blue">'+u.rented+'</td><td class="num '+(u.rate>60?'green':u.rate>30?'':'red')+'">'+u.rate+'%</td></tr>';}).join('');
+  var rows=util.map(function(u){return '<tr><td>'+_esc(u.name)+'</td><td class="num">'+_fmtQty(u.qty)+'</td><td class="num blue">'+_fmtQty(u.rented)+'</td><td class="num '+(u.rate>60?'green':u.rate>30?'':'red')+'">'+u.rate+'%</td></tr>';}).join('');
   var table='<table><thead><tr><th>'+_s.rent_item_lbl+'</th><th class="num">'+_s.rpt_total_qty+'</th><th class="num">'+_s.inv_rented+'</th><th class="num">'+_s.rpt_utilization+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Rental Utilization Report', null, table);
 }
 
 function _rptRentedOutPDF(){const _s=_L();
   var out=D.inv.filter(function(i){return (i.rented||0)>0;});
-  var rows=out.map(function(i){return '<tr><td>'+_esc(i.name)+'</td><td>'+i.qty+'</td><td class="num blue">'+i.rented+'</td><td class="num '+(i.qty-i.rented>0?'green':'red')+'">'+(i.qty-i.rented)+'</td><td class="num">'+fmt(i.rp||0)+'/day</td></tr>';}).join('');
+  var rows=out.map(function(i){return '<tr><td>'+_esc(i.name)+'</td><td>'+_fmtQty(i.qty||0)+'</td><td class="num blue">'+_fmtQty(i.rented||0)+'</td><td class="num '+((i.qty||0)-(i.rented||0)>0?'green':'red')+'">'+_fmtQty((i.qty||0)-(i.rented||0))+'</td><td class="num">'+fmt(i.rp||0)+'/day</td></tr>';}).join('');
   var table='<table><thead><tr><th>'+_s.rent_item_lbl+'</th><th>'+_s.rpt_total_qty+'</th><th class="num">'+_s.inv_rented_out+'</th><th class="num">'+_s.inv_available+'</th><th class="num">'+_s.inv_col_sp+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Items Currently Rented Out', null, table);
 }
