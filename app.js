@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779903704");
+console.log("ShopTrack v2.7 - build:1779904384");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4000,9 +4000,12 @@ function pgInv(){const _s=_L();const _ui=_s;
     // Synthetic markers starting with 'table:' come from save paths
     // for related tables that don't exist yet (e.g. table:batches when
     // the Production module's batches table hasn't been created).
+    // Synthetic markers starting with 'storage:' come from photo upload
+    // paths when the named Storage bucket doesn't exist yet. Surfaced
+    // so the user sees creation instructions in the banner.
     return ['item_type','recipe','vendor_id','needs_price','cost_lines',
             'qty_int_to_numeric','min_stock_int_to_numeric','rented_int_to_numeric',
-            'table:batches']
+            'table:batches','storage:inventory-photos']
             .indexOf(c) >= 0;
   });
   var _migBanner = '';
@@ -4019,7 +4022,34 @@ function pgInv(){const _s=_L();const _ui=_s;
       // understands WHY saves are failing.
       var _hasIntType = false;
       var _hasMissingTable = false;
+      var _hasMissingBucket = false;
       var _sqlLines = _missing.map(function(c){
+        if(c.indexOf('storage:') === 0){
+          _hasMissingBucket = true;
+          var bucket = c.slice('storage:'.length);
+          // Bucket creation isn't SQL — it's a dashboard operation in
+          // Supabase. We emit instructions as a code-block comment so
+          // they appear in the same Copy SQL block as the other fixes.
+          // Postgres will ignore SQL comments cleanly, so even if the
+          // user pastes the whole thing, the comment is harmless.
+          return '-- ──────────────────────────────────────────────────\n'
+            +'-- MANUAL STEP — Create Storage bucket "'+bucket+'":\n'
+            +'--   1. Open Supabase dashboard → Storage\n'
+            +'--   2. Click "New bucket"\n'
+            +'--   3. Name: '+bucket+'\n'
+            +'--   4. Public: YES (toggle on)\n'
+            +'--   5. Click Create\n'
+            +'--\n'
+            +'-- Then add this SQL policy (paste below) so authenticated\n'
+            +'-- users can upload, and anyone can view:\n'
+            +'CREATE POLICY "Public read '+bucket+'" ON storage.objects\n'
+            +'  FOR SELECT USING (bucket_id = \''+bucket+'\');\n'
+            +'CREATE POLICY "Auth write '+bucket+'" ON storage.objects\n'
+            +'  FOR ALL TO authenticated\n'
+            +'  USING (bucket_id = \''+bucket+'\')\n'
+            +'  WITH CHECK (bucket_id = \''+bucket+'\');\n'
+            +'-- ──────────────────────────────────────────────────';
+        }
         if(c === 'table:batches'){
           _hasMissingTable = true;
           // Production module's batches table. Schema mirrors
@@ -4073,14 +4103,23 @@ function pgInv(){const _s=_L();const _ui=_s;
       // Banner title + body adjust depending on what's wrong.
       var _missingTables = _missing.filter(function(c){return c.indexOf('table:')===0;})
         .map(function(c){return c.slice('table:'.length);});
+      var _missingBuckets = _missing.filter(function(c){return c.indexOf('storage:')===0;})
+        .map(function(c){return c.slice('storage:'.length);});
       var _displayMissing = _missing.filter(function(c){
-        return !c.endsWith('_int_to_numeric') && c.indexOf('table:')!==0;
+        return !c.endsWith('_int_to_numeric')
+          && c.indexOf('table:')!==0
+          && c.indexOf('storage:')!==0;
       });
       var _intTypeCols = _missing.filter(function(c){return c.endsWith('_int_to_numeric');})
         .map(function(c){return c.slice(0,-'_int_to_numeric'.length);});
       var _bodyText = '';
       // Build the body in pieces — one sentence per category of issue.
       var _parts = [];
+      if(_missingBuckets.length){
+        _parts.push(_fr
+          ? 'Bucket Storage manquant&nbsp;: <code>'+_missingBuckets.join('</code>, <code>')+'</code> (étape manuelle dans le tableau de bord Supabase — voir le bloc ci-dessous)'
+          : 'Missing Storage bucket: <code>'+_missingBuckets.join('</code>, <code>')+'</code> (manual step in Supabase dashboard — see block below)');
+      }
       if(_missingTables.length){
         _parts.push(_fr
           ? 'Tables manquantes&nbsp;: <code>'+_missingTables.join('</code>, <code>')+'</code>'
@@ -4104,11 +4143,13 @@ function pgInv(){const _s=_L();const _ui=_s;
         +'<div style="font-size:20px;line-height:1">⚠️</div>'
         +'<div style="flex:1;min-width:0">'
           +'<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">'
-            +(_hasMissingTable
-                ? (_fr?'Table manquante — Production hors-ligne':'Missing table — Production saving locally only')
-                : _hasIntType
-                  ? (_fr?'Type de colonne incorrect — sauvegardes bloquées':'Wrong column type — saves blocked')
-                  : (_fr?'Schéma de base de données obsolète':'Database schema is out of date'))
+            +(_hasMissingBucket
+                ? (_fr?'Bucket Storage manquant — photos sauvegardées localement':'Missing Storage bucket — photos saving locally only')
+                : _hasMissingTable
+                  ? (_fr?'Table manquante — Production hors-ligne':'Missing table — Production saving locally only')
+                  : _hasIntType
+                    ? (_fr?'Type de colonne incorrect — sauvegardes bloquées':'Wrong column type — saves blocked')
+                    : (_fr?'Schéma de base de données obsolète':'Database schema is out of date'))
           +'</div>'
           +'<div style="font-size:12px;color:#78350f;line-height:1.5;margin-bottom:8px">'+_bodyText+'</div>'
           +'<pre style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-size:11px;color:#451a03;margin:0 0 8px;overflow-x:auto;white-space:pre-wrap;word-break:break-word">'+_esc(_sql)+'</pre>'
@@ -5677,10 +5718,16 @@ function _saveNewItem(){var _s=_L();
     toast(_L().t_selling_price + fmt(_aiSp/CUR.rate) + ') is below the minimum sell price (' + fmt(_aiMinSp/CUR.rate) + ').', 'error');
     return;
   }
-  function doFinish(){
+  async function doFinish(){
     if(pending && pending.length) newItem.photoDataUrls = pending.slice();
     if(window._pendingPhotos) delete window._pendingPhotos['__new__'];
     D.inv.unshift(newItem);
+    // Migrate any base64 photos to Storage before saving the row. Same
+    // pattern as saveEditItem — keeps row payload small + makes Storage
+    // the canonical store from the start.
+    try { await _migrateItemPhotosToStorage(newItem); } catch(e){
+      console.warn('[addItem] photo migration failed, falling back to base64:', e.message);
+    }
     _dbSaveInv(newItem);
     addAudit('Inventory item added', id+' -- '+name);
     toast(name+' added to inventory','success');
@@ -5963,10 +6010,18 @@ function saveEditItem(id){
   // Save photos — wait for all FileReaders to finish (max 1500ms)
   const pending = window._pendingPhotos && window._pendingPhotos[id];
   const expectedCount = pending ? (pending._expectedCount || pending.length) : 0;
-  const doSave = ()=>{
+  const doSave = async ()=>{
     // Ensure imgDataUrl (primary) stays in sync with photoDataUrls[0]
     if(it.photoDataUrls && it.photoDataUrls.length){
       it.imgDataUrl = it.photoDataUrls[0];
+    }
+    // Migrate any base64 photos on this item to Supabase Storage BEFORE
+    // saving the row. Each base64 string becomes an https URL pointing
+    // at the uploaded file, so the row payload shrinks from MB to bytes.
+    // Idempotent — items already on URLs pass through. Network failure
+    // on Storage falls back to keeping base64 (no photo loss).
+    try { await _migrateItemPhotosToStorage(it); } catch(e){
+      console.warn('[saveEditItem] photo migration failed, falling back to base64:', e.message);
     }
     _dbSaveInv(it);
     addAudit('Inventory item updated', id+' — '+it.name);
@@ -21462,6 +21517,207 @@ function _consumeRecipe(product, multiplier, saleRef){
 // inside the PostgREST default response cap. With 38 items that's 8
 // batches; with 100 items, 20 batches. Each batch takes ~300-800ms so
 // the entire backfill completes in a few seconds.
+// ── SUPABASE STORAGE FOR INVENTORY PHOTOS ───────────────────────
+// Photos used to live as base64 strings in inventory.img_data_url and
+// inventory.photo_data_urls columns. That made every row multi-MB and
+// caused SELECT timeouts, save storms, statement_timeouts, and broken
+// migrations. Photos now live as files in Supabase Storage under the
+// bucket 'inventory-photos', with rows storing only the public URL
+// strings (~100 bytes each).
+//
+// Bucket layout: {biz_id}/{inv_id}-{N}.jpg
+//   - one folder per business → easy per-biz auditing, deletion, quotas
+//   - one file per photo slot on an item, 1-indexed
+//   - .jpg extension regardless of source — Storage auto-detects MIME
+//     from the upload; the extension is purely for human readability
+//
+// Backward compat: rows that still have base64 in img_data_url continue
+// to work everywhere photos are displayed (the <img src=...> accepts
+// both 'data:image/...' and 'https://...storage...' URLs identically).
+// The lazy fallback at save time migrates rows opportunistically as
+// users edit them; the batch migration tool migrates everything in
+// one pass.
+
+var _PHOTO_BUCKET = 'inventory-photos';
+
+// True if a string is a base64-encoded data URL (vs a remote URL or
+// some other reference). Used to decide whether a photo string needs
+// uploading to Storage.
+function _isDataUrl(s){
+  return typeof s === 'string' && s.indexOf('data:') === 0;
+}
+
+// Convert a base64 data URL to a Blob — required input format for the
+// Supabase Storage upload API. Handles the standard 'data:<mime>;base64,<payload>'
+// format used by FileReader.readAsDataURL.
+function _dataUrlToBlob(dataUrl){
+  try {
+    var parts = dataUrl.split(',');
+    var meta = parts[0]; // 'data:image/jpeg;base64'
+    var b64 = parts[1] || '';
+    var mimeMatch = meta.match(/data:([^;]+)/);
+    var mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    var binary = atob(b64);
+    var bytes = new Uint8Array(binary.length);
+    for(var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  } catch(e){
+    console.error('[storage] dataUrl→Blob failed:', e.message);
+    return null;
+  }
+}
+
+// Upload one base64 data URL to Storage. Returns a public URL string
+// on success, or the original data URL on failure (so the caller can
+// fall back gracefully — no photo loss if upload fails). The slot
+// number is the index in photoDataUrls (1-indexed), used to keep file
+// names stable across re-saves.
+async function _uploadPhotoToStorage(bizId, invId, slot, dataUrl){
+  if(!_sb || !_sb.storage){
+    console.warn('[storage] Supabase Storage client unavailable — keeping base64');
+    return dataUrl;
+  }
+  if(!_isDataUrl(dataUrl)) return dataUrl; // already a URL — pass through
+  var blob = _dataUrlToBlob(dataUrl);
+  if(!blob){ return dataUrl; }
+  // Path: {biz_id}/{inv_id}-{slot}.jpg
+  // Use a fixed extension so re-uploads overwrite cleanly (upsert:true).
+  // The actual MIME comes from the blob's type — Storage stores both.
+  var path = bizId + '/' + invId + '-' + slot + '.jpg';
+  try {
+    var up = await _sb.storage.from(_PHOTO_BUCKET).upload(path, blob, {
+      upsert: true,
+      contentType: blob.type || 'image/jpeg',
+      cacheControl: '31536000' // 1 year — photos rarely change after upload
+    });
+    if(up.error){
+      // Bucket-not-found / not-authorised errors should be surfaced clearly.
+      // Other errors (network, quota) get logged and we fall back to base64.
+      var msg = (up.error.message || '').toLowerCase();
+      if(msg.indexOf('bucket not found') >= 0 || msg.indexOf('not found') >= 0){
+        console.error('[storage] Bucket "'+_PHOTO_BUCKET+'" not found. Create it in Supabase → Storage → New bucket → Public.');
+        // Flag once per session so the user sees a banner with instructions
+        try {
+          window._invMissingCols = window._invMissingCols || [];
+          if(window._invMissingCols.indexOf('storage:'+_PHOTO_BUCKET) < 0){
+            window._invMissingCols.push('storage:'+_PHOTO_BUCKET);
+            if(typeof curPage !== 'undefined' && curPage === 'inventory'){
+              try { nav('inventory'); } catch(_){}
+            }
+          }
+        } catch(_){}
+      } else {
+        console.error('[storage] upload failed for '+path+':', up.error.message);
+      }
+      return dataUrl; // fall back — caller keeps the base64 version
+    }
+    // Get the public URL
+    var pub = _sb.storage.from(_PHOTO_BUCKET).getPublicUrl(path);
+    var url = pub && pub.data && pub.data.publicUrl;
+    if(!url){
+      console.error('[storage] could not derive public URL for '+path);
+      return dataUrl;
+    }
+    return url;
+  } catch(e){
+    console.error('[storage] upload exception:', e.message);
+    return dataUrl;
+  }
+}
+
+// Move any base64 photos on an inventory item into Storage. Returns the
+// item (mutated in place) with photoDataUrls and imgDataUrl now holding
+// URL strings instead of base64. If Storage is unavailable or any upload
+// fails, the affected entries stay as base64 — caller's _dbSaveInv save
+// path knows how to handle either.
+//
+// Idempotent: items that already have URLs in photoDataUrls are passed
+// through unchanged. So calling this on every save is safe — only the
+// items that genuinely have base64 to migrate do any network work.
+async function _migrateItemPhotosToStorage(item){
+  if(!item || !SESSION.bizId) return item;
+  var photos = item.photoDataUrls;
+  if(!Array.isArray(photos) || !photos.length) return item;
+
+  // Quick check — is there anything actually to migrate?
+  var hasBase64 = photos.some(_isDataUrl);
+  if(!hasBase64) return item;
+
+  // Upload each base64 photo sequentially. Parallel uploads risked
+  // saturating Supabase the same way save storms did. 4-photo items
+  // take ~1s sequentially — acceptable.
+  var newUrls = [];
+  for(var i = 0; i < photos.length; i++){
+    var p = photos[i];
+    if(_isDataUrl(p)){
+      // 1-indexed slot in filename for human readability
+      var url = await _uploadPhotoToStorage(SESSION.bizId, item.id, i + 1, p);
+      newUrls.push(url);
+    } else {
+      newUrls.push(p); // already a URL — pass through
+    }
+  }
+  item.photoDataUrls = newUrls;
+  // Keep primary imgDataUrl in sync with photoDataUrls[0]
+  item.imgDataUrl = newUrls[0] || null;
+  return item;
+}
+
+// Bulk migration tool — walks every inventory item, moves base64 photos
+// to Storage, and re-saves. Exposed via window.migrateAllPhotosToStorage()
+// so the user can run it on demand. Returns a summary {migrated, skipped,
+// failed} that gets logged + toasted.
+//
+// Resumable: items already on Storage URLs are skipped. Re-running after
+// a partial failure picks up only the items still on base64.
+async function _migrateAllPhotosToStorage(){
+  if(!SESSION.bizId){ toast('No active business', 'error'); return; }
+  if(!_sb || !_sb.storage){ toast('Storage client unavailable', 'error'); return; }
+  var withBase64 = D.inv.filter(function(i){
+    if(!Array.isArray(i.photoDataUrls)) return false;
+    return i.photoDataUrls.some(_isDataUrl);
+  });
+  if(!withBase64.length){
+    toast('All photos already on Storage \u2713', 'success');
+    return { migrated: 0, skipped: D.inv.length, failed: 0 };
+  }
+  console.log('[migrate-photos] Starting: '+withBase64.length+' item(s) have base64 photos to move to Storage');
+  toast('Migrating '+withBase64.length+' item(s) to Storage\u2026', 'info');
+
+  var migrated = 0, failed = 0;
+  for(var i = 0; i < withBase64.length; i++){
+    var it = withBase64[i];
+    var before = it.photoDataUrls.slice();
+    try {
+      await _migrateItemPhotosToStorage(it);
+      // Verify the photos actually changed (some may still be base64 if
+      // upload failed). Count it as migrated only if at least one moved.
+      var didMove = it.photoDataUrls.some(function(u, idx){
+        return !_isDataUrl(u) && _isDataUrl(before[idx]);
+      });
+      if(didMove){
+        await _dbSaveInv(it);
+        migrated++;
+        console.log('[migrate-photos] '+it.id+' "'+it.name+'" \u2713');
+      } else {
+        failed++;
+        console.warn('[migrate-photos] '+it.id+' "'+it.name+'" — no photos moved (storage may be unavailable)');
+      }
+    } catch(e){
+      failed++;
+      console.error('[migrate-photos] '+it.id+' threw:', e.message);
+    }
+    // Breather between items so the save+upload pair doesn't stack
+    await new Promise(function(r){ setTimeout(r, 200); });
+  }
+  var msg = 'Migrated '+migrated+' item(s)' + (failed ? ' \u2014 '+failed+' failed' : '');
+  console.log('[migrate-photos] DONE. '+msg);
+  toast(msg, failed ? 'warn' : 'success');
+  return { migrated: migrated, skipped: D.inv.length - withBase64.length, failed: failed };
+}
+window.migrateAllPhotosToStorage = _migrateAllPhotosToStorage;
+
+// ── BACKFILL (still needed during the transition) ────────────────
 async function _backfillInventoryPhotos(bizId, itemIds){
   if(!_sb || !bizId || !itemIds || !itemIds.length) return;
   // Skip items that already have photos in memory (typically loaded from
