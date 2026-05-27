@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779908208");
+console.log("ShopTrack v2.7 - build:1779914851");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -10556,6 +10556,12 @@ function _nbPreview(){
       +'</ul><div style="font-size:11px;margin-top:8px;color:var(--text2)">Adjust the multiplier, or restock the missing ingredient(s) first.</div></div>';
   }
 
+  // Compute ingredient subtotal for breakdown display — distinguishes
+  // recipe-ingredient cost from product-level overhead in the preview
+  // summary. Matches what mViewBatch shows post-save for consistency.
+  var ingredientCostUSD = totalCostUSD - (overheadUSD * mult);
+  var overheadAppliedUSD = overheadUSD * mult;
+
   wrap.innerHTML = ''
     +'<div style="border:1px solid var(--border2);border-radius:8px;overflow:hidden">'
       +'<div style="padding:10px 14px;background:var(--bg3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);display:flex;justify-content:space-between;align-items:center">'
@@ -10567,14 +10573,27 @@ function _nbPreview(){
         +'<tbody>'+rowsHtml+'</tbody>'
       +'</table>'
     +'</div>'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 14px;background:var(--g-dim);border-radius:8px">'
-      +'<div>'
-        +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);font-weight:700">Will produce</div>'
-        +'<div style="font-size:14px;font-weight:700;color:var(--ink);margin-top:2px">'+_fmtNum(mult)+' \u00D7 <strong style="color:var(--g)">'+_esc(product.name)+'</strong></div>'
-      +'</div>'
-      +'<div style="text-align:right">'
-        +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);font-weight:700">Batch cost</div>'
-        +'<div style="font-size:14px;font-family:var(--mono);font-weight:800;color:var(--p);margin-top:2px">'+fmt(totalCostUSD)+'</div>'
+    +'<div style="margin-top:10px;padding:10px 14px;background:var(--g-dim);border-radius:8px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
+        +'<div>'
+          +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);font-weight:700">Will produce</div>'
+          +'<div style="font-size:14px;font-weight:700;color:var(--ink);margin-top:2px">'+_fmtNum(mult)+' \u00D7 <strong style="color:var(--g)">'+_esc(product.name)+'</strong></div>'
+        +'</div>'
+        +'<div style="text-align:right;min-width:160px">'
+          +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);font-weight:700;margin-bottom:4px">Batch cost</div>'
+          +'<div style="font-size:11px;color:var(--text2);display:flex;justify-content:space-between;gap:10px">'
+            +'<span>Ingredients</span><span style="font-family:var(--mono)">'+fmt(ingredientCostUSD)+'</span>'
+          +'</div>'
+          +(overheadAppliedUSD > 0.001
+            ? '<div style="font-size:11px;color:var(--text2);display:flex;justify-content:space-between;gap:10px;margin-top:2px">'
+                +'<span>+ Overhead</span><span style="font-family:var(--mono)">'+fmt(overheadAppliedUSD)+'</span>'
+              +'</div>'
+            : '')
+          +'<div style="font-size:14px;font-family:var(--mono);font-weight:800;color:var(--p);margin-top:4px;padding-top:4px;border-top:1px solid rgba(0,0,0,.08);display:flex;justify-content:space-between;gap:10px">'
+            +'<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text)">Total</span>'
+            +'<span>'+fmt(totalCostUSD)+'</span>'
+          +'</div>'
+        +'</div>'
       +'</div>'
     +'</div>'
     + warningHtml;
@@ -10731,6 +10750,34 @@ function mViewBatch(id){const _s=_L();
     +'</tr>';
   }).join('');
 
+  // Compute ingredient-only subtotal so the footer addition is transparent.
+  // Difference between (b.cost) and (ingredientSubtotal) is the overhead
+  // from the product's Cost Breakdown that got included in totalCostUSD
+  // during _saveBatch.
+  var ingredientSubtotal = (b.ingredients||[]).reduce(function(s,li){
+    return s + (li.lineCost||0);
+  }, 0);
+  var batchTotal = b.cost || 0;
+  var overhead = Math.max(0, batchTotal - ingredientSubtotal);
+  // Render a 3-row footer showing the math: ingredients + overhead = total.
+  // The overhead line only appears when there IS overhead, keeping the
+  // footer clean for batches with ingredients-only cost.
+  var footerRows = ''
+    +'<tr style="border-top:2px solid var(--border)">'
+      +'<td colspan="3" style="padding:6px 10px;text-align:right;font-weight:600;font-size:11px;color:var(--text2)">Ingredients subtotal</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-weight:600">'+fmt(ingredientSubtotal)+'</td>'
+    +'</tr>';
+  if(overhead > 0.001){
+    footerRows += '<tr>'
+      +'<td colspan="3" style="padding:4px 10px;text-align:right;font-size:11px;color:var(--text2)">+ Overhead (labor, packaging, utilities, etc.)</td>'
+      +'<td style="padding:4px 10px;text-align:right;font-family:var(--mono);color:var(--text2)">'+fmt(overhead)+'</td>'
+    +'</tr>';
+  }
+  footerRows += '<tr style="border-top:1px solid var(--border)">'
+    +'<td colspan="3" style="padding:8px 10px;text-align:right;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)">Total batch cost</td>'
+    +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-weight:800;color:var(--p)">'+fmt(batchTotal)+'</td>'
+  +'</tr>';
+
   modal('\uD83C\uDFED Batch '+b.id,
     '<div class="fg-2">'
       +'<div><div class="fl">Product</div><div style="font-size:14px;font-weight:700">'+_esc(b.productName||'—')+'</div></div>'
@@ -10743,7 +10790,7 @@ function mViewBatch(id){const _s=_L();
       +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
         +'<thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Ingredient</th><th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Qty</th><th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Unit cost</th><th style="text-align:right;padding:6px 10px;font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Line cost</th></tr></thead>'
         +'<tbody>'+(ingredientsHtml||'<tr><td colspan="4" style="padding:14px;text-align:center;color:var(--text2);font-size:12px">No ingredient data on this batch</td></tr>')+'</tbody>'
-        +'<tfoot><tr style="border-top:2px solid var(--border)"><td colspan="3" style="padding:8px 10px;text-align:right;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)">Total batch cost</td><td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-weight:800;color:var(--p)">'+fmt(b.cost||0)+'</td></tr></tfoot>'
+        +'<tfoot>'+footerRows+'</tfoot>'
       +'</table>'
     +'</div>'
     +(b.notes?'<div class="fg" style="margin-top:14px"><div class="fl">Notes</div><div style="background:var(--bg3);border-radius:8px;padding:10px 14px;font-size:13px;line-height:1.6;color:var(--ink);white-space:pre-wrap">'+_esc(b.notes)+'</div></div>':''),
