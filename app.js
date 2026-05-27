@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779898594");
+console.log("ShopTrack v2.7 - build:1779899044");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5107,17 +5107,28 @@ function _recipeHTML(prefix, existingLines, currentItemId){const _s=_L();
     return s + ((parseFloat(l.qty)||0) * (ing ? (ing.cost||0)*CUR.rate : 0));
   }, 0);
 
-  // Build the ingredient dropdown options — every inventory item EXCEPT the
-  // current product itself (a product can't be its own ingredient — that
-  // would create an infinite loop).
+  // Build the ingredient dropdown options.
+  // Filter rules:
+  //   1. Skip the current product itself (can't be its own ingredient —
+  //      would create an infinite loop).
+  //   2. Skip Finished Products. They're the END of the production chain
+  //      — a plate of Ndolé doesn't go INTO another batch, it gets sold.
+  //      Recipes are built from Raw Materials (kg of beef, L of palm oil)
+  //      and Bulk Batches (the Ndolé Beef batch becomes plates). Listing
+  //      Finished Products as available ingredients confuses the picker
+  //      and lets users accidentally build nonsense recipes.
+  //   3. Items with missing itemType default to 'resale' (finished
+  //      product) — those get filtered out too. This matches how the
+  //      rest of the app treats undefined itemType.
   // Each option carries data attributes the row uses to surface info
   // about the picked ingredient WITHOUT requiring a re-render:
   //   data-unit  → the ingredient's unit of measurement (g/ml/kg/each)
   //   data-avail → available qty (qty - rented), the actual on-hand stock
-  // The visible label also includes 'X in stock' so the user can compare
-  // availability across options while the dropdown is open.
-  var ingredients = (D.inv||[]).filter(function(x){return x.id !== currentItemId;})
-    .sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+  var ingredients = (D.inv||[]).filter(function(x){
+    if(x.id === currentItemId) return false;
+    var t = x.itemType || 'resale';
+    return t === 'raw_material' || t === 'bulk';
+  }).sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
   var ingOpts = '<option value="">— Pick ingredient —</option>'
     + ingredients.map(function(x){
         var u = x.sz || '';
@@ -5192,45 +5203,41 @@ function _recipeRowHTML(prefix, idx, line, ingOpts){
     new RegExp('value="'+(line.ingredientId||'__none__')+'"', 'g'),
     'value="'+(line.ingredientId||'__none__')+'" selected'
   );
-  // If we already have a saved ingredient on this line, pre-compute the
-  // available-qty pill so it shows on initial render (e.g. when re-opening
-  // an item that has existing recipe lines). Otherwise leave the pill
-  // empty — _rcpRowChange will populate it when the user picks.
+  // Resolve display values from the underlying ingredient — its current
+  // sz (unit) and stock — rather than from the saved recipe line. This
+  // ensures the chip always shows what the ingredient currently is,
+  // even if line.unit was never populated (older saves) or has drifted
+  // since (user edited the ingredient's unit). Falls back to line.unit
+  // as a last resort if the ingredient is missing entirely.
+  var unitDisp = '';
   var availPill = '';
   if(line.ingredientId){
     var ing = (D.inv||[]).find(function(x){return x.id === line.ingredientId;});
     if(ing){
+      unitDisp = ing.sz || line.unit || '';
       var availInit = parseFloat(((ing.qty||0) - (ing.rented||0)).toFixed(3));
-      var unitInit = ing.sz || '';
-      availPill = availInit + (unitInit ? ' '+unitInit : '');
+      availPill = availInit + (unitDisp ? ' '+unitDisp : '');
+    } else {
+      unitDisp = line.unit || '';
     }
   }
   return '<div class="rcp-row" data-idx="'+idx+'" style="display:grid;grid-template-columns:1fr 80px 80px 30px;gap:6px;margin-bottom:6px;align-items:center;min-width:420px">'
     +'<select class="fs rcp-ing" style="font-size:12px;padding:6px" onchange="_rcpRowChange(this,\''+prefix+'\')">'+optsWithSel+'</select>'
     +'<input class="fi rcp-qty" type="number" step="any" min="0" placeholder="0" value="'+(line.qty||'')+'" style="font-size:12px;padding:6px;text-align:right" oninput="_rcpRecalc(\''+prefix+'\')"/>'
-    // Unit field is READ-ONLY — populated automatically from the picked
-    // ingredient's underlying 'sz' (Unit of measurement) field. User
-    // doesn't type into this; their job is just qty.
-    //
-    // Visible chip styling: hardcoded colors instead of CSS variables.
-    // The previous attempts used var(--bg3) for the chip background,
-    // but .fi (the class on other inputs in the same row) ALSO uses
-    // var(--bg3) — so the chip blended invisibly into the adjacent
-    // qty input. Hardcoded values give us a guaranteed contrast that
-    // works in both light and dark themes.
-    //
-    // Also dropped the .fi class — it was forcing the .fi background
-    // and border via specificity which competed with the inline styles.
+    // Unit chip — read-only, populated from the ingredient's sz field.
+    // Hardcoded amber palette so it doesn't blend into adjacent inputs
+    // that also use var(--bg3). Same amber as the migration banner so
+    // 'informational, not editable' is consistent across the UI.
     +'<div class="rcp-unit-wrap" style="display:flex;align-items:center;justify-content:center;'
       +'background:#fde68a;border:1px solid #d97706;border-radius:6px;'
       +'padding:6px 8px;min-height:32px;'
       +'color:#451a03;font-weight:700;font-size:12px;text-align:center;'
       +'user-select:none"'
       +' title="Auto-filled from the ingredient\'s Unit of measurement. Edit the inventory item to change the unit.">'
-      +'<span class="rcp-unit-val">'+_esc(line.unit||'')+'</span>'
-      // Keep a hidden input so existing readers that query .rcp-unit by
-      // value still work (saveEditItem reads rows via .rcp-unit.value)
-      +'<input type="hidden" class="rcp-unit" value="'+_esc(line.unit||'')+'"/>'
+      +'<span class="rcp-unit-val" style="color:#451a03">'+_esc(unitDisp)+'</span>'
+      // Hidden input so saveEditItem's row reader (.rcp-unit.value) keeps
+      // working when the recipe is persisted.
+      +'<input type="hidden" class="rcp-unit" value="'+_esc(unitDisp)+'"/>'
     +'</div>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_rcpRemoveLine(this,\''+prefix+'\')" style="padding:4px 6px">\u2715</button>'
     // Second-line annotation under the row that shows on-hand stock
@@ -5257,10 +5264,14 @@ function _rcpAddLine(prefix, currentItemId){
   var rows = document.getElementById(prefix+'-rcp-rows');
   if(!rows) return;
   // Rebuild the ingredient options fresh each click (in case inventory changed).
-  // Mirrors the enrichment in _recipeHTML — keeps the in-stock count and
-  // data-avail attribute current as the user opens the modal repeatedly.
-  var ingredients = (D.inv||[]).filter(function(x){return x.id !== currentItemId;})
-    .sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+  // Mirrors the filter and enrichment in _recipeHTML — exclude self,
+  // exclude Finished Products (they're not ingredients), keep in-stock
+  // count and data-avail current.
+  var ingredients = (D.inv||[]).filter(function(x){
+    if(x.id === currentItemId) return false;
+    var t = x.itemType || 'resale';
+    return t === 'raw_material' || t === 'bulk';
+  }).sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
   var ingOpts = '<option value="">— Pick ingredient —</option>'
     + ingredients.map(function(x){
         var u = x.sz || '';
