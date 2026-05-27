@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779848462");
+console.log("ShopTrack v2.7 - build:1779849019");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -3977,6 +3977,15 @@ function pgInv(){const _s=_L();const _ui=_s;
         return 'ALTER TABLE inventory ADD COLUMN IF NOT EXISTS '+c+' '+(typeMap[c]||'TEXT')+';';
       }).join('\n');
       var _bid = 'invmig-'+_missing.join('-').replace(/_/g,'');
+      // Stash the SQL on a global so the button click handlers don't
+      // have to embed it in their inline HTML — JSON-encoded strings
+      // inside double-quoted onclick attributes broke the inventory
+      // page's filter row parsing on some browsers, which is the
+      // 'none of the filters work' symptom reported by the user.
+      // Now the buttons just call helpers that read the global.
+      window._invMigSql = _sql;
+      window._invMigKey = 'st_invmig_dismissed_'+(SESSION.bizId||'')+'_'+_missing.sort().join(',');
+      window._invMigBannerId = _bid;
       _migBanner = '<div id="'+_bid+'" style="background:#fef3c7;border-left:4px solid #d97706;border-radius:8px;padding:13px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start">'
         +'<div style="font-size:20px;line-height:1">⚠️</div>'
         +'<div style="flex:1;min-width:0">'
@@ -3985,13 +3994,13 @@ function pgInv(){const _s=_L();const _ui=_s;
           +'</div>'
           +'<div style="font-size:12px;color:#78350f;line-height:1.5;margin-bottom:8px">'
             +(_fr
-              ?'Votre base Supabase n\u2019a pas les colonnes suivantes&nbsp;: <code>'+_missing.join('</code>, <code>')+'</code>. Cela casse&nbsp;: filtre par type, prix de vente désactivé pour matières premières, recettes, et catégorie de coût. Exécutez ce SQL dans Supabase&nbsp;:'
-              :'Your Supabase database is missing these columns: <code>'+_missing.join('</code>, <code>')+'</code>. This breaks: type filter, sale-price greying-out for raw materials, recipes, and cost-line tracking. Run this SQL in your Supabase SQL Editor:')
+              ?'Votre base Supabase n\u2019a pas les colonnes suivantes&nbsp;: <code>'+_missing.join('</code>, <code>')+'</code>. Cela casse certaines fonctions (filtre par type, prix de vente désactivé pour matières premières, recettes). Exécutez ce SQL dans Supabase&nbsp;:'
+              :'Your Supabase database is missing these columns: <code>'+_missing.join('</code>, <code>')+'</code>. This breaks: type filter, sale-price greying for raw materials, recipes. Run this SQL in your Supabase SQL Editor:')
           +'</div>'
           +'<pre style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-size:11px;color:#451a03;margin:0 0 8px;overflow-x:auto;white-space:pre-wrap;word-break:break-word">'+_esc(_sql)+'</pre>'
           +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
-            +'<button class="btn btn-s btn-xs" onclick="navigator.clipboard&amp;&amp;navigator.clipboard.writeText('+JSON.stringify(_sql)+').then(function(){toast(\''+(_fr?'SQL copié':'SQL copied')+' \u2713\',\'success\');})">'+(_fr?'Copier le SQL':'Copy SQL')+'</button>'
-            +'<button class="btn btn-s btn-xs" onclick="try{localStorage.setItem(\'st_invmig_dismissed_'+(SESSION.bizId||'')+'_'+_missing.sort().join(',')+'\',\'1\');document.getElementById(\''+_bid+'\').remove();}catch(e){}">'+(_fr?'Plus tard':'Dismiss')+'</button>'
+            +'<button class="btn btn-s btn-xs" onclick="_invMigCopy()">'+(_fr?'Copier le SQL':'Copy SQL')+'</button>'
+            +'<button class="btn btn-s btn-xs" onclick="_invMigDismiss()">'+(_fr?'Plus tard':'Dismiss')+'</button>'
           +'</div>'
         +'</div>'
       +'</div>';
@@ -4043,7 +4052,7 @@ ${_invOverBanner}${_migBanner}<div class="ph">
     ['bulk',         BIZ.language==='fr'?'Lot / Vrac':'Bulk / Batch'],
   ].map(p=>`<option value="${p[0]}"${_invFilterType===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>
   <select class="sel" id="inv-st-filter" onchange="_filterInv()"><option value="">${_ui.flt_all_status}</option>${['For Sale','For Rent','Both'].map(s=>`<option${_invFilterSt===s?' selected':''}>${s}</option>`).join('')}</select>
-  <select class="sel" id="inv-cond-filter" onchange="_filterInv()"><option value=">">${_s.inv_all_conds}</option>${['New','Excellent','Good','Fair','Worn','Damaged'].map(s=>`<option${_invFilterCond===s?' selected':''}>${s}</option>`).join('')}</select>
+  <select class="sel" id="inv-cond-filter" onchange="_filterInv()"><option value="">${_s.inv_all_conds}</option>${['New','Excellent','Good','Fair','Worn','Damaged'].map(s=>`<option${_invFilterCond===s?' selected':''}>${s}</option>`).join('')}</select>
     <select class="fs" id="inv-sort" onchange="_filterInv()" style="flex:0 0 auto;min-width:130px">
       <option value="">Sort: Default</option>
       <option value="name-asc">Name A–Z</option>
@@ -4061,6 +4070,53 @@ ${_invOverBanner}${_migBanner}<div class="ph">
   ${_buildInvGridFiltered(_getFilteredInv())}
 </div>
 ${D.inv.length===0?'<div style="background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r8);padding:28px 24px;text-align:center;margin-top:8px"><div style="font-size:28px;margin-bottom:10px">\uD83D\uDCE6</div><div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px">You haven\u2019t added any products yet</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">Most businesses set up in 8 minutes \u2014 start with your 5 best sellers.</div><button class="btn btn-p" onclick="mAddItem()">+ Add your first product</button></div>':''}`;}
+
+// Migration banner action handlers — defined separately so the buttons
+// can use simple onclick attributes that don't need to embed multi-line
+// SQL or JSON-encoded strings. The previous inline approach broke HTML
+// parsing on some browsers when the SQL contained quotes or newlines,
+// which caused 'none of the filters work' until the page was reloaded
+// with the banner dismissed.
+function _invMigCopy(){
+  var sql = window._invMigSql || '';
+  if(!sql){ toast('Nothing to copy', 'error'); return; }
+  var fr = BIZ.language === 'fr';
+  try {
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(sql).then(function(){
+        toast((fr ? 'SQL copié' : 'SQL copied') + ' ✓', 'success');
+      }).catch(function(){
+        // Clipboard API can fail on http (not https) or permissions-denied —
+        // fall back to a textarea + execCommand.
+        _invMigCopyFallback(sql, fr);
+      });
+    } else {
+      _invMigCopyFallback(sql, fr);
+    }
+  } catch(e){
+    _invMigCopyFallback(sql, fr);
+  }
+}
+function _invMigCopyFallback(sql, fr){
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = sql;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast((fr ? 'SQL copié' : 'SQL copied') + ' ✓', 'success');
+  } catch(e){
+    toast(fr ? 'Copie échouée — sélectionnez le texte manuellement' : 'Copy failed — please select the SQL manually', 'warn');
+  }
+}
+function _invMigDismiss(){
+  try { localStorage.setItem(window._invMigKey || 'st_invmig_dismissed', '1'); } catch(_){}
+  var el = document.getElementById(window._invMigBannerId || '');
+  if(el) el.remove();
+}
 
 function _getFilteredInv(){
   const q=_invFilterQ.toLowerCase();
