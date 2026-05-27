@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779925518");
+console.log("ShopTrack v2.7 - build:1779925649");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -23432,11 +23432,19 @@ function updateSidebarForRole(){
   const rDot = document.getElementById('bn-rentals-dot');
   if(rDot){ if(overdueR>0){rDot.textContent=overdueR;rDot.style.display='';}else{rDot.style.display='none';} }
   // Update inventory low/out-of-stock badge — same alert criteria as the
-  // dashboard tile, so the user sees one consistent number across surfaces.
-  // Counts items where (qty - rented) is at or below their threshold,
-  // AND items that are completely out of stock (avail<=0). The badge
-  // sums both since both deserve attention.
+  // dashboard tile and notification panel, so the user sees one consistent
+  // number across surfaces. Counts items where (qty - rented) is at or
+  // below their threshold, AND items that are completely out of stock
+  // (avail<=0). Excludes bulk batches (qty=0 is the expected initial
+  // state — they show '⚙ NEEDS PRODUCTION' on their inventory card) and
+  // recipe-bearing finished products (qty=0 by design — assembled on
+  // order; serving capacity lives in recipe readiness, shown as
+  // '✓ READY: N' on their card). Mirrors _stockAlertEligible in
+  // refreshNotifPanel.
   const _invAlerts = (D.inv||[]).filter(function(i){
+    var t = i.itemType || 'resale';
+    if(t === 'bulk') return false;
+    if(t === 'resale' && Array.isArray(i.recipe) && i.recipe.length > 0) return false;
     var avail = (i.qty||0) - (i.rented||0);
     var thresh = i.minStock || i.minQty || 0;
     var sellable = i.st==='For Sale' || i.st==='Both' || i.st==='For Rent';
