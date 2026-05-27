@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779897682");
+console.log("ShopTrack v2.7 - build:1779898155");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5208,7 +5208,17 @@ function _recipeRowHTML(prefix, idx, line, ingOpts){
   return '<div class="rcp-row" data-idx="'+idx+'" style="display:grid;grid-template-columns:1fr 80px 80px 30px;gap:6px;margin-bottom:6px;align-items:center;min-width:420px">'
     +'<select class="fs rcp-ing" style="font-size:12px;padding:6px" onchange="_rcpRowChange(this,\''+prefix+'\')">'+optsWithSel+'</select>'
     +'<input class="fi rcp-qty" type="number" step="any" min="0" placeholder="0" value="'+(line.qty||'')+'" style="font-size:12px;padding:6px;text-align:right" oninput="_rcpRecalc(\''+prefix+'\')"/>'
-    +'<input class="fi rcp-unit" placeholder="g / ml / each" value="'+_esc(line.unit||'')+'" style="font-size:12px;padding:6px"/>'
+    // Unit field is READ-ONLY — populated automatically from the picked
+    // ingredient's underlying 'sz' (Unit of measurement) field. User
+    // doesn't type into this; their job is just qty. We keep it as an
+    // <input> rather than a <div> so saveEditItem's _cbReadLines-style
+    // readers still find it via .rcp-unit.value, but visually it reads
+    // as a static label: no border, no background, muted text.
+    +'<input class="fi rcp-unit" readonly tabindex="-1" value="'+_esc(line.unit||'')+'" '
+      +'title="Auto-filled from the ingredient\'s Unit of measurement. '
+      +'Edit the inventory item to change the unit."'
+      +' style="font-size:12px;padding:6px;border:none;background:transparent;'
+      +'color:var(--text2);cursor:default;text-align:center;font-weight:600"/>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_rcpRemoveLine(this,\''+prefix+'\')" style="padding:4px 6px">\u2715</button>'
     // Second-line annotation under the row that shows on-hand stock
     // for the currently-selected ingredient. Spans the first column only
@@ -5259,26 +5269,17 @@ function _rcpAddLine(prefix, currentItemId){
 
 function _rcpRowChange(sel, prefix){
   // When the user picks (or changes) an ingredient, two things refresh:
-  //   1. The unit field — auto-fills with the ingredient's tracked unit
-  //      (g / ml / kg / each / pair etc.). Always overwrites, even if the
-  //      user had typed something — picking a different ingredient is a
-  //      strong signal they want the new ingredient's unit. The user can
-  //      still type a custom unit afterwards if they really mean to
-  //      express the recipe in different units (e.g. 'cup' for an
-  //      ingredient tracked in g).
-  //
-  //      If the picked ingredient has NO unit configured on its inventory
-  //      record (the 'sz' field is empty), the auto-fill can't populate
-  //      anything. Instead we surface a placeholder + warning so the user
-  //      knows to (a) type a unit here for this recipe line, or (b) go
-  //      edit the ingredient and add a unit there. Without this guidance,
-  //      users see a blank unit field with no explanation and assume the
-  //      feature is broken.
-  //
-  //   2. The on-hand display under the row — shows the available stock
-  //      so the user can sanity-check before typing a quantity. Updates
-  //      from data-avail on the picked option (set in the option builder
-  //      from qty - rented).
+  //   1. The unit field — auto-fills from data-unit on the picked option,
+  //      which is set from the ingredient's underlying 'sz' (Unit of
+  //      measurement) field. The unit input is read-only — the user
+  //      doesn't touch it. If the ingredient has no unit on file,
+  //      the field is blank and the user is expected to fix that on the
+  //      inventory item itself (run diagnoseMissingUnits() in F12 to
+  //      list any items needing the fix). We do NOT make the user
+  //      type the unit per recipe line — that's the wrong place.
+  //   2. The on-hand display under the row — shows available stock so
+  //      the user can sanity-check before typing a quantity. Updates
+  //      from data-avail on the picked option (qty - rented).
   var row = sel.closest('.rcp-row');
   if(!row) return;
   var opt = sel.options[sel.selectedIndex];
@@ -5286,25 +5287,15 @@ function _rcpRowChange(sel, prefix){
   var availWrap = row.querySelector('.rcp-avail-wrap');
   var availVal = row.querySelector('.rcp-avail-val');
   if(opt && opt.value){
-    // Real ingredient picked — refresh both fields
+    // Real ingredient picked — set both fields
     if(unitInp){
-      if(opt.dataset.unit){
-        // Ingredient has a unit on file — auto-fill
-        unitInp.value = opt.dataset.unit;
-        unitInp.placeholder = 'g / ml / each';
-        unitInp.style.borderColor = '';
-        unitInp.title = '';
-      } else {
-        // Ingredient has no unit on its inventory record. Don't auto-fill
-        // (there's nothing to fill from). Highlight the field instead so
-        // the user types one. Also log to the console which ingredient
-        // is the culprit, so power users can go fix it at the source.
-        unitInp.value = '';
-        unitInp.placeholder = '⚠ type unit';
-        unitInp.style.borderColor = 'var(--y, #d97706)';
-        unitInp.title = 'This ingredient has no Unit of Measurement set on its inventory record. Type a unit here, OR edit the ingredient (Inventory → click item → Edit → Unit of measurement) to set it once for all future recipes.';
+      unitInp.value = opt.dataset.unit || '';
+      // If the ingredient has no unit on file, log it once so power
+      // users see in F12 which inventory item still needs its unit set.
+      // No visual fuss in the row itself — keeps the UI calm.
+      if(!opt.dataset.unit){
         var ingName = opt.text.split('·')[0].trim();
-        console.warn('[recipe] Ingredient "'+ingName+'" has no Unit of Measurement on its inventory record. Edit the item and fill in the Unit of measurement field so future recipes auto-fill.');
+        console.warn('[recipe] Ingredient "'+ingName+'" has no Unit of measurement on its inventory record. Run diagnoseMissingUnits() to list all items needing fixes.');
       }
     }
     if(availWrap && availVal){
@@ -5318,15 +5309,10 @@ function _rcpRowChange(sel, prefix){
       }
     }
   } else {
-    // User reset to '— Pick ingredient —' — hide the on-hand pill +
-    // restore the unit input to its default appearance
+    // User reset to '— Pick ingredient —' — clear the row's derived state
     if(availWrap) availWrap.style.display = 'none';
     if(availVal) availVal.textContent = '';
-    if(unitInp){
-      unitInp.placeholder = 'g / ml / each';
-      unitInp.style.borderColor = '';
-      unitInp.title = '';
-    }
+    if(unitInp) unitInp.value = '';
   }
   _rcpRecalc(prefix);
 }
