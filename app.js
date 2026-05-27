@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779925186");
+console.log("ShopTrack v2.7 - build:1779925518");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -22444,6 +22444,51 @@ window.diagnoseReady = function(nameFragment){
       console.log('  \u2192 Final READY = '+(ownStock + (minReady === Infinity ? 0 : minReady)));
     }
   });
+  console.log('═══════════════════════════════════════════════════');
+};
+
+// ── ALERT DIAGNOSTIC ─────────────────────────────────────────────
+// Shows exactly which items the notification panel flags as
+// low-stock or out-of-stock, and why. Use to debug a 'count
+// mismatch' between the notification badge and the KPI tile.
+// Usage: diagnoseAlerts()
+window.diagnoseAlerts = function(){
+  console.log('═══════════════════════════════════════════════════');
+  console.log('  STOCK ALERT DIAGNOSTIC');
+  console.log('═══════════════════════════════════════════════════');
+  function eligible(i){
+    var t = i.itemType || 'resale';
+    if(t === 'bulk') return false;
+    if(t === 'resale' && Array.isArray(i.recipe) && i.recipe.length > 0) return false;
+    return true;
+  }
+  var flagged = (D.inv||[]).filter(function(i){
+    if(!eligible(i)) return false;
+    var avail = (i.qty||0)-(i.rented||0);
+    var thresh = i.minStock||i.minQty||0;
+    var sellable = i.st==='For Sale'||i.st==='Both'||i.st==='For Rent';
+    if(!sellable) return false;
+    if(avail<=0) return true;
+    if(thresh>0 && avail<=thresh) return true;
+    return false;
+  });
+  console.log('Total items flagged: '+flagged.length);
+  console.log('───────────────────────────────────────────────────');
+  flagged.forEach(function(i, idx){
+    var avail = (i.qty||0)-(i.rented||0);
+    var thresh = i.minStock||i.minQty||0;
+    var reason = avail<=0 ? 'OUT OF STOCK (qty=0)' : 'LOW (avail '+avail+' ≤ threshold '+thresh+')';
+    console.log('  ['+idx+'] '+i.name+' (id: '+i.id+')');
+    console.log('       type: '+(i.itemType||'resale')+' · status: '+i.st+' · qty: '+(i.qty||0)+' · rented: '+(i.rented||0)+' · minStock: '+thresh);
+    console.log('       → '+reason);
+  });
+  console.log('───────────────────────────────────────────────────');
+  console.log('EXCLUDED from alerts (by item-type rules):');
+  var excluded = (D.inv||[]).filter(function(i){ return !eligible(i); });
+  console.log('  Bulk batches: '+excluded.filter(function(i){return i.itemType==='bulk';}).length);
+  console.log('  Recipe-bearing finished products: '+excluded.filter(function(i){
+    return (i.itemType||'resale')==='resale' && Array.isArray(i.recipe) && i.recipe.length>0;
+  }).length);
   console.log('═══════════════════════════════════════════════════');
 };
 
