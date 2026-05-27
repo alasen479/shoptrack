@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779900368");
+console.log("ShopTrack v2.7 - build:1779900740");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5202,15 +5202,18 @@ function _recipeHTML(prefix, existingLines, currentItemId){const _s=_L();
 
     +'<div id="'+prefix+'-rcp-body" style="display:'+(hasLines?'block':'none')+';padding:14px;background:var(--bg)">'
 
-      // Column headers
-      +'<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:1fr 80px 80px 30px;gap:6px;align-items:center;margin-bottom:8px;padding:0 2px;min-width:420px">'
+      // Column headers — grid matches the rows below (1fr auto 30px).
+      // The middle column holds the qty input + unit text together as
+      // a single recipe-quantity unit ('3 kg'). We label it 'Qty' since
+      // that's what the user is typing; the unit displays inline and
+      // doesn't need its own label.
+      +'<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:1fr auto 30px;gap:8px;align-items:center;margin-bottom:8px;padding:0 2px;min-width:380px">'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Ingredient</div>'
-        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Qty</div>'
-        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)">Unit</div>'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);text-align:right;padding-right:42px">Qty</div>'
         +'<div></div>'
       +'</div>'
 
-      +'<div id="'+prefix+'-rcp-rows" style="min-width:420px">'+existingRowsHTML+'</div></div>'
+      +'<div id="'+prefix+'-rcp-rows" style="min-width:380px">'+existingRowsHTML+'</div></div>'
 
       // Action buttons
       +'<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
