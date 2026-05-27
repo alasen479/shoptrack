@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779838360");
+console.log("ShopTrack v2.7 - build:1779845242");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -3882,7 +3882,7 @@ function initDash(){const _s=_L();
 // INVENTORY
 // ============================================================
 // ── Inventory filter state (persists across nav) ─────────────
-let _invFilterQ='', _invFilterCat='', _invFilterSt='', _invFilterCond='', _invSortVal='';
+let _invFilterQ='', _invFilterCat='', _invFilterSt='', _invFilterCond='', _invFilterType='', _invSortVal='';
 
 function pgInv(){const _s=_L();const _ui=_s;
   var _invOverBanner = _overLimitBanner('inv');
@@ -3926,6 +3926,11 @@ ${_invOverBanner}<div class="ph">
 <div class="fbar">
   <input class="fi-s" id="inv-search" placeholder="${_ui.flt_search_inv}" style="width:200px" value="${_esc(_invFilterQ)}" oninput="_filterInv()"/>
   <select class="sel" id="inv-cat-filter" onchange="_filterInv()"><option value="">${_ui.flt_all_cat}</option>${(D.invCats.length?D.invCats:[...new Set(D.inv.map(i=>i.cat).filter(Boolean))].sort()).map(c=>`<option value="${c}"${_invFilterCat===c?' selected':''}>${c}</option>`).join('')}</select>
+  <select class="sel" id="inv-type-filter" onchange="_filterInv()" title="${BIZ.language==='fr'?'Filtrer par type':'Filter by item type'}"><option value="">${_ui.flt_all_type}</option>${[
+    ['resale',       BIZ.language==='fr'?'Produits Finis':'Finished Products'],
+    ['raw_material', BIZ.language==='fr'?'Matières Premières':'Raw Materials'],
+    ['bulk',         BIZ.language==='fr'?'Lot / Vrac':'Bulk / Batch'],
+  ].map(p=>`<option value="${p[0]}"${_invFilterType===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>
   <select class="sel" id="inv-st-filter" onchange="_filterInv()"><option value="">${_ui.flt_all_status}</option>${['For Sale','For Rent','Both'].map(s=>`<option${_invFilterSt===s?' selected':''}>${s}</option>`).join('')}</select>
   <select class="sel" id="inv-cond-filter" onchange="_filterInv()"><option value=">">${_s.inv_all_conds}</option>${['New','Excellent','Good','Fair','Worn','Damaged'].map(s=>`<option${_invFilterCond===s?' selected':''}>${s}</option>`).join('')}</select>
     <select class="fs" id="inv-sort" onchange="_filterInv()" style="flex:0 0 auto;min-width:130px">
@@ -3939,7 +3944,7 @@ ${_invOverBanner}<div class="ph">
       <option value="cost-desc">Cost: High first</option>
       <option value="cat-asc">${_s.ui_category} A–Z</option>
     </select>
-  ${(_invFilterQ||_invFilterCat||_invFilterSt||_invFilterCond)?`<button class="btn btn-s btn-xs" onclick="_invClearFilters()" style="flex-shrink:0">✕ Clear</button>`:''}
+  ${(_invFilterQ||_invFilterCat||_invFilterSt||_invFilterCond||_invFilterType)?`<button class="btn btn-s btn-xs" onclick="_invClearFilters()" style="flex-shrink:0">✕ Clear</button>`:''}
 </div>
 <div id="inv-view" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px" onclick="_invGridClick(event)">
   ${_buildInvGridFiltered(_getFilteredInv())}
@@ -3953,6 +3958,12 @@ function _getFilteredInv(){
     if(_invFilterCat && i.cat!==_invFilterCat) return false;
     if(_invFilterSt && i.st!==_invFilterSt) return false;
     if(_invFilterCond && i.cond!==_invFilterCond) return false;
+    // Item-type filter. Items with no itemType field default to 'resale'
+    // (matches the rest of the app — see line ~4042 typeBadge, line ~4104
+    // needsPrice check, etc.). The legacy 'recipe_ingredient' value is
+    // migrated to 'raw_material' in _dbToInv on load, so it's already
+    // normalised by the time we get here.
+    if(_invFilterType && (i.itemType||'resale') !== _invFilterType) return false;
     return true;
   });
   // Apply sort
@@ -3970,9 +3981,9 @@ function _getFilteredInv(){
 }
 
 function _invClearFilters(){const _s=_L();
-  _invFilterQ=''; _invFilterCat=''; _invFilterSt=''; _invFilterCond=''; _invSortVal='';
+  _invFilterQ=''; _invFilterCat=''; _invFilterSt=''; _invFilterCond=''; _invFilterType=''; _invSortVal='';
   // Also reset DOM selects
-  ['inv-cat-filter','inv-st-filter','inv-cond-filter','inv-sort'].forEach(function(id){
+  ['inv-cat-filter','inv-type-filter','inv-st-filter','inv-cond-filter','inv-sort'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
   var sq=document.getElementById('inv-search'); if(sq) sq.value='';
@@ -3998,6 +4009,7 @@ function _invGridClick(e){const _s=_L();
 function _filterInv(){const _s=_L();
   _invFilterQ   = (document.getElementById('inv-search')?.value||'').trim();
   _invFilterCat = document.getElementById('inv-cat-filter')?.value||'';
+  _invFilterType= document.getElementById('inv-type-filter')?.value||'';
   _invFilterSt  = document.getElementById('inv-st-filter')?.value||'';
   _invFilterCond= document.getElementById('inv-cond-filter')?.value||'';
   _invSortVal   = document.getElementById('inv-sort')?.value||'';
@@ -4005,7 +4017,7 @@ function _filterInv(){const _s=_L();
   const v = document.getElementById('inv-view');
   if(!v) return;
   // Show/hide clear button
-  const hasFilt = _invFilterQ||_invFilterCat||_invFilterSt||_invFilterCond;
+  const hasFilt = _invFilterQ||_invFilterCat||_invFilterType||_invFilterSt||_invFilterCond;
   const clearBtn = document.querySelector('.fbar .btn-xs');
   if(clearBtn) clearBtn.style.display = hasFilt ? '' : 'none';
   if(v.style.display==='none') return; // movements view — skip
