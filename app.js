@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779899476");
+console.log("ShopTrack v2.7 - build:1779900033");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5283,37 +5283,66 @@ function _rcpAddLine(prefix, currentItemId){
 }
 
 function _rcpRowChange(sel, prefix){
-  // When the user picks (or changes) an ingredient, two things refresh:
-  //   1. The unit chip — set from data-unit on the picked option (which
-  //      comes from the ingredient's underlying 'sz' field). The chip
-  //      shows a visible label; we ALSO update a hidden input with the
-  //      same value so saveEditItem's row reader (.rcp-unit.value) still
-  //      finds the unit when the recipe gets saved. If the ingredient
-  //      has no unit on file, the chip is blank — the user is expected
-  //      to fix that on the inventory item itself (run
-  //      diagnoseMissingUnits() in F12 to list items needing fixes).
-  //   2. The on-hand display under the row — shows available stock so
-  //      the user can sanity-check before typing a quantity. Updates
-  //      from data-avail on the picked option (qty - rented).
+  // When the user picks (or changes) an ingredient, refresh:
+  //   1. The unit display next to the qty input. Pulled from the
+  //      ingredient's sz (Unit of measurement) field.
+  //   2. The 'On hand' line under the row.
+  //
+  // If the picked ingredient has NO sz set, instead of leaving the row
+  // empty, prompt the user inline to choose a unit — and SAVE it back to
+  // the ingredient. So the user only sees this prompt once per ingredient
+  // across all their recipes. Future picks of the same ingredient
+  // auto-fill silently.
   var row = sel.closest('.rcp-row');
   if(!row) return;
   var opt = sel.options[sel.selectedIndex];
-  var unitInp = row.querySelector('.rcp-unit');   // hidden input
-  var unitVal = row.querySelector('.rcp-unit-val'); // visible span
+  var unitInp = row.querySelector('.rcp-unit');
+  var unitVal = row.querySelector('.rcp-unit-val');
   var availWrap = row.querySelector('.rcp-avail-wrap');
   var availVal = row.querySelector('.rcp-avail-val');
+
   if(opt && opt.value){
     var u = opt.dataset.unit || '';
+    if(!u){
+      // The ingredient has no unit on file. Prompt the user once,
+      // save back to the ingredient, and continue.
+      _rcpPromptUnit(opt.value, function(picked){
+        if(!picked) return;
+        // Patch the option's data-unit so the next read sees it
+        opt.setAttribute('data-unit', picked);
+        // Also update other rows that reference this same ingredient
+        // (they share the dropdown option but each row's chip needs
+        // refreshing). Cheaper to just patch this row and rely on
+        // the next render for the rest.
+        if(unitInp) unitInp.value = picked;
+        if(unitVal) unitVal.textContent = picked;
+        if(availVal && availWrap){
+          var av = opt.dataset.avail;
+          if(av != null){
+            availVal.textContent = av + ' '+picked;
+            availWrap.style.display = '';
+          }
+        }
+        _rcpRecalc(prefix);
+      });
+      // Still set the row's available display while the prompt is open
+      if(availWrap && availVal){
+        var av0 = opt.dataset.avail;
+        if(av0 != null){
+          availVal.textContent = av0;
+          availWrap.style.display = '';
+        }
+      }
+      _rcpRecalc(prefix);
+      return;
+    }
+    // Normal path — ingredient has a unit
     if(unitInp) unitInp.value = u;
     if(unitVal) unitVal.textContent = u;
-    if(!u){
-      var ingName = opt.text.split('·')[0].trim();
-      console.warn('[recipe] Ingredient "'+ingName+'" has no Unit of measurement on its inventory record. Run diagnoseMissingUnits() to list all items needing fixes.');
-    }
     if(availWrap && availVal){
       var av = opt.dataset.avail;
       if(av != null){
-        availVal.textContent = av + (u ? ' '+u : '');
+        availVal.textContent = av + ' '+u;
         availWrap.style.display = '';
       } else {
         availWrap.style.display = 'none';
@@ -5327,6 +5356,75 @@ function _rcpRowChange(sel, prefix){
     if(unitVal) unitVal.textContent = '';
   }
   _rcpRecalc(prefix);
+}
+
+// Prompt the user to pick a Unit of measurement for an ingredient that
+// doesn't have one yet. Persists the answer back to the inventory item
+// itself, so the user only sees this prompt once per ingredient. After
+// the save, every future recipe picking this ingredient auto-fills.
+//
+// Uses a lightweight inline modal styled to match other Shop Track
+// prompts — no native browser prompt() (which looks awful on mobile
+// and breaks any styled flow).
+function _rcpPromptUnit(ingredientId, onPicked){
+  var ing = (D.inv||[]).find(function(x){return x.id === ingredientId;});
+  if(!ing){ if(onPicked) onPicked(''); return; }
+  var fr = BIZ.language === 'fr';
+
+  // Common units, in priority order — the user can also type their own
+  var common = ['kg','g','L','ml','unit','each','pair','m','m²'];
+
+  // Build a minimal modal using the existing modal() helper
+  var modalId = 'rcp-unit-prompt-'+Date.now();
+  var body = ''
+    +'<div id="'+modalId+'" style="padding:4px 0">'
+      +'<div style="font-size:13px;color:var(--text);margin-bottom:14px;line-height:1.5">'
+        +(fr?'L\u2019article ':'The item ')
+        +'<strong style="color:var(--ink)">'+_esc(ing.name)+'</strong>'
+        +(fr?' n\u2019a pas d\u2019unité de mesure définie. Choisissez-en une — elle sera enregistrée sur cet article pour toutes les futures recettes.'
+            :' has no Unit of measurement set. Pick one — it will be saved on this item so every future recipe auto-fills.')
+      +'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">'
+      + common.map(function(c){
+          return '<button type="button" class="btn btn-s btn-xs" '
+            +'onclick="_rcpUnitPick(\''+ingredientId+'\',\''+c+'\')" '
+            +'style="padding:6px 12px;font-weight:600">'+c+'</button>';
+        }).join('')
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--text2);margin-bottom:6px">'
+        +(fr?'Ou tapez une unité personnalisée :':'Or type a custom unit:')
+      +'</div>'
+      +'<div style="display:flex;gap:6px">'
+        +'<input id="rcp-unit-custom" class="fi" type="text" placeholder="e.g. cup, dozen, sachet" style="flex:1;font-size:13px" '
+          +'onkeydown="if(event.key===\'Enter\'){_rcpUnitPick(\''+ingredientId+'\',document.getElementById(\'rcp-unit-custom\').value);}"/>'
+        +'<button type="button" class="btn btn-p btn-sm" '
+          +'onclick="_rcpUnitPick(\''+ingredientId+'\',document.getElementById(\'rcp-unit-custom\').value)">'
+          +(fr?'Enregistrer':'Save')
+        +'</button>'
+      +'</div>'
+    +'</div>';
+
+  // Stash the callback so _rcpUnitPick can fire it
+  window._rcpUnitPickCb = onPicked;
+  modal(fr?'Unité de mesure':'Unit of measurement', body, '');
+}
+
+// Click handler for the unit prompt's buttons + Save button
+function _rcpUnitPick(ingredientId, unit){
+  unit = (unit||'').trim();
+  if(!unit) return;
+  var ing = (D.inv||[]).find(function(x){return x.id === ingredientId;});
+  if(!ing){ closeModal(); return; }
+  ing.sz = unit;
+  // Persist back to cloud (fire-and-forget; IDB is updated synchronously
+  // via D.inv mutation above).
+  if(typeof _dbSaveInv === 'function') _dbSaveInv(ing).catch(function(){});
+  closeModal();
+  if(typeof window._rcpUnitPickCb === 'function'){
+    var cb = window._rcpUnitPickCb;
+    window._rcpUnitPickCb = null;
+    cb(unit);
+  }
 }
 
 function _rcpRemoveLine(btn, prefix){
