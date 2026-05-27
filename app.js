@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779919777");
+console.log("ShopTrack v2.7 - build:1779920303");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -10514,7 +10514,11 @@ function pgProduction(){const _s=_L();
       +'<td style="text-align:right;color:var(--text2);font-size:11px">'+ingCount+' ingredient'+(ingCount===1?'':'s')+'</td>'
       +'<td style="text-align:right;font-family:var(--mono);font-weight:600;color:var(--p)">'+fmt(b.cost||0)+'</td>'
       +'<td style="color:var(--text2);font-size:11px">'+_esc(b.producedBy||'—')+'</td>'
-      +'<td><button class="btn btn-d btn-xs" onclick="event.stopPropagation();_batchDeleteConfirm(\''+b.id+'\')" title="Delete this batch (restores stock)">\uD83D\uDDD1</button></td>'
+      +'<td style="white-space:nowrap">'
+        +'<button class="btn btn-g btn-xs" onclick="event.stopPropagation();mEditBatch(\''+b.id+'\')" title="Edit batch metadata (date, producer, notes)">\u270E</button>'
+        +' '
+        +'<button class="btn btn-d btn-xs" onclick="event.stopPropagation();_batchDeleteConfirm(\''+b.id+'\')" title="Delete this batch (restores stock)">\uD83D\uDDD1</button>'
+      +'</td>'
     +'</tr>';
   }).join('');
 
@@ -10944,7 +10948,121 @@ function mViewBatch(id){const _s=_L();
     +'</div>'
     +(b.notes?'<div class="fg" style="margin-top:14px"><div class="fl">Notes</div><div style="background:var(--bg3);border-radius:8px;padding:10px 14px;font-size:13px;line-height:1.6;color:var(--ink);white-space:pre-wrap">'+_esc(b.notes)+'</div></div>':''),
     '<button class="btn btn-d btn-sm" onclick="_batchDeleteConfirm(\''+b.id+'\')">\uD83D\uDDD1 Delete batch</button>'
+    +'<button class="btn btn-g btn-sm" onclick="mEditBatch(\''+b.id+'\')">\u270E Edit</button>'
     +'<button class="btn btn-s" onclick="closeModal()">Close</button>');
+}
+
+// Edit a batch's metadata (date/time, producer name, notes).
+// We deliberately do NOT allow editing the product, multiplier, or
+// ingredients — those affect inventory deductions that already ran.
+// Changing them would require rolling back the original consumption
+// and re-applying with the new values, which is risky if downstream
+// sales have already consumed from the produced batch. If a user
+// needs to "edit" the production details that significantly, they
+// should delete the batch (which restores stock cleanly) and log a
+// new one with correct values.
+function mEditBatch(id){const _s=_L();
+  var b = (D.batches||[]).find(function(x){return x.id===id;});
+  if(!b){ toast('Batch not found','error'); return; }
+  // Format producedAt for datetime-local input. Input expects YYYY-MM-DDTHH:MM
+  // in the user's local timezone — same format as the New Batch modal.
+  var dtLocal = '';
+  if(b.producedAt){
+    try {
+      var d = new Date(b.producedAt);
+      // Subtract timezone offset so toISOString returns local-time string,
+      // not UTC — datetime-local inputs are timezone-naive.
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      dtLocal = d.toISOString().slice(0,16);
+    } catch(_){}
+  }
+  // Show ingredients consumed as a read-only summary so the user has
+  // context for what this batch represents, but can't change them.
+  var ingredientsHtml = (b.ingredients||[]).map(function(li){
+    return '<tr>'
+      +'<td style="padding:5px 10px;font-size:11px">'+_esc(li.ingredientName||'')+'</td>'
+      +'<td style="padding:5px 10px;text-align:right;font-family:var(--mono);font-size:11px">'+_fmtNum(li.qty||0)+(li.unit?' <span style="color:var(--text2)">'+_esc(li.unit)+'</span>':'')+'</td>'
+      +'<td style="padding:5px 10px;text-align:right;font-family:var(--mono);font-size:11px">'+fmt(li.lineCost||0)+'</td>'
+    +'</tr>';
+  }).join('');
+
+  modal('\u270E Edit Batch '+b.id,
+    // Read-only summary at top — what this batch represents.
+    '<div style="background:var(--bg3);border-radius:8px;padding:12px 14px;margin-bottom:14px">'
+      +'<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px">This batch</div>'
+      +'<div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:2px">'+_esc(b.productName||'\u2014')+'</div>'
+      +'<div style="font-size:12px;color:var(--text2)">'
+        +'Qty produced: <strong>'+_fmtNum(b.qtyProduced||b.multiplier||1)+'</strong>'
+        +' \u00B7 Total cost: <strong>'+fmt(b.cost||0)+'</strong>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">To change the product or quantity, delete this batch and log a new one — that restores stock cleanly.</div>'
+    +'</div>'
+    // Editable fields
+    +'<div class="fg"><label class="fl">Produced at</label>'
+      +'<input class="fi" id="eb-date" type="datetime-local" value="'+dtLocal+'"/>'
+    +'</div>'
+    +'<div class="fg"><label class="fl">Produced by</label>'
+      +'<input class="fi" id="eb-by" type="text" value="'+_esc(b.producedBy||'')+'" placeholder="Your name or the cook\u2019s name"/>'
+    +'</div>'
+    +'<div class="fg"><label class="fl">Notes</label>'
+      +'<textarea class="ft" id="eb-notes" rows="3" placeholder="Variations from the recipe, quality observations, etc.">'+_esc(b.notes||'')+'</textarea>'
+    +'</div>'
+    // Read-only ingredient breakdown for context
+    +(ingredientsHtml
+      ? '<div style="margin-top:14px;border:1px solid var(--border2);border-radius:8px;overflow:hidden;opacity:.85">'
+        +'<div style="padding:8px 12px;background:var(--bg3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)">Ingredients consumed (read-only)</div>'
+        +'<table style="width:100%;border-collapse:collapse">'
+          +'<tbody>'+ingredientsHtml+'</tbody>'
+        +'</table>'
+      +'</div>'
+      : ''),
+    '<button class="btn btn-s" onclick="mViewBatch(\''+b.id+'\')">Cancel</button>'
+    +'<button class="btn btn-p" onclick="_saveBatchEdit(\''+b.id+'\')">\u2713 Save changes</button>');
+}
+
+async function _saveBatchEdit(id){
+  if(_trialWriteBlocked('Editing a batch')) return;
+  var b = (D.batches||[]).find(function(x){return x.id===id;});
+  if(!b){ toast('Batch not found','error'); return; }
+
+  var dtVal = (document.getElementById('eb-date')||{}).value || '';
+  var byVal = (document.getElementById('eb-by')||{}).value || '';
+  var notesVal = (document.getElementById('eb-notes')||{}).value || '';
+
+  // Track what changed for the audit log entry — useful when reviewing
+  // who modified what about a batch after the fact.
+  var changes = [];
+  // Date: only update if a parsable date was entered. The datetime-local
+  // input returns 'YYYY-MM-DDTHH:MM' (no timezone) — interpret as local
+  // time, store as ISO UTC string for consistency with the New Batch
+  // save path.
+  if(dtVal){
+    var newAt = new Date(dtVal).toISOString();
+    if(newAt !== b.producedAt){
+      changes.push('date: '+(b.producedAt||'').slice(0,16)+' \u2192 '+newAt.slice(0,16));
+      b.producedAt = newAt;
+    }
+  }
+  if(byVal !== (b.producedBy||'')){
+    changes.push('by: '+(b.producedBy||'\u2014')+' \u2192 '+(byVal||'\u2014'));
+    b.producedBy = byVal;
+  }
+  if(notesVal !== (b.notes||'')){
+    changes.push('notes updated');
+    b.notes = notesVal;
+  }
+
+  if(!changes.length){
+    toast('No changes to save', 'info');
+    closeModal();
+    return;
+  }
+
+  await _dbSaveBatch(b);
+  addAudit('Batch edited', b.id+' \u2014 '+changes.join(', '));
+  toast('\u2713 Batch '+b.id+' updated', 'success');
+  closeModal();
+  if(curPage==='production') nav('production');
 }
 
 // Delete a batch with stock-restore.
