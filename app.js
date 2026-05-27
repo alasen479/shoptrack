@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779918071");
+console.log("ShopTrack v2.7 - build:1779919777");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -10453,9 +10453,20 @@ function pgPurchases(){const _s=_L();const _ui=_s;
 // guides the owner through setup: first add ingredients in Inventory,
 // then add a Recipe to a finished product, then return here.
 function pgProduction(){const _s=_L();
-  // Find products that have a recipe — only those can be produced.
+  // Find products eligible for production. Two conditions:
+  //   1. itemType === 'bulk' — Production produces batches (Bulk items),
+  //      not finished products. A plate of ndolé is a Finished Product
+  //      assembled on order at sale time via its recipe cascade, not
+  //      "produced" in a cooking session. Bulk batches like the pot of
+  //      ndolé are what get cooked in Production.
+  //   2. Has a recipe — without a recipe there's nothing to deduct from
+  //      raw materials, so no batch logging is possible.
+  // Without filter (1) the dropdown showed every finished product whose
+  // recipe references the batch (e.g. "Ndolé · Plantain"), which is
+  // wrong — those don't get produced, they get sold.
   var recipeProducts = (D.inv||[]).filter(function(x){
-    return Array.isArray(x.recipe) && x.recipe.length > 0;
+    return (x.itemType === 'bulk')
+      && Array.isArray(x.recipe) && x.recipe.length > 0;
   });
 
   // No recipe-bearing products yet → guidance state
@@ -10554,12 +10565,16 @@ function pgProduction(){const _s=_L();
 // preview of (a) ingredient deductions with stock-availability check,
 // (b) finished product output, (c) total batch cost. Confirm = apply.
 function mNewBatch(prefillProductId){const _s=_L();
+  // Mirrors the filter in pgProduction: only Bulk items with recipes
+  // get produced. Finished Products with recipes (menu items) belong in
+  // Sales, not here — their recipe runs at sale time via _consumeRecipe.
   var recipeProducts = (D.inv||[]).filter(function(x){
-    return Array.isArray(x.recipe) && x.recipe.length > 0;
+    return (x.itemType === 'bulk')
+      && Array.isArray(x.recipe) && x.recipe.length > 0;
   }).sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
 
   if(!recipeProducts.length){
-    toast('No products have a recipe yet \u2014 add one first via Edit Inventory \u2192 Recipe panel.', 'info');
+    toast('No Bulk / Batch items with recipes yet \u2014 mark a batch item as type "Bulk / Batch" and fill its Made-from list.', 'info');
     return;
   }
 
