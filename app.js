@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779897019");
+console.log("ShopTrack v2.7 - build:1779897682");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1398,6 +1398,40 @@ function _invToggleItemTypeUI(prefix){
     note.style.display = '';
   } else if(note){
     note.style.display = 'none';
+  }
+  // Relabel the 'sz' input based on item type. The 'sz' column on the
+  // inventory record doubles as Size (for clothing/wigs: 18", Kit) and
+  // as Unit of Measurement (for raw materials/bulk: g, ml, kg, each).
+  // The default placeholder 'e.g. 8' makes sense for the Size meaning
+  // but is misleading for raw materials — users see it and leave the
+  // field blank, then the recipe row can't auto-fill the unit because
+  // there's no underlying value to copy.
+  // Fix: change the label text + placeholder when itemType is
+  // raw_material or bulk so the user knows they should enter
+  // g / ml / kg / each / pair / m / unit.
+  var szEl = document.getElementById(prefix+'-sz');
+  if(szEl){
+    var szLabel = szEl.parentElement && szEl.parentElement.querySelector('.fl');
+    // Stash the original label text the first time we touch it so we
+    // can restore on switch back to resale without a hard-coded string.
+    if(szLabel && !szLabel.dataset._origText){
+      szLabel.dataset._origText = szLabel.textContent;
+    }
+    if(!szEl.dataset._origPlaceholder2){
+      szEl.dataset._origPlaceholder2 = szEl.placeholder || '';
+    }
+    if(isResale){
+      if(szLabel && szLabel.dataset._origText){
+        szLabel.textContent = szLabel.dataset._origText;
+      }
+      szEl.placeholder = szEl.dataset._origPlaceholder2 || '';
+    } else {
+      // Raw material or bulk: label as Unit of Measurement
+      if(szLabel){
+        szLabel.textContent = fr ? 'Unité de mesure' : 'Unit of measurement';
+      }
+      szEl.placeholder = fr ? 'kg, g, ml, L, unité…' : 'kg, g, ml, L, each, unit…';
+    }
   }
 }
 
@@ -5232,6 +5266,15 @@ function _rcpRowChange(sel, prefix){
   //      still type a custom unit afterwards if they really mean to
   //      express the recipe in different units (e.g. 'cup' for an
   //      ingredient tracked in g).
+  //
+  //      If the picked ingredient has NO unit configured on its inventory
+  //      record (the 'sz' field is empty), the auto-fill can't populate
+  //      anything. Instead we surface a placeholder + warning so the user
+  //      knows to (a) type a unit here for this recipe line, or (b) go
+  //      edit the ingredient and add a unit there. Without this guidance,
+  //      users see a blank unit field with no explanation and assume the
+  //      feature is broken.
+  //
   //   2. The on-hand display under the row — shows the available stock
   //      so the user can sanity-check before typing a quantity. Updates
   //      from data-avail on the picked option (set in the option builder
@@ -5244,8 +5287,25 @@ function _rcpRowChange(sel, prefix){
   var availVal = row.querySelector('.rcp-avail-val');
   if(opt && opt.value){
     // Real ingredient picked — refresh both fields
-    if(unitInp && opt.dataset.unit != null){
-      unitInp.value = opt.dataset.unit;
+    if(unitInp){
+      if(opt.dataset.unit){
+        // Ingredient has a unit on file — auto-fill
+        unitInp.value = opt.dataset.unit;
+        unitInp.placeholder = 'g / ml / each';
+        unitInp.style.borderColor = '';
+        unitInp.title = '';
+      } else {
+        // Ingredient has no unit on its inventory record. Don't auto-fill
+        // (there's nothing to fill from). Highlight the field instead so
+        // the user types one. Also log to the console which ingredient
+        // is the culprit, so power users can go fix it at the source.
+        unitInp.value = '';
+        unitInp.placeholder = '⚠ type unit';
+        unitInp.style.borderColor = 'var(--y, #d97706)';
+        unitInp.title = 'This ingredient has no Unit of Measurement set on its inventory record. Type a unit here, OR edit the ingredient (Inventory → click item → Edit → Unit of measurement) to set it once for all future recipes.';
+        var ingName = opt.text.split('·')[0].trim();
+        console.warn('[recipe] Ingredient "'+ingName+'" has no Unit of Measurement on its inventory record. Edit the item and fill in the Unit of measurement field so future recipes auto-fill.');
+      }
     }
     if(availWrap && availVal){
       var av = opt.dataset.avail;
@@ -5258,9 +5318,15 @@ function _rcpRowChange(sel, prefix){
       }
     }
   } else {
-    // User reset to '— Pick ingredient —' — hide the on-hand pill
+    // User reset to '— Pick ingredient —' — hide the on-hand pill +
+    // restore the unit input to its default appearance
     if(availWrap) availWrap.style.display = 'none';
     if(availVal) availVal.textContent = '';
+    if(unitInp){
+      unitInp.placeholder = 'g / ml / each';
+      unitInp.style.borderColor = '';
+      unitInp.title = '';
+    }
   }
   _rcpRecalc(prefix);
 }
@@ -21483,6 +21549,39 @@ window.backfillPhotos = function(){
 // of itemType values across in-memory inventory and (separately)
 // what cloud actually returns. If cloud rows lack an item_type
 // column at all, the report says 'column missing'.
+// ── MISSING-UNIT DIAGNOSTIC ──────────────────────────────────────
+// Lists raw materials and bulk batches whose Unit of measurement field
+// is empty. These items can't auto-fill the unit on recipe lines, which
+// breaks the 'Made from' picker UX. Call from F12: diagnoseMissingUnits().
+window.diagnoseMissingUnits = function(){
+  if(!D.inv || !D.inv.length){
+    console.log('[missingUnits] No inventory loaded yet.');
+    return;
+  }
+  console.log('═══════════════════════════════════════════════');
+  console.log('  ITEMS MISSING A UNIT OF MEASUREMENT');
+  console.log('  (these can\u2019t auto-fill the unit on recipe rows)');
+  console.log('═══════════════════════════════════════════════');
+  var missing = D.inv.filter(function(i){
+    // Raw materials and bulk batches need a unit. Finished products may
+    // legitimately have no unit (a 'Birthday Cake' SKU doesn't need one).
+    var t = i.itemType || 'resale';
+    if(t !== 'raw_material' && t !== 'bulk') return false;
+    return !i.sz || !i.sz.trim();
+  });
+  if(!missing.length){
+    console.log('[missingUnits] \u2713 All raw materials and bulk batches have a unit set.');
+    return;
+  }
+  missing.forEach(function(i){
+    console.log('  '+i.id+'  '+i.name+'  ['+i.itemType+']  qty='+(i.qty||0));
+  });
+  console.log('───────────────────────────────────────────────');
+  console.log('  '+missing.length+' item(s) need a unit.');
+  console.log('  Fix: Inventory \u2192 click the item \u2192 Edit \u2192 fill in "Unit of measurement" \u2192 Save.');
+  console.log('═══════════════════════════════════════════════');
+};
+
 window.diagnoseItemTypes = async function(){
   if(!SESSION.bizId){ console.error('[diagnoseItemTypes] no biz session'); return; }
   console.log('═══════════════════════════════════════════════');
