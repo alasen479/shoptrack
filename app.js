@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779924053");
+console.log("ShopTrack v2.7 - build:1779925186");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -3935,11 +3935,17 @@ ${DC.sections.includes('recentAppointments')&&(D.appointments||[]).length?`
     <div class="card-hd"><div class="card-ttl">${_s.dash_low_stock}</div><button class="btn btn-g btn-sm" onclick="nav('inventory')">${_s.dash_manage}</button></div>
     ${(()=>{
       const low=D.inv.filter(function(i){
+        var t = i.itemType || 'resale';
+        if(t === 'bulk') return false;
+        if(t === 'resale' && Array.isArray(i.recipe) && i.recipe.length > 0) return false;
         const avail=(i.qty||0)-(i.rented||0);
         const min=i.minStock||i.minQty||0;
         return min>0 && avail<=min && avail>0;
       });
       const outOfStock=D.inv.filter(function(i){
+        var t = i.itemType || 'resale';
+        if(t === 'bulk') return false;
+        if(t === 'resale' && Array.isArray(i.recipe) && i.recipe.length > 0) return false;
         return (i.qty||0)-(i.rented||0)<=0 && (i.qty||0)>=0;
       });
       if(!low.length&&!outOfStock.length) return '<div style="color:var(--text2);font-size:13px;padding:8px 0">'+_s.dash_all_stocked+'</div>';
@@ -13479,12 +13485,23 @@ function rptInvVal(){const _s=_L();
 }
 
 function rptLowStock(){const _s=_L();
+  // Same logic as notification panel: bulk batches and recipe-bearing
+  // finished products legitimately sit at qty=0 (waiting for production /
+  // assembled on order). Excluding them keeps this report focused on
+  // items the user actually needs to restock or attend to.
+  function _eligible(i){
+    var t = i.itemType || 'resale';
+    if(t === 'bulk') return false;
+    if(t === 'resale' && Array.isArray(i.recipe) && i.recipe.length > 0) return false;
+    return true;
+  }
   const low=D.inv.filter(i=>{
+    if(!_eligible(i)) return false;
     const avail=(i.qty||0)-(i.rented||0);
     const min=i.minStock||i.minQty||0;
     return min>0 && avail<=min && avail>0;
   });
-  const outOfStock=D.inv.filter(i=>(i.qty||0)-(i.rented||0)<=0);
+  const outOfStock=D.inv.filter(i=>_eligible(i) && (i.qty||0)-(i.rented||0)<=0);
   const all=[...outOfStock.map(i=>({...i,_oos:true})),...low];
   modal('📊 Low Stock Report',`
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
@@ -38528,12 +38545,19 @@ function _rptInvValPDF(){const _s=_L();
 }
 
 function _rptLowStockPDF(){const _s=_L();
+  function _eligible(i){
+    var t = i.itemType || 'resale';
+    if(t === 'bulk') return false;
+    if(t === 'resale' && Array.isArray(i.recipe) && i.recipe.length > 0) return false;
+    return true;
+  }
   var low=D.inv.filter(function(i){
+    if(!_eligible(i)) return false;
     var avail=(i.qty||0)-(i.rented||0);
     var min=i.minStock||i.minQty||0;
     return min>0 && avail<=min && avail>0;
   });
-  var outOfStock=D.inv.filter(function(i){return (i.qty||0)-(i.rented||0)<=0;});
+  var outOfStock=D.inv.filter(function(i){return _eligible(i) && (i.qty||0)-(i.rented||0)<=0;});
   var all=[].concat(outOfStock.map(function(i){return Object.assign({},i,{_oos:true});}),low);
   var rows=all.map(function(i){
     var avail=(i.qty||0)-(i.rented||0);
@@ -39869,14 +39893,34 @@ function refreshNotifPanel(){
     }
 
     // ── Low stock ─────────────────────────────────────────────
+    // Exclude two item kinds from low/out-of-stock notifications:
+    //   1. Bulk/Batch items — their qty=0 is the expected initial
+    //      state (waiting for a cooking session). They have their
+    //      own '⚙ NEEDS PRODUCTION' inventory badge; spamming the
+    //      notification panel about every uncooked batch type is
+    //      noise, not a signal.
+    //   2. Recipe-bearing Finished Products — these have qty=0 by
+    //      design (assembled on order). Real serving capacity lives
+    //      in the recipe readiness, not the item's own qty. The
+    //      inventory card shows '✓ READY: N' for these. Flagging
+    //      them as out-of-stock here when they're actually ready
+    //      to serve creates the false-positive count.
+    // Raw materials with their own threshold remain alertable (the
+    // user explicitly set minStock, so they want notification).
+    function _stockAlertEligible(i){
+      var t = i.itemType || 'resale';
+      if(t === 'bulk') return false;
+      if(t === 'resale' && Array.isArray(i.recipe) && i.recipe.length > 0) return false;
+      return true;
+    }
     const lowStock = D.inv.filter(function(i){
+      if(!_stockAlertEligible(i)) return false;
       const avail = (i.qty||0)-(i.rented||0);
       const threshold = i.minStock||i.minQty||0;
-      // Only alert when: threshold explicitly set AND available is at or below it but NOT zero
-      // (out-of-stock items are a separate category shown below)
       return threshold>0 && avail>0 && avail<=threshold;
     });
     const outOfStockItems = D.inv.filter(function(i){
+      if(!_stockAlertEligible(i)) return false;
       return (i.qty||0)-(i.rented||0)<=0 && (i.st==='For Sale'||i.st==='Both'||i.st==='For Rent');
     });
     const allStockAlerts = [].concat(outOfStockItems.map(function(i){return Object.assign({},i,{_oos:true});}), lowStock);
