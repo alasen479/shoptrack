@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779900740");
+console.log("ShopTrack v2.7 - build:1779903704");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -3996,8 +3996,13 @@ function pgInv(){const _s=_L();const _ui=_s;
     // 22P02 detection path in _dbSaveInv — they signal that a column
     // exists but its TYPE is integer instead of numeric, blocking
     // decimal-quantity saves. Treat them as banner-worthy.
+    //
+    // Synthetic markers starting with 'table:' come from save paths
+    // for related tables that don't exist yet (e.g. table:batches when
+    // the Production module's batches table hasn't been created).
     return ['item_type','recipe','vendor_id','needs_price','cost_lines',
-            'qty_int_to_numeric','min_stock_int_to_numeric','rented_int_to_numeric']
+            'qty_int_to_numeric','min_stock_int_to_numeric','rented_int_to_numeric',
+            'table:batches']
             .indexOf(c) >= 0;
   });
   var _migBanner = '';
@@ -4006,12 +4011,37 @@ function pgInv(){const _s=_L();const _ui=_s;
     try { _dismissed = localStorage.getItem('st_invmig_dismissed_'+(SESSION.bizId||'')+'_'+_missing.sort().join(',')) === '1'; } catch(_){}
     if(!_dismissed){
       var _fr = BIZ.language === 'fr';
-      // Group missing entries into two SQL kinds: ADD COLUMN for genuinely
-      // absent columns, and ALTER COLUMN TYPE for existing columns whose
-      // type rejects decimals. Banner text changes if it's an integer-type
-      // problem so the user understands WHY saves are failing.
+      // Group missing entries into three SQL kinds:
+      //   ADD COLUMN     — column genuinely absent on the table
+      //   ALTER COL TYPE — column exists but type rejects decimals
+      //   CREATE TABLE   — entire related table missing
+      // Banner text changes based on what's present so the user
+      // understands WHY saves are failing.
       var _hasIntType = false;
+      var _hasMissingTable = false;
       var _sqlLines = _missing.map(function(c){
+        if(c === 'table:batches'){
+          _hasMissingTable = true;
+          // Production module's batches table. Schema mirrors
+          // _batchToDB output. JSONB for the ingredients_consumed
+          // payload; numeric for qty + cost so decimals work.
+          return 'CREATE TABLE IF NOT EXISTS batches (\n'
+            +'  id TEXT PRIMARY KEY,\n'
+            +'  biz_id TEXT NOT NULL,\n'
+            +'  product_id TEXT,\n'
+            +'  product_name TEXT,\n'
+            +'  batch_multiplier NUMERIC DEFAULT 1,\n'
+            +'  qty_produced NUMERIC DEFAULT 0,\n'
+            +'  total_cost NUMERIC DEFAULT 0,\n'
+            +'  ingredients_consumed JSONB,\n'
+            +'  produced_by TEXT,\n'
+            +'  produced_at TIMESTAMPTZ,\n'
+            +'  notes TEXT,\n'
+            +'  created_at TIMESTAMPTZ DEFAULT NOW()\n'
+            +');\n'
+            +'CREATE INDEX IF NOT EXISTS batches_biz_id_idx ON batches(biz_id);\n'
+            +'CREATE INDEX IF NOT EXISTS batches_produced_at_idx ON batches(produced_at DESC);';
+        }
         if(c.endsWith('_int_to_numeric')){
           _hasIntType = true;
           // Strip the suffix to recover the column name
@@ -4040,32 +4070,45 @@ function pgInv(){const _s=_L();const _ui=_s;
       window._invMigSql = _sql;
       window._invMigKey = 'st_invmig_dismissed_'+(SESSION.bizId||'')+'_'+_missing.sort().join(',');
       window._invMigBannerId = _bid;
-      // Banner title + body adjust depending on whether the issue is
-      // missing columns vs wrong column types vs both.
-      var _displayMissing = _missing.filter(function(c){return !c.endsWith('_int_to_numeric');});
+      // Banner title + body adjust depending on what's wrong.
+      var _missingTables = _missing.filter(function(c){return c.indexOf('table:')===0;})
+        .map(function(c){return c.slice('table:'.length);});
+      var _displayMissing = _missing.filter(function(c){
+        return !c.endsWith('_int_to_numeric') && c.indexOf('table:')!==0;
+      });
       var _intTypeCols = _missing.filter(function(c){return c.endsWith('_int_to_numeric');})
         .map(function(c){return c.slice(0,-'_int_to_numeric'.length);});
       var _bodyText = '';
-      if(_displayMissing.length && _intTypeCols.length){
-        _bodyText = _fr
-          ? 'Votre base Supabase a&nbsp;: (1) des colonnes manquantes&nbsp;<code>'+_displayMissing.join('</code>, <code>')+'</code> et (2) des colonnes de type entier qui refusent les décimales&nbsp;<code>'+_intTypeCols.join('</code>, <code>')+'</code>. Cela cause des échecs de sauvegarde et casse plusieurs filtres. Exécutez ce SQL dans Supabase&nbsp;:'
-          : 'Your Supabase database has: (1) missing columns <code>'+_displayMissing.join('</code>, <code>')+'</code> and (2) integer-typed columns rejecting decimals <code>'+_intTypeCols.join('</code>, <code>')+'</code>. This causes save failures and breaks several filters. Run this SQL in Supabase:';
-      } else if(_intTypeCols.length){
-        _bodyText = _fr
-          ? 'Vos sauvegardes échouent parce que les colonnes <code>'+_intTypeCols.join('</code>, <code>')+'</code> sont de type INTEGER et refusent les quantités décimales (ex.&nbsp;0,5&nbsp;kg de poivre). Exécutez ce SQL dans Supabase pour les convertir en NUMERIC&nbsp;:'
-          : 'Your saves are failing because the columns <code>'+_intTypeCols.join('</code>, <code>')+'</code> are typed INTEGER and reject decimal quantities (e.g. 0.5 kg of pepper). Run this SQL in Supabase to convert them to NUMERIC:';
-      } else {
-        _bodyText = _fr
-          ? 'Votre base Supabase n\u2019a pas les colonnes suivantes&nbsp;: <code>'+_displayMissing.join('</code>, <code>')+'</code>. Cela casse certaines fonctions (filtre par type, prix de vente désactivé pour matières premières, recettes). Exécutez ce SQL dans Supabase&nbsp;:'
-          : 'Your Supabase database is missing these columns: <code>'+_displayMissing.join('</code>, <code>')+'</code>. This breaks: type filter, sale-price greying for raw materials, recipes. Run this SQL in your Supabase SQL Editor:';
+      // Build the body in pieces — one sentence per category of issue.
+      var _parts = [];
+      if(_missingTables.length){
+        _parts.push(_fr
+          ? 'Tables manquantes&nbsp;: <code>'+_missingTables.join('</code>, <code>')+'</code>'
+          : 'Missing tables: <code>'+_missingTables.join('</code>, <code>')+'</code>');
       }
+      if(_displayMissing.length){
+        _parts.push(_fr
+          ? 'Colonnes manquantes&nbsp;: <code>'+_displayMissing.join('</code>, <code>')+'</code>'
+          : 'Missing columns: <code>'+_displayMissing.join('</code>, <code>')+'</code>');
+      }
+      if(_intTypeCols.length){
+        _parts.push(_fr
+          ? 'Colonnes de type entier refusant les décimales&nbsp;: <code>'+_intTypeCols.join('</code>, <code>')+'</code>'
+          : 'Integer-typed columns rejecting decimals: <code>'+_intTypeCols.join('</code>, <code>')+'</code>');
+      }
+      _bodyText = (_fr
+        ? 'Votre base Supabase a des éléments manquants ou mal typés. Cela cause des échecs de sauvegarde. Exécutez ce SQL dans Supabase&nbsp;:<br/>\u2022 '
+        : 'Your Supabase database has missing or wrongly-typed elements. This causes save failures. Run this SQL in Supabase:<br/>\u2022 ')
+        + _parts.join('<br/>\u2022 ');
       _migBanner = '<div id="'+_bid+'" style="background:#fef3c7;border-left:4px solid #d97706;border-radius:8px;padding:13px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start">'
         +'<div style="font-size:20px;line-height:1">⚠️</div>'
         +'<div style="flex:1;min-width:0">'
           +'<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">'
-            +(_hasIntType
-                ? (_fr?'Type de colonne incorrect — sauvegardes bloquées':'Wrong column type — saves blocked')
-                : (_fr?'Schéma de base de données obsolète':'Database schema is out of date'))
+            +(_hasMissingTable
+                ? (_fr?'Table manquante — Production hors-ligne':'Missing table — Production saving locally only')
+                : _hasIntType
+                  ? (_fr?'Type de colonne incorrect — sauvegardes bloquées':'Wrong column type — saves blocked')
+                  : (_fr?'Schéma de base de données obsolète':'Database schema is out of date'))
           +'</div>'
           +'<div style="font-size:12px;color:#78350f;line-height:1.5;margin-bottom:8px">'+_bodyText+'</div>'
           +'<pre style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-size:11px;color:#451a03;margin:0 0 8px;overflow-x:auto;white-space:pre-wrap;word-break:break-word">'+_esc(_sql)+'</pre>'
@@ -10481,11 +10524,33 @@ async function _saveBatch(){
     notes: notes
   };
 
-  // Decrement each ingredient, save each
+  // Decrement each ingredient. Save SEQUENTIALLY (not in parallel) so
+  // Supabase isn't hit with N simultaneous heavy upserts. Each row may
+  // carry photo data, so 10 parallel saves on a fragile DB will time out
+  // every save. Serialized saves with a small breather complete reliably
+  // — the user waits ~2-3 seconds for a 10-ingredient batch but every
+  // ingredient's stock is actually decremented in cloud.
+  //
+  // We don't await each call — that would block the UI thread and the
+  // user would see a frozen modal. Instead we kick them off in a
+  // chained promise that runs in the background. The local IDB + D.inv
+  // mutations above are synchronous, so the finished product appears
+  // in inventory immediately even while cloud is still syncing.
   deductions.forEach(function(d){
     d.ingredient.qty = Math.max(0, (d.ingredient.qty||0) - d.qty);
-    _dbSaveInv(d.ingredient).catch(function(){});
   });
+  (async function(){
+    for(var i = 0; i < deductions.length; i++){
+      try { await _dbSaveInv(deductions[i].ingredient); }
+      catch(_){ /* logged inside _dbSaveInv */ }
+      // 150ms breather between saves — gives Supabase room to commit each
+      // upsert before the next lands. Without this, even sequential saves
+      // can pile up at the gateway because the previous response hasn't
+      // returned yet. 150ms × 10 = 1.5s extra latency; user already sees
+      // the batch as done in the local view.
+      await new Promise(function(r){ setTimeout(r, 150); });
+    }
+  })();
 
   // Increment finished product
   product.qty = (product.qty||0) + mult;
@@ -21047,6 +21112,21 @@ async function _dbSaveBatch(b){
     if(error){
       if(/relation .* does not exist|could not find the table/i.test(error.message||'')){
         console.warn('[saveBatch] batches table not yet created in Supabase; saved locally only.');
+        // Surface the missing table to the inventory migration banner
+        // so the user sees the CREATE TABLE SQL alongside the other
+        // schema fixes. Pushed once per session — the banner reads
+        // window._invMissingCols and dedups.
+        try {
+          window._invMissingCols = window._invMissingCols || [];
+          if(window._invMissingCols.indexOf('table:batches') < 0){
+            window._invMissingCols.push('table:batches');
+          }
+          // Re-render inventory page if user is there so the banner
+          // appears without a manual navigation refresh.
+          if(typeof curPage !== 'undefined' && curPage === 'inventory'){
+            try { nav('inventory'); } catch(_){}
+          }
+        } catch(_){}
         return;
       }
       console.error('[saveBatch] error:', error.message);
