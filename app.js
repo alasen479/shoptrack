@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779888240");
+console.log("ShopTrack v2.7 - build:1779897019");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5076,13 +5076,26 @@ function _recipeHTML(prefix, existingLines, currentItemId){const _s=_L();
   // Build the ingredient dropdown options — every inventory item EXCEPT the
   // current product itself (a product can't be its own ingredient — that
   // would create an infinite loop).
+  // Each option carries data attributes the row uses to surface info
+  // about the picked ingredient WITHOUT requiring a re-render:
+  //   data-unit  → the ingredient's unit of measurement (g/ml/kg/each)
+  //   data-avail → available qty (qty - rented), the actual on-hand stock
+  // The visible label also includes 'X in stock' so the user can compare
+  // availability across options while the dropdown is open.
   var ingredients = (D.inv||[]).filter(function(x){return x.id !== currentItemId;})
     .sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
   var ingOpts = '<option value="">— Pick ingredient —</option>'
     + ingredients.map(function(x){
         var u = x.sz || '';
+        var avail = (x.qty||0) - (x.rented||0);
+        // Trim float noise. Available qty often arrives as 4.9999999.
+        var availDisp = parseFloat(avail.toFixed(3));
         var cost = x.cost ? ' · '+fmt(x.cost) : '';
-        return '<option value="'+x.id+'"'+(u?' data-unit="'+_esc(u)+'"':'')+'>'+_esc(x.name)+(u?' ['+_esc(u)+']':'')+cost+'</option>';
+        var stockLabel = ' · '+availDisp+(u?' '+u:'')+' in stock';
+        return '<option value="'+x.id+'"'
+          +(u?' data-unit="'+_esc(u)+'"':'')
+          +' data-avail="'+availDisp+'"'
+          +'>'+_esc(x.name)+(u?' ['+_esc(u)+']':'')+stockLabel+cost+'</option>';
       }).join('');
 
   var existingRowsHTML = lines.map(function(l,i){
@@ -5145,11 +5158,32 @@ function _recipeRowHTML(prefix, idx, line, ingOpts){
     new RegExp('value="'+(line.ingredientId||'__none__')+'"', 'g'),
     'value="'+(line.ingredientId||'__none__')+'" selected'
   );
+  // If we already have a saved ingredient on this line, pre-compute the
+  // available-qty pill so it shows on initial render (e.g. when re-opening
+  // an item that has existing recipe lines). Otherwise leave the pill
+  // empty — _rcpRowChange will populate it when the user picks.
+  var availPill = '';
+  if(line.ingredientId){
+    var ing = (D.inv||[]).find(function(x){return x.id === line.ingredientId;});
+    if(ing){
+      var availInit = parseFloat(((ing.qty||0) - (ing.rented||0)).toFixed(3));
+      var unitInit = ing.sz || '';
+      availPill = availInit + (unitInit ? ' '+unitInit : '');
+    }
+  }
   return '<div class="rcp-row" data-idx="'+idx+'" style="display:grid;grid-template-columns:1fr 80px 80px 30px;gap:6px;margin-bottom:6px;align-items:center;min-width:420px">'
     +'<select class="fs rcp-ing" style="font-size:12px;padding:6px" onchange="_rcpRowChange(this,\''+prefix+'\')">'+optsWithSel+'</select>'
     +'<input class="fi rcp-qty" type="number" step="any" min="0" placeholder="0" value="'+(line.qty||'')+'" style="font-size:12px;padding:6px;text-align:right" oninput="_rcpRecalc(\''+prefix+'\')"/>'
     +'<input class="fi rcp-unit" placeholder="g / ml / each" value="'+_esc(line.unit||'')+'" style="font-size:12px;padding:6px"/>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_rcpRemoveLine(this,\''+prefix+'\')" style="padding:4px 6px">\u2715</button>'
+    // Second-line annotation under the row that shows on-hand stock
+    // for the currently-selected ingredient. Spans the first column only
+    // so it doesn't disrupt the grid; updates whenever the user changes
+    // the ingredient via _rcpRowChange. Hidden when nothing is picked.
+    +'<div class="rcp-avail-wrap" style="grid-column:1 / 2;margin-top:-3px;margin-bottom:4px;font-size:10.5px;color:var(--text2);line-height:1.4'+(availPill?'':';display:none')+'">'
+      +'<span style="opacity:.7">On hand: </span>'
+      +'<span class="rcp-avail-val" style="font-family:var(--mono);font-weight:600;color:var(--text)">'+availPill+'</span>'
+    +'</div>'
   +'</div>';
 }
 
@@ -5165,14 +5199,22 @@ function _rcpToggle(prefix){
 function _rcpAddLine(prefix, currentItemId){
   var rows = document.getElementById(prefix+'-rcp-rows');
   if(!rows) return;
-  // Rebuild the ingredient options fresh each click (in case inventory changed)
+  // Rebuild the ingredient options fresh each click (in case inventory changed).
+  // Mirrors the enrichment in _recipeHTML — keeps the in-stock count and
+  // data-avail attribute current as the user opens the modal repeatedly.
   var ingredients = (D.inv||[]).filter(function(x){return x.id !== currentItemId;})
     .sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
   var ingOpts = '<option value="">— Pick ingredient —</option>'
     + ingredients.map(function(x){
         var u = x.sz || '';
+        var avail = (x.qty||0) - (x.rented||0);
+        var availDisp = parseFloat(avail.toFixed(3));
         var cost = x.cost ? ' · '+fmt(x.cost) : '';
-        return '<option value="'+x.id+'"'+(u?' data-unit="'+_esc(u)+'"':'')+'>'+_esc(x.name)+(u?' ['+_esc(u)+']':'')+cost+'</option>';
+        var stockLabel = ' · '+availDisp+(u?' '+u:'')+' in stock';
+        return '<option value="'+x.id+'"'
+          +(u?' data-unit="'+_esc(u)+'"':'')
+          +' data-avail="'+availDisp+'"'
+          +'>'+_esc(x.name)+(u?' ['+_esc(u)+']':'')+stockLabel+cost+'</option>';
       }).join('');
   var idx = rows.querySelectorAll('.rcp-row').length;
   rows.insertAdjacentHTML('beforeend', _recipeRowHTML(prefix, idx, {}, ingOpts));
@@ -5182,14 +5224,43 @@ function _rcpAddLine(prefix, currentItemId){
 }
 
 function _rcpRowChange(sel, prefix){
-  // When the user picks an ingredient, auto-fill the unit field from the
-  // ingredient's tracked size/unit (if any). User can override.
+  // When the user picks (or changes) an ingredient, two things refresh:
+  //   1. The unit field — auto-fills with the ingredient's tracked unit
+  //      (g / ml / kg / each / pair etc.). Always overwrites, even if the
+  //      user had typed something — picking a different ingredient is a
+  //      strong signal they want the new ingredient's unit. The user can
+  //      still type a custom unit afterwards if they really mean to
+  //      express the recipe in different units (e.g. 'cup' for an
+  //      ingredient tracked in g).
+  //   2. The on-hand display under the row — shows the available stock
+  //      so the user can sanity-check before typing a quantity. Updates
+  //      from data-avail on the picked option (set in the option builder
+  //      from qty - rented).
   var row = sel.closest('.rcp-row');
   if(!row) return;
   var opt = sel.options[sel.selectedIndex];
   var unitInp = row.querySelector('.rcp-unit');
-  if(unitInp && !unitInp.value && opt && opt.dataset.unit){
-    unitInp.value = opt.dataset.unit;
+  var availWrap = row.querySelector('.rcp-avail-wrap');
+  var availVal = row.querySelector('.rcp-avail-val');
+  if(opt && opt.value){
+    // Real ingredient picked — refresh both fields
+    if(unitInp && opt.dataset.unit != null){
+      unitInp.value = opt.dataset.unit;
+    }
+    if(availWrap && availVal){
+      var av = opt.dataset.avail;
+      if(av != null){
+        var unit = opt.dataset.unit || '';
+        availVal.textContent = av + (unit ? ' '+unit : '');
+        availWrap.style.display = '';
+      } else {
+        availWrap.style.display = 'none';
+      }
+    }
+  } else {
+    // User reset to '— Pick ingredient —' — hide the on-hand pill
+    if(availWrap) availWrap.style.display = 'none';
+    if(availVal) availVal.textContent = '';
   }
   _rcpRecalc(prefix);
 }
