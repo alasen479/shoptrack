@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779922610");
+console.log("ShopTrack v2.7 - build:1779923804");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4240,7 +4240,7 @@ ${_invOverBanner}${_migBanner}<div class="ph">
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr))">
   <div class="kpi b"><div class="kpi-lbl">${_s.inv_total_items}</div><div class="kpi-val b">${D.inv.length}</div><div class="kpi-sub">${_s.inv_skus}</div></div>
   <div class="kpi g"><div class="kpi-lbl">${_s.inv_available}</div><div class="kpi-val g">${D.inv.filter(i=>(i.qty||0)-(i.rented||0)>0).length}</div><div class="kpi-sub">${_s.inv_in_stock}</div></div>
-  <div class="kpi c"><div class="kpi-lbl">${_s.inv_rented_out}</div><div class="kpi-val c">${D.inv.reduce((a,i)=>a+(i.rented||0),0)}</div><div class="kpi-sub">${_s.inv_active_rent}</div></div>
+  <div class="kpi c"><div class="kpi-lbl">${_s.inv_rented_out}</div><div class="kpi-val c">${_fmtQty(D.inv.reduce((a,i)=>a+(i.rented||0),0))}</div><div class="kpi-sub">${_s.inv_active_rent}</div></div>
   <div class="kpi p" style="cursor:pointer" title="${_s.inv_click_stock_tbl}"><div class="kpi-lbl">${_s.inv_stock_val_cost}</div><div class="kpi-val p">${fmtKpi(D.inv.reduce((a,i)=>a+(i.cost||0)*(i.qty||0),0))}</div><div class="kpi-sub">${_s.inv_at_cost}</div></div>
   <div class="kpi g" style="cursor:pointer" title="Total retail value of all stock"><div class="kpi-lbl">${_s.inv_retail_val}</div><div class="kpi-val g">${fmtKpi(D.inv.reduce((a,i)=>a+(i.sp||0)*(i.qty||0),0))}</div><div class="kpi-sub">${_s.inv_at_sell}</div></div>
   <div class="kpi y" style="cursor:pointer" onclick="_filterInvLowStock()"><div class="kpi-lbl">${_s.inv_low_stock}</div><div class="kpi-val y">${D.inv.filter(i=>{const avail=(i.qty||0)-(i.rented||0);const min=i.minStock||i.minQty||0;return min>0&&avail<=min&&avail>0;}).length}</div><div class="kpi-sub">${_s.cust_click_filter}</div></div>
@@ -4592,7 +4592,7 @@ function switchInvView(el,mode){const _s=_L();
     v.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>${_s.inv_col_sku}</th><th>Name</th><th>${_s.ui_category}</th><th>${_s.ui_status}</th><th>Qty</th><th>${_s.inv_rented}</th><th>${_s.inv_col_avail}</th><th>${_s.inv_col_cost}</th><th>Sell</th><th>${_s.inv_rental_day}</th><th class="num">${_s.inv_stock_val}</th><th>${_s.inv_cond_short}</th><th>${_s.ui_actions}</th></tr></thead><tbody>
     ${D.inv.map(i=>{const sv=(i.cost||0)*(i.qty||0); return `<tr>
       <td>${mono(i.sku)}</td><td><strong style="color:var(--ink);cursor:pointer" onclick="mItem('${i.id}')">${i.name}</strong></td><td>${i.cat}</td><td>${badge(i.st)}</td>
-      <td>${i.qty}</td><td style="color:var(--c)">${i.rented}</td><td style="color:var(--g)">${i.qty-i.rented}</td>
+      <td>${_fmtQty(i.qty||0)}</td><td style="color:var(--c)">${_fmtQty(i.rented||0)}</td><td style="color:var(--g)">${_fmtQty((i.qty||0)-(i.rented||0))}</td>
       <td>${canAccess('inventory_cost')?mono(fmt(i.cost)):'<span style=\"color:var(--text3)\">🔒</span>'}</td><td>${mono(fmt(i.sp),'g')}</td><td>${mono(i.rp?fmt(i.rp):'—','c')}</td>
       <td class="num">${canAccess('inventory_cost')?`<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--b,var(--a))">${fmt(sv)}</span>`:'<span style="color:var(--text3)">🔒</span>'}</td>
       <td><div class="cond ${cc(i.cond)}"><div class="cdot"></div><span style="font-size:11px">${i.cond}</span></div></td>
@@ -4670,13 +4670,14 @@ function _saveItemPrices(id){var _s=_L();
 
 function _adjStock(id, delta){var _s=_L();
   var it=D.inv.find(function(x){return x.id===id;}); if(!it) return;
-  var newQty = Math.max(0, (it.qty||0) + delta);
+  // Round to 2dp to prevent float drift on repeated adjustments.
+  var newQty = Math.round(Math.max(0, (it.qty||0) + delta) * 100) / 100;
   it.qty = newQty;
-  var el=document.getElementById('inv-qty-'+id); if(el) el.textContent=newQty;
+  var el=document.getElementById('inv-qty-'+id); if(el) el.textContent=_fmtQty(newQty);
   _dbSaveInv(it, delta); // pass delta for conflict-safe offline sync
   refreshLiveKpis();
   addAudit('Stock adjusted',id+' qty:'+newQty);
-  toast(_L().t_stock_updated+newQty+' units','success');
+  toast(_L().t_stock_updated+_fmtQty(newQty)+' units','success');
 }
 function _invStatusBadge(st){
   var cfg = {
@@ -4743,12 +4744,12 @@ function mItem(id){const _s=_L();
       <div><div class="fl">${_s.inv_qty_lbl}</div>
         <div style="display:flex;align-items:center;gap:6px">
           <button onclick="_adjStock('${it.id}',-1)" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">-</button>
-          <span id="inv-qty-${it.id}" style="font-weight:700;color:var(--ink);min-width:28px;text-align:center">${it.qty}</span>
+          <span id="inv-qty-${it.id}" style="font-weight:700;color:var(--ink);min-width:28px;text-align:center">${_fmtQty(it.qty||0)}</span>
           <button onclick="_adjStock('${it.id}',1)" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">+</button>
           <span style="font-size:11px;color:var(--text2);margin-left:2px">(click to adjust)</span>
         </div></div>
-    <div><div class="fl">${_s.inv_available}</div><div style="font-weight:600;color:var(--g)">${it.qty-it.rented}</div></div>
-    ${it.rented>0?`<div><div class="fl">${_s.inv_rented_out}</div><div style="font-weight:600;color:var(--c)">${it.rented}</div></div>`:''}
+    <div><div class="fl">${_s.inv_available}</div><div style="font-weight:600;color:var(--g)">${_fmtQty((it.qty||0)-(it.rented||0))}</div></div>
+    ${it.rented>0?`<div><div class="fl">${_s.inv_rented_out}</div><div style="font-weight:600;color:var(--c)">${_fmtQty(it.rented||0)}</div></div>`:''}
     <div><div class="fl">${_s.inv_stock_val}</div><div style="font-weight:700;color:var(--a);font-family:var(--mono)">${fmt((it.cost||0)*(it.qty||0))}</div></div>
   </div>
   </div>
@@ -4759,8 +4760,8 @@ function mItem(id){const _s=_L();
     <div class="kpi c" style="padding:13px"><div class="kpi-lbl">${_s.inv_rental_day}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--c)">${it.rp?fmt(it.rp):'N/A'}</div></div>
     <div class="kpi" style="padding:13px"><div class="kpi-lbl">${_s.inv_cost_lbl}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono)">${fmt(it.cost)}</div></div>
     <div class="kpi p" style="padding:13px"><div class="kpi-lbl">${_s.inv_gross_margin}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--p)">${it.sp?Math.round((it.sp-it.cost)/it.sp*100)+'%':'—'}</div></div>
-    <div class="kpi b" style="padding:13px"><div class="kpi-lbl">${_s.inv_stock_val}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--a)">${fmt((it.cost||0)*(it.qty||0))}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${it.qty} units × ${fmt(it.cost)} cost</div></div>
-    ${it.sp&&it.qty?`<div class="kpi g" style="padding:13px"><div class="kpi-lbl">${_s.inv_retail_val}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(it.sp*it.qty)}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${it.qty} units × ${fmt(it.sp)} sell price</div></div>`:''}
+    <div class="kpi b" style="padding:13px"><div class="kpi-lbl">${_s.inv_stock_val}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--a)">${fmt((it.cost||0)*(it.qty||0))}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${_fmtQty(it.qty||0)} units × ${fmt(it.cost)} cost</div></div>
+    ${it.sp&&it.qty?`<div class="kpi g" style="padding:13px"><div class="kpi-lbl">${_s.inv_retail_val}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--g)">${fmt(it.sp*it.qty)}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${_fmtQty(it.qty||0)} units × ${fmt(it.sp)} sell price</div></div>`:''}
   </div>
   <div class="fg"><label class="fl">Sell Price <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label>
     <input class="fi" id="mi-sp-${it.id}" value="${curInNative(it,'sp','spNative','spCurrency')}" type="number"/>
@@ -4843,7 +4844,7 @@ function _mItemDelete(id){const _s=_L();
       return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><strong>'+r.id+'</strong> — '+_esc(r.cust)+' · Due: '+r.due+'</div>';
     }).join('');
     modal(_s.inv_cant_del,
-      '<div class="alrt alrt-r" style="margin-bottom:10px"><strong>'+_esc(it.name)+'</strong> is currently rented out ('+it.rented+' unit'+(it.rented!==1?'s':'')+').</div>'+
+      '<div class="alrt alrt-r" style="margin-bottom:10px"><strong>'+_esc(it.name)+'</strong> is currently rented out ('+_fmtQty(it.rented||0)+' unit'+(it.rented!==1?'s':'')+').</div>'+
       '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Return all active rentals before deleting this item.</p>'+
       '<div>'+rentalRows+'</div>',
       '<button class="btn btn-s" onclick="closeModal()">OK</button>'+
@@ -6101,8 +6102,8 @@ async function mEditItem(id){const _s=_L();
     <div class="fg"><label class="fl">${_s.inv_selling_lbl}</label><input class="fi" id="ei-sp" type="number" value="${curInNative(it,'sp','spNative','spCurrency')}"/></div>
     <div class="fg"><label class="fl">${_s.inv_rental_day}</label><input class="fi" id="ei-rp" type="number" value="${curInNative(it,'rp','rpNative','rpCurrency')}"/></div>
     ${showMin?`<div class="fg"><label class="fl" style="display:flex;align-items:center;gap:5px">Min Sell Price 🔒 ${!editMin?'<span style="font-size:10px;color:var(--y)">(read-only)</span>':''}</label><input class="fi" id="ei-minsp" type="number" value="${curInNative(it,'minSp','minSpNative','minSpCurrency')}" ${!editMin?'readonly style="opacity:.5"':''}/><div class="fh">${editMin?'Staff cannot sell below this price':'You can view but not edit this field'}</div></div>`:''}
-    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" id="ei-qty" type="number" step="any" min="0" value="${it.qty}"/></div>
-    <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">${_s.set_optional}</span></label><input class="fi" id="ei-minstock" type="number" step="any" value="${it.minStock||''}" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert when available qty ≤ this number. Leave blank or 0 to disable.</div></div>
+    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" id="ei-qty" type="number" step="any" min="0" value="${_fmtQty(it.qty||0)}"/></div>
+    <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">${_s.set_optional}</span></label><input class="fi" id="ei-minstock" type="number" step="any" value="${it.minStock?_fmtQty(it.minStock):''}" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert when available qty ≤ this number. Leave blank or 0 to disable.</div></div>
     <div class="fg"><label class="fl">${_s.inv_color_lbl}</label><input class="fi" id="ei-color" value="${it.color||''}"/></div>
     <div class="fg"><label class="fl">${_s.inv_size_lbl}</label><input class="fi" id="ei-sz" value="${it.sz||''}"/></div>
   </div>
@@ -11256,7 +11257,9 @@ function mRecordPurchase(){const _s=_L();
         <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:center">
           <select class="fs po-inv-sel" onchange="_poLineChange(this)">
             <option value="">-- Link to inventory (optional) --</option>
-            ${D.inv.map(i=>`<option value="${i.id}" data-cost="${Math.round((i.cost||0)*CUR.rate)}" data-name="${i.name}${i.sku?' ('+i.sku+')':''}">${i.name} (stock: ${i.qty||0}) — ${fmt(i.cost||0)}/unit</option>`).join('')}
+            ${_groupOptsByCat(D.inv, function(i){
+              return `<option value="${i.id}" data-cost="${Math.round((i.cost||0)*CUR.rate)}" data-name="${_esc(i.name+(i.sku?' ('+i.sku+')':''))}">${_esc(i.name)} (stock: ${_fmtQty(i.qty||0)}) \u2014 ${fmt(i.cost||0)}/unit</option>`;
+            })}
             <option value="__custom__">── Custom / new item ──</option>
           </select>
           <input class="fi po-line-qty" type="number" value="1" min="1" style="width:56px;text-align:center" placeholder="Qty" oninput="_poRecalcTotal()"/>
@@ -13395,7 +13398,7 @@ function rptRentalUtil(){const _s=_L();
   const util=D.inv.filter(i=>i.rp).map(i=>({name:i.name,qty:i.qty,rented:i.rented,rate:Math.round(i.rented/Math.max(i.qty,1)*100)})).sort((a,b)=>b.rate-a.rate);
   modal('📊 Rental Utilization',`
   <div class="tbl-wrap"><table><thead><tr><th>${_s.rent_item_lbl}</th><th>${_s.rpt_total_qty}</th><th>${_s.inv_rented_out}</th><th>${_s.rpt_utilization}</th></tr></thead><tbody>
-  ${util.map(u=>`<tr><td>${u.name}</td><td>${u.qty}</td><td style="color:var(--c)">${u.rented}</td><td><div style="display:flex;align-items:center;gap:8px"><div class="pbar" style="width:80px"><div class="pfill ${u.rate>60?'g':u.rate>30?'y':'r'}" style="width:${u.rate}%"></div></div><span style="font-size:11px;color:var(--text)">${u.rate}%</span></div></td></tr>`).join('')}
+  ${util.map(u=>`<tr><td>${_esc(u.name)}</td><td>${_fmtQty(u.qty||0)}</td><td style="color:var(--c)">${_fmtQty(u.rented||0)}</td><td><div style="display:flex;align-items:center;gap:8px"><div class="pbar" style="width:80px"><div class="pfill ${u.rate>60?'g':u.rate>30?'y':'r'}" style="width:${u.rate}%"></div></div><span style="font-size:11px;color:var(--text)">${u.rate}%</span></div></td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRentalUtilPDF()">⬇ PDF</button>`);
 }
@@ -13447,16 +13450,16 @@ function rptInvVal(){const _s=_L();
     <div class="kpi r"><div class="kpi-lbl">Cost Value (on hand)</div><div class="kpi-val r">${fmtKpi(totalCostOnHand)}</div></div>
     <div class="kpi y"><div class="kpi-lbl">Cost Value (incl. rented)</div><div class="kpi-val y">${fmtKpi(totalCostAll)}</div></div>
     <div class="kpi g"><div class="kpi-lbl">${_s.inv_retail_val}</div><div class="kpi-val g">${fmtKpi(totalSP)}</div></div>
-    <div class="kpi c"><div class="kpi-lbl">${_s.rpt_units_rented}</div><div class="kpi-val c">${rentedOut}</div></div>
+    <div class="kpi c"><div class="kpi-lbl">${_s.rpt_units_rented}</div><div class="kpi-val c">${_fmtQty(rentedOut)}</div></div>
     <div class="kpi p"><div class="kpi-lbl">${_s.rpt_pot_margin}</div><div class="kpi-val p">${totalSP>0?Math.round((totalSP-totalCostAll)/totalSP*100):0}%</div></div>
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Name</th><th>${_s.rpt_on_hand}</th><th>${_s.inv_rented}</th><th>${_s.rpt_available}</th><th>${_s.rpt_unit_cost}</th><th>${_s.inv_col_sp}</th><th>${_s.rpt_cost_val}</th><th>${_s.inv_retail_val}</th></tr></thead><tbody>
   ${rows.map(i=>`<tr>
     <td>${mono(i.sku)}</td>
     <td style="font-size:12px">${_esc(i.name)}</td>
-    <td style="text-align:center">${i.qty}</td>
-    <td style="text-align:center;color:var(--c)">${i.rented||0}</td>
-    <td style="text-align:center;color:${i.available===0?'var(--r)':'var(--g)'};font-weight:600">${i.available}</td>
+    <td style="text-align:center">${_fmtQty(i.qty||0)}</td>
+    <td style="text-align:center;color:var(--c)">${_fmtQty(i.rented||0)}</td>
+    <td style="text-align:center;color:${i.available===0?'var(--r)':'var(--g)'};font-weight:600">${_fmtQty(i.available||0)}</td>
     <td>${mono(fmt(i.cost))}</td>
     <td>${i.sp?mono(fmt(i.sp),'g'):'—'}</td>
     <td>${mono(fmt(i.totalCostOnHand))}</td>
@@ -13507,7 +13510,7 @@ function rptRentedOut(){const _s=_L();
   const out=D.inv.filter(i=>i.rented>0);
   modal('📊 Items Currently Rented Out',`
   <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>${_s.inv_name_col}</th><th>${_s.inv_col_qty}</th><th>${_s.inv_rented}</th><th>${_s.inv_available}</th><th>${_s.inv_rental_day}</th></tr></thead><tbody>
-  ${out.map(i=>`<tr><td>${mono(i.sku)}</td><td>${i.name}</td><td>${i.qty}</td><td style="color:var(--c);font-weight:600">${i.rented}</td><td style="color:var(--g)">${i.qty-i.rented}</td><td>${mono(fmt(i.rp||0),'c')}</td></tr>`).join('')}
+  ${out.map(i=>`<tr><td>${mono(i.sku)}</td><td>${_esc(i.name)}</td><td>${_fmtQty(i.qty||0)}</td><td style="color:var(--c);font-weight:600">${_fmtQty(i.rented||0)}</td><td style="color:var(--g)">${_fmtQty((i.qty||0)-(i.rented||0))}</td><td>${mono(fmt(i.rp||0),'c')}</td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptRentedOutPDF()">⬇ PDF</button>`);
 }
@@ -13517,7 +13520,7 @@ function rptStockCat(){const _s=_L();
   D.inv.forEach(i=>{if(!cats[i.cat])cats[i.cat]={items:0,qty:0,val:0};cats[i.cat].items++;cats[i.cat].qty+=i.qty;cats[i.cat].val+=i.cost*i.qty;});
   modal('📊 Stock by Category',`
   <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_category}</th><th>SKUs</th><th>${_s.rpt_total_units}</th><th>${_s.rpt_cost_val}</th></tr></thead><tbody>
-  ${Object.entries(cats).map(([c,v])=>`<tr><td>${c}</td><td>${v.items}</td><td>${v.qty}</td><td>${mono(fmt(v.val))}</td></tr>`).join('')}
+  ${Object.entries(cats).map(([c,v])=>`<tr><td>${_esc(c)}</td><td>${v.items}</td><td>${_fmtQty(v.qty||0)}</td><td>${mono(fmt(v.val))}</td></tr>`).join('')}
   </tbody></table></div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_close}</button><button class="btn btn-g btn-sm" onclick="_rptStockCatPDF()">⬇ PDF</button>`);
 }
@@ -15584,7 +15587,7 @@ function genAI(){var _s=_L();
 
   // Low stock items
   const lowStock = (D.inv||[]).filter(i=>i.qty!==undefined && i.minQty!==undefined && i.qty<=i.minQty && i.qty>=0).slice(0,8);
-  const lowStockStr = lowStock.map(i=>`${i.name} (${i.qty} left, min ${i.minQty})`).join(', ');
+  const lowStockStr = lowStock.map(i=>`${i.name} (${_fmtQty(i.qty||0)} left, min ${_fmtQty(i.minQty||0)})`).join(', ');
 
   // Expenses this month
   const expThisMonth = (D.expenses||[]).filter(e=>{ const d=new Date(e.dt); return d.getMonth()===thisMonth&&d.getFullYear()===thisYear; });
@@ -21481,8 +21484,15 @@ function _dbToInv(r){ return {
   rpNative:    r.rp_native    != null ? r.rp_native    : null, rpCurrency:    r.rp_currency    || null,
   minSpNative: r.min_sp_native!= null ? r.min_sp_native: null, minSpCurrency: r.min_sp_currency|| null,
   depNative:   r.dep_native   != null ? r.dep_native   : null, depCurrency:   r.dep_currency   || null,
-  minSp:r.min_sp||0, minStock:r.min_stock||0,
-  qty:r.qty||0, color:r.color||'', sz:r.size||'', desc:r.description||'',
+  minSp:r.min_sp||0,
+  // Round on load to clean any float drift stored in the database from
+  // prior versions (before _consumeRecipe / _saveBatch rounded on save).
+  // This is the one-time cleanup that turns 0.9000000000000001 → 0.9.
+  // Future writes are already rounded by the save paths.
+  minStock: Math.round((r.min_stock||0)*100)/100,
+  qty:      Math.round((r.qty||0)*100)/100,
+  rented:   Math.round((r.rented||0)*100)/100,
+  color:r.color||'', sz:r.size||'', desc:r.description||'',
   vendorId:r.vendor_id||'',
   recipe: r.recipe
     ? (typeof r.recipe === 'string'
@@ -21635,22 +21645,36 @@ function _dbToAudit(r){ return {
 // was consumed (from raw-material inventory) and what was produced (qty of
 // finished product). Used for: audit trail, batch-cost reporting, future
 // expiry/traceability features.
-function _dbToBatch(r){ return {
-  id: r.id,
-  productId: r.product_id || '',
-  productName: r.product_name || '',
-  multiplier: r.batch_multiplier || 1,
-  qtyProduced: r.qty_produced || 0,
-  cost: r.total_cost || 0,
-  ingredients: r.ingredients_consumed
+function _dbToBatch(r){
+  // Parse ingredients first so we can normalize the per-line qty values.
+  // Some batches saved before v222 may have ugly long-decimal qtys
+  // baked into the ingredients array (e.g. 0.30000000000000004 kg beef).
+  var ings = r.ingredients_consumed
     ? (typeof r.ingredients_consumed === 'string'
         ? (function(){ try{return JSON.parse(r.ingredients_consumed);}catch(e){return [];} })()
         : r.ingredients_consumed)
-    : [],
-  producedBy: r.produced_by || '',
-  producedAt: r.produced_at || r.created_at || '',
-  notes: r.notes || ''
-}; }
+    : [];
+  // Clean numeric fields on each ingredient line.
+  ings = (Array.isArray(ings) ? ings : []).map(function(li){
+    return Object.assign({}, li, {
+      qty:       li.qty       != null ? Math.round((li.qty||0)*100)/100       : 0,
+      unitCost:  li.unitCost  != null ? Math.round((li.unitCost||0)*10000)/10000 : 0,
+      lineCost:  li.lineCost  != null ? Math.round((li.lineCost||0)*10000)/10000 : 0
+    });
+  });
+  return {
+    id: r.id,
+    productId: r.product_id || '',
+    productName: r.product_name || '',
+    multiplier: Math.round((r.batch_multiplier||1)*100)/100,
+    qtyProduced: Math.round((r.qty_produced||0)*100)/100,
+    cost: Math.round((r.total_cost||0)*100)/100,
+    ingredients: ings,
+    producedBy: r.produced_by || '',
+    producedAt: r.produced_at || r.created_at || '',
+    notes: r.notes || ''
+  };
+}
 function _batchToDB(b, bizId){ return {
   id: b.id,
   biz_id: bizId,
@@ -22329,6 +22353,59 @@ window.diagnoseBatches = async function(){
   console.log('If IDB > memory, an _idbRestoreAll skipped the load.');
   console.log('═══════════════════════════════════════════════════');
 };
+
+// ── RECIPE READINESS DIAGNOSTIC ──────────────────────────────────
+// Explains where a finished product's 'READY: N' badge number
+// comes from. Pass an item name fragment (case-insensitive) and
+// it prints each recipe line with the math:
+//   needed per serve × current stock = how many serves possible
+// and the min across lines (which is the displayed N).
+// Usage from console:
+//   diagnoseReady('plantain')   → matches 'Ndolé Beef+Shrimp · Plantain'
+//   diagnoseReady('both')       → matches the 'Both' plate
+window.diagnoseReady = function(nameFragment){
+  if(!nameFragment){
+    console.log('Usage: diagnoseReady("plantain") or any name fragment');
+    return;
+  }
+  var frag = nameFragment.toLowerCase();
+  var matches = (D.inv||[]).filter(function(i){
+    return (i.name||'').toLowerCase().indexOf(frag) >= 0
+      && Array.isArray(i.recipe) && i.recipe.length;
+  });
+  if(!matches.length){
+    console.log('No recipe-bearing items match "'+nameFragment+'"');
+    return;
+  }
+  matches.forEach(function(item){
+    console.log('═══════════════════════════════════════════════════');
+    console.log('  '+item.name+'  (id: '+item.id+')');
+    console.log('  Own qty: '+(item.qty||0)+' · Own rented: '+(item.rented||0));
+    console.log('  Item type: '+(item.itemType||'resale'));
+    console.log('───────────────────────────────────────────────────');
+    console.log('  Recipe lines:');
+    var minReady = Infinity;
+    item.recipe.forEach(function(line, i){
+      var ing = (D.inv||[]).find(function(x){return x.id === line.ingredientId;});
+      if(!ing){
+        console.log('    ['+i+'] MISSING ingredient (id: '+line.ingredientId+')');
+        minReady = 0;
+        return;
+      }
+      var ingAvail = (ing.qty||0) - (ing.rented||0);
+      var possible = Math.floor(ingAvail / (line.qty||0.0001));
+      console.log('    ['+i+'] '+ing.name);
+      console.log('         needs '+line.qty+' per serve × ingredient stock '+ingAvail+' = '+possible+' serves possible');
+      if(possible < minReady) minReady = possible;
+    });
+    console.log('───────────────────────────────────────────────────');
+    console.log('  MIN across all lines = '+minReady);
+    console.log('  + own stock (qty - rented) = '+Math.max(0, (item.qty||0)-(item.rented||0)));
+    console.log('  → Final READY = '+(Math.max(0, (item.qty||0)-(item.rented||0)) + (minReady === Infinity ? 0 : minReady)));
+  });
+  console.log('═══════════════════════════════════════════════════');
+};
+
 
 
 // ── PHOTO DIAGNOSTIC ─────────────────────────────────────────────
@@ -25818,7 +25895,7 @@ function genInvoiceDoc(saleId){
     <table class="doc-items">
       <thead><tr><th style="width:50%">${L.description}</th><th>${L.qty}</th><th class="num">${L.unitPrice}</th><th class="num">${L.amount}</th></tr></thead>
       <tbody>
-        ${(s.lineItems&&s.lineItems.length?s.lineItems:null) ? s.lineItems.map(li=>{const u=li.unit?` <span style="color:#94a3b8;font-weight:400">${_esc(li.unit)}</span>`:'';return `<tr><td class="desc">${_esc(li.name||li.item||li.desc||'Item')}</td><td>${li.qty||1}${u}</td><td class="num">${fmtDoc((li.price||0))}</td><td class="num" style="font-weight:700">${fmtDoc((li.qty||1)*(li.price||0))}</td></tr>`;}).join('') : `<tr><td class="desc">${_esc(s.items)}</td><td>1</td><td class="num">${fmtDoc(s.total||s.amt)}</td><td class="num" style="font-weight:700">${fmtDoc(s.total||s.amt)}</td></tr>`}
+        ${(s.lineItems&&s.lineItems.length?s.lineItems:null) ? s.lineItems.map(li=>{const u=li.unit?` <span style="color:#94a3b8;font-weight:400">${_esc(li.unit)}</span>`:'';return `<tr><td class="desc">${_esc(li.name||li.item||li.desc||'Item')}</td><td>${_fmtQty(li.qty||1)}${u}</td><td class="num">${fmtDoc((li.price||0))}</td><td class="num" style="font-weight:700">${fmtDoc((li.qty||1)*(li.price||0))}</td></tr>`;}).join('') : `<tr><td class="desc">${_esc(s.items)}</td><td>1</td><td class="num">${fmtDoc(s.total||s.amt)}</td><td class="num" style="font-weight:700">${fmtDoc(s.total||s.amt)}</td></tr>`}
         ${s.freight>0?`<tr><td class="desc" style="color:#64748b">${L.freight}</td><td>—</td><td class="num">${fmtDoc(s.freight)}</td><td class="num">${fmtDoc(s.freight)}</td></tr>`:''}
       </tbody>
     </table>
@@ -26485,7 +26562,7 @@ function genCatalogDoc(){
         +'<div class="cat-card-prices">'
         +(_catPrices!=='rent'&&_catPrices!=='hide'&&it.sp?'<div><span class="cat-price-sale">'+fmtDoc(it.sp)+'</span> <span class="cat-price-label">Buy</span></div>':'')
         +(_catPrices!=='sale'&&_catPrices!=='hide'&&it.rp?'<div><span class="cat-price-rent">'+fmtDoc(it.rp)+'<span style="font-size:9px">/day</span></span> <span class="cat-price-label">Rent</span></div>':'')
-        +(avail>0?'<span class="cat-avail-badge" style="margin-left:auto">'+avail+' avail</span>':'')
+        +(avail>0?'<span class="cat-avail-badge" style="margin-left:auto">'+_fmtQty(avail)+' avail</span>':'')
         +'</div></div></div>';
     });
     invSections += '</div>';
@@ -31773,12 +31850,12 @@ function mViewPurchase(id){const _s=_L();
       var recvd   = linesReceived[idx] || 0;
       var statusBadge;
       if(recvd >= ordered)      statusBadge = '<span style="font-size:10px;color:var(--g);font-weight:700">\u2713 '+(fr?'Reçu':'Received')+'</span>';
-      else if(recvd > 0)         statusBadge = '<span style="font-size:10px;color:var(--y);font-weight:700">'+recvd+'/'+ordered+' '+(fr?'reçu':'received')+'</span>';
+      else if(recvd > 0)         statusBadge = '<span style="font-size:10px;color:var(--y);font-weight:700">'+_fmtQty(recvd)+'/'+_fmtQty(ordered)+' '+(fr?'reçu':'received')+'</span>';
       else                       statusBadge = '<span style="font-size:10px;color:var(--text2)">'+(fr?'en attente':'pending')+'</span>';
       var ucDisplay = (li.uc||0); // already display currency
       return '<tr>'
         +'<td style="padding:7px 10px;font-size:12px">'+_esc(name)+'</td>'
-        +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+ordered+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+_fmtQty(ordered)+'</td>'
         +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:12px">'+fmt(ucDisplay/CUR.rate)+'</td>'
         +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-weight:600;font-size:12px">'+fmt((ucDisplay*ordered)/CUR.rate)+'</td>'
         +'<td style="padding:7px 10px;text-align:right">'+statusBadge+'</td>'
@@ -38779,7 +38856,7 @@ function exportInventoryPDF(){const _s=_L();
         <td>${i.cond||'—'}</td>
         <td class="num">${fmt(i.cost||0)}</td>
         <td class="num">${fmt(i.sp||0)}</td>
-        <td class="num">${i.qty||0}</td>
+        <td class="num">${_fmtQty(i.qty||0)}</td>
       </tr>`).join('')}</tbody>
     </table>`;
   _pdfOpen('Inventory Report', body);
