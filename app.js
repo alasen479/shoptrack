@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779917516");
+console.log("ShopTrack v2.7 - build:1779918071");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4403,6 +4403,28 @@ function _buildInvGridFiltered(items){const _s=_L();
     var minQty = it.minStock||it.minQty||0;  // 0 = disabled
     var isOutOfStock = avail<=0 && (it.qty||0)>=0;
     var isLowStock   = minQty>0 && avail<=minQty && avail>0;  // only when threshold set AND not zero
+    // For items that have a recipe (finished products built on demand —
+    // e.g. a plate of ndolé), "out of stock on the item itself" is
+    // expected and not informative. What matters is whether the recipe
+    // ingredients are sufficient to assemble at least one. Compute
+    // recipe readiness — the lowest "how many can I make" across all
+    // recipe lines. Used both to override the OOS badge and (later)
+    // to show a positive "READY" indicator.
+    var _hasRecipe = Array.isArray(it.recipe) && it.recipe.length > 0;
+    var _recipeReady = 0; // how many of this item we could currently assemble
+    if(_hasRecipe){
+      _recipeReady = Infinity;
+      for(var _ri = 0; _ri < it.recipe.length; _ri++){
+        var _line = it.recipe[_ri];
+        if(!_line || !_line.ingredientId || !_line.qty) continue;
+        var _ing = (D.inv||[]).find(function(x){return x.id===_line.ingredientId;});
+        if(!_ing){ _recipeReady = 0; break; }
+        var _ingAvail = (_ing.qty||0) - (_ing.rented||0);
+        var _possible = Math.floor(_ingAvail / _line.qty);
+        if(_possible < _recipeReady) _recipeReady = _possible;
+      }
+      if(_recipeReady === Infinity) _recipeReady = 0;
+    }
     // Auto-created items from PO receipt are flagged needsPrice. Surface
     // them visibly so the owner doesn't accidentally try to sell at 0.
     // Raw-material / recipe-ingredient items legitimately lack a sale
@@ -4417,13 +4439,64 @@ function _buildInvGridFiltered(items){const _s=_L();
             : (BIZ.language==='fr'?'MATIÈRE PREM.':'RAW MATERIAL'))
         + '</div>'
       : '';
-    var stockBadge=isOutOfStock
-      ?'<div style="background:var(--r);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">'+_s.inv_oos+'</div>'
-      :isLowStock
-        ?'<div style="background:var(--y);color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">⚠ LOW STOCK ('+avail+' left)</div>'
-        :'';
+    // Stock badge: meaning of qty=0 depends on item type.
+    //   Resale (no recipe)   → "OUT OF STOCK" (genuine — can't sell)
+    //   Resale (with recipe) → check recipe readiness — show "READY: N"
+    //                          if assemblable, "OUT OF STOCK" if not.
+    //                          Finished products like a plate of ndolé
+    //                          live here: their own qty is always 0
+    //                          because they're built on order; what
+    //                          matters is whether ingredients exist.
+    //   Bulk / Batch         → "NEEDS PRODUCTION" — softer yellow, this
+    //                          is the expected state for a freshly
+    //                          created batch item with no cooking yet,
+    //                          or a batch consumed by sales.
+    //   Raw Material         → "RESTOCK NEEDED" — yellow, indicates
+    //                          you need to buy more.
+    var _itemTypeForStock = it.itemType || 'resale';
+    var fr = BIZ.language==='fr';
+    var stockBadge = '';
+    if(isOutOfStock){
+      if(_itemTypeForStock === 'bulk'){
+        // Distinguish "never produced" (qty exactly 0, no prior history)
+        // from "consumed by sales" (qty went negative or hit 0 after
+        // some activity). For now we don't track that history cheaply,
+        // so use a single neutral message that fits both.
+        stockBadge = '<div style="background:var(--y);color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">'
+          + (fr?'⚙ PRODUCTION REQUISE':'⚙ NEEDS PRODUCTION')
+          + '</div>';
+      } else if(_itemTypeForStock === 'raw_material'){
+        stockBadge = '<div style="background:var(--y);color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">'
+          + (fr?'📦 RÉAPPRO NÉCESSAIRE':'📦 RESTOCK NEEDED')
+          + '</div>';
+      } else if(_hasRecipe && _recipeReady > 0){
+        // Resale item built from a recipe with sufficient ingredients.
+        // Green "ready to assemble" badge tells the owner this menu
+        // item can be sold right now even though its own qty is 0.
+        stockBadge = '<div style="background:var(--g);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">'
+          + (fr?'✓ DISPONIBLE: ':'✓ READY: ')+_recipeReady
+          + '</div>';
+      } else if(_hasRecipe){
+        // Resale item with recipe but ingredients insufficient → genuine OOS
+        stockBadge = '<div style="background:var(--r);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">'+_s.inv_oos+'</div>';
+      } else {
+        // Plain resale item, no recipe, no stock → genuine OOS
+        stockBadge = '<div style="background:var(--r);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">'+_s.inv_oos+'</div>';
+      }
+    } else if(isLowStock){
+      stockBadge = '<div style="background:var(--y);color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:3px">⚠ LOW STOCK ('+avail+' left)</div>';
+    }
+    // The card outline echoes the badge color. For "ready" (green
+    // recipe-fulfilled) we don't outline the card — only stock
+    // problems get outlined to keep the visual signal focused on
+    // things needing attention.
+    var _outlineColor = '';
+    if(_itemTypeForStock === 'bulk' && isOutOfStock){ _outlineColor = 'var(--y)'; }
+    else if(_itemTypeForStock === 'raw_material' && isOutOfStock){ _outlineColor = 'var(--y)'; }
+    else if(isOutOfStock && (!_hasRecipe || _recipeReady <= 0)){ _outlineColor = 'var(--r)'; }
+    else if(isLowStock){ _outlineColor = 'var(--y)'; }
     return '<div class="icard" data-inv-id="'+it.id+'"'
-      +(isLowStock||isOutOfStock?' style="outline:2px solid '+(isOutOfStock?'var(--r)':'var(--y)')+';"'
+      +(_outlineColor?' style="outline:2px solid '+_outlineColor+';"'
         :(needsPriceBadge?' style="outline:2px solid #f59e0b"':''))+'>'
       +'<div class="icard-img">'+photo+_invStatusBadge(it.st)+'</div>'
       +'<div class="icard-body">'
@@ -4435,7 +4508,17 @@ function _buildInvGridFiltered(items){const _s=_L();
       +typeBadge
       +'<div class="icard-bot">'
         +'<div class="cond '+cc(it.cond)+'"><div class="cdot"></div><span style="font-size:11px;color:var(--text)">'+it.cond+'</span></div>'
-        +'<span style="font-size:10px;color:var(--text2)">'+_s.inv_col_avail+': '+avail+'</span>'
+        +'<span style="font-size:10px;color:var(--text2)">'
+          // For resale items built from a recipe (plates, drinks, etc.),
+          // the meaningful "available" number is the recipe-ready count,
+          // not the item's own qty (which is always 0 for assemble-on-
+          // order menu items). Label changes to "Ready" to match the
+          // green readiness badge. For everything else, keep the
+          // existing "Avail: N" label.
+          + ((_itemTypeForStock === 'resale' && _hasRecipe)
+              ? (fr?'Disponible: ':'Ready: ')+_recipeReady
+              : _s.inv_col_avail+': '+avail)
+        +'</span>'
       +'</div>'
       +(stockVal>0?'<div style="font-size:10px;color:var(--text2);margin-top:3px">Stock value: <strong style="color:var(--ink)">'+fmt(stockVal)+'</strong></div>':'')
       +(it.rented>0?'<div style="font-size:10px;color:var(--c);margin-top:2px">🔄 '+(it.rented||0)+' rented out</div>':'')
@@ -6974,12 +7057,23 @@ function _saveSale(){var _s=_L();
   _notifEvent('newSale',{cust:cust||'Customer',amt:fmt(total)});
   // WA alert to owner
   _waOwnerNewSale(D.sales[0], SESSION.name||'');
-  // Check stock for items in THIS sale only
+  // Check stock for items in THIS sale only.
+  // Skip alerts for:
+  //   - Non-resale items (bulk batches and raw materials have their own
+  //     "needs production" / "restock needed" badges in the UI; alerting
+  //     here would spam the owner with messages about every consumed
+  //     ingredient)
+  //   - Resale items with a recipe (assemble-on-order — their qty is
+  //     always 0 by design; readiness is determined by ingredient stock
+  //     via the recipe, not by the item's own qty)
   lineItems.forEach(function(li) {
     if(!li.invId || li.invId==='__custom__' || li.isSvc) return;
     var realId = li.invId.startsWith('inv:') ? li.invId.replace('inv:','') : li.invId;
     var iv2 = D.inv.find(function(x){ return x.id===realId; });
     if(!iv2) return;
+    var _it2type = iv2.itemType || 'resale';
+    if(_it2type !== 'resale') return;
+    if(Array.isArray(iv2.recipe) && iv2.recipe.length > 0) return;
     var av2 = (iv2.qty||0)-(iv2.rented||0);
     var mn2 = iv2.minStock||iv2.minQty||0;
     if(av2 <= 0) _waOwnerLowStock(iv2.name, 0, mn2);
