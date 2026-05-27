@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779899044");
+console.log("ShopTrack v2.7 - build:1779899476");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5203,12 +5203,9 @@ function _recipeRowHTML(prefix, idx, line, ingOpts){
     new RegExp('value="'+(line.ingredientId||'__none__')+'"', 'g'),
     'value="'+(line.ingredientId||'__none__')+'" selected'
   );
-  // Resolve display values from the underlying ingredient — its current
-  // sz (unit) and stock — rather than from the saved recipe line. This
-  // ensures the chip always shows what the ingredient currently is,
-  // even if line.unit was never populated (older saves) or has drifted
-  // since (user edited the ingredient's unit). Falls back to line.unit
-  // as a last resort if the ingredient is missing entirely.
+  // Resolve unit + stock from the underlying ingredient. Always use the
+  // ingredient's current sz field — that's the source of truth. Saved
+  // line.unit is a fallback only when the ingredient is missing.
   var unitDisp = '';
   var availPill = '';
   if(line.ingredientId){
@@ -5221,29 +5218,23 @@ function _recipeRowHTML(prefix, idx, line, ingOpts){
       unitDisp = line.unit || '';
     }
   }
-  return '<div class="rcp-row" data-idx="'+idx+'" style="display:grid;grid-template-columns:1fr 80px 80px 30px;gap:6px;margin-bottom:6px;align-items:center;min-width:420px">'
+  // Three columns: ingredient | qty + plain-text unit | remove button.
+  // The unit displays as PLAIN TEXT next to the qty input. No chip, no
+  // background, no border, no special styling. Just text — uses the
+  // page's default text color (var(--text)), which is always readable
+  // on the modal background by definition (every other label on the
+  // page uses it). Impossible to render invisibly.
+  return '<div class="rcp-row" data-idx="'+idx+'" style="display:grid;grid-template-columns:1fr auto 30px;gap:8px;margin-bottom:6px;align-items:center;min-width:380px">'
     +'<select class="fs rcp-ing" style="font-size:12px;padding:6px" onchange="_rcpRowChange(this,\''+prefix+'\')">'+optsWithSel+'</select>'
-    +'<input class="fi rcp-qty" type="number" step="any" min="0" placeholder="0" value="'+(line.qty||'')+'" style="font-size:12px;padding:6px;text-align:right" oninput="_rcpRecalc(\''+prefix+'\')"/>'
-    // Unit chip — read-only, populated from the ingredient's sz field.
-    // Hardcoded amber palette so it doesn't blend into adjacent inputs
-    // that also use var(--bg3). Same amber as the migration banner so
-    // 'informational, not editable' is consistent across the UI.
-    +'<div class="rcp-unit-wrap" style="display:flex;align-items:center;justify-content:center;'
-      +'background:#fde68a;border:1px solid #d97706;border-radius:6px;'
-      +'padding:6px 8px;min-height:32px;'
-      +'color:#451a03;font-weight:700;font-size:12px;text-align:center;'
-      +'user-select:none"'
-      +' title="Auto-filled from the ingredient\'s Unit of measurement. Edit the inventory item to change the unit.">'
-      +'<span class="rcp-unit-val" style="color:#451a03">'+_esc(unitDisp)+'</span>'
-      // Hidden input so saveEditItem's row reader (.rcp-unit.value) keeps
-      // working when the recipe is persisted.
+    +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<input class="fi rcp-qty" type="number" step="any" min="0" placeholder="0" value="'+(line.qty||'')+'" style="font-size:12px;padding:6px;text-align:right;width:80px" oninput="_rcpRecalc(\''+prefix+'\')"/>'
+      // Plain text unit label — what the user actually wanted
+      +'<span class="rcp-unit-val" style="font-size:13px;font-weight:600;min-width:32px">'+_esc(unitDisp)+'</span>'
+      // Hidden input so the existing save reader (.rcp-unit.value) keeps working
       +'<input type="hidden" class="rcp-unit" value="'+_esc(unitDisp)+'"/>'
     +'</div>'
     +'<button type="button" class="btn btn-d btn-xs" onclick="_rcpRemoveLine(this,\''+prefix+'\')" style="padding:4px 6px">\u2715</button>'
     // Second-line annotation under the row that shows on-hand stock
-    // for the currently-selected ingredient. Spans the first column only
-    // so it doesn't disrupt the grid; updates whenever the user changes
-    // the ingredient via _rcpRowChange. Hidden when nothing is picked.
     +'<div class="rcp-avail-wrap" style="grid-column:1 / 2;margin-top:-3px;margin-bottom:4px;font-size:10.5px;color:var(--text2);line-height:1.4'+(availPill?'':';display:none')+'">'
       +'<span style="opacity:.7">On hand: </span>'
       +'<span class="rcp-avail-val" style="font-family:var(--mono);font-weight:600;color:var(--text)">'+availPill+'</span>'
