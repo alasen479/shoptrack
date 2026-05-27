@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779914851");
+console.log("ShopTrack v2.7 - build:1779917516");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -1431,6 +1431,35 @@ function _invToggleItemTypeUI(prefix){
         szLabel.textContent = fr ? 'Unité de mesure' : 'Unit of measurement';
       }
       szEl.placeholder = fr ? 'kg, g, ml, L, unité…' : 'kg, g, ml, L, each, unit…';
+    }
+  }
+  // Add a small helper note under the Qty field for bulk items so the
+  // user understands what the value represents — current stock from
+  // prior cooking sessions, set by the Production module. The wording
+  // adapts: in Add Item ('ai' prefix), suggest leaving at 0; in Edit
+  // ('ei' prefix), just clarify the source.
+  var qtyEl = document.getElementById(prefix+'-qty');
+  if(qtyEl){
+    var qtyNoteId = prefix+'-qty-note';
+    var qtyNote = document.getElementById(qtyNoteId);
+    if(typeEl.value === 'bulk'){
+      var qmsg = (prefix === 'ai')
+        ? (fr
+            ? 'Pour un nouveau lot, laissez à 0 — la Production ajoutera la quantité quand vous enregistrerez une cuisson.'
+            : 'For a new batch item, leave at 0 — Production will add quantity when you log a cooking session.')
+        : (fr
+            ? 'La quantité reflète les lots déjà produits. La Production l\u2019augmente automatiquement à chaque cuisson enregistrée.'
+            : 'Qty reflects batches already produced. Production adds to it automatically each time a batch is logged.');
+      if(!qtyNote){
+        qtyNote = document.createElement('div');
+        qtyNote.id = qtyNoteId;
+        qtyNote.style.cssText = 'font-size:11px;color:var(--text2);margin-top:6px;font-style:italic;line-height:1.4';
+        qtyEl.parentElement.appendChild(qtyNote);
+      }
+      qtyNote.textContent = qmsg;
+      qtyNote.style.display = '';
+    } else if(qtyNote){
+      qtyNote.style.display = 'none';
     }
   }
 }
@@ -5128,14 +5157,25 @@ function _cbRecalc(prefix){
   // qty-bearing total. Preserve decimal qtys for businesses tracking
   // fractional units (2.5 kg flour, 1.75 m fabric). Cost Breakdown is
   // the source of truth for qty acquired — breakdown always wins.
+  //
+  // EXCEPTION: Bulk/Batch items don't get auto-qty from purchase lines.
+  // A batch's qty is created by Production (cooking a batch), not by
+  // buying units. If the user enters a purchase row on a bulk item's
+  // cost breakdown (uncommon but possible — e.g. they pre-buy packaging
+  // materials), we don't want the batch qty to jump to that number.
+  // Read the current item-type dropdown to detect this case.
   if(prefix === 'ci' && unitQty > 0){
-    var qtyField = document.getElementById('ai-qty');
-    if(qtyField){
-      var qtyDisplay = parseFloat(unitQty.toFixed(3)); // strip float noise
-      qtyField.value = qtyDisplay;
-      qtyField.style.transition = 'background .3s';
-      qtyField.style.background = 'var(--g-dim)';
-      setTimeout(function(){ qtyField.style.background = ''; }, 600);
+    var _aiTypeSel = document.getElementById('ai-itemtype');
+    var _aiType = (_aiTypeSel && _aiTypeSel.value) || 'resale';
+    if(_aiType !== 'bulk'){
+      var qtyField = document.getElementById('ai-qty');
+      if(qtyField){
+        var qtyDisplay = parseFloat(unitQty.toFixed(3)); // strip float noise
+        qtyField.value = qtyDisplay;
+        qtyField.style.transition = 'background .3s';
+        qtyField.style.background = 'var(--g-dim)';
+        setTimeout(function(){ qtyField.style.background = ''; }, 600);
+      }
     }
   }
 
@@ -5615,7 +5655,7 @@ async function mAddItem(_returnSelectId){const _s=_L();
     <div class="fg"><label class="fl">Rental Price/Day <span style="font-size:10px;color:var(--text2)">(${CUR.symbol})</span></label><input class="fi" type="number" id="ai-rp" placeholder="0"/></div>
     <div class="fg"><label class="fl">Min. Sell Price 🔒</label><input class="fi" type="number" id="ai-minsp" placeholder="0"/><div class="fh">${_s.inv_hidden_staff}</div></div>
     <div class="fg"><label class="fl">${_s.inv_deposit_lbl}</label><input class="fi" type="number" id="ai-dep" placeholder="0"/></div>
-    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" type="number" step="any" min="0" id="ai-qty" value="1"/></div>
+    <div class="fg"><label class="fl">${_s.inv_qty_lbl}</label><input class="fi" type="number" step="any" min="0" id="ai-qty" value="0"/></div>
     <div class="fg"><label class="fl">Min. Stock Alert 🔔 <span style="font-size:10px;color:var(--text2);font-weight:400">Optional — triggers low stock warning</span></label><input class="fi" type="number" step="any" id="ai-minstock" placeholder="Leave blank to disable" min="0"/><div class="fh">Alert fires when available qty falls to or below this number. Leave blank or set 0 to disable.</div></div>
   </div>
   <div class="fg-2">
@@ -5773,7 +5813,7 @@ function _saveNewItem(){var _s=_L();
     rp:    _aiRpP.usd,    rpNative:    _aiRpP.native,    rpCurrency:    _aiRpP.currency,
     minSp: _aiMinSpP.usd, minSpNative: _aiMinSpP.native, minSpCurrency: _aiMinSpP.currency,
     dep:   _aiDepP.usd,   depNative:   _aiDepP.native,   depCurrency:   _aiDepP.currency,
-    qty:   parseFloat(document.getElementById('ai-qty').value)||1,
+    qty:   parseFloat(document.getElementById('ai-qty').value)||0,
     minStock: parseFloat(document.getElementById('ai-minstock')?.value)||0,
     color: document.getElementById('ai-color').value,
     sz:    document.getElementById('ai-sz').value,
