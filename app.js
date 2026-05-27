@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779920303");
+console.log("ShopTrack v2.7 - build:1779920518");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -19887,12 +19887,35 @@ async function _dbLoadBizData(bizId){
     // leaves D.batches at its IDB-cached value.
     try {
       var batchRes = await _sb.from('batches').select('*').eq('biz_id', bizId).order('produced_at', {ascending:false}).limit(2000);
-      if(!batchRes.error && (!_is107 || (batchRes.data||[]).length)){
-        D.batches = (batchRes.data||[]).map(_dbToBatch);
-      } else if(batchRes.error && !/relation .* does not exist|could not find the table/i.test(batchRes.error.message||'')){
-        console.warn('[DB] batches load error:', batchRes.error.message);
+      if(batchRes.error){
+        if(/relation .* does not exist|could not find the table/i.test(batchRes.error.message||'')){
+          console.warn('[DB] batches table missing — D.batches retained from IDB:', (D.batches||[]).length);
+        } else {
+          console.error('[DB] batches load error:', batchRes.error.message, '| keeping IDB-cached batches:', (D.batches||[]).length);
+        }
+      } else {
+        var cloudBatches = (batchRes.data||[]).map(_dbToBatch);
+        var cachedCount = (D.batches||[]).length;
+        // DLP for batches: if IDB had batches but cloud returned empty,
+        // that's almost certainly a save-failure scenario where the
+        // batch never made it to cloud. Keep the IDB version rather
+        // than wiping. This is the exact pattern that DLP applies to
+        // inventory/sales/cust — batches got missed historically.
+        if(cachedCount > 0 && cloudBatches.length === 0){
+          console.warn('[DLP] batches: IDB had '+cachedCount+' but cloud returned 0. Keeping IDB version.');
+          // Don't overwrite D.batches — leave at its IDB-restored value.
+          // Queue a background re-sync attempt so cloud catches up.
+          setTimeout(function(){
+            (D.batches||[]).forEach(function(b){
+              _dbSaveBatch(b).catch(function(){});
+            });
+          }, 1500);
+        } else {
+          console.log('[DB] batches loaded from cloud:', cloudBatches.length, '(IDB cache had '+cachedCount+')');
+          D.batches = cloudBatches;
+        }
       }
-    } catch(be){ console.warn('[DB] batches table not available yet:', be.message); }
+    } catch(be){ console.warn('[DB] batches load exception:', be.message, '| keeping IDB cache:', (D.batches||[]).length); }
 
     // Services and appointments — always load from Supabase for real businesses
     if(!_is107 || (_svcResult.data||[]).length){
@@ -21512,40 +21535,61 @@ function _batchToDB(b, bizId){ return {
 // table hasn't been created yet — local-only batches are preserved in IDB
 // and will sync once the table exists.
 async function _dbSaveBatch(b){
-  if(!SESSION.bizId || SESSION.isSuperAdmin) return;
+  if(!SESSION.bizId || SESSION.isSuperAdmin) return {ok:true, localOnly:true};
   var idx = D.batches.findIndex(function(x){return x.id===b.id;});
   if(idx>=0) D.batches[idx] = b; else D.batches.unshift(b);
-  _idbSave(SESSION.bizId, 'batches', D.batches).catch(function(){});
+  // Persist to IDB synchronously-ish (await) so we can detect IDB
+  // failures separately from cloud failures. Was fire-and-forget before,
+  // which silently swallowed quota-exceeded errors etc.
+  var idbOk = true;
+  try {
+    await _idbSave(SESSION.bizId, 'batches', D.batches);
+    console.log('[saveBatch] IDB OK | id:', b.id, '| total batches in cache:', D.batches.length);
+  } catch(idbErr){
+    idbOk = false;
+    console.error('[saveBatch] IDB SAVE FAILED:', idbErr.message);
+    toast('Batch saved to memory but not to local cache: '+idbErr.message, 'error');
+  }
 
   if(!_sb || !navigator.onLine){
+    console.warn('[saveBatch] offline or no Supabase client — queuing for later sync');
     try{ await _queueEnqueue(SESSION.bizId, 'batches', _batchToDB(b, SESSION.bizId)); }catch(e){}
-    return;
+    return {ok: idbOk, localOnly: true};
   }
   try{
-    var { error } = await _sb.from('batches').upsert(_batchToDB(b, SESSION.bizId));
+    var payload = _batchToDB(b, SESSION.bizId);
+    console.log('[saveBatch] upserting to Supabase | id:', b.id, '| keys:', Object.keys(payload).join(','));
+    var { data, error } = await _sb.from('batches').upsert(payload).select();
     if(error){
       if(/relation .* does not exist|could not find the table/i.test(error.message||'')){
         console.warn('[saveBatch] batches table not yet created in Supabase; saved locally only.');
-        // Surface the missing table to the inventory migration banner
-        // so the user sees the CREATE TABLE SQL alongside the other
-        // schema fixes. Pushed once per session — the banner reads
-        // window._invMissingCols and dedups.
         try {
           window._invMissingCols = window._invMissingCols || [];
           if(window._invMissingCols.indexOf('table:batches') < 0){
             window._invMissingCols.push('table:batches');
           }
-          // Re-render inventory page if user is there so the banner
-          // appears without a manual navigation refresh.
           if(typeof curPage !== 'undefined' && curPage === 'inventory'){
             try { nav('inventory'); } catch(_){}
           }
         } catch(_){}
-        return;
+        toast('Batch saved locally — database table missing. Check the banner on Inventory.', 'warn');
+        return {ok: idbOk, localOnly: true};
       }
-      console.error('[saveBatch] error:', error.message);
+      // ANY OTHER ERROR — surface it. Previously this was console.error
+      // only, which meant a silent cloud-save failure with no user signal.
+      // The user would think the save succeeded (toast from caller fired),
+      // and only on next refresh would notice the batch missing from cloud.
+      console.error('[saveBatch] cloud error:', error.message, '| code:', error.code, '| details:', error.details, '| hint:', error.hint);
+      toast('Cloud save failed: '+error.message+'. Batch saved to this device only.', 'error');
+      return {ok: false, localOnly: true, error: error};
     }
-  } catch(e){ console.error('[saveBatch] exception:', e.message); }
+    console.log('[saveBatch] cloud OK | rows returned:', (data||[]).length, '| id:', b.id);
+    return {ok: true, localOnly: false};
+  } catch(e){
+    console.error('[saveBatch] exception:', e.message, e);
+    toast('Cloud save threw an exception: '+e.message+'. Batch saved to this device only.', 'error');
+    return {ok: false, localOnly: true, error: e};
+  }
 }
 
 async function _dbDelBatch(id){
@@ -22075,6 +22119,60 @@ async function _migrateAllPhotosToStorage(){
   return { migrated: migrated, skipped: D.inv.length - withBase64.length, failed: failed };
 }
 window.migrateAllPhotosToStorage = _migrateAllPhotosToStorage;
+
+// ── BATCH DIAGNOSTIC ─────────────────────────────────────────────
+// Available from the console as: diagnoseBatches()
+// Reports exactly where batches are for the current business:
+//   - D.batches (in memory)
+//   - IDB local cache
+//   - Cloud Supabase batches table
+// Use this when batches appear to "disappear" after refresh to see
+// which layer is actually missing them.
+window.diagnoseBatches = async function(){
+  if(!SESSION.bizId){ console.error('[diagnoseBatches] no biz session'); return; }
+  console.log('═══════════════════════════════════════════════════');
+  console.log('  BATCH DIAGNOSTIC — biz_id:', SESSION.bizId);
+  console.log('═══════════════════════════════════════════════════');
+
+  // (1) Memory
+  console.log('[1] D.batches in memory:', (D.batches||[]).length);
+  (D.batches||[]).forEach(function(b, i){
+    console.log('   ['+i+']', b.id, '·', b.productName, '· qty', b.qtyProduced||b.multiplier, '· cost', b.cost, '· at', b.producedAt);
+  });
+
+  // (2) IDB
+  try {
+    var idb = await _idbLoad(SESSION.bizId, 'batches');
+    console.log('[2] IDB local cache:', idb ? idb.length : 'null (key not present)');
+    if(idb && idb.length){
+      idb.forEach(function(b, i){
+        console.log('   ['+i+']', b.id, '·', b.productName, '· cost', b.cost);
+      });
+    }
+  } catch(e){ console.error('[2] IDB load threw:', e.message); }
+
+  // (3) Cloud
+  try {
+    var cloud = await _sb.from('batches').select('*').eq('biz_id', SESSION.bizId).limit(2000);
+    if(cloud.error){
+      console.error('[3] Cloud query FAILED:', cloud.error.message, '| code:', cloud.error.code);
+      if(/relation .* does not exist|could not find the table/i.test(cloud.error.message||'')){
+        console.error('   → The batches table does not exist in Supabase. Run the CREATE TABLE SQL from the Inventory page banner.');
+      }
+    } else {
+      console.log('[3] Cloud has:', (cloud.data||[]).length, 'batches for this biz');
+      (cloud.data||[]).forEach(function(r, i){
+        console.log('   ['+i+']', r.id, '·', r.product_name, '· cost', r.total_cost, '· at', r.produced_at);
+      });
+    }
+  } catch(e){ console.error('[3] Cloud query threw:', e.message); }
+
+  console.log('═══════════════════════════════════════════════════');
+  console.log('Compare the three numbers above. If memory > cloud,');
+  console.log('a save failure happened — the batch never reached Supabase.');
+  console.log('If IDB > memory, an _idbRestoreAll skipped the load.');
+  console.log('═══════════════════════════════════════════════════');
+};
 
 
 // ── PHOTO DIAGNOSTIC ─────────────────────────────────────────────
