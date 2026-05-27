@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779923804");
+console.log("ShopTrack v2.7 - build:1779924053");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -5414,7 +5414,18 @@ function _invAvailable(item){
   if(!Array.isArray(item.recipe) || !item.recipe.length){
     return plain;
   }
-  // Recipe-bearing: lowest assemble-ability across all lines.
+  // BULK items have recipes too, but their recipes describe what the
+  // production module CONSUMES to make a batch — not what gets used at
+  // sale time. For bulk items, "available" means "how many batches are
+  // in the pot right now", which is plain qty. The "how many more we
+  // could cook" number lives in Production module's preview, not here.
+  // Without this guard, _invAvailable would add 1.7 (cooked) + 2 (could
+  // cook 2 more) = 3.7, which mixes two different meanings.
+  if(item.itemType === 'bulk'){
+    return Math.max(0, plain);
+  }
+  // Recipe-bearing finished products: lowest assemble-ability across
+  // all lines is how many more we can serve.
   var ready = Infinity;
   for(var i = 0; i < item.recipe.length; i++){
     var line = item.recipe[i];
@@ -5426,11 +5437,9 @@ function _invAvailable(item){
     if(possible < ready) ready = possible;
   }
   if(ready === Infinity) ready = 0;
-  // For recipe items, the maximum we can serve is the recipe readiness;
-  // their own qty may also be > 0 if they're partially stocked (rare in
-  // restaurant context, common for prebuilt kits). Combine: own stock
-  // first, then recipe assembly. Plates of ndolé have qty=0, so this is
-  // just the recipe readiness.
+  // For finished products: own stock (e.g. pre-assembled kits) + recipe
+  // readiness. Plates of ndolé have own qty=0, so this is just the
+  // recipe readiness. Pre-built items with own stock add to readiness.
   return Math.max(0, plain) + ready;
 }
 
@@ -22378,12 +22387,17 @@ window.diagnoseReady = function(nameFragment){
     return;
   }
   matches.forEach(function(item){
+    var isBulk = item.itemType === 'bulk';
     console.log('═══════════════════════════════════════════════════');
     console.log('  '+item.name+'  (id: '+item.id+')');
     console.log('  Own qty: '+(item.qty||0)+' · Own rented: '+(item.rented||0));
     console.log('  Item type: '+(item.itemType||'resale'));
+    if(isBulk){
+      console.log('  (Bulk item — recipe describes PRODUCTION inputs, not sale-time consumption)');
+    }
     console.log('───────────────────────────────────────────────────');
-    console.log('  Recipe lines:');
+    console.log(isBulk ? '  Recipe lines (used by Production to cook a batch):'
+                       : '  Recipe lines (consumed when a customer buys this):');
     var minReady = Infinity;
     item.recipe.forEach(function(line, i){
       var ing = (D.inv||[]).find(function(x){return x.id === line.ingredientId;});
@@ -22394,14 +22408,24 @@ window.diagnoseReady = function(nameFragment){
       }
       var ingAvail = (ing.qty||0) - (ing.rented||0);
       var possible = Math.floor(ingAvail / (line.qty||0.0001));
+      var unit = isBulk ? 'batch' : 'serve';
       console.log('    ['+i+'] '+ing.name);
-      console.log('         needs '+line.qty+' per serve × ingredient stock '+ingAvail+' = '+possible+' serves possible');
+      console.log('         needs '+line.qty+' per '+unit+' \u00D7 ingredient stock '+ingAvail+' = '+possible+' '+unit+'s possible');
       if(possible < minReady) minReady = possible;
     });
     console.log('───────────────────────────────────────────────────');
-    console.log('  MIN across all lines = '+minReady);
-    console.log('  + own stock (qty - rented) = '+Math.max(0, (item.qty||0)-(item.rented||0)));
-    console.log('  → Final READY = '+(Math.max(0, (item.qty||0)-(item.rented||0)) + (minReady === Infinity ? 0 : minReady)));
+    var ownStock = Math.max(0, (item.qty||0)-(item.rented||0));
+    if(isBulk){
+      // For bulk: "available" is just what's in the pot; recipe readiness
+      // is "could produce N more batches" which is a Production concern.
+      console.log('  MIN across all lines = '+minReady+' \u2192 could PRODUCE '+minReady+' more batch(es)');
+      console.log('  Own stock (already produced) = '+ownStock+' batch(es)');
+      console.log('  \u2192 _invAvailable returns '+ownStock+' (own stock only for bulk; production capacity is separate)');
+    } else {
+      console.log('  MIN across all lines = '+(minReady === Infinity ? 0 : minReady));
+      console.log('  + own stock (qty - rented) = '+ownStock);
+      console.log('  \u2192 Final READY = '+(ownStock + (minReady === Infinity ? 0 : minReady)));
+    }
   });
   console.log('═══════════════════════════════════════════════════');
 };
