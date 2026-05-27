@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779920518");
+console.log("ShopTrack v2.7 - build:1779921272");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4092,6 +4092,20 @@ function pgInv(){const _s=_L();const _ui=_s;
           // Production module's batches table. Schema mirrors
           // _batchToDB output. JSONB for the ingredients_consumed
           // payload; numeric for qty + cost so decimals work.
+          //
+          // The RLS policy is REQUIRED. New Postgres tables have RLS
+          // disabled by default — but when we ENABLE it, the default
+          // posture is "deny all". The app authenticates as 'anon'
+          // (per the Supabase JWT), so we need a policy that lets
+          // 'anon' do everything. Without this, CREATE TABLE succeeds
+          // but every INSERT silently fails with 42501 ("new row
+          // violates row-level security policy"), and batches save
+          // locally but never reach cloud — they "disappear" on
+          // refresh from another device.
+          //
+          // This mirrors the policy posture of inventory, sales,
+          // customers, etc. — biz_id filtering happens application-
+          // side, not at the RLS layer.
           return 'CREATE TABLE IF NOT EXISTS batches (\n'
             +'  id TEXT PRIMARY KEY,\n'
             +'  biz_id TEXT NOT NULL,\n'
@@ -4107,7 +4121,13 @@ function pgInv(){const _s=_L();const _ui=_s;
             +'  created_at TIMESTAMPTZ DEFAULT NOW()\n'
             +');\n'
             +'CREATE INDEX IF NOT EXISTS batches_biz_id_idx ON batches(biz_id);\n'
-            +'CREATE INDEX IF NOT EXISTS batches_produced_at_idx ON batches(produced_at DESC);';
+            +'CREATE INDEX IF NOT EXISTS batches_produced_at_idx ON batches(produced_at DESC);\n'
+            +'ALTER TABLE batches ENABLE ROW LEVEL SECURITY;\n'
+            +'DROP POLICY IF EXISTS "Anon all on batches" ON batches;\n'
+            +'CREATE POLICY "Anon all on batches" ON batches\n'
+            +'  FOR ALL TO anon\n'
+            +'  USING (true)\n'
+            +'  WITH CHECK (true);';
         }
         if(c.endsWith('_int_to_numeric')){
           _hasIntType = true;
@@ -21580,7 +21600,26 @@ async function _dbSaveBatch(b){
       // The user would think the save succeeded (toast from caller fired),
       // and only on next refresh would notice the batch missing from cloud.
       console.error('[saveBatch] cloud error:', error.message, '| code:', error.code, '| details:', error.details, '| hint:', error.hint);
-      toast('Cloud save failed: '+error.message+'. Batch saved to this device only.', 'error');
+      // RLS-policy errors (42501) mean the table exists but the anon
+      // role can't write to it. The fix is the same SQL the banner
+      // emits for table:batches (which now includes the RLS policy
+      // since the user might have run CREATE TABLE manually without
+      // the policy — or run an older banner version). Push the marker
+      // so the banner shows the full corrective SQL.
+      if(error.code === '42501'){
+        try {
+          window._invMissingCols = window._invMissingCols || [];
+          if(window._invMissingCols.indexOf('table:batches') < 0){
+            window._invMissingCols.push('table:batches');
+          }
+          if(typeof curPage !== 'undefined' && curPage === 'inventory'){
+            try { nav('inventory'); } catch(_){}
+          }
+        } catch(_){}
+        toast('Cloud save blocked by Row-Level Security. See the banner on Inventory for the fix.', 'error');
+      } else {
+        toast('Cloud save failed: '+error.message+'. Batch saved to this device only.', 'error');
+      }
       return {ok: false, localOnly: true, error: error};
     }
     console.log('[saveBatch] cloud OK | rows returned:', (data||[]).length, '| id:', b.id);
