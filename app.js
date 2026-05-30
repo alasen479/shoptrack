@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1779925649");
+console.log("ShopTrack v2.7 - build:1780175752");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -8103,12 +8103,11 @@ function genQuoteDoc(quoteId){
   var custPhone = q.custPhone || custObj.phone || '';
   var custEmail = custObj.email || '';
 
-  // Line items
-  var lineRowsHtml = (q.lineItems||[]).map(function(li){
-    var name = _esc(li.name||li.desc||'Item');
-    var unit = li.unit ? ' <span style="color:#94a3b8;font-weight:400">'+_esc(li.unit)+'</span>' : '';
-    return '<tr><td class="desc">'+name+'</td><td>'+(li.qty||1)+unit+'</td><td class="num">'+fmtDoc(li.price||0)+'</td><td class="num" style="font-weight:700">'+fmtDoc((li.qty||1)*(li.price||0))+'</td></tr>';
-  }).join('');
+  // Line items — uses shared doc-line helpers so the photo treatment
+  // matches the invoice PDF exactly. Photos pulled from inventory by
+  // name match (line items don't store invId).
+  var lineRowsHtml = _docLineRowsHtml(q, { description:'Description', qty:'Qty', unitPrice:'Unit price', amount:'Amount' });
+  var tableHeaderHtml = _docLineTable(q, { description:'Description', qty:'Qty', unitPrice:'Unit price', amount:'Amount' });
 
   // Payment methods pills (only show if the business has them configured)
   var payMethodsHtml = '';
@@ -8157,7 +8156,7 @@ function genQuoteDoc(quoteId){
         +'</div>'
       +'</div>'
       +'<table class="doc-items">'
-        +'<thead><tr><th style="width:50%">Description</th><th>Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>'
+        +tableHeaderHtml
         +'<tbody>'+lineRowsHtml+'</tbody>'
       +'</table>'
       +'<div class="doc-totals">'
@@ -25870,6 +25869,87 @@ function bizLogo(){
   return `<div style="width:56px;height:56px;background:linear-gradient(135deg,${BIZ.primaryColor},${BIZ.accentColor});border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-1px">${BIZ.name.substring(0,2).toUpperCase()}</div>`;
 }
 
+// ── Doc line-item rendering helpers ──────────────────────────────
+// Used by genInvoiceDoc and genQuoteDoc to render line items with
+// optional dish/product photo thumbnails. The photo column only
+// appears when at least one line has a matching inventory item with
+// a photo, so plain non-catering invoices stay tight.
+
+// Resolve the first usable photo URL from an inventory item.
+// Photos are stored either as an array, a JSON-string-of-array, or
+// a single imgDataUrl field. Returns null if none found.
+function _resolveItemPhoto(invItem){
+  if(!invItem) return null;
+  var photos = invItem.photoDataUrls;
+  if(typeof photos === 'string'){
+    try { photos = JSON.parse(photos); } catch(_){ photos = null; }
+  }
+  if(Array.isArray(photos) && photos.length) return photos[0];
+  if(invItem.imgDataUrl) return invItem.imgDataUrl;
+  return null;
+}
+
+// Build the data array used by the row renderer. Each entry has the
+// original line + the matched inventory item (if any) + first photo.
+function _docLineData(s){
+  var lines = (s.lineItems && s.lineItems.length) ? s.lineItems : null;
+  if(!lines){
+    // Sale records without lineItems (legacy) — fabricate one
+    return [{ li:{ name:s.items, qty:1, price:s.total||s.amt }, match:null, photo:null }];
+  }
+  return lines.map(function(li){
+    var name = li.name || li.item || li.desc || 'Item';
+    var match = (D.inv||[]).find(function(i){ return i.name === name; });
+    return { li:li, name:name, match:match, photo:_resolveItemPhoto(match) };
+  });
+}
+
+// True iff any line has a photo. Drives table layout — adds a
+// thumbnail column at the left when any photos are present.
+function _docHasPhotos(s){
+  return _docLineData(s).some(function(r){ return !!r.photo; });
+}
+
+// Render the table thead — adapts to whether photo column is present.
+function _docLineTable(s, L){
+  if(_docHasPhotos(s)){
+    return '<thead><tr><th style="width:64px"></th><th style="width:42%">'+L.description+'</th><th>'+L.qty+'</th><th class="num">'+L.unitPrice+'</th><th class="num">'+L.amount+'</th></tr></thead>';
+  }
+  return '<thead><tr><th style="width:50%">'+L.description+'</th><th>'+L.qty+'</th><th class="num">'+L.unitPrice+'</th><th class="num">'+L.amount+'</th></tr></thead>';
+}
+
+// Render the body rows. Photo cell only emitted when the table has
+// the photo column enabled. Photo size capped at 56px for a clean
+// proposal look without bloating the PDF size too much.
+function _docLineRowsHtml(s, L){
+  var hasPhotos = _docHasPhotos(s);
+  return _docLineData(s).map(function(r){
+    var li = r.li;
+    var unit = li.unit ? ' <span style="color:#94a3b8;font-weight:400">'+_esc(li.unit)+'</span>' : '';
+    var photoCell = '';
+    if(hasPhotos){
+      if(r.photo){
+        photoCell = '<td style="width:64px;padding:4px"><img src="'+_esc(r.photo)+'" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:6px;display:block;border:1px solid #e5e7eb" crossorigin="anonymous"/></td>';
+      } else {
+        photoCell = '<td style="width:64px;padding:4px"></td>';
+      }
+    }
+    var descMain = '<div style="font-weight:600;color:#0f172a">'+_esc(r.name)+'</div>';
+    var descSub = '';
+    if(r.match && r.match.desc && r.match.desc.trim()){
+      var d = r.match.desc.trim();
+      descSub = '<div style="font-size:11px;color:#64748b;line-height:1.4;margin-top:3px">'+_esc(d.slice(0,180))+(d.length>180?'\u2026':'')+'</div>';
+    }
+    return '<tr>'
+      +photoCell
+      +'<td class="desc">'+descMain+descSub+'</td>'
+      +'<td>'+_fmtQty(li.qty||1)+unit+'</td>'
+      +'<td class="num">'+fmtDoc(li.price||0)+'</td>'
+      +'<td class="num" style="font-weight:700">'+fmtDoc((li.qty||1)*(li.price||0))+'</td>'
+    +'</tr>';
+  }).join('');
+}
+
 function docStyles(primary, accent){
   var p = primary||'#4361ee';
   var a = accent||'#059669';
@@ -25987,10 +26067,10 @@ function genInvoiceDoc(saleId){
       </div>
     </div>
     <table class="doc-items">
-      <thead><tr><th style="width:50%">${L.description}</th><th>${L.qty}</th><th class="num">${L.unitPrice}</th><th class="num">${L.amount}</th></tr></thead>
+      ${_docLineTable(s, L)}
       <tbody>
-        ${(s.lineItems&&s.lineItems.length?s.lineItems:null) ? s.lineItems.map(li=>{const u=li.unit?` <span style="color:#94a3b8;font-weight:400">${_esc(li.unit)}</span>`:'';return `<tr><td class="desc">${_esc(li.name||li.item||li.desc||'Item')}</td><td>${_fmtQty(li.qty||1)}${u}</td><td class="num">${fmtDoc((li.price||0))}</td><td class="num" style="font-weight:700">${fmtDoc((li.qty||1)*(li.price||0))}</td></tr>`;}).join('') : `<tr><td class="desc">${_esc(s.items)}</td><td>1</td><td class="num">${fmtDoc(s.total||s.amt)}</td><td class="num" style="font-weight:700">${fmtDoc(s.total||s.amt)}</td></tr>`}
-        ${s.freight>0?`<tr><td class="desc" style="color:#64748b">${L.freight}</td><td>—</td><td class="num">${fmtDoc(s.freight)}</td><td class="num">${fmtDoc(s.freight)}</td></tr>`:''}
+        ${_docLineRowsHtml(s, L)}
+        ${s.freight>0?`<tr>${_docHasPhotos(s)?'<td></td>':''}<td class="desc" style="color:#64748b">${L.freight}</td><td>—</td><td class="num">${fmtDoc(s.freight)}</td><td class="num">${fmtDoc(s.freight)}</td></tr>`:''}
       </tbody>
     </table>
     <div class="doc-totals">
