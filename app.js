@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1780177708");
+console.log("ShopTrack v2.7 - build:1780178939");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4045,7 +4045,7 @@ function pgInv(){const _s=_L();const _ui=_s;
     // so the user sees creation instructions in the banner.
     return ['item_type','recipe','vendor_id','needs_price','cost_lines',
             'qty_int_to_numeric','min_stock_int_to_numeric','rented_int_to_numeric',
-            'table:batches','storage:inventory-photos']
+            'table:batches','table:quotes','storage:inventory-photos']
             .indexOf(c) >= 0;
   });
   var _migBanner = '';
@@ -5448,6 +5448,30 @@ function _cbReadLines(prefix){const _s=_L();
 // places and strips trailing zeros. 1.0 → "1", 0.50 → "0.5", 3.14159 → "3.14".
 // Used on every inventory qty rendered to humans so we never show
 // floating-point artifacts like 0.4999999 or 19.999999999999996.
+// Native-aware display price helpers — used across the Quote, Sale, and
+// related modules. The pattern: items and services may store a *Native
+// field + a *Currency code (set by the user's edit form). When the active
+// currency matches the stored currency, return the native value directly.
+// Without these, 2,500 XAF gets saved as ~4.44 USD base, then on display
+// re-multiplied to 2,503 — the classic 3-frs drift. These three helpers
+// short-circuit that round-trip when the form was saved in the current
+// currency.
+function _svcDisplayPrice(s){
+  if(!s) return 0;
+  if(s.priceNative != null && s.priceCurrency === CUR.code) return s.priceNative;
+  return Math.round((s.price||0) * CUR.rate);
+}
+function _invSpDisplay(i){
+  if(!i) return 0;
+  if(i.spNative != null && i.spCurrency === CUR.code) return i.spNative;
+  return Math.round((i.sp||0) * CUR.rate);
+}
+function _invRpDisplay(i){
+  if(!i) return 0;
+  if(i.rpNative != null && i.rpCurrency === CUR.code) return i.rpNative;
+  return Math.round((i.rp||0) * CUR.rate);
+}
+
 function _fmtQty(n){
   if(n == null || isNaN(n)) return '0';
   var rounded = Math.round((parseFloat(n) || 0) * 100) / 100;
@@ -7764,10 +7788,18 @@ function _invAddRow(name, price, unit){const _s=_L();
     +'<td style="padding:5px 7px"><input class="fi inv-qty" type="number" value="1" min="0" step="any" style="width:64px;margin:0;text-align:center" oninput="_invUpdateRow(this)"/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-unit" placeholder="each / per hr / per m\u00B2" style="width:100px;margin:0;font-size:12px" value="'+unitVal+'" title="Unit of measure shown on the document (free-text). Examples: each, per hour, per m\u00B2, per head, per visit, per day."/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-price" type="number" placeholder="'+((CUR.decimals||0)>0?'0.00':'0')+'" step="any" style="width:90px;margin:0" value="'+priceVal+'" oninput="_invUpdateRow(this)"/></td>'
-    +'<td style="padding:5px 7px;font-family:var(--mono);color:var(--g);min-width:70px" class="inv-row-total">'+(priceVal?fmt(parseFloat(priceVal)||0):'\u2014')+'</td>'
+    +'<td style="padding:5px 7px;font-family:var(--mono);color:var(--g);min-width:70px" class="inv-row-total">\u2014</td>'
     +'<td style="padding:5px 3px"><button type="button" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px" onclick="this.closest(\'tr\').remove();_invUpdateTotals()" title="'+_s.photo_remove_row+'">\u2715</button></td>';
   tbody.appendChild(tr);
   if(!name) tr.querySelector('.inv-desc').focus();
+  // Compute the row's initial total via the same code path that handles
+  // qty/price changes — so a fresh row created with price=2500 shows
+  // 2,500 (1 × 2500) instead of running through fmt() which would treat
+  // the value as base-currency and re-multiply by FX rate, yielding a
+  // wild "hardcoded" looking number. Also keeps the qty×price math in
+  // exactly one place.
+  var priceEl = tr.querySelector('.inv-price');
+  if(priceEl) _invUpdateRow(priceEl);
   _invUpdateTotals();
 }
 
@@ -7797,16 +7829,16 @@ function _invDescChanged(descInput){
   var svcMatch = (D.services||[]).find(function(s){ return s.name === name; });
   if(invMatch){
     if(priceEmpty){
-      // For sale items use sp; for rentals use rp.
-      var p = (invMatch.st === 'For Rent') ? (invMatch.rp || 0) : (invMatch.sp || 0);
-      priceEl.value = Math.round(p * CUR.rate);
+      // For sale items use sp; for rentals use rp. Native-aware to
+      // avoid FX round-trip drift (2500 XAF → 2503 XAF).
+      priceEl.value = (invMatch.st === 'For Rent') ? _invRpDisplay(invMatch) : _invSpDisplay(invMatch);
     }
     if(unitEmpty && unitEl){
       unitEl.value = (invMatch.st === 'For Rent') ? 'per day' : 'each';
     }
   } else if(svcMatch){
     if(priceEmpty){
-      priceEl.value = Math.round((svcMatch.price || 0) * CUR.rate);
+      priceEl.value = _svcDisplayPrice(svcMatch);
     }
     if(unitEmpty && unitEl){
       unitEl.value = _ptUnit(svcMatch.priceType || 'flat');
@@ -7991,14 +8023,14 @@ function mQuoteNew(editingQuote){
   var isEdit = !!editingQuote;
   var saleItems = _groupOptsByCat(
     D.inv.filter(function(i){return i.st==='For Sale'||i.st==='Both';}),
-    function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.sp||0)*CUR.rate)+'" data-unit="each">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' \u2014 '+fmt(i.sp||0)+'</option>';}
+    function(i){return '<option value="'+_esc(i.name)+'" data-price="'+_invSpDisplay(i)+'" data-unit="each">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' \u2014 '+fmt(i.sp||0)+'</option>';}
   );
   var rentalItems = _groupOptsByCat(
     D.inv.filter(function(i){return i.st==='For Rent'||i.st==='Both';}),
-    function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.rp||0)*CUR.rate)+'" data-unit="per day">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' \u2014 '+fmt(i.rp||0)+'/day</option>';}
+    function(i){return '<option value="'+_esc(i.name)+'" data-price="'+_invRpDisplay(i)+'" data-unit="per day">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' \u2014 '+fmt(i.rp||0)+'/day</option>';}
   );
   var svcItems = (D.services||[]).filter(function(s){return s.active!==false;})
-    .map(function(s){var u=_ptUnit(s.priceType||'flat');return '<option value="'+_esc(s.name)+'" data-price="'+Math.round((s.price||0)*CUR.rate)+'" data-unit="'+_esc(u)+'">'+_esc(s.name)+' \u2014 '+fmt(s.price||0)+(u!=='each'?' '+u:'')+'</option>';}).join('');
+    .map(function(s){var u=_ptUnit(s.priceType||'flat');return '<option value="'+_esc(s.name)+'" data-price="'+_svcDisplayPrice(s)+'" data-unit="'+_esc(u)+'">'+_esc(s.name)+' \u2014 '+fmt(s.price||0)+(u!=='each'?' '+u:'')+'</option>';}).join('');
 
   // Default valid-until = today + 14 days (or use saved value when editing)
   var validUntil = new Date(); validUntil.setDate(validUntil.getDate()+14);
@@ -8111,14 +8143,20 @@ function mQuoteNew(editingQuote){
   'lg');
 
   // Populate line rows. For new quotes, start with one empty. For edits,
-  // recreate each saved line with its description, qty, unit, price —
-  // and after a beat, decorate each row with a "current price" hint when
-  // a matching inventory/service item has a different live price.
+  // recreate each saved line with its description, qty, unit, and PRICE
+  // IN DISPLAY CURRENCY. Lines store price in base USD plus an optional
+  // priceNative/priceCurrency pair — use the native pair when the stored
+  // currency matches the active one so we avoid the USD-round-trip drift
+  // (2500 → 2503). Fall back to converting from USD otherwise.
   setTimeout(function(){
     _invTypeChanged();
     if(isEdit && Array.isArray(editingQuote.lineItems) && editingQuote.lineItems.length){
+      var rr = CUR.rate || 1;
       editingQuote.lineItems.forEach(function(li){
-        _invAddRow(li.name || li.desc || '', li.price || 0, li.unit || '');
+        var displayPrice = (li.priceNative != null && li.priceCurrency === CUR.code)
+          ? li.priceNative
+          : Math.round((li.price || 0) * rr);
+        _invAddRow(li.name || li.desc || '', displayPrice, li.unit || '');
       });
       _invUpdateTotals();
       setTimeout(_invAttachCurrentPriceHints, 30);
@@ -8169,9 +8207,19 @@ function _saveQuote(){
     cust: cust,
     custId: custObj?.id || '',
     items: itemsStr,
-    // Store lineItem price in BASE currency (USD), so the PDF generator's
-    // fmtDoc() can multiply by CUR.rate to display in the user's currency.
-    lineItems: lines.map(function(l){return {name:l.desc, qty:l.qty, unit:l.unit||'', price:(l.price||0)/rr};}),
+    // Store lineItem in BASE currency (USD) as before for FX consistency,
+    // but ALSO capture the native value + currency the user typed in.
+    // The PDF and edit modal prefer the native pair when the active
+    // currency matches, sidestepping the round-trip drift that turned
+    // 2500 XAF into 2503 XAF on re-display.
+    lineItems: lines.map(function(l){return {
+      name: l.desc,
+      qty: l.qty,
+      unit: l.unit || '',
+      price: (l.price||0) / rr,
+      priceNative: l.price || 0,
+      priceCurrency: CUR.code
+    };}),
     dt: document.getElementById('inv-date')?.value || localDateStr(),
     validUntil: document.getElementById('qt-valid')?.value || '',
     amt: total,
@@ -8221,17 +8269,27 @@ function _invAttachCurrentPriceHints(){
     var livePrice = null, liveUnit = '';
     if(invMatch){
       // Prefer sale price for sale items / catering dishes; rental
-      // price as fallback if sp is zero (rental-only items).
-      livePrice = Math.round((invMatch.sp || invMatch.rp || 0) * CUR.rate);
+      // price as fallback for rental-only items. Native-aware to
+      // avoid spurious "current price differs" hints from FX drift.
+      var spD = _invSpDisplay(invMatch);
+      var rpD = _invRpDisplay(invMatch);
+      livePrice = (invMatch.st === 'For Rent' && spD === 0) ? rpD : (spD || rpD);
       liveUnit = (invMatch.st === 'For Rent') ? 'per day' : 'each';
     } else if(svcMatch){
-      livePrice = Math.round((svcMatch.price || 0) * CUR.rate);
+      livePrice = _svcDisplayPrice(svcMatch);
       liveUnit = _ptUnit(svcMatch.priceType || 'flat');
     } else {
       return; // no match, nothing to hint
     }
     var rowPrice = parseFloat(priceEl.value) || 0;
-    var priceDiffers = Math.abs(rowPrice - livePrice) > 0.001;
+    // Round both sides to the active currency's precision for comparison.
+    // XAF has decimals=0 so this collapses 2502.99 → 2503; both sides
+    // need the same rounding so we don't show a 0.01-frs "difference"
+    // that's invisible to the user.
+    var dec = CUR.decimals || 0;
+    var roundedRow = Math.round(rowPrice * Math.pow(10, dec)) / Math.pow(10, dec);
+    var roundedLive = Math.round(livePrice * Math.pow(10, dec)) / Math.pow(10, dec);
+    var priceDiffers = Math.abs(roundedRow - roundedLive) > 0.001;
     var rowUnit = (unitEl && unitEl.value || '').trim();
     var unitDiffers = liveUnit && rowUnit && rowUnit !== liveUnit;
     if(!priceDiffers && !unitDiffers) return;
@@ -8326,7 +8384,18 @@ function _saveQuoteEdit(quoteId){
   q.dt = newDt;
   q.validUntil = document.getElementById('qt-valid')?.value || q.validUntil;
   q.items = itemsStr;
-  q.lineItems = lines;
+  // Store lineItems in BASE currency (USD) for FX consistency, plus the
+  // native value + currency the user typed in for drift-free re-display.
+  // MUST match _saveQuote's shape so the PDF and edit modal behave the
+  // same whether the quote was just created or just edited.
+  q.lineItems = lines.map(function(l){return {
+    name: l.desc,
+    qty: l.qty,
+    unit: l.unit || '',
+    price: (l.price||0) / rr,
+    priceNative: l.price || 0,
+    priceCurrency: CUR.code
+  };});
   q.taxRate = taxPct;
   q.amt = total; // legacy alias
   q.total = total;
@@ -26406,7 +26475,9 @@ function _resolveItemPhoto(invItem){
 }
 
 // Build the data array used by the row renderer. Each entry has the
-// original line + the matched inventory item (if any) + first photo.
+// original line + the matched inventory item OR service (if any) + first
+// photo. Inventory is searched first; if no match, services are tried.
+// Both share the same photo storage shape (photoDataUrls / imgDataUrl).
 function _docLineData(s){
   var lines = (s.lineItems && s.lineItems.length) ? s.lineItems : null;
   if(!lines){
@@ -26416,6 +26487,9 @@ function _docLineData(s){
   return lines.map(function(li){
     var name = li.name || li.item || li.desc || 'Item';
     var match = (D.inv||[]).find(function(i){ return i.name === name; });
+    if(!match){
+      match = (D.services||[]).find(function(sv){ return sv.name === name; });
+    }
     return { li:li, name:name, match:match, photo:_resolveItemPhoto(match) };
   });
 }
@@ -26456,12 +26530,19 @@ function _docLineRowsHtml(s, L){
       var d = r.match.desc.trim();
       descSub = '<div style="font-size:11px;color:#64748b;line-height:1.4;margin-top:3px">'+_esc(d.slice(0,180))+(d.length>180?'\u2026':'')+'</div>';
     }
+    // Prefer priceNative when the line was captured in the active
+    // currency (which is essentially always true for catering quotes).
+    // fmtRaw renders without the FX round-trip so 2,500 stays 2,500.
+    var qty = li.qty || 1;
+    var useNative = (li.priceNative != null && li.priceCurrency === CUR.code);
+    var unitPriceHtml = useNative ? fmtRaw(li.priceNative) : fmtDoc(li.price||0);
+    var lineTotalHtml = useNative ? fmtRaw(li.priceNative * qty) : fmtDoc((li.qty||1)*(li.price||0));
     return '<tr>'
       +photoCell
       +'<td class="desc">'+descMain+descSub+'</td>'
-      +'<td>'+_fmtQty(li.qty||1)+unit+'</td>'
-      +'<td class="num">'+fmtDoc(li.price||0)+'</td>'
-      +'<td class="num" style="font-weight:700">'+fmtDoc((li.qty||1)*(li.price||0))+'</td>'
+      +'<td>'+_fmtQty(qty)+unit+'</td>'
+      +'<td class="num">'+unitPriceHtml+'</td>'
+      +'<td class="num" style="font-weight:700">'+lineTotalHtml+'</td>'
     +'</tr>';
   }).join('');
 }
