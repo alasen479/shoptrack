@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1780177130");
+console.log("ShopTrack v2.7 - build:1780177708");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4140,6 +4140,53 @@ function pgInv(){const _s=_L();const _ui=_s;
             +'  USING (true)\n'
             +'  WITH CHECK (true);';
         }
+        if(c === 'table:quotes'){
+          _hasMissingTable = true;
+          // Sales-pipeline Quotes table. Stores proposals before they
+          // become invoices. Schema mirrors _quoteToDB output:
+          //   - line_items as JSONB (array of {name, qty, unit, price})
+          //   - dates as TIMESTAMPTZ for created_at and revised_at
+          //   - simple TEXT for status (Draft/Sent/Accepted/Rejected/Expired)
+          //   - converted_sale_id TEXT — links the quote to the resulting
+          //     Sale once it's converted; null while the quote is pending
+          //   - revision_count INT for tracking edits per quote
+          //
+          // Same RLS rule as batches/inventory/customers etc.: enable RLS
+          // then add a permissive policy for the anon role. biz_id
+          // filtering happens application-side.
+          return 'CREATE TABLE IF NOT EXISTS quotes (\n'
+            +'  id TEXT PRIMARY KEY,\n'
+            +'  biz_id TEXT NOT NULL,\n'
+            +'  cust TEXT,\n'
+            +'  cust_id TEXT,\n'
+            +'  items TEXT,\n'
+            +'  line_items JSONB,\n'
+            +'  dt TEXT,\n'
+            +'  valid_until TEXT,\n'
+            +'  total NUMERIC DEFAULT 0,\n'
+            +'  amt NUMERIC DEFAULT 0,\n'
+            +'  deposit NUMERIC DEFAULT 0,\n'
+            +'  taxes NUMERIC DEFAULT 0,\n'
+            +'  tax_rate NUMERIC DEFAULT 0,\n'
+            +'  freight NUMERIC DEFAULT 0,\n'
+            +'  cost NUMERIC DEFAULT 0,\n'
+            +'  profit NUMERIC DEFAULT 0,\n'
+            +'  status TEXT DEFAULT \'Draft\',\n'
+            +'  notes TEXT,\n'
+            +'  converted_sale_id TEXT,\n'
+            +'  revision_count INT DEFAULT 0,\n'
+            +'  revised_at TIMESTAMPTZ,\n'
+            +'  created_at TIMESTAMPTZ DEFAULT NOW()\n'
+            +');\n'
+            +'CREATE INDEX IF NOT EXISTS quotes_biz_id_idx ON quotes(biz_id);\n'
+            +'CREATE INDEX IF NOT EXISTS quotes_created_at_idx ON quotes(created_at DESC);\n'
+            +'ALTER TABLE quotes ENABLE ROW LEVEL SECURITY;\n'
+            +'DROP POLICY IF EXISTS "Anon all on quotes" ON quotes;\n'
+            +'CREATE POLICY "Anon all on quotes" ON quotes\n'
+            +'  FOR ALL TO anon\n'
+            +'  USING (true)\n'
+            +'  WITH CHECK (true);';
+        }
         if(c.endsWith('_int_to_numeric')){
           _hasIntType = true;
           // Strip the suffix to recover the column name
@@ -8141,9 +8188,12 @@ function _saveQuote(){
 
   if(!Array.isArray(D.quotes)) D.quotes = [];
   D.quotes.unshift(newQuote);
-  // Persist to IDB only (no Supabase quotes table yet — quotes are local-first)
-  if(typeof _idbSave === 'function' && SESSION.bizId){
-    _idbSave(SESSION.bizId, 'quotes', D.quotes).catch(function(){});
+  // Persist to IDB + Supabase. _dbSaveQuote handles both (and surfaces
+  // any table-missing / RLS errors via the migration banner).
+  if(SESSION.bizId){
+    _dbSaveQuote(newQuote).catch(function(e){
+      console.warn('[saveQuote] background save error:', e && e.message);
+    });
   }
   addAudit('Quote created', newId+' — '+cust+' — '+fmt(total));
   closeModal();
@@ -8286,8 +8336,10 @@ function _saveQuoteEdit(quoteId){
   q.revisedAt = new Date().toISOString();
   q.revisionCount = (q.revisionCount || 0) + 1;
 
-  if(typeof _idbSave === 'function' && SESSION.bizId){
-    _idbSave(SESSION.bizId, 'quotes', D.quotes).catch(function(){});
+  if(SESSION.bizId){
+    _dbSaveQuote(q).catch(function(e){
+      console.warn('[saveQuoteEdit] background save error:', e && e.message);
+    });
   }
   addAudit('Quote revised', q.id + (changes.length ? ' \u2014 ' + changes.join(', ') : ''));
   toast('\u2713 Quote ' + q.id + ' updated' + (q.revisionCount > 1 ? ' (revision ' + q.revisionCount + ')' : ''), 'success');
@@ -8444,7 +8496,11 @@ function _quoteSetStatus(id, newSt){
   var q = (D.quotes||[]).find(function(x){return x.id===id;});
   if(!q) return;
   q.st = newSt;
-  if(SESSION.bizId) _idbSave(SESSION.bizId, 'quotes', D.quotes).catch(function(){});
+  if(SESSION.bizId){
+    _dbSaveQuote(q).catch(function(e){
+      console.warn('[setQuoteStatus] save error:', e && e.message);
+    });
+  }
   addAudit('Quote status', id+' → '+newSt);
   toast(id+' — '+newSt,'success');
   nav('sales');
@@ -8504,7 +8560,11 @@ function _quoteConvertToInvoice(id){
   q.st = 'Accepted';
   q.convertedSaleId = newId;
   q.convertedAt = new Date().toISOString();
-  if(SESSION.bizId) _idbSave(SESSION.bizId, 'quotes', D.quotes).catch(function(){});
+  if(SESSION.bizId){
+    _dbSaveQuote(q).catch(function(e){
+      console.warn('[convertQuote] save error:', e && e.message);
+    });
+  }
 
   refreshLiveKpis();
   addAudit('Quote converted', q.id+' → invoice '+newId);
@@ -8522,8 +8582,14 @@ function _quoteDelete(id){
   } else {
     if(!confirm('Delete quote '+id+'?')) return;
   }
-  D.quotes = D.quotes.filter(function(x){return x.id!==id;});
-  if(SESSION.bizId) _idbSave(SESSION.bizId, 'quotes', D.quotes).catch(function(){});
+  // Use _dbDelQuote which handles in-memory + IDB + cloud removal.
+  if(SESSION.bizId){
+    _dbDelQuote(id).catch(function(e){
+      console.warn('[deleteQuote] cloud delete error:', e && e.message);
+    });
+  } else {
+    D.quotes = D.quotes.filter(function(x){return x.id!==id;});
+  }
   addAudit('Quote deleted', id);
   toast('Quote deleted','success');
   nav('sales');
@@ -20317,6 +20383,35 @@ async function _dbLoadBizData(bizId){
       }
     } catch(be){ console.warn('[DB] batches load exception:', be.message, '| keeping IDB cache:', (D.batches||[]).length); }
 
+    // ── Quotes (sales pipeline) ───────────────────────────────
+    // Same pattern as batches: separate try so a missing table doesn't
+    // break the rest of the load. DLP if IDB has quotes but cloud
+    // returns empty — keep IDB version, background re-sync.
+    try {
+      var quoteRes = await _sb.from('quotes').select('*').eq('biz_id', bizId).order('created_at', {ascending:false}).limit(2000);
+      if(quoteRes.error){
+        if(/relation .* does not exist|could not find the table/i.test(quoteRes.error.message||'')){
+          console.warn('[DB] quotes table missing — D.quotes retained from IDB:', (D.quotes||[]).length);
+        } else {
+          console.error('[DB] quotes load error:', quoteRes.error.message, '| keeping IDB-cached quotes:', (D.quotes||[]).length);
+        }
+      } else {
+        var cloudQuotes = (quoteRes.data||[]).map(_dbToQuote);
+        var cachedQuoteCount = (D.quotes||[]).length;
+        if(cachedQuoteCount > 0 && cloudQuotes.length === 0){
+          console.warn('[DLP] quotes: IDB had '+cachedQuoteCount+' but cloud returned 0. Keeping IDB version and re-syncing.');
+          setTimeout(function(){
+            (D.quotes||[]).forEach(function(q){
+              _dbSaveQuote(q).catch(function(){});
+            });
+          }, 1500);
+        } else {
+          console.log('[DB] quotes loaded from cloud:', cloudQuotes.length, '(IDB cache had '+cachedQuoteCount+')');
+          D.quotes = cloudQuotes;
+        }
+      }
+    } catch(qe){ console.warn('[DB] quotes load exception:', qe.message, '| keeping IDB cache:', (D.quotes||[]).length); }
+
     // Services and appointments — always load from Supabase for real businesses
     if(!_is107 || (_svcResult.data||[]).length){
       if(_svcResult.error) console.error('Services load error:', _svcResult.error.message);
@@ -22042,6 +22137,143 @@ async function _dbDelBatch(id){
   }catch(e){ console.warn('[delBatch]', e.message); }
 }
 
+// ── Quote mappers ────────────────────────────────────────────────
+// Mirrors the batch/inventory/customer pattern: a flat snake_case row
+// for Supabase, an in-memory camelCase-ish object for the app.
+
+function _quoteToDB(q, bizId){
+  return {
+    id: q.id,
+    biz_id: bizId,
+    cust: q.cust || '',
+    cust_id: q.custId || '',
+    items: q.items || '',
+    line_items: q.lineItems ? JSON.stringify(q.lineItems) : null,
+    dt: q.dt || '',
+    valid_until: q.validUntil || '',
+    total: q.total || 0,
+    amt: q.amt || 0,
+    deposit: q.deposit || 0,
+    taxes: q.taxes || 0,
+    tax_rate: q.taxRate || 0,
+    freight: q.freight || 0,
+    cost: q.cost || 0,
+    profit: q.profit || 0,
+    status: q.st || 'Draft',
+    notes: q.notes || '',
+    converted_sale_id: q.convertedSaleId || null,
+    revision_count: q.revisionCount || 0,
+    revised_at: q.revisedAt || null,
+    created_at: q.createdAt || new Date().toISOString()
+  };
+}
+
+function _dbToQuote(r){
+  // line_items can arrive as either a JSON string or an already-parsed
+  // array depending on the Postgres driver behaviour. Handle both.
+  var lines = r.line_items;
+  if(typeof lines === 'string'){
+    try { lines = JSON.parse(lines); } catch(_){ lines = []; }
+  }
+  return {
+    id: r.id,
+    cust: r.cust || '',
+    custId: r.cust_id || '',
+    items: r.items || '',
+    lineItems: Array.isArray(lines) ? lines : [],
+    dt: r.dt || '',
+    validUntil: r.valid_until || '',
+    total: r.total || 0,
+    amt: r.amt || r.total || 0,
+    deposit: r.deposit || 0,
+    taxes: r.taxes || 0,
+    taxRate: r.tax_rate || 0,
+    freight: r.freight || 0,
+    cost: r.cost || 0,
+    profit: r.profit || 0,
+    st: r.status || 'Draft',
+    notes: r.notes || '',
+    convertedSaleId: r.converted_sale_id || '',
+    revisionCount: r.revision_count || 0,
+    revisedAt: r.revised_at || '',
+    createdAt: r.created_at || ''
+  };
+}
+
+// ── Quote cloud save ─────────────────────────────────────────────
+// Mirrors _dbSaveBatch: updates in-memory + IDB first, then upserts
+// to Supabase. Detects missing-table and RLS errors and surfaces
+// the migration banner. Returns {ok, localOnly, error} so callers
+// can detect cloud failures (though they generally don't need to).
+async function _dbSaveQuote(q){
+  if(!SESSION.bizId || SESSION.isSuperAdmin) return {ok:true, localOnly:true};
+  if(!Array.isArray(D.quotes)) D.quotes = [];
+  var idx = D.quotes.findIndex(function(x){return x.id===q.id;});
+  if(idx>=0) D.quotes[idx] = q; else D.quotes.unshift(q);
+  var idbOk = true;
+  try {
+    await _idbSave(SESSION.bizId, 'quotes', D.quotes);
+  } catch(idbErr){
+    idbOk = false;
+    console.error('[saveQuote] IDB SAVE FAILED:', idbErr.message);
+    toast('Quote saved to memory but not to local cache: '+idbErr.message, 'error');
+  }
+
+  if(!_sb || !navigator.onLine){
+    console.warn('[saveQuote] offline or no Supabase client');
+    return {ok: idbOk, localOnly: true};
+  }
+  try {
+    var payload = _quoteToDB(q, SESSION.bizId);
+    var { data, error } = await _sb.from('quotes').upsert(payload).select();
+    if(error){
+      if(/relation .* does not exist|could not find the table/i.test(error.message||'')){
+        console.warn('[saveQuote] quotes table not yet created in Supabase; saved locally only.');
+        try {
+          window._invMissingCols = window._invMissingCols || [];
+          if(window._invMissingCols.indexOf('table:quotes') < 0){
+            window._invMissingCols.push('table:quotes');
+          }
+          if(typeof curPage !== 'undefined' && curPage === 'inventory'){
+            try { nav('inventory'); } catch(_){}
+          }
+        } catch(_){}
+        toast('Quote saved locally — database table missing. See the banner on Inventory.', 'warn');
+        return {ok: idbOk, localOnly: true};
+      }
+      console.error('[saveQuote] cloud error:', error.message, '| code:', error.code, '| details:', error.details);
+      if(error.code === '42501'){
+        try {
+          window._invMissingCols = window._invMissingCols || [];
+          if(window._invMissingCols.indexOf('table:quotes') < 0){
+            window._invMissingCols.push('table:quotes');
+          }
+        } catch(_){}
+        toast('Cloud save blocked by Row-Level Security. See the banner on Inventory for the fix.', 'error');
+      } else {
+        toast('Quote cloud save failed: '+error.message+'. Saved to this device only.', 'error');
+      }
+      return {ok:false, localOnly:true, error:error};
+    }
+    console.log('[saveQuote] cloud OK | rows returned:', (data||[]).length, '| id:', q.id);
+    return {ok:true, localOnly:false};
+  } catch(e){
+    console.error('[saveQuote] exception:', e.message, e);
+    toast('Quote cloud save threw an exception: '+e.message, 'error');
+    return {ok:false, localOnly:true, error:e};
+  }
+}
+
+async function _dbDelQuote(id){
+  if(!SESSION.bizId || SESSION.isSuperAdmin) return;
+  D.quotes = (D.quotes||[]).filter(function(q){return q.id!==id;});
+  _idbSave(SESSION.bizId, 'quotes', D.quotes).catch(function(){});
+  if(!_sb || !navigator.onLine) return;
+  try{
+    await _sb.from('quotes').delete().eq('id', id).eq('biz_id', SESSION.bizId);
+  }catch(e){ console.warn('[delQuote]', e.message); }
+}
+
 // ── Row mappers: app → DB format ──────────────────────────────
 function _invToDB(item, bizId){
   // Safely serialize img_color — it may already be a JSON string from DB
@@ -22614,6 +22846,52 @@ window.diagnoseBatches = async function(){
   console.log('Compare the three numbers above. If memory > cloud,');
   console.log('a save failure happened — the batch never reached Supabase.');
   console.log('If IDB > memory, an _idbRestoreAll skipped the load.');
+  console.log('═══════════════════════════════════════════════════');
+};
+
+// ── QUOTES DIAGNOSTIC ─────────────────────────────────────────────
+// Same pattern as diagnoseBatches. Run when quotes appear to be
+// missing across devices to confirm where in the stack they live.
+// Usage: diagnoseQuotes()
+window.diagnoseQuotes = async function(){
+  if(!SESSION.bizId){ console.error('[diagnoseQuotes] no biz session'); return; }
+  console.log('═══════════════════════════════════════════════════');
+  console.log('  QUOTE DIAGNOSTIC — biz_id:', SESSION.bizId);
+  console.log('═══════════════════════════════════════════════════');
+
+  // (1) Memory
+  console.log('[1] D.quotes in memory:', (D.quotes||[]).length);
+  (D.quotes||[]).forEach(function(q, i){
+    console.log('   ['+i+']', q.id, '·', q.cust, '· total', q.total, '· status', q.st, '· revisions', q.revisionCount||0);
+  });
+
+  // (2) IDB
+  try {
+    var idb = await _idbLoad(SESSION.bizId, 'quotes');
+    console.log('[2] IDB local cache:', idb ? idb.length : 'null (key not present)');
+    if(idb && idb.length){
+      idb.forEach(function(q, i){
+        console.log('   ['+i+']', q.id, '·', q.cust, '· total', q.total);
+      });
+    }
+  } catch(e){ console.error('[2] IDB load threw:', e.message); }
+
+  // (3) Cloud
+  try {
+    var cloud = await _sb.from('quotes').select('*').eq('biz_id', SESSION.bizId).limit(2000);
+    if(cloud.error){
+      console.error('[3] Cloud query FAILED:', cloud.error.message, '| code:', cloud.error.code);
+      if(/relation .* does not exist|could not find the table/i.test(cloud.error.message||'')){
+        console.error('   → The quotes table does not exist in Supabase. Run the CREATE TABLE SQL from the Inventory page banner.');
+      }
+    } else {
+      console.log('[3] Cloud has:', (cloud.data||[]).length, 'quotes for this biz');
+      (cloud.data||[]).forEach(function(r, i){
+        console.log('   ['+i+']', r.id, '·', r.cust, '· total', r.total, '· status', r.status);
+      });
+    }
+  } catch(e){ console.error('[3] Cloud query threw:', e.message); }
+
   console.log('═══════════════════════════════════════════════════');
 };
 
