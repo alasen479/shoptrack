@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1780178939");
+console.log("ShopTrack v2.7 - build:1780179486");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -26501,11 +26501,28 @@ function _docHasPhotos(s){
 }
 
 // Render the table thead — adapts to whether photo column is present.
+// With table-layout:fixed (set in docStyles), the widths set here are
+// authoritative. They must sum to 100% (the photo column is fixed
+// pixels which gets subtracted automatically). The remaining four
+// columns split the rest: description gets the lion's share, qty stays
+// tight, and the two money columns are sized to fit typical price
+// strings like "1,234,567 Frs" comfortably without wrapping.
 function _docLineTable(s, L){
   if(_docHasPhotos(s)){
-    return '<thead><tr><th style="width:64px"></th><th style="width:42%">'+L.description+'</th><th>'+L.qty+'</th><th class="num">'+L.unitPrice+'</th><th class="num">'+L.amount+'</th></tr></thead>';
+    return '<thead><tr>'
+      +'<th style="width:64px"></th>'
+      +'<th style="width:42%">'+L.description+'</th>'
+      +'<th style="width:10%">'+L.qty+'</th>'
+      +'<th class="num" style="width:22%">'+L.unitPrice+'</th>'
+      +'<th class="num" style="width:22%">'+L.amount+'</th>'
+    +'</tr></thead>';
   }
-  return '<thead><tr><th style="width:50%">'+L.description+'</th><th>'+L.qty+'</th><th class="num">'+L.unitPrice+'</th><th class="num">'+L.amount+'</th></tr></thead>';
+  return '<thead><tr>'
+    +'<th style="width:46%">'+L.description+'</th>'
+    +'<th style="width:10%">'+L.qty+'</th>'
+    +'<th class="num" style="width:22%">'+L.unitPrice+'</th>'
+    +'<th class="num" style="width:22%">'+L.amount+'</th>'
+  +'</tr></thead>';
 }
 
 // Render the body rows. Photo cell only emitted when the table has
@@ -26580,15 +26597,20 @@ function docStyles(primary, accent){
     .doc-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:#94a3b8;margin-bottom:5px}
     .doc-value{font-size:13px;color:#1e293b;font-weight:600}
     .doc-value-sub{font-size:11px;color:#64748b;margin-top:2px}
-    /* Items table */
-    .doc-items{width:100%;border-collapse:collapse;margin-bottom:20px}
+    /* Items table — table-layout:fixed enforces the column widths set
+       on <th>. Without it, browsers re-flow columns based on content
+       width, which broke the layout when a dish description was long:
+       the description cell expanded and pushed the qty/price/amount
+       columns off the visible area. Combined with word-break on the
+       desc column, no single token can blow up the layout. */
+    .doc-items{width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:20px}
     .doc-items thead{background:${p}}
-    .doc-items thead th{padding:11px 14px;text-align:left;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:#fff}
+    .doc-items thead th{padding:11px 14px;text-align:left;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .doc-items tbody tr{border-bottom:1px solid #f1f5f9}
     .doc-items tbody tr:last-child{border-bottom:none}
-    .doc-items td{padding:11px 14px;font-size:12.5px;color:#374151;vertical-align:middle}
-    .doc-items td.num{font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right;color:#1e293b;font-weight:500}
-    .doc-items td.desc{font-weight:500;color:#1e293b}
+    .doc-items td{padding:11px 14px;font-size:12.5px;color:#374151;vertical-align:middle;overflow:hidden}
+    .doc-items td.num{font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right;color:#1e293b;font-weight:500;white-space:nowrap}
+    .doc-items td.desc{font-weight:500;color:#1e293b;word-break:break-word;overflow-wrap:break-word}
     /* Totals */
     .doc-totals{display:flex;justify-content:flex-end;margin-bottom:24px}
     .doc-totals-box{width:280px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;overflow:hidden}
