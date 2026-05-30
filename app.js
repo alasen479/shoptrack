@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1780179486");
+console.log("ShopTrack v2.7 - build:1780179863");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -26528,9 +26528,20 @@ function _docLineTable(s, L){
 // Render the body rows. Photo cell only emitted when the table has
 // the photo column enabled. Photo size capped at 56px for a clean
 // proposal look without bloating the PDF size too much.
+//
+// Grouping: lines are clustered by the category of their matched
+// inventory/service item. A category header row precedes each cluster
+// when the document spans 2+ categories. Single-category and
+// custom-only docs render without headers to avoid visual noise on
+// short non-catering quotes.
 function _docLineRowsHtml(s, L){
   var hasPhotos = _docHasPhotos(s);
-  return _docLineData(s).map(function(r){
+  var data = _docLineData(s);
+  var totalCols = hasPhotos ? 5 : 4;
+
+  // Render one <tr> for a single line. Pulled out so the grouping
+  // wrapper below can reuse the row markup unchanged.
+  function renderRow(r){
     var li = r.li;
     var unit = li.unit ? ' <span style="color:#94a3b8;font-weight:400">'+_esc(li.unit)+'</span>' : '';
     var photoCell = '';
@@ -26547,9 +26558,6 @@ function _docLineRowsHtml(s, L){
       var d = r.match.desc.trim();
       descSub = '<div style="font-size:11px;color:#64748b;line-height:1.4;margin-top:3px">'+_esc(d.slice(0,180))+(d.length>180?'\u2026':'')+'</div>';
     }
-    // Prefer priceNative when the line was captured in the active
-    // currency (which is essentially always true for catering quotes).
-    // fmtRaw renders without the FX round-trip so 2,500 stays 2,500.
     var qty = li.qty || 1;
     var useNative = (li.priceNative != null && li.priceCurrency === CUR.code);
     var unitPriceHtml = useNative ? fmtRaw(li.priceNative) : fmtDoc(li.price||0);
@@ -26561,6 +26569,49 @@ function _docLineRowsHtml(s, L){
       +'<td class="num">'+unitPriceHtml+'</td>'
       +'<td class="num" style="font-weight:700">'+lineTotalHtml+'</td>'
     +'</tr>';
+  }
+
+  // Resolve each row's category. Inventory + services both expose .cat.
+  // Custom items (no match) fall into 'Other' so the rest of the table
+  // doesn't lose them. Track first-seen order so categories appear in
+  // the order they were added to the quote (e.g. Mains, Sides, Drinks
+  // — not alphabetical) — more natural for catering proposals.
+  var bucketOrder = [];
+  var buckets = {};
+  data.forEach(function(r){
+    var cat = (r.match && r.match.cat ? String(r.match.cat).trim() : '') || 'Other';
+    if(!buckets[cat]){ buckets[cat] = []; bucketOrder.push(cat); }
+    buckets[cat].push(r);
+  });
+
+  // Skip grouping when everything's in one bucket — keeps short product
+  // quotes looking the same as before this change.
+  if(bucketOrder.length < 2){
+    return data.map(renderRow).join('');
+  }
+
+  // Push 'Other' to the end if present alongside real categories — a
+  // catering proposal with two real categories plus one custom item
+  // shouldn't lead with 'Other'.
+  if(bucketOrder.indexOf('Other') !== -1 && bucketOrder.length > 1){
+    bucketOrder = bucketOrder.filter(function(c){return c !== 'Other';}).concat(['Other']);
+  }
+
+  // Category header row. Uses a single colspan'd cell. Styling kept
+  // intentionally subtle so it reads as a section divider, not a
+  // second table header: light bg, muted uppercase label, no top
+  // border to flow visually from the previous section.
+  function renderCategoryHeader(cat){
+    return '<tr class="doc-cat-row"><td colspan="'+totalCols+'" '
+      +'style="background:#f8fafc;padding:9px 14px;font-size:10px;font-weight:700;'
+      +'text-transform:uppercase;letter-spacing:1.2px;color:#64748b;'
+      +'border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0">'
+      +_esc(cat)
+    +'</td></tr>';
+  }
+
+  return bucketOrder.map(function(cat){
+    return renderCategoryHeader(cat) + buckets[cat].map(renderRow).join('');
   }).join('');
 }
 
