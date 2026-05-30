@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1780175752");
+console.log("ShopTrack v2.7 - build:1780177130");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -6817,6 +6817,7 @@ ${(D.quotes && D.quotes.length) ? `
         <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${stBg};color:var(--${stCol})">${q.st}${isConverted?' → '+q.convertedSaleId:''}</span></td>
         <td><div class="btn-row" style="gap:3px;flex-wrap:nowrap;justify-content:flex-end">
           <button class="btn btn-g btn-xs" onclick="genQuoteDoc('${q.id}')" title="View / Print PDF">📄</button>
+          ${!isConverted ? `<button class="btn btn-xs" style="background:rgba(67,97,238,.12);color:var(--a)" onclick="_quoteEdit('${q.id}')" title="Edit quote (lines, prices, notes, etc.)">✎</button>` : ''}
           ${q.st==='Draft' ? `<button class="btn btn-xs" style="background:rgba(67,97,238,.12);color:var(--a)" onclick="_quoteSetStatus('${q.id}','Sent')" title="Mark as Sent">📤</button>` : ''}
           ${(q.st==='Draft'||q.st==='Sent') ? `<button class="btn btn-xs" style="background:var(--g);color:#fff;font-weight:700" onclick="_quoteConvertToInvoice('${q.id}')" title="Convert to Invoice (Sale)">✓ Invoice</button>` : ''}
           ${(q.st==='Draft'||q.st==='Sent') ? `<button class="btn btn-xs" style="background:rgba(220,38,38,.12);color:var(--r)" onclick="_quoteSetStatus('${q.id}','Rejected')" title="Mark as Rejected">✕</button>` : ''}
@@ -7712,7 +7713,7 @@ function _invAddRow(name, price, unit){const _s=_L();
   // bug we're trying to avoid. Just format to the active currency's precision.
   const priceVal = price ? (+price).toFixed(CUR.decimals||0) : '';
   const unitVal  = unit ? String(unit).replace(/"/g,'&quot;') : '';
-  tr.innerHTML = '<td style="padding:5px 7px"><input class="fi inv-desc" style="font-size:12px;margin:0" placeholder="'+_s.inv_modal_desc+'" value="'+descVal+'"/></td>'
+  tr.innerHTML = '<td style="padding:5px 7px"><input class="fi inv-desc" style="font-size:12px;margin:0" placeholder="'+_s.inv_modal_desc+'" value="'+descVal+'" onchange="_invDescChanged(this)"/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-qty" type="number" value="1" min="0" step="any" style="width:64px;margin:0;text-align:center" oninput="_invUpdateRow(this)"/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-unit" placeholder="each / per hr / per m\u00B2" style="width:100px;margin:0;font-size:12px" value="'+unitVal+'" title="Unit of measure shown on the document (free-text). Examples: each, per hour, per m\u00B2, per head, per visit, per day."/></td>'
     +'<td style="padding:5px 7px"><input class="fi inv-price" type="number" placeholder="'+((CUR.decimals||0)>0?'0.00':'0')+'" step="any" style="width:90px;margin:0" value="'+priceVal+'" oninput="_invUpdateRow(this)"/></td>'
@@ -7721,6 +7722,52 @@ function _invAddRow(name, price, unit){const _s=_L();
   tbody.appendChild(tr);
   if(!name) tr.querySelector('.inv-desc').focus();
   _invUpdateTotals();
+}
+
+// Auto-fill price + unit when the user manually types a description
+// that exactly matches an inventory or service item name. Fires on
+// blur (input's onchange). Only fills empty price/unit fields so we
+// don't overwrite values the user has deliberately set.
+function _invDescChanged(descInput){
+  if(!descInput) return;
+  var row = descInput.closest('.inv-line-row');
+  if(!row) return;
+  var name = (descInput.value || '').trim();
+  if(!name) return;
+  var priceEl = row.querySelector('.inv-price');
+  var unitEl  = row.querySelector('.inv-unit');
+  if(!priceEl) return;
+  var currentPrice = parseFloat(priceEl.value) || 0;
+  var currentUnit  = (unitEl && unitEl.value || '').trim();
+  // Only auto-fill when fields are empty/zero — respect deliberate
+  // overrides the user typed.
+  var priceEmpty = currentPrice === 0;
+  var unitEmpty  = !currentUnit;
+  if(!priceEmpty && !unitEmpty) return;
+  // Look up the catalogue. Inventory first (sale + rental items),
+  // then services.
+  var invMatch = D.inv.find(function(i){ return i.name === name; });
+  var svcMatch = (D.services||[]).find(function(s){ return s.name === name; });
+  if(invMatch){
+    if(priceEmpty){
+      // For sale items use sp; for rentals use rp.
+      var p = (invMatch.st === 'For Rent') ? (invMatch.rp || 0) : (invMatch.sp || 0);
+      priceEl.value = Math.round(p * CUR.rate);
+    }
+    if(unitEmpty && unitEl){
+      unitEl.value = (invMatch.st === 'For Rent') ? 'per day' : 'each';
+    }
+  } else if(svcMatch){
+    if(priceEmpty){
+      priceEl.value = Math.round((svcMatch.price || 0) * CUR.rate);
+    }
+    if(unitEmpty && unitEl){
+      unitEl.value = _ptUnit(svcMatch.priceType || 'flat');
+    }
+  } else {
+    return; // no match
+  }
+  _invUpdateRow(priceEl);
 }
 
 // ── Update a single row total when qty/price changes ──────────
@@ -7881,11 +7928,20 @@ function _saveInvoice(){var _s=_L();
 // Storage: D.quotes (IDB-backed; no Supabase table required initially)
 // ═══════════════════════════════════════════════════════════════════
 
-// Build the Create Quote modal — reuses the invoice line-row machinery
+// Build the Create / Edit Quote modal — reuses the invoice line-row machinery
 // (_invAddRow / _invAddFromCatalogue / _invUpdateTotals / _invTypeChanged)
-// by sharing the same DOM IDs. Save handler differs (_saveQuote).
-function mQuoteNew(prefill){
+// by sharing the same DOM IDs. Save handler differs (_saveQuote vs _saveQuoteEdit).
+//
+// editingQuote: optional. When provided, the modal is populated from
+// the existing quote's saved values and the save button updates rather
+// than creates. Each line row also shows a small "current price" hint
+// when the saved price differs from the live inventory/service price,
+// with a one-click "use current" button. This is the catering-followup
+// workflow — owner revises a quote after a client meeting and quickly
+// pulls in any price changes that happened in inventory in between.
+function mQuoteNew(editingQuote){
   var _s = _L();
+  var isEdit = !!editingQuote;
   var saleItems = _groupOptsByCat(
     D.inv.filter(function(i){return i.st==='For Sale'||i.st==='Both';}),
     function(i){return '<option value="'+_esc(i.name)+'" data-price="'+Math.round((i.sp||0)*CUR.rate)+'" data-unit="each">'+_esc(i.name)+(i.sku?' ('+i.sku+')':'')+' \u2014 '+fmt(i.sp||0)+'</option>';}
@@ -7897,20 +7953,30 @@ function mQuoteNew(prefill){
   var svcItems = (D.services||[]).filter(function(s){return s.active!==false;})
     .map(function(s){var u=_ptUnit(s.priceType||'flat');return '<option value="'+_esc(s.name)+'" data-price="'+Math.round((s.price||0)*CUR.rate)+'" data-unit="'+_esc(u)+'">'+_esc(s.name)+' \u2014 '+fmt(s.price||0)+(u!=='each'?' '+u:'')+'</option>';}).join('');
 
-  // Default valid-until = today + 14 days
+  // Default valid-until = today + 14 days (or use saved value when editing)
   var validUntil = new Date(); validUntil.setDate(validUntil.getDate()+14);
-  var validUntilStr = validUntil.toISOString().slice(0,10);
+  var validUntilStr = isEdit && editingQuote.validUntil ? editingQuote.validUntil : validUntil.toISOString().slice(0,10);
+  var quoteDate = isEdit ? (editingQuote.dt || localDateStr()) : localDateStr();
+  var custVal   = isEdit ? (editingQuote.cust || '') : '';
+  var taxVal    = isEdit && editingQuote.taxRate != null ? editingQuote.taxRate : (BIZ.taxRate||0);
+  var notesVal  = isEdit ? (editingQuote.notes || '') : '';
+  var rr = CUR.rate || 1;
+  var depDisplay = isEdit && editingQuote.deposit ? (editingQuote.deposit * rr).toFixed(CUR.decimals||0) : '';
 
-  modal('📝 Create Quote',
-  '<div class="alrt alrt-y" style="margin-bottom:10px;padding:8px 12px;font-size:12px">'
-    +'A Quote is a proposal — it does not affect revenue or inventory until accepted and converted to an Invoice.'
-  +'</div>'
+  modal(isEdit ? '\u270E Edit Quote ' + editingQuote.id : '\uD83D\uDCDD Create Quote',
+  (isEdit
+    ? '<div class="alrt alrt-b" style="margin-bottom:10px;padding:8px 12px;font-size:12px">'
+        +'Editing quote <strong>'+editingQuote.id+'</strong>. Changes save in place. Where inventory prices have moved since this quote was first drafted, a yellow hint appears next to the affected row with a one-click \u201Cuse current\u201D button.'
+      +'</div>'
+    : '<div class="alrt alrt-y" style="margin-bottom:10px;padding:8px 12px;font-size:12px">'
+        +'A Quote is a proposal — it does not affect revenue or inventory until accepted and converted to an Invoice.'
+      +'</div>')
   +'<div class="fg-2">'
     +'<div class="fg"><label class="fl">'+(BIZ.language==='fr'?'Client *':'Customer *')+'</label>'
       +'<div style="display:flex;gap:6px;align-items:center">'
         +'<select class="fs" id="inv-cust" style="flex:1">'
           +'<option value="">-- '+(BIZ.language==='fr'?'Sélectionner un client':'Select customer')+' --</option>'
-          +D.cust.map(function(c){return '<option value="'+_esc(c.name)+'">'+_esc(c.name)+'</option>';}).join('')
+          +D.cust.map(function(c){return '<option value="'+_esc(c.name)+'"'+(c.name===custVal?' selected':'')+'>'+_esc(c.name)+'</option>';}).join('')
         +'</select>'
         +'<button type="button" class="btn btn-g btn-xs" style="white-space:nowrap;padding:0 10px;height:34px" onclick="var row=document.getElementById(\'inv-newcust-row\');row.style.display=row.style.display===\'none\'?\'flex\':\'none\';if(row.style.display===\'flex\') document.getElementById(\'inv-newcust-name\').focus();">+ '+(BIZ.language==='fr'?'Nouveau':'New')+'</button>'
       +'</div>'
@@ -7922,7 +7988,7 @@ function mQuoteNew(prefill){
       +'</div>'
     +'</div>'
     +'<div class="fg"><label class="fl">Quote Date</label>'
-      +'<input class="fi" type="date" id="inv-date" value="'+localDateStr()+'"/>'
+      +'<input class="fi" type="date" id="inv-date" value="'+quoteDate+'"/>'
     +'</div>'
     +'<div class="fg"><label class="fl">Valid Until</label>'
       +'<input class="fi" type="date" id="qt-valid" value="'+validUntilStr+'"/>'
@@ -7974,7 +8040,7 @@ function mQuoteNew(prefill){
   +'</div>'
   +'<div class="fg-2">'
     +'<div class="fg"><label class="fl">'+(BIZ.taxName&&BIZ.taxRate>0?BIZ.taxName+' ('+BIZ.taxRate+'%)':'Tax (%)')+'</label>'
-      +'<input class="fi" type="number" id="inv-tax" value="'+(BIZ.taxRate||0)+'" step="0.01" min="0" max="100" oninput="_invUpdateTotals()"/>'
+      +'<input class="fi" type="number" id="inv-tax" value="'+taxVal+'" step="0.01" min="0" max="100" oninput="_invUpdateTotals()"/>'
     +'</div>'
     +'<div class="fg"><label class="fl">Discount <span style="font-size:10px;color:var(--text2)">('+CUR.symbol+')</span></label>'
       +'<input class="fi" type="number" id="inv-discount" placeholder="0.00" step="any" min="0" oninput="_invUpdateTotals()"/>'
@@ -7985,20 +8051,33 @@ function mQuoteNew(prefill){
     +'<span id="inv-total-display" style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--g);min-width:80px;text-align:right">0.00</span>'
   +'</div>'
   +'<div class="fg"><label class="fl">Deposit Required <span style="font-size:10px;color:var(--text2)">(typical: 30–50% of total)</span></label>'
-    +'<input class="fi" type="number" id="qt-deposit" placeholder="0.00" step="any" min="0"/>'
+    +'<input class="fi" type="number" id="qt-deposit" placeholder="0.00" step="any" min="0" value="'+depDisplay+'"/>'
     +'<div style="font-size:11px;color:var(--text2);margin-top:3px">Shown on the quote PDF. When converted to an invoice, this becomes the suggested initial payment.</div>'
   +'</div>'
-  +'<div class="fg"><label class="fl">Notes / Terms</label>'
-    +'<textarea class="ft" id="inv-notes" placeholder="Scope of work, exclusions, payment terms…" style="min-height:60px"></textarea>'
+  +'<div class="fg"><label class="fl">Notes / Terms <span style="font-size:10px;color:var(--text2)">(for catering: put event date, venue, guest count, dietary notes here)</span></label>'
+    +'<textarea class="ft" id="inv-notes" placeholder="Scope of work, exclusions, payment terms…" style="min-height:60px">'+_esc(notesVal)+'</textarea>'
   +'</div>',
   '<button class="btn btn-s" onclick="closeModal()">'+_s.ui_cancel+'</button>'
-  +'<button class="btn btn-p" onclick="_saveQuote()">✅ Save Quote</button>',
+  +(isEdit
+    ? '<button class="btn btn-p" onclick="_saveQuoteEdit(\''+editingQuote.id+'\')">\u2705 Save changes</button>'
+    : '<button class="btn btn-p" onclick="_saveQuote()">\u2705 Save Quote</button>'),
   'lg');
 
-  // Start with one empty row, default to Service catalog
+  // Populate line rows. For new quotes, start with one empty. For edits,
+  // recreate each saved line with its description, qty, unit, price —
+  // and after a beat, decorate each row with a "current price" hint when
+  // a matching inventory/service item has a different live price.
   setTimeout(function(){
     _invTypeChanged();
-    _invAddRow();
+    if(isEdit && Array.isArray(editingQuote.lineItems) && editingQuote.lineItems.length){
+      editingQuote.lineItems.forEach(function(li){
+        _invAddRow(li.name || li.desc || '', li.price || 0, li.unit || '');
+      });
+      _invUpdateTotals();
+      setTimeout(_invAttachCurrentPriceHints, 30);
+    } else {
+      _invAddRow();
+    }
   }, 50);
 }
 
@@ -8071,6 +8150,152 @@ function _saveQuote(){
   toast('Quote '+newId+' created ✓','success');
   setTimeout(function(){ genQuoteDoc(newId); }, 150);
   nav('sales');
+}
+
+// For each row in the edit modal, look up the matching inventory or
+// service item and, if its live price differs from the row's value,
+// inject a small hint with a "use current" link. No-op for rows that
+// have no name match (custom items) or where the prices already agree.
+function _invAttachCurrentPriceHints(){
+  var rows = document.querySelectorAll('#inv-lines-body .inv-line-row');
+  rows.forEach(function(row){
+    var descEl = row.querySelector('.inv-desc');
+    var priceEl = row.querySelector('.inv-price');
+    var unitEl = row.querySelector('.inv-unit');
+    if(!descEl || !priceEl) return;
+    var name = (descEl.value || '').trim();
+    if(!name) return;
+    // Try inventory first (sale items), then services.
+    var invMatch = D.inv.find(function(i){ return i.name === name; });
+    var svcMatch = (D.services||[]).find(function(s){ return s.name === name; });
+    var livePrice = null, liveUnit = '';
+    if(invMatch){
+      // Prefer sale price for sale items / catering dishes; rental
+      // price as fallback if sp is zero (rental-only items).
+      livePrice = Math.round((invMatch.sp || invMatch.rp || 0) * CUR.rate);
+      liveUnit = (invMatch.st === 'For Rent') ? 'per day' : 'each';
+    } else if(svcMatch){
+      livePrice = Math.round((svcMatch.price || 0) * CUR.rate);
+      liveUnit = _ptUnit(svcMatch.priceType || 'flat');
+    } else {
+      return; // no match, nothing to hint
+    }
+    var rowPrice = parseFloat(priceEl.value) || 0;
+    var priceDiffers = Math.abs(rowPrice - livePrice) > 0.001;
+    var rowUnit = (unitEl && unitEl.value || '').trim();
+    var unitDiffers = liveUnit && rowUnit && rowUnit !== liveUnit;
+    if(!priceDiffers && !unitDiffers) return;
+    var hintParts = [];
+    if(priceDiffers){
+      hintParts.push('Current price: <strong>'+fmt(livePrice/CUR.rate)+'</strong>');
+    }
+    if(unitDiffers){
+      hintParts.push('Current unit: <strong>'+_esc(liveUnit)+'</strong>');
+    }
+    var priceTd = priceEl.parentElement;
+    if(priceTd.querySelector('.inv-pricehint')) return;
+    var hint = document.createElement('div');
+    hint.className = 'inv-pricehint';
+    hint.style.cssText = 'font-size:10px;color:var(--y);margin-top:3px;line-height:1.3';
+    hint.innerHTML = hintParts.join(' \u00B7 ')
+      + ' <button type="button" style="margin-left:4px;background:var(--y);color:#000;border:none;border-radius:3px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer" '
+      + 'data-price="'+livePrice+'" data-unit="'+_esc(liveUnit)+'" '
+      + 'onclick="_invUseCurrentPrice(this)">use current</button>';
+    priceTd.appendChild(hint);
+  });
+}
+
+// Apply the live price + unit to the row and remove the hint.
+function _invUseCurrentPrice(btn){
+  var row = btn.closest('.inv-line-row');
+  if(!row) return;
+  var priceEl = row.querySelector('.inv-price');
+  var unitEl  = row.querySelector('.inv-unit');
+  var newPrice = parseFloat(btn.dataset.price) || 0;
+  var newUnit  = btn.dataset.unit || '';
+  if(priceEl){ priceEl.value = newPrice; }
+  if(unitEl && newUnit){ unitEl.value = newUnit; }
+  _invUpdateRow(priceEl);
+  var hint = row.querySelector('.inv-pricehint');
+  if(hint) hint.remove();
+}
+
+// Edit save handler — mirrors _saveQuote but updates the existing
+// record in place rather than appending a new one. Preserves the
+// quote's id, status, audit/history, convertedSaleId link, etc.
+// Quotes are IDB-only (no Supabase quotes table yet) so no cloud
+// upsert here — matches the create-side persistence.
+function _saveQuoteEdit(quoteId){
+  var _s = _L();
+  var q = (D.quotes||[]).find(function(x){return x.id===quoteId;});
+  if(!q){ toast('Quote not found','error'); return; }
+  if(q.st === 'Accepted' && q.convertedSaleId){
+    toast('This quote has been converted to an invoice — edit the invoice instead','error');
+    return;
+  }
+  var cust = document.getElementById('inv-cust')?.value?.trim();
+  if(!cust){ toast(_L().t_select_cust,'error'); return; }
+
+  var rows = document.querySelectorAll('#inv-lines-body .inv-line-row');
+  var lines = [];
+  rows.forEach(function(row){
+    var desc  = row.querySelector('.inv-desc')?.value?.trim()||'';
+    var qty   = parseFloat(row.querySelector('.inv-qty')?.value)||0;
+    var unit  = row.querySelector('.inv-unit')?.value?.trim()||'';
+    var price = parseFloat(row.querySelector('.inv-price')?.value)||0;
+    if(desc || price>0) lines.push({desc:desc, name:desc, qty:qty||1, unit:unit, price:price});
+  });
+  if(!lines.length){ toast(_L().t_add_line_price,'error'); return; }
+
+  var itemsStr = lines.map(function(l){
+    var u = l.unit && l.unit.toLowerCase()!=='each' ? ' '+l.unit : '';
+    return (l.qty!==1 ? l.qty+u+' \u00D7 ' : '') + l.desc;
+  }).filter(Boolean).join(', ') || 'Quote';
+  var rr = CUR.rate||1;
+  var sub = lines.reduce(function(a,l){return a+l.qty*l.price;},0) / rr;
+  var taxPct = parseFloat(document.getElementById('inv-tax')?.value)||0;
+  var disc   = (parseFloat(document.getElementById('inv-discount')?.value)||0) / rr;
+  var total  = Math.max(0, sub + sub*taxPct/100 - disc);
+  if(!total){ toast(_L().t_no_amount,'error'); return; }
+
+  var depositDisplay = parseFloat(document.getElementById('qt-deposit')?.value)||0;
+  var deposit = depositDisplay / rr;
+  var custObj = D.cust.find(function(c){return c.name===cust;});
+
+  // Audit trail of what changed — useful for owner to track revisions.
+  var changes = [];
+  if(q.cust !== cust) changes.push('customer: '+q.cust+' \u2192 '+cust);
+  if(Math.abs((q.total||0) - total) > 0.001) changes.push('total: '+fmt(q.total||0)+' \u2192 '+fmt(total));
+  if((q.lineItems||[]).length !== lines.length) changes.push('lines: '+(q.lineItems||[]).length+' \u2192 '+lines.length);
+  var newDt = document.getElementById('inv-date')?.value || q.dt;
+  if(q.dt !== newDt) changes.push('date: '+q.dt+' \u2192 '+newDt);
+
+  // Update the quote in place. Keep id / status / createdAt / convertedSaleId.
+  q.cust = cust;
+  q.custId = (custObj && custObj.id) || q.custId || '';
+  q.dt = newDt;
+  q.validUntil = document.getElementById('qt-valid')?.value || q.validUntil;
+  q.items = itemsStr;
+  q.lineItems = lines;
+  q.taxRate = taxPct;
+  q.amt = total; // legacy alias
+  q.total = total;
+  q.taxes = sub * taxPct / 100;
+  q.deposit = deposit;
+  q.notes = document.getElementById('inv-notes')?.value || '';
+  q.revisedAt = new Date().toISOString();
+  q.revisionCount = (q.revisionCount || 0) + 1;
+
+  if(typeof _idbSave === 'function' && SESSION.bizId){
+    _idbSave(SESSION.bizId, 'quotes', D.quotes).catch(function(){});
+  }
+  addAudit('Quote revised', q.id + (changes.length ? ' \u2014 ' + changes.join(', ') : ''));
+  toast('\u2713 Quote ' + q.id + ' updated' + (q.revisionCount > 1 ? ' (revision ' + q.revisionCount + ')' : ''), 'success');
+  closeModal();
+  if(curPage === 'sales') nav('sales');
+  // Auto-open the regenerated PDF so the owner can immediately share
+  // the revised version.
+  setTimeout(function(){ genQuoteDoc(q.id); }, 200);
 }
 
 // View a quote's branded PDF in a new tab (reuses the invoice doc layout
@@ -8199,6 +8424,19 @@ function genQuoteDoc(quoteId){
     w.document.write('<!doctype html><html><head><title>Quote '+q.id+'</title></head><body>'+html+'</body></html>');
     w.document.close();
   }
+}
+
+// Open the edit modal for a saved quote. Thin wrapper around mQuoteNew
+// — passes the existing quote so the modal knows to populate from
+// saved values and route Save to _saveQuoteEdit.
+function _quoteEdit(id){
+  var q = (D.quotes||[]).find(function(x){return x.id===id;});
+  if(!q){ toast('Quote not found','error'); return; }
+  if(q.st === 'Accepted' && q.convertedSaleId){
+    toast('Already converted to invoice '+q.convertedSaleId+' — edit the invoice instead','info');
+    return;
+  }
+  mQuoteNew(q);
 }
 
 // Set quote status — used by row actions (Sent/Accepted/Rejected/Expired)
