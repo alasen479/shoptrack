@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1780246659");
+console.log("ShopTrack v2.7 - build:1780247053");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4699,10 +4699,24 @@ function _saveItemPrices(id){var _s=_L();
   var msVal=msEl?parseFloat(msEl.value):NaN;
   if(!isNaN(spVal)){
     var _minSpCheckP = _checkMinSp(id, spVal);
-    if(_minSpCheckP && _minSpCheckP.block){
-      addAudit('Min price block', _minSpCheckP.auditMsg + ' (catalogue edit)');
-      toast(_minSpCheckP.msg, 'error');
-      return;
+    if(_minSpCheckP){
+      if(_minSpCheckP.block){
+        // Without edit_inventory the user shouldn't have gotten here,
+        // but defensively block + audit anyway.
+        addAudit('Min price block', _minSpCheckP.auditMsg + ' (catalogue edit)');
+        toast(_minSpCheckP.msg, 'error');
+        return;
+      }
+      if(_minSpCheckP.canOverride){
+        // Setting sp below minSp on the catalogue itself — usually
+        // means the user should lower minSp first. Confirm before
+        // proceeding so accidental keystrokes don't quietly drop the
+        // active sale price below the documented floor.
+        if(!confirm(_minSpCheckP.msg + '\n\nProceed with the lower sale price? Consider lowering the minimum first. This change will be logged.')){
+          return;
+        }
+        _logMinSpOverride(_minSpCheckP, 'catalogue inline edit');
+      }
     }
     var sp = curOutPair(spVal);
     itx.sp = sp.usd; itx.spNative = sp.native; itx.spCurrency = sp.currency;
@@ -6389,10 +6403,18 @@ function saveEditItem(id){
   // recipe ingredients legitimately have no sale-price floor.
   if(!isNaN(spv) && spv > 0 && it.minSp && (it.itemType||'resale')==='resale'){
     var _minSpCheckEI = _checkMinSp(it.id, spv * CUR.rate);
-    if(_minSpCheckEI && _minSpCheckEI.block){
-      addAudit('Min price block', _minSpCheckEI.auditMsg + ' (item edit)');
-      toast(_minSpCheckEI.msg, 'error');
-      return;
+    if(_minSpCheckEI){
+      if(_minSpCheckEI.block){
+        addAudit('Min price block', _minSpCheckEI.auditMsg + ' (item edit)');
+        toast(_minSpCheckEI.msg, 'error');
+        return;
+      }
+      if(_minSpCheckEI.canOverride){
+        if(!confirm(_minSpCheckEI.msg + '\n\nProceed with the lower sale price? Consider lowering the minimum first. This change will be logged.')){
+          return;
+        }
+        _logMinSpOverride(_minSpCheckEI, 'item edit modal');
+      }
     }
   }
   if(!isNaN(spv)){
@@ -7080,18 +7102,32 @@ async function mCreateSale(){const _s=_L();
   setTimeout(_buildCsSel, 80);
 }
 
-// Returns {block, msg, auditMsg} when price < minSp, null when OK.
-// Hard rule: nobody — not even the owner — can sell below the minimum
-// sale price. This protects margins against accidental keystroke errors
-// and against any pressure to discount below floor. If a genuine need
-// to sell below minimum exists, the owner must update the item's
-// minSp in inventory first (which is itself audited).
+// Returns {block, msg, auditMsg, canOverride, item} when price < minSp,
+// null when OK.
+//
+// Two outcomes depending on the caller's permission:
+//
+//   (a) User has the 'edit_inventory' right (i.e. they can change the
+//       minSp itself in the catalogue). For them, the check is a SOFT
+//       warning — the caller is expected to show a confirm() and let
+//       them override. canOverride=true signals this branch.
+//
+//   (b) User lacks 'edit_inventory'. HARD block. Sale cannot proceed.
+//       The owner is notified by WhatsApp so they see attempts in
+//       real time. canOverride=false signals this branch.
+//
+// In both branches the audit log captures who, what, when, attempted
+// price, minimum, and gap. Overrides also get an audit entry from the
+// caller after the user confirms (a separate addAudit call so we can
+// distinguish 'blocked attempt' from 'authorised override').
 //
 // Returns:
-//   block:true  → caller must abort the sale/quote/edit
-//   msg         → user-facing toast/dialog message
-//   auditMsg    → richer message for the audit log including who, when,
-//                 attempted price, minimum, and difference
+//   block       — true if the caller MUST refuse the action
+//   canOverride — true if the caller MAY ask the user to override
+//                 (only one of block/canOverride is true at a time)
+//   msg         — user-facing toast/dialog text
+//   auditMsg    — richer message for the audit log
+//   item        — the inv record matched (useful for caller context)
 function _checkMinSp(invId, priceDisplay){const _s=_L();
   if(!invId || invId === '__custom__') return null;
   // Service items have no minimum price
@@ -7105,57 +7141,105 @@ function _checkMinSp(invId, priceDisplay){const _s=_L();
     var minNative = fmt(it.minSp);
     var shortBy = fmt((minDisplay - priceDisplay)/CUR.rate);
     var who = SESSION.name || SESSION.level || 'Unknown user';
-    var msg = '⛔ '+it.name+': price '+attemptedNative
-            +' is below the minimum sell price of '+minNative
-            +' (short by '+shortBy+'). Sale is blocked.';
-    // Audit message goes into the log via addAudit() at the caller.
-    // Caller has the context (sale, edit, quote) to set the right
-    // event-type, so the caller chooses the addAudit label.
-    var auditMsg = who+' attempted to sell "'+it.name+'" (id '+it.id+') at '
+    var auditMsg = who+' tried to sell "'+it.name+'" (id '+it.id+') at '
                  +attemptedNative+' — below minimum '+minNative
-                 +' by '+shortBy+'. Blocked.';
-    // Notify owner via WhatsApp for non-owners, so they see attempts
-    // in real time. Owner blocking themselves doesn't need a WA ping —
-    // they've already seen the on-screen block.
-    var isOwner = SESSION.level === 'owner' || SESSION.isSuperAdmin;
-    if(!isOwner){
-      setTimeout(function(){ _waOwnerMinBlock(it.name, priceDisplay, it.minSp, who); }, 200);
+                 +' by '+shortBy+'.';
+
+    // Permission gate: users with 'edit_inventory' right (the one
+    // that controls catalogue edits including minSp itself) can
+    // override. If they can change the minimum, they can decide to
+    // sell under it for a specific transaction. Owners always have
+    // this right; super-admins always; staff have it only when the
+    // role config grants it.
+    var canEditMinSp = (typeof can === 'function') ? can('edit_inventory') : true;
+
+    if(canEditMinSp){
+      // Soft warning — caller shows a confirm() dialog. Audit only
+      // fires when the user actually proceeds, via _logMinSpOverride().
+      var softMsg = '⚠ '+it.name+': price '+attemptedNative
+                  +' is below the minimum sell price of '+minNative
+                  +' (short by '+shortBy+').';
+      return {
+        block: false,
+        canOverride: true,
+        msg: softMsg,
+        auditMsg: auditMsg + ' Override requested.',
+        item: it
+      };
     }
-    return {block:true, msg:msg, auditMsg:auditMsg};
+
+    // Hard block for users without the right. WhatsApp ping to owner
+    // so they see the attempt in real time.
+    var hardMsg = '⛔ '+it.name+': price '+attemptedNative
+                +' is below the minimum sell price of '+minNative
+                +'. You do not have permission to sell below minimum. '
+                +'Please ask the owner to approve this sale.';
+    setTimeout(function(){ _waOwnerMinBlock(it.name, priceDisplay, it.minSp, who); }, 200);
+    return {
+      block: true,
+      canOverride: false,
+      msg: hardMsg,
+      auditMsg: auditMsg + ' Blocked (no edit_inventory right).',
+      item: it
+    };
   }
   return null;
 }
 
+// Audit helper called by save paths when the user has confirmed an
+// override. Separates 'blocked attempt' (logged by _checkMinSp callers)
+// from 'authorised override' (logged here) so the trail clearly shows
+// which sales actually went through below minimum.
+function _logMinSpOverride(check, contextLabel){
+  if(!check || !check.auditMsg) return;
+  // Replace the 'Override requested.' suffix with 'Override APPROVED.'
+  // — the auditMsg comes from _checkMinSp with the request wording;
+  // here we record that the user went ahead with it.
+  var msg = check.auditMsg.replace(' Override requested.', ' OVERRIDE APPROVED.')
+                          + (contextLabel ? ' (' + contextLabel + ')' : '');
+  addAudit('Min price override', msg);
+}
+
 // Updates the warning hint below cs-amt in the Create Sale modal.
-// All below-minimum prices are blocking (no role can override), so the
-// hint is always red. Surfaces issues live as the user types — they
-// can see the block before clicking Save.
+// Surfaces issues live as the user types. Two states:
+//   - Soft (yellow) when at least one line is below min but the user
+//     has edit_inventory and can override on save
+//   - Hard (red) when at least one line is below min and the user
+//     lacks edit_inventory — save will be blocked
+// If both occur (one line each), red wins because the save is blocked.
 function _csCheckMinSpWarn(){const _s=_L();
   var warn = document.getElementById('cs-minsp-warn');
   if(!warn) return;
   var lineRows = Array.from(document.querySelectorAll('#cs-line-rows .cs-line-row'));
   var messages = [];
+  var hasBlock = false;
+  function process(sel, price){
+    if(!sel || !price) return;
+    if(sel === '__custom__') return;
+    var check = _checkMinSp(sel, price);
+    if(!check) return;
+    if(check.block) hasBlock = true;
+    messages.push(check.msg);
+  }
   lineRows.forEach(function(row){
     var sel   = row.querySelector('.cs-inv-sel');
     var price = parseFloat(row.querySelector('.cs-line-price')?.value)||0;
-    if(!sel || !sel.value || sel.value==='__custom__' || !price) return;
-    var check = _checkMinSp(sel.value, price);
-    if(check){ messages.push(check.msg); }
+    process(sel?sel.value:null, price);
   });
   var legacyInv = document.getElementById('cs-inv');
   var legacyAmt = parseFloat(document.getElementById('cs-amt')?.value)||0;
-  if(legacyInv && legacyInv.value && legacyInv.value!=='__custom__' && legacyAmt){
-    var lChk = _checkMinSp(legacyInv.value, legacyAmt);
-    if(lChk){ messages.push(lChk.msg); }
+  if(legacyInv && legacyInv.value){
+    process(legacyInv.value, legacyAmt);
   }
   if(messages.length > 0){
-    warn.innerHTML = messages.map(function(m){ return '<div>'+m+'</div>'; }).join('')
-      + '<div style="font-size:10px;margin-top:4px;font-weight:600;opacity:.85">'
-      + 'This sale cannot be saved until the price is at or above the minimum.</div>';
+    var trailer = hasBlock
+      ? '<div style="font-size:10px;margin-top:4px;font-weight:600;opacity:.85">You do not have permission to sell below minimum. Save will be blocked.</div>'
+      : '<div style="font-size:10px;margin-top:4px;font-weight:600;opacity:.85">You will be asked to confirm before save. The override will be audited.</div>';
+    warn.innerHTML = messages.map(function(m){ return '<div>'+m+'</div>'; }).join('') + trailer;
     warn.style.display='block';
-    warn.style.borderLeftColor = 'var(--r)';
-    warn.style.color = 'var(--r)';
-    warn.style.background = 'rgba(220,38,38,.06)';
+    warn.style.borderLeftColor = hasBlock?'var(--r)':'var(--y)';
+    warn.style.color = hasBlock?'var(--r)':'var(--y)';
+    warn.style.background = hasBlock?'rgba(220,38,38,.06)':'rgba(234,179,8,.06)';
   } else {
     warn.style.display='none';
   }
@@ -7190,31 +7274,43 @@ function _saveSale(){var _s=_L();
   // Require at least one line item with a product/service selected
   var hasItem = lineItems.some(function(r){ return r.invId || r.svcId || r.name; });
   if(!hasItem){toast(BIZ.language==='fr'?'Veuillez sélectionner au moins un article':'Please select at least one item','error');return;}
-  // ── Minimum price enforcement (HARD BLOCK for everyone) ─────────
-  // The rule applies to all roles including owner. If a sale genuinely
-  // needs to go below minimum, the owner must update the item's minSp
-  // in Inventory first — itself a tracked action — and then record the
-  // sale. This forces the decision to be deliberate rather than ambient.
-  var _blockedAttempts = [];
+  // ── Minimum price enforcement ──────────────────────────────────
+  // Two branches:
+  //   - Users with edit_inventory: soft warning + confirm() to
+  //     override. Audit records the override as APPROVED.
+  //   - Users without edit_inventory: hard block. Audit records
+  //     the attempt as BLOCKED. Owner gets a WhatsApp ping.
+  // Lines that pass without violation are silent.
+  var _blocked = [];
+  var _overridable = [];
   lineItems.forEach(function(li){
     if(!li.invId||li.invId==='__custom__') return;
     var chk=_checkMinSp(li.invId, li.price);
     if(!chk) return;
-    _blockedAttempts.push(chk);
+    if(chk.block) _blocked.push(chk);
+    else if(chk.canOverride) _overridable.push(chk);
   });
-  if(_blockedAttempts.length > 0){
-    // Audit every attempt — keeps a record of all below-minimum
-    // attempts regardless of which user made them. Each attempt
-    // becomes a separate row in the audit log so they can be
-    // reviewed and counted later.
-    _blockedAttempts.forEach(function(b){
+  // Hard block path: always audited, save aborts.
+  if(_blocked.length > 0){
+    _blocked.forEach(function(b){
       addAudit('Min price block', b.auditMsg);
     });
-    // Show the user every blocked line in one toast so they know
-    // exactly what to adjust. The toast styling will make them
-    // re-examine prices before clicking save again.
-    toast(_blockedAttempts.map(function(b){return b.msg;}).join('\n'), 'error');
-    return; // block save
+    toast(_blocked.map(function(b){return b.msg;}).join('\n'), 'error');
+    return;
+  }
+  // Override path: confirm dialog. The audit fires after the user
+  // says yes via _logMinSpOverride; cancelling produces no audit
+  // entry (no decision was made — they just changed their mind).
+  if(_overridable.length > 0){
+    var confirmMsg = _overridable.map(function(b){return b.msg;}).join('\n\n')
+      + '\n\nProceed and override the minimum? This action will be logged in the audit trail.';
+    if(!confirm(confirmMsg)){
+      // User backed out — no audit entry (they didn't actually do it).
+      return;
+    }
+    _overridable.forEach(function(b){
+      _logMinSpOverride(b, 'sale');
+    });
   }
   var custObj=D.cust.find(function(x){return x.id===custId;});
   var cust=custObj?custObj.name:custId;
@@ -8232,15 +8328,20 @@ function _saveQuote(){
 
   // ── Minimum price enforcement on quote save ────────────────────
   // Quotes are pre-sale commitments; if accepted and converted to an
-  // invoice, the same prices flow through. So block at quote save too,
-  // not just at sale save. Line items match inventory by name (no
-  // invId stored on quote lines — they're free-text desc fields).
+  // invoice, the same prices flow through. So enforce at quote save
+  // with the same two-branch logic as _saveSale:
+  //   - users with edit_inventory: confirm-to-override
+  //   - users without: hard block
+  // Lines match inventory by name (no invId stored on quote lines).
   var _qBlocked = [];
+  var _qOverridable = [];
   lines.forEach(function(l){
     var invMatch = D.inv.find(function(i){ return i.name === l.desc; });
-    if(!invMatch) return; // custom item or service — no floor
+    if(!invMatch) return;
     var chk = _checkMinSp(invMatch.id, l.price);
-    if(chk) _qBlocked.push(chk);
+    if(!chk) return;
+    if(chk.block) _qBlocked.push(chk);
+    else if(chk.canOverride) _qOverridable.push(chk);
   });
   if(_qBlocked.length > 0){
     _qBlocked.forEach(function(b){
@@ -8248,6 +8349,14 @@ function _saveQuote(){
     });
     toast(_qBlocked.map(function(b){return b.msg;}).join('\n'), 'error');
     return;
+  }
+  if(_qOverridable.length > 0){
+    var qConfirmMsg = _qOverridable.map(function(b){return b.msg;}).join('\n\n')
+      + '\n\nProceed and override the minimum on this quote? This will be logged in the audit trail.';
+    if(!confirm(qConfirmMsg)) return;
+    _qOverridable.forEach(function(b){
+      _logMinSpOverride(b, 'quote save');
+    });
   }
 
   var rr = CUR.rate||1;
@@ -8420,15 +8529,16 @@ function _saveQuoteEdit(quoteId){
   if(!lines.length){ toast(_L().t_add_line_price,'error'); return; }
 
   // ── Minimum price enforcement on quote edit ────────────────────
-  // Same rule as _saveQuote: block any line that goes below the
-  // matched inventory item's minSp, with audit logging on every
-  // attempt regardless of role.
+  // Same two-branch logic as _saveQuote and _saveSale.
   var _qeBlocked = [];
+  var _qeOverridable = [];
   lines.forEach(function(l){
     var invMatch = D.inv.find(function(i){ return i.name === l.desc; });
     if(!invMatch) return;
     var chk = _checkMinSp(invMatch.id, l.price);
-    if(chk) _qeBlocked.push(chk);
+    if(!chk) return;
+    if(chk.block) _qeBlocked.push(chk);
+    else if(chk.canOverride) _qeOverridable.push(chk);
   });
   if(_qeBlocked.length > 0){
     _qeBlocked.forEach(function(b){
@@ -8436,6 +8546,14 @@ function _saveQuoteEdit(quoteId){
     });
     toast(_qeBlocked.map(function(b){return b.msg;}).join('\n'), 'error');
     return;
+  }
+  if(_qeOverridable.length > 0){
+    var qeConfirmMsg = _qeOverridable.map(function(b){return b.msg;}).join('\n\n')
+      + '\n\nProceed and override the minimum on quote '+quoteId+'? This will be logged in the audit trail.';
+    if(!confirm(qeConfirmMsg)) return;
+    _qeOverridable.forEach(function(b){
+      _logMinSpOverride(b, 'quote edit ' + quoteId);
+    });
   }
 
   var itemsStr = lines.map(function(l){
