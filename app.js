@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1780179863");
+console.log("ShopTrack v2.7 - build:1780245938");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4699,7 +4699,11 @@ function _saveItemPrices(id){var _s=_L();
   var msVal=msEl?parseFloat(msEl.value):NaN;
   if(!isNaN(spVal)){
     var _minSpCheckP = _checkMinSp(id, spVal);
-    if(_minSpCheckP && _minSpCheckP.block){ toast(_minSpCheckP.msg, 'error'); return; }
+    if(_minSpCheckP && _minSpCheckP.block){
+      addAudit('Min price block', _minSpCheckP.auditMsg + ' (catalogue edit)');
+      toast(_minSpCheckP.msg, 'error');
+      return;
+    }
     var sp = curOutPair(spVal);
     itx.sp = sp.usd; itx.spNative = sp.native; itx.spCurrency = sp.currency;
     // Clear the needsPrice flag once a real sale price has been
@@ -6385,7 +6389,11 @@ function saveEditItem(id){
   // recipe ingredients legitimately have no sale-price floor.
   if(!isNaN(spv) && spv > 0 && it.minSp && (it.itemType||'resale')==='resale'){
     var _minSpCheckEI = _checkMinSp(it.id, spv * CUR.rate);
-    if(_minSpCheckEI && _minSpCheckEI.block){ toast(_minSpCheckEI.msg, 'error'); return; }
+    if(_minSpCheckEI && _minSpCheckEI.block){
+      addAudit('Min price block', _minSpCheckEI.auditMsg + ' (item edit)');
+      toast(_minSpCheckEI.msg, 'error');
+      return;
+    }
   }
   if(!isNaN(spv)){
     const p = curOutPair(spv);
@@ -7072,8 +7080,18 @@ async function mCreateSale(){const _s=_L();
   setTimeout(_buildCsSel, 80);
 }
 
-// Returns {block, msg} if price < minSp, null if OK
-// block=true means hard stop (non-owners), block=false means owner warning/confirm
+// Returns {block, msg, auditMsg} when price < minSp, null when OK.
+// Hard rule: nobody — not even the owner — can sell below the minimum
+// sale price. This protects margins against accidental keystroke errors
+// and against any pressure to discount below floor. If a genuine need
+// to sell below minimum exists, the owner must update the item's
+// minSp in inventory first (which is itself audited).
+//
+// Returns:
+//   block:true  → caller must abort the sale/quote/edit
+//   msg         → user-facing toast/dialog message
+//   auditMsg    → richer message for the audit log including who, when,
+//                 attempted price, minimum, and difference
 function _checkMinSp(invId, priceDisplay){const _s=_L();
   if(!invId || invId === '__custom__') return null;
   // Service items have no minimum price
@@ -7083,48 +7101,61 @@ function _checkMinSp(invId, priceDisplay){const _s=_L();
   if(!it || !it.minSp) return null;
   var minDisplay = Math.round(it.minSp * CUR.rate);
   if(priceDisplay < minDisplay - 0.01){
+    var attemptedNative = fmt(priceDisplay/CUR.rate);
+    var minNative = fmt(it.minSp);
+    var shortBy = fmt((minDisplay - priceDisplay)/CUR.rate);
+    var who = SESSION.name || SESSION.level || 'Unknown user';
+    var msg = '⛔ '+it.name+': price '+attemptedNative
+            +' is below the minimum sell price of '+minNative
+            +' (short by '+shortBy+'). Sale is blocked.';
+    // Audit message goes into the log via addAudit() at the caller.
+    // Caller has the context (sale, edit, quote) to set the right
+    // event-type, so the caller chooses the addAudit label.
+    var auditMsg = who+' attempted to sell "'+it.name+'" (id '+it.id+') at '
+                 +attemptedNative+' — below minimum '+minNative
+                 +' by '+shortBy+'. Blocked.';
+    // Notify owner via WhatsApp for non-owners, so they see attempts
+    // in real time. Owner blocking themselves doesn't need a WA ping —
+    // they've already seen the on-screen block.
     var isOwner = SESSION.level === 'owner' || SESSION.isSuperAdmin;
-    if(isOwner){
-      return {block:false, msg:'⚠ Price of '+fmt(priceDisplay/CUR.rate)+' is below the minimum sell price of '+fmt(it.minSp)+' for this item. Do you want to proceed?'};
-    } else {
-      // Alert owner immediately via WhatsApp
-      var _sName = SESSION.name || SESSION.level || 'Staff';
-      setTimeout(function(){ _waOwnerMinBlock(it.name, priceDisplay, it.minSp, _sName); }, 200);
-      return {block:true, msg:'Selling below minimum price for '+it.name+' is not permitted. Minimum: '+fmt(it.minSp)+'. Please ask the owner to approve this sale.'};
+    if(!isOwner){
+      setTimeout(function(){ _waOwnerMinBlock(it.name, priceDisplay, it.minSp, who); }, 200);
     }
+    return {block:true, msg:msg, auditMsg:auditMsg};
   }
   return null;
 }
 
-// Updates the warning hint below cs-amt in the Create Sale modal
+// Updates the warning hint below cs-amt in the Create Sale modal.
+// All below-minimum prices are blocking (no role can override), so the
+// hint is always red. Surfaces issues live as the user types — they
+// can see the block before clicking Save.
 function _csCheckMinSpWarn(){const _s=_L();
   var warn = document.getElementById('cs-minsp-warn');
   if(!warn) return;
-  // Check all line item rows for minimum price violations
   var lineRows = Array.from(document.querySelectorAll('#cs-line-rows .cs-line-row'));
   var messages = [];
-  var hasBlock = false;
   lineRows.forEach(function(row){
     var sel   = row.querySelector('.cs-inv-sel');
     var price = parseFloat(row.querySelector('.cs-line-price')?.value)||0;
     if(!sel || !sel.value || sel.value==='__custom__' || !price) return;
     var check = _checkMinSp(sel.value, price);
-    if(check){ if(check.block) hasBlock=true; messages.push(check.msg); }
+    if(check){ messages.push(check.msg); }
   });
-  // Also check legacy single-item field
   var legacyInv = document.getElementById('cs-inv');
   var legacyAmt = parseFloat(document.getElementById('cs-amt')?.value)||0;
   if(legacyInv && legacyInv.value && legacyInv.value!=='__custom__' && legacyAmt){
     var lChk = _checkMinSp(legacyInv.value, legacyAmt);
-    if(lChk){ if(lChk.block) hasBlock=true; messages.push(lChk.msg); }
+    if(lChk){ messages.push(lChk.msg); }
   }
   if(messages.length > 0){
-    warn.innerHTML = messages.map(function(m){ return '<div>⚠ '+m+'</div>'; }).join('');
+    warn.innerHTML = messages.map(function(m){ return '<div>'+m+'</div>'; }).join('')
+      + '<div style="font-size:10px;margin-top:4px;font-weight:600;opacity:.85">'
+      + 'This sale cannot be saved until the price is at or above the minimum.</div>';
     warn.style.display='block';
-    warn.style.borderLeftColor = hasBlock?'var(--r)':'var(--y)';
-    warn.style.color = hasBlock?'var(--r)':'var(--y)';
-    warn.style.background = hasBlock?'rgba(220,38,38,.06)':'rgba(234,179,8,.06)';
-    if(hasBlock) warn.innerHTML += '<div style="font-size:10px;margin-top:4px;font-weight:600">'+_s.sal_min_price_warn+'</div>';
+    warn.style.borderLeftColor = 'var(--r)';
+    warn.style.color = 'var(--r)';
+    warn.style.background = 'rgba(220,38,38,.06)';
   } else {
     warn.style.display='none';
   }
@@ -7159,19 +7190,31 @@ function _saveSale(){var _s=_L();
   // Require at least one line item with a product/service selected
   var hasItem = lineItems.some(function(r){ return r.invId || r.svcId || r.name; });
   if(!hasItem){toast(BIZ.language==='fr'?'Veuillez sélectionner au moins un article':'Please select at least one item','error');return;}
-  // ── Minimum price enforcement ──────────────────────────────
-  var _minBlock=false, _minOwnerWarn=[];
+  // ── Minimum price enforcement (HARD BLOCK for everyone) ─────────
+  // The rule applies to all roles including owner. If a sale genuinely
+  // needs to go below minimum, the owner must update the item's minSp
+  // in Inventory first — itself a tracked action — and then record the
+  // sale. This forces the decision to be deliberate rather than ambient.
+  var _blockedAttempts = [];
   lineItems.forEach(function(li){
     if(!li.invId||li.invId==='__custom__') return;
     var chk=_checkMinSp(li.invId, li.price);
     if(!chk) return;
-    if(chk.block){ _minBlock=true; toast(chk.msg,'error'); }
-    else { _minOwnerWarn.push(chk.msg); }
+    _blockedAttempts.push(chk);
   });
-  if(_minBlock) return;
-  // Owner sees warning but can proceed — log it
-  if(_minOwnerWarn.length>0){
-    addAudit('Below-minimum price override', _minOwnerWarn.join(' | '));
+  if(_blockedAttempts.length > 0){
+    // Audit every attempt — keeps a record of all below-minimum
+    // attempts regardless of which user made them. Each attempt
+    // becomes a separate row in the audit log so they can be
+    // reviewed and counted later.
+    _blockedAttempts.forEach(function(b){
+      addAudit('Min price block', b.auditMsg);
+    });
+    // Show the user every blocked line in one toast so they know
+    // exactly what to adjust. The toast styling will make them
+    // re-examine prices before clicking save again.
+    toast(_blockedAttempts.map(function(b){return b.msg;}).join('\n'), 'error');
+    return; // block save
   }
   var custObj=D.cust.find(function(x){return x.id===custId;});
   var cust=custObj?custObj.name:custId;
@@ -8186,6 +8229,27 @@ function _saveQuote(){
     var u = l.unit && l.unit.toLowerCase()!=='each' ? ' '+l.unit : '';
     return (l.qty!==1 ? l.qty+u+' × ' : '') + l.desc;
   }).filter(Boolean).join(', ') || 'Quote';
+
+  // ── Minimum price enforcement on quote save ────────────────────
+  // Quotes are pre-sale commitments; if accepted and converted to an
+  // invoice, the same prices flow through. So block at quote save too,
+  // not just at sale save. Line items match inventory by name (no
+  // invId stored on quote lines — they're free-text desc fields).
+  var _qBlocked = [];
+  lines.forEach(function(l){
+    var invMatch = D.inv.find(function(i){ return i.name === l.desc; });
+    if(!invMatch) return; // custom item or service — no floor
+    var chk = _checkMinSp(invMatch.id, l.price);
+    if(chk) _qBlocked.push(chk);
+  });
+  if(_qBlocked.length > 0){
+    _qBlocked.forEach(function(b){
+      addAudit('Min price block', b.auditMsg + ' (quote save)');
+    });
+    toast(_qBlocked.map(function(b){return b.msg;}).join('\n'), 'error');
+    return;
+  }
+
   var rr = CUR.rate||1;
   var sub = lines.reduce(function(a,l){return a+l.qty*l.price;},0) / rr;
   var taxPct = parseFloat(document.getElementById('inv-tax')?.value)||0;
@@ -8354,6 +8418,25 @@ function _saveQuoteEdit(quoteId){
     if(desc || price>0) lines.push({desc:desc, name:desc, qty:qty||1, unit:unit, price:price});
   });
   if(!lines.length){ toast(_L().t_add_line_price,'error'); return; }
+
+  // ── Minimum price enforcement on quote edit ────────────────────
+  // Same rule as _saveQuote: block any line that goes below the
+  // matched inventory item's minSp, with audit logging on every
+  // attempt regardless of role.
+  var _qeBlocked = [];
+  lines.forEach(function(l){
+    var invMatch = D.inv.find(function(i){ return i.name === l.desc; });
+    if(!invMatch) return;
+    var chk = _checkMinSp(invMatch.id, l.price);
+    if(chk) _qeBlocked.push(chk);
+  });
+  if(_qeBlocked.length > 0){
+    _qeBlocked.forEach(function(b){
+      addAudit('Min price block', b.auditMsg + ' (quote edit ' + quoteId + ')');
+    });
+    toast(_qeBlocked.map(function(b){return b.msg;}).join('\n'), 'error');
+    return;
+  }
 
   var itemsStr = lines.map(function(l){
     var u = l.unit && l.unit.toLowerCase()!=='each' ? ' '+l.unit : '';
