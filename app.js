@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1780452007");
+console.log("ShopTrack v2.7 - build:1780452383");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -20318,6 +20318,65 @@ function _dbErr(ctx, err){
 }
 
 // ── Load all business data from Supabase into D ──────────────
+// Background loader for inventory photos. Used when the main inventory
+// SELECT timed out (typically because img_data_url/photo_data_urls hold
+// base64 blobs that bloat row size). Queries photo columns in small
+// batches per item-id chunk, so each request stays under the statement
+// timeout window. Items in D.inv get photos populated as the batches
+// arrive — the inventory page re-render picks them up on the next nav.
+//
+// Failures are non-fatal. If a chunk fails we move on; the user can
+// always view individual items (which lazy-load their own photo) or
+// run migrateAllPhotosToStorage() to permanently move photos to
+// Supabase Storage and shrink the row size.
+async function _loadInvPhotosInBackground(bizId){
+  if(!_sb || !bizId) return;
+  if(!Array.isArray(D.inv) || !D.inv.length) return;
+  var ids = D.inv.map(function(i){return i.id;});
+  var BATCH = 5;
+  var loaded = 0, failed = 0;
+  for(var start = 0; start < ids.length; start += BATCH){
+    var chunk = ids.slice(start, start+BATCH);
+    try {
+      var res = await _sb.from('inventory')
+        .select('id,img_data_url,photo_data_urls')
+        .eq('biz_id', bizId)
+        .in('id', chunk);
+      if(res.error){
+        failed += chunk.length;
+        console.warn('[photos] batch failed for ids:', chunk.join(','), '·', res.error.message);
+        // Wait a beat before continuing — gives DB room if it's hot.
+        await new Promise(function(r){setTimeout(r,500);});
+        continue;
+      }
+      (res.data||[]).forEach(function(row){
+        var item = D.inv.find(function(x){return x.id === row.id;});
+        if(!item) return;
+        if(row.img_data_url) item.imgDataUrl = row.img_data_url;
+        if(row.photo_data_urls){
+          // Stored as JSONB → may arrive as array or string
+          var p = row.photo_data_urls;
+          if(typeof p === 'string'){
+            try { p = JSON.parse(p); } catch(_){ p = null; }
+          }
+          if(Array.isArray(p)) item.photoDataUrls = p;
+        }
+        loaded++;
+      });
+    } catch(e){
+      failed += chunk.length;
+      console.warn('[photos] batch threw:', e.message);
+    }
+    // Small breath between batches so we don't hammer the DB.
+    await new Promise(function(r){setTimeout(r,200);});
+  }
+  console.log('[photos] background load complete:', loaded, 'photos loaded,', failed, 'failed');
+  // Refresh the page if user is currently on inventory so photos show up.
+  try { if(typeof curPage !== 'undefined' && curPage === 'inventory') nav('inventory'); } catch(_){}
+  // Persist with photos populated so next visit doesn't need this dance.
+  try { await _idbSave(bizId, 'inv', D.inv); } catch(_){}
+}
+
 async function _dbLoadBizData(bizId){
   if(!_sb || !bizId) return;
   // Reset the schema-drift tracker. The slim retry below repopulates this
@@ -20366,10 +20425,22 @@ async function _dbLoadBizData(bizId){
       console.warn('[DB] Inventory full SELECT failed ('+(_invErr||'500')+') — retrying with explicit column list...');
       // CORE COLUMNS — these have shipped since v1 and are guaranteed
       // to exist on every deployment.
+      //
+      // IMPORTANT: img_data_url and photo_data_urls are EXCLUDED here.
+      // If the user has photos still stored as base64 in these columns
+      // (i.e. they haven't run migrateAllPhotosToStorage() yet), the row
+      // weight can be 100KB-2MB per item — large enough that Postgres
+      // can't assemble the response within the statement timeout. The
+      // bootstrap fell into the same timeout the original full-SELECT
+      // hit and the user was effectively stuck. Photos load via a
+      // separate light-touch path below (per-item, async) once the
+      // basic inventory list is rendering. Items with Storage URLs in
+      // photo_data_urls aren't large because the column holds short
+      // URLs, not base64 — but until we know which scheme each row uses,
+      // it's safer to skip both during this fallback.
       var _coreCols = ['id','biz_id','sku','name','cat','brand','status','condition',
                        'sp','cost','rp','deposit','min_sp','min_stock','qty',
-                       'color','size','description','rented','img','img_color',
-                       'img_data_url','photo_data_urls'];
+                       'color','size','description','rented','img','img_color'];
       // OPTIONAL COLUMNS — added in later versions. May not exist on
       // older Supabase deployments. The strip-and-retry below drops
       // any that Postgres reports missing.
@@ -20402,7 +20473,16 @@ async function _dbLoadBizData(bizId){
         break;
       }
       if(!_invResult.error){
-        console.log('[DB] inventory retry OK:', (_invResult.data||[]).length, 'items');
+        console.log('[DB] inventory retry OK:', (_invResult.data||[]).length, 'items (photos deferred)');
+        // Photos were dropped from the slim retry to avoid statement
+        // timeout. Schedule a background loader to fetch them in
+        // small batches AFTER the basic inventory list is rendering.
+        // Each batch queries just photo columns for ≤5 items at a
+        // time — small enough that even base64-bloated rows respond
+        // before the timeout. Items refresh in place as photos
+        // arrive. Failures are silent — items just show without
+        // photos and the user can retry from the item detail.
+        setTimeout(function(){ _loadInvPhotosInBackground(bizId); }, 1500);
       }
     }
     var _svcResult = svcs;
@@ -23299,9 +23379,10 @@ window.diagnoseInventory = async function(){
 
 // ── INVENTORY RECOVERY ───────────────────────────────────────────
 // One-shot recovery for the "cloud has items, memory and IDB don't"
-// scenario. Force-refetches inventory from cloud, assigns to D.inv,
-// and rewrites IDB. Use this once after a hard refresh on v238+ to
-// recover from the pre-v238 IDB-empty-cache bug.
+// scenario. Uses the same slim-column approach as the bootstrap retry
+// so it survives statement-timeout cases (photos stored as base64
+// inflate the row size beyond what Postgres can return in one shot).
+// Photos load in the background after the basic inventory arrives.
 //   Usage: recoverInventory()
 window.recoverInventory = async function(){
   if(!SESSION.bizId){ console.error('[recoverInventory] no biz session'); return; }
@@ -23313,36 +23394,83 @@ window.recoverInventory = async function(){
   console.log('  INVENTORY RECOVERY — biz_id:', SESSION.bizId);
   console.log('═══════════════════════════════════════════════════');
   try {
-    var res = await _sb.from('inventory').select('*').eq('biz_id', SESSION.bizId).limit(2000);
+    // Step 1: slim fetch (no photos, no JSONB blobs). This is what
+    // succeeded in diagnoseInventory's [3] block, so we know it works
+    // even when SELECT * times out.
+    var slim = ['id','sku','name','cat','brand','status','condition',
+                'sp','cost','rp','deposit','min_sp','min_stock','qty',
+                'color','size','description','rented','img','img_color',
+                'item_type','needs_price','vendor_id',
+                'sp_native','sp_currency','cost_native','cost_currency',
+                'rp_native','rp_currency','min_sp_native','min_sp_currency',
+                'dep_native','dep_currency'];
+    // Retry loop in case some optional columns are missing
+    var res, retries = 0;
+    while(retries++ < 10){
+      res = await _sb.from('inventory').select(slim.join(',')).eq('biz_id', SESSION.bizId).limit(2000);
+      if(!res.error) break;
+      var miss = (res.error.message||'').match(/column inventory\.(\w+) does not exist/i);
+      if(miss && miss[1]){
+        var idx = slim.indexOf(miss[1]);
+        if(idx >= 0){
+          console.warn('Dropping missing column:', miss[1]);
+          slim.splice(idx, 1);
+          continue;
+        }
+      }
+      break;
+    }
     if(res.error){
-      console.error('Cloud fetch failed:', res.error.message);
-      console.error('Cannot recover — check Supabase RLS or connection.');
+      console.error('Slim cloud fetch also failed:', res.error.message);
+      console.error('This is unusual. Try refreshing the page; if persistent, contact support.');
       return;
     }
     var rows = res.data || [];
-    console.log('Cloud returned', rows.length, 'items.');
+    console.log('Cloud returned', rows.length, 'items (basic columns).');
     if(!rows.length){
-      console.warn('Cloud has 0 items for this biz. Nothing to recover. '
-        +'If items should exist, check Supabase directly.');
+      console.warn('Cloud has 0 items for this biz. Nothing to recover.');
       return;
     }
+
+    // Step 2: pull non-recipe JSONB blobs (recipe, cost_lines) in a
+    // small follow-up call. These are usually small even when present.
+    try {
+      var jsonRes = await _sb.from('inventory').select('id,recipe,cost_lines').eq('biz_id', SESSION.bizId).limit(2000);
+      if(!jsonRes.error){
+        var blobMap = {};
+        (jsonRes.data||[]).forEach(function(r){ blobMap[r.id] = r; });
+        rows.forEach(function(r){
+          var b = blobMap[r.id];
+          if(b){
+            r.recipe = b.recipe;
+            r.cost_lines = b.cost_lines;
+          }
+        });
+        console.log('Loaded recipe/cost_lines for', Object.keys(blobMap).length, 'items.');
+      }
+    } catch(_){ /* non-fatal, items just won't show recipes until reload */ }
+
+    // Step 3: map to in-memory, assign, persist IDB.
     var fresh = rows.map(_dbToInv);
     D.inv = fresh;
     console.log('D.inv set to', D.inv.length, 'items.');
-
-    // Force-rewrite IDB so subsequent loads use the good cache. We
-    // bypass _safeSave's guard because we explicitly want to overwrite.
     await _idbSave(SESSION.bizId, 'inv', D.inv);
     console.log('IDB inv cache rewritten with', D.inv.length, 'items.');
 
-    // Refresh the page UI if currently on inventory.
+    // Step 4: refresh UI and trigger background photo load.
     try { if(curPage === 'inventory') nav('inventory'); } catch(_){}
     if(typeof refreshLiveKpis === 'function') refreshLiveKpis();
+    setTimeout(function(){ _loadInvPhotosInBackground(SESSION.bizId); }, 800);
 
     console.log('═══════════════════════════════════════════════════');
-    console.log('Recovery complete. Inventory should now be visible.');
+    console.log('Recovery complete. Inventory list is visible now;');
+    console.log('photos will populate in the background over the next');
+    console.log('30-60 seconds. To make photos load faster long-term,');
+    console.log('run migrateAllPhotosToStorage() once your inventory is');
+    console.log('back — it moves photos from inline base64 to Supabase');
+    console.log('Storage and shrinks row size dramatically.');
     console.log('═══════════════════════════════════════════════════');
-    toast('Inventory recovered: '+D.inv.length+' items', 'success');
+    toast('Inventory recovered: '+D.inv.length+' items (photos loading)', 'success');
   } catch(e){
     console.error('Recovery threw:', e.message);
   }
