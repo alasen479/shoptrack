@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1780247053");
+console.log("ShopTrack v2.7 - build:1780451719");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -23162,6 +23162,99 @@ window.diagnoseQuotes = async function(){
     }
   } catch(e){ console.error('[3] Cloud query threw:', e.message); }
 
+  console.log('═══════════════════════════════════════════════════');
+};
+
+// ── INVENTORY DIAGNOSTIC ─────────────────────────────────────────
+// Three-layer inventory inspection for the "no inventory visible"
+// symptom. Reports counts and a sample from each layer (memory,
+// IDB, Supabase cloud) plus the active filters that could be
+// hiding visible rows. Run when items exist somewhere but the
+// inventory page renders empty.
+//   Usage: diagnoseInventory()
+window.diagnoseInventory = async function(){
+  if(!SESSION.bizId){ console.error('[diagnoseInventory] no biz session'); return; }
+  console.log('═══════════════════════════════════════════════════');
+  console.log('  INVENTORY DIAGNOSTIC — biz_id:', SESSION.bizId);
+  console.log('  Account:', (SESSION.email||SESSION.name||'?'), '· Role:', SESSION.level);
+  console.log('═══════════════════════════════════════════════════');
+
+  // (1) In-memory
+  var memCount = (D.inv||[]).length;
+  console.log('[1] D.inv in memory:', memCount);
+  if(memCount > 0){
+    console.log('    Sample (first 3):');
+    (D.inv||[]).slice(0,3).forEach(function(i, idx){
+      console.log('     ['+idx+']', i.id, '·', i.name, '· type:', i.itemType||'resale',
+                  '· status:', i.st, '· qty:', i.qty);
+    });
+  }
+
+  // (2) IDB local cache
+  try {
+    var idb = await _idbLoad(SESSION.bizId, 'inv');
+    console.log('[2] IDB local cache:', idb ? idb.length : 'null (key not present)');
+    if(idb && idb.length){
+      console.log('    Sample (first 3):');
+      idb.slice(0,3).forEach(function(i, idx){
+        console.log('     ['+idx+']', i.id, '·', i.name);
+      });
+    }
+  } catch(e){ console.error('[2] IDB load threw:', e.message); }
+
+  // (3) Cloud — direct query
+  try {
+    var cloud = await _sb.from('inventory').select('id,name,cat,item_type,status,qty,sp').eq('biz_id', SESSION.bizId).limit(2000);
+    if(cloud.error){
+      console.error('[3] Cloud query FAILED:', cloud.error.message);
+      console.error('    Most likely cause: RLS policy is rejecting the read for this biz_id.');
+      console.error('    Check Supabase → Authentication → Policies → inventory table.');
+      console.error('    The policy should be: FOR ALL TO anon USING (true) WITH CHECK (true)');
+    } else {
+      console.log('[3] Cloud has:', (cloud.data||[]).length, 'inventory rows for this biz');
+      if((cloud.data||[]).length > 0){
+        console.log('    Sample (first 3):');
+        (cloud.data||[]).slice(0,3).forEach(function(r, idx){
+          console.log('     ['+idx+']', r.id, '·', r.name, '· type:', r.item_type||'(null)',
+                      '· status:', r.status||'(null)', '· qty:', r.qty);
+        });
+        // Type breakdown — helps spot the "all rows have unusual item_type" case
+        var typeCounts = {};
+        cloud.data.forEach(function(r){
+          var t = r.item_type || '(null)';
+          typeCounts[t] = (typeCounts[t]||0)+1;
+        });
+        console.log('    Item-type breakdown:', JSON.stringify(typeCounts));
+      }
+    }
+  } catch(e){ console.error('[3] Cloud query threw:', e.message); }
+
+  // (4) Active filters on the inventory page
+  console.log('───────────────────────────────────────────────────');
+  console.log('[4] Active filters (these could hide rows even when D.inv is populated):');
+  console.log('    Search query:', _invFilterQ || '(empty)');
+  console.log('    Category    :', _invFilterCat || '(any)');
+  console.log('    Item type   :', _invFilterType || '(any)');
+  console.log('    Status      :', _invFilterSt || '(any)');
+  console.log('    Condition   :', _invFilterCond || '(any)');
+
+  // (5) Sidebar / mobile inventory limit gating
+  console.log('───────────────────────────────────────────────────');
+  console.log('[5] Plan / limit checks:');
+  try {
+    if(typeof _overLimitBanner === 'function'){
+      var banner = _overLimitBanner('inv');
+      console.log('    Over-limit banner triggered?', banner ? 'YES — items past limit are hidden' : 'no');
+    }
+  } catch(_){ console.log('    (over-limit check failed)'); }
+
+  console.log('═══════════════════════════════════════════════════');
+  console.log('Interpretation guide:');
+  console.log('  - cloud > 0 but memory = 0 → load failed or got overwritten. Check console for [DB] errors.');
+  console.log('  - cloud = 0 → items genuinely missing from Supabase. Check if a delete happened, or biz_id mismatch.');
+  console.log('  - cloud = error → RLS policy issue. Check Supabase policies on the inventory table.');
+  console.log('  - all layers > 0 but page is empty → filter is hiding everything. Clear filters.');
+  console.log('  - cloud > 0 with all item_type values blank/unknown → schema issue.');
   console.log('═══════════════════════════════════════════════════');
 };
 
