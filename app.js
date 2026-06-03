@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1780451719");
+console.log("ShopTrack v2.7 - build:1780452007");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -21377,19 +21377,45 @@ function _queueBoot(){
 async function _idbWriteAll(bizId){
   if(!bizId || bizId === 'BIZ-001' || bizId === 'BIZ-107') return; // skip demo businesses
   try{
+    // Guard: don't persist an empty array over an existing non-empty
+    // IDB cache. This protects against a failed-cloud-load scenario
+    // wiping good local cache — exactly the bug that hid Peaches
+    // Paradise's 38 inventory items. Mechanism:
+    //   1. Page load. _idbRestoreAll reads IDB. Was 38; restored.
+    //      (After the v237 restore fix this only happens if IDB had
+    //       38; before the fix, an empty cache also overwrote D.inv.)
+    //   2. Cloud query fails silently (timeout / 5xx / RLS misconfig).
+    //   3. D.inv ends up at []. Without this guard, _idbWriteAll
+    //      would overwrite the good 38-item IDB cache with []. Next
+    //      page load would see an empty cache AND a still-failing
+    //      cloud → user stuck.
+    // For each domain, write only when D.<x> has rows OR IDB had no
+    // prior data (first run). Categories/metadata fields are always
+    // safe to overwrite since they're usually small and a true []
+    // can be intentional (no categories defined yet).
+    async function _safeSave(key, arr){
+      if(Array.isArray(arr) && arr.length) return _idbSave(bizId, key, arr);
+      // arr is empty — only persist if IDB also has nothing (first
+      // run). Otherwise leave the existing IDB cache alone.
+      var existing = await _idbLoad(bizId, key).catch(function(){return null;});
+      if(!existing || !existing.length) return _idbSave(bizId, key, arr);
+      // Leave existing cache untouched.
+      return null;
+    }
     await Promise.all([
-      _idbSave(bizId, 'inv',       D.inv),
-      _idbSave(bizId, 'cust',      D.cust),
-      _idbSave(bizId, 'sales',     D.sales),
-      _idbSave(bizId, 'rentals',   D.rentals),
-      _idbSave(bizId, 'exp',       D.exp),
-      _idbSave(bizId, 'vendors',   D.vendors),
-      _idbSave(bizId, 'purchases', D.purchases),
-      _idbSave(bizId, 'batches',   D.batches),
-      _idbSave(bizId, 'audit',     D.audit),
-      _idbSave(bizId, 'services',  D.services),
-      _idbSave(bizId, 'appts',     D.appointments),
-      _idbSave(bizId, 'quotes',    D.quotes),
+      _safeSave('inv',       D.inv),
+      _safeSave('cust',      D.cust),
+      _safeSave('sales',     D.sales),
+      _safeSave('rentals',   D.rentals),
+      _safeSave('exp',       D.exp),
+      _safeSave('vendors',   D.vendors),
+      _safeSave('purchases', D.purchases),
+      _safeSave('batches',   D.batches),
+      _safeSave('audit',     D.audit),
+      _safeSave('services',  D.services),
+      _safeSave('appts',     D.appointments),
+      _safeSave('quotes',    D.quotes),
+      // Metadata: safe to write empty — user may have cleared them.
       _idbSave(bizId, 'invCats',   D.invCats),
       _idbSave(bizId, 'expCats',   D.expCats),
       _idbSave(bizId, 'vendorCats',D.vendorCats),
@@ -21431,20 +21457,31 @@ async function _idbRestoreAll(bizId){
     var hasCache = !!(inv || sales || cust);
     if(!hasCache) return false; // no cache yet — first visit
 
-    // Restore data arrays — only override if cache has content
-    if(inv)       D.inv          = inv;
-    if(cust)      D.cust         = cust;
-    if(sales)     D.sales        = sales;
-    if(rentals)   D.rentals      = rentals;
-    if(exp)       D.exp          = exp;
-    if(vendors)   D.vendors      = vendors;
-    if(purchases) D.purchases    = purchases;
-    if(batches)   D.batches      = batches;
-    if(audit)     D.audit        = audit;
-    if(services)  D.services     = services;
-    if(appts)     D.appointments = appts;
-    if(blockedSlots) D.blockedSlots = blockedSlots;
-    if(quotes)    D.quotes       = quotes;
+    // Restore data arrays — only override when the cached array is
+    // NON-EMPTY. The original code did `if(inv) D.inv = inv;` which is
+    // truthy for empty arrays (the bug that hid Peaches Paradise's
+    // inventory). An empty cache entry just means "no offline copy
+    // yet" — we shouldn't blow away whatever D.inv started with.
+    // The follow-up cloud load will populate D.inv from Supabase; if
+    // that succeeds, _idbWriteAll persists the real data back to IDB
+    // for next time. If the cloud load fails, we keep whatever was
+    // already there (the previous run's defaults).
+    function _restoreIfData(arr, setter){
+      if(Array.isArray(arr) && arr.length) setter(arr);
+    }
+    _restoreIfData(inv,       function(v){ D.inv          = v; });
+    _restoreIfData(cust,      function(v){ D.cust         = v; });
+    _restoreIfData(sales,     function(v){ D.sales        = v; });
+    _restoreIfData(rentals,   function(v){ D.rentals      = v; });
+    _restoreIfData(exp,       function(v){ D.exp          = v; });
+    _restoreIfData(vendors,   function(v){ D.vendors      = v; });
+    _restoreIfData(purchases, function(v){ D.purchases    = v; });
+    _restoreIfData(batches,   function(v){ D.batches      = v; });
+    _restoreIfData(audit,     function(v){ D.audit        = v; });
+    _restoreIfData(services,  function(v){ D.services     = v; });
+    _restoreIfData(appts,     function(v){ D.appointments = v; });
+    _restoreIfData(blockedSlots, function(v){ D.blockedSlots = v; });
+    _restoreIfData(quotes,    function(v){ D.quotes       = v; });
 
     // Restore categories
     if(invCats && invCats.length)    D.invCats    = invCats;
@@ -23256,6 +23293,59 @@ window.diagnoseInventory = async function(){
   console.log('  - all layers > 0 but page is empty → filter is hiding everything. Clear filters.');
   console.log('  - cloud > 0 with all item_type values blank/unknown → schema issue.');
   console.log('═══════════════════════════════════════════════════');
+  console.log('Recovery: if cloud > 0 but memory = 0, run recoverInventory()');
+  console.log('═══════════════════════════════════════════════════');
+};
+
+// ── INVENTORY RECOVERY ───────────────────────────────────────────
+// One-shot recovery for the "cloud has items, memory and IDB don't"
+// scenario. Force-refetches inventory from cloud, assigns to D.inv,
+// and rewrites IDB. Use this once after a hard refresh on v238+ to
+// recover from the pre-v238 IDB-empty-cache bug.
+//   Usage: recoverInventory()
+window.recoverInventory = async function(){
+  if(!SESSION.bizId){ console.error('[recoverInventory] no biz session'); return; }
+  if(!_sb || !navigator.onLine){
+    console.error('[recoverInventory] need Supabase + online connection');
+    return;
+  }
+  console.log('═══════════════════════════════════════════════════');
+  console.log('  INVENTORY RECOVERY — biz_id:', SESSION.bizId);
+  console.log('═══════════════════════════════════════════════════');
+  try {
+    var res = await _sb.from('inventory').select('*').eq('biz_id', SESSION.bizId).limit(2000);
+    if(res.error){
+      console.error('Cloud fetch failed:', res.error.message);
+      console.error('Cannot recover — check Supabase RLS or connection.');
+      return;
+    }
+    var rows = res.data || [];
+    console.log('Cloud returned', rows.length, 'items.');
+    if(!rows.length){
+      console.warn('Cloud has 0 items for this biz. Nothing to recover. '
+        +'If items should exist, check Supabase directly.');
+      return;
+    }
+    var fresh = rows.map(_dbToInv);
+    D.inv = fresh;
+    console.log('D.inv set to', D.inv.length, 'items.');
+
+    // Force-rewrite IDB so subsequent loads use the good cache. We
+    // bypass _safeSave's guard because we explicitly want to overwrite.
+    await _idbSave(SESSION.bizId, 'inv', D.inv);
+    console.log('IDB inv cache rewritten with', D.inv.length, 'items.');
+
+    // Refresh the page UI if currently on inventory.
+    try { if(curPage === 'inventory') nav('inventory'); } catch(_){}
+    if(typeof refreshLiveKpis === 'function') refreshLiveKpis();
+
+    console.log('═══════════════════════════════════════════════════');
+    console.log('Recovery complete. Inventory should now be visible.');
+    console.log('═══════════════════════════════════════════════════');
+    toast('Inventory recovered: '+D.inv.length+' items', 'success');
+  } catch(e){
+    console.error('Recovery threw:', e.message);
+  }
 };
 
 // ── RECIPE READINESS DIAGNOSTIC ──────────────────────────────────
