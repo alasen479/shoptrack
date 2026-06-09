@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1780452383");
+console.log("ShopTrack v2.7 - build:1781036023");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -41439,6 +41439,7 @@ function mEditApptCompleted(id){const _s=_L();
   if(!a){ toast(_L().t_not_found,'error'); return; }
   var rate = CUR.rate||1;
   var sym  = CUR.symbol;
+  var linkedSale = a.saleId ? D.sales.find(function(s){return s.id===a.saleId;}) : null;
   var body = '<div class="fg-2">'
     +'<div class="fg"><label class="fl">'+_L().ui_date+'</label>'
     +'<input class="fi" type="date" id="eac-date" value="'+a.date+'"/></div>'
@@ -41454,7 +41455,22 @@ function mEditApptCompleted(id){const _s=_L();
     +'<option'+(a.payMethod==='Card'?' selected':'')+'>Card</option>'
     +'</select></div>'
     +'<div class="fg"><label class="fl">'+_L().ui_notes+'</label>'
-    +'<textarea class="ft" id="eac-notes" style="min-height:60px">'+(a.notes||'')+'</textarea></div>';
+    +'<textarea class="ft" id="eac-notes" style="min-height:60px">'+_esc(a.notes||'')+'</textarea></div>';
+  // Clear-revenue affordance. Only shown when there is revenue to
+  // clear — no point offering it on a zero-amount appointment. Sits
+  // visually below the form, separated by a divider, so it doesn't
+  // compete with the primary save action. The button itself sets up
+  // the actual confirm + cascade in _clearApptRevenue.
+  if((a.totalAmt||0) > 0){
+    body += '<hr style="margin:14px 0 10px;border:none;border-top:1px solid var(--border)"/>'
+      +'<div style="background:rgba(220,38,38,.05);border:1px solid rgba(220,38,38,.25);border-radius:6px;padding:10px 12px">'
+      +'<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:4px">Clear revenue from this appointment</div>'
+      +'<div style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:8px">Sets the amount to 0 and removes the appointment from revenue KPIs. The appointment record is kept (so it still appears in your service history)'
+      +(linkedSale ? '. The linked sale '+_esc(linkedSale.id)+' ('+fmtMoney(linkedSale,'total')+') will be deleted at the same time so customer balance and revenue stay consistent.' : '.')
+      +'</div>'
+      +'<button type="button" class="btn btn-d btn-sm" onclick="_clearApptRevenue(\''+id+'\')">Clear revenue</button>'
+      +'</div>';
+  }
   var footer = '<button class="btn btn-s" onclick="closeModal()">'+_L().ui_cancel+'</button>'
     +' <button class="btn btn-p" id="eac-save-btn">'+_L().ui_save+'</button>';
   modal(_L().appt_edit_title, body, footer, 'sm');
@@ -41463,6 +41479,65 @@ function mEditApptCompleted(id){const _s=_L();
     var btn = document.getElementById('eac-save-btn');
     if(btn) btn.onclick = function(){ _saveApptEdit(id); };
   }, 30);
+}
+
+// Zero out an appointment's revenue without deleting the appointment.
+// Use case: the service happened (booking history should reflect it)
+// but the revenue was wrong — comp, refund, double-counted because a
+// separate sale was recorded by mistake, etc.
+//
+// Side effects, in order:
+//   1. Linked sale (if any) is deleted + customer's spent/orders are
+//      reversed. This is non-optional because keeping the sale while
+//      zeroing the appointment leaves the books inconsistent (the sale
+//      keeps the revenue the appointment is supposed to be losing).
+//   2. Appointment's totalAmt + native pair are zeroed.
+//   3. Appointment's saleId link cleared.
+//   4. Audit log captures previous amount, who acted, and whether a
+//      sale was cascaded.
+function _clearApptRevenue(id){
+  var a = D.appointments.find(function(x){return x.id===id;});
+  if(!a){ toast(_L().t_not_found,'error'); return; }
+  if(!(a.totalAmt > 0)){ toast('Appointment has no revenue to clear','error'); return; }
+  var previousAmt = a.totalAmt;
+  var linkedSale = a.saleId ? D.sales.find(function(s){return s.id===a.saleId;}) : null;
+  var confirmMsg = 'Clear revenue of '+fmtApptAmt(a)+' from this appointment?\n\n'
+    +'The appointment record stays as Completed. Revenue KPIs will drop accordingly.';
+  if(linkedSale){
+    confirmMsg += '\n\nThe linked sale '+linkedSale.id+' will also be deleted so customer balance stays consistent.';
+  }
+  confirmMsg += '\n\nThis will be recorded in the audit log.';
+  if(!confirm(confirmMsg)) return;
+  // (1) Cascade-delete linked sale + reverse customer impact
+  var cascadeNote = '';
+  if(linkedSale){
+    if(linkedSale.custId){
+      var cust = D.cust.find(function(c){return c.id===linkedSale.custId;});
+      if(cust){
+        cust.spent = Math.max(0, (cust.spent||0) - (linkedSale.total||linkedSale.amt||0));
+        cust.orders = Math.max(0, (cust.orders||1) - 1);
+        _dbSaveCust(cust);
+      }
+    }
+    D.sales = (D.sales||[]).filter(function(s){return s.id !== linkedSale.id;});
+    if(typeof _dbDelSale === 'function'){ _dbDelSale(linkedSale.id); }
+    cascadeNote = ' + sale '+linkedSale.id+' deleted';
+  }
+  // (2) Zero out revenue. Both base and native to keep the FX-aware
+  //     formatter from showing the old native value after the clear.
+  a.totalAmt = 0;
+  a.totalAmtNative = 0;
+  a.totalAmtCurrency = a.totalAmtCurrency || CUR.code;
+  // (3) Break the link
+  a.saleId = '';
+  _dbSaveAppt(a);
+  // (4) Audit + UI refresh
+  addAudit('Appointment revenue cleared',
+    id+' was '+fmt(previousAmt)+cascadeNote);
+  refreshLiveKpis();
+  closeModal();
+  toast('Revenue cleared for '+id,'success');
+  nav('appointments');
 }
 
 
