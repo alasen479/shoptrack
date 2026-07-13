@@ -76,27 +76,59 @@ exports.handler = async function (event) {
     return { statusCode: 200, headers, body: JSON.stringify({ received: true }) };
   }
 
-  // ── Verify the App Webhook Key ────────────────────────────
-  // CamPay sends the App Webhook Key value in the X-Campay-Signature header.
-  // We compare it directly (it is not an HMAC — it is the key itself).
-  const incomingKey = event.headers['x-campay-signature'] || '';
-
-  if (WEBHOOK_KEY) {
-    if (incomingKey !== WEBHOOK_KEY) {
-      console.warn('[campay-webhook] Webhook key mismatch — rejecting request');
-      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Invalid webhook key' }) };
-    }
-  } else {
-    console.warn('[campay-webhook] CAMPAY_WEBHOOK_KEY not set — skipping key check. Set it in Netlify env vars.');
-  }
-
-  // ── Parse payload ─────────────────────────────────────────
+  // ── Parse payload first (needed for signature-in-body schemes) ──
   let payload;
   try {
     payload = JSON.parse(event.body || '{}');
   } catch {
     console.error('[campay-webhook] Invalid JSON body');
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) };
+  }
+
+  // ── Verify the App Webhook Key ────────────────────────────
+  // CamPay's exact delivery scheme is undocumented publicly, so we accept
+  // any of the three schemes providers commonly use, all gated on the key:
+  //   1. Raw key in the X-Campay-Signature header (exact match)
+  //   2. Raw key in a `signature` field of the JSON payload (exact match)
+  //   3. A JWT in either location, HS256-signed with the App Webhook Key
+  // Anything else is rejected 401 — with masked diagnostics logged so the
+  // real scheme is identifiable from one failed delivery without leaking
+  // secret material into logs.
+  const crypto = require('crypto');
+  const _mask = (s) => s ? (String(s).slice(0, 4) + '… len=' + String(s).length) : '(empty)';
+
+  function _verifyJwtHS256(token, key) {
+    const parts = String(token).split('.');
+    if (parts.length !== 3) return false;
+    try {
+      const expected = crypto.createHmac('sha256', key)
+        .update(parts[0] + '.' + parts[1])
+        .digest('base64url');
+      return crypto.timingSafeEqual(Buffer.from(parts[2]), Buffer.from(expected));
+    } catch { return false; }
+  }
+
+  if (WEBHOOK_KEY) {
+    const headerSig  = event.headers['x-campay-signature'] || '';
+    const bodySig    = (payload && payload.signature) ? String(payload.signature) : '';
+    const candidates = [headerSig, bodySig].filter(Boolean);
+
+    const verified = candidates.some(c =>
+      c === WEBHOOK_KEY || _verifyJwtHS256(c, WEBHOOK_KEY)
+    );
+
+    if (!verified) {
+      // Masked diagnostics — enough to identify the scheme, never the secret
+      console.warn('[campay-webhook] Webhook key mismatch — rejecting request');
+      console.warn('[campay-webhook][diag] header names:', Object.keys(event.headers || {}).join(', '));
+      console.warn('[campay-webhook][diag] x-campay-signature:', _mask(headerSig),
+        '| payload.signature:', _mask(bodySig),
+        '| payload keys:', Object.keys(payload || {}).join(', '),
+        '| expected key:', _mask(WEBHOOK_KEY));
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Invalid webhook key' }) };
+    }
+  } else {
+    console.warn('[campay-webhook] CAMPAY_WEBHOOK_KEY not set — skipping key check. Set it in Netlify env vars.');
   }
 
   const {
