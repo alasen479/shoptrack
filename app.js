@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1781036023");
+console.log("ShopTrack v2.7 - build:1783963599");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -18480,34 +18480,40 @@ async function mBillingCharge(bizId){const _s=_L();
     <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">${_s.ui_phone}</span><span style="font-family:var(--mono);color:var(--c)">${_esc(phone)}</span></div>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
-   <button class="btn btn-p" id="mbc-send-btn" onclick="(async function(){
-     var btn=document.getElementById('mbc-send-btn');
-     btn.disabled=true; btn.textContent='⏳ Sending…';
-     try{
-       var r = await _callBillingFn('charge_one','${bizId}');
-       console.log('[mBillingCharge] result:', r);
-       if(r.charged&&r.charged.length){
-         closeModal();
-         toast(_L().t_pay_req_sent + _esc(b.owner||b.name) + ' — ' + (_L().t_saved2 || 'waiting'),'success');
-         addAudit('Subscription charge initiated','${bizId} — ${_esc(b.name)} — ${amt} XAF');
-       } else if(r.errors&&r.errors.length){
-         var errMsg = r.errors[0].error || 'Unknown error';
-         toast('❌ '+errMsg,'error');
-         btn.disabled=false; btn.textContent='📱 Send Request';
-       } else if(r.skipped&&r.skipped.length){
-         var skipMsg = r.skipped[0].reason || 'Business was skipped';
-         toast(_L().t_skipped+skipMsg,'error');
-         btn.disabled=false; btn.textContent='📱 Send Request';
-       } else {
-         toast(_L().t_campay_warn,'error');
-         btn.disabled=false; btn.textContent='📱 Send Request';
-       }
-     }catch(e){
-       console.error('[mBillingCharge] error:', e);
-       toast('❌ '+e.message,'error');
-       btn.disabled=false; btn.textContent='📱 Send Request';
-     }
-   })()">📱 Send Payment Request</button>`);
+   <button class="btn btn-p" id="mbc-send-btn">📱 Send Payment Request</button>`);
+
+  // Handler attached programmatically — inline onclick breaks when the business
+  // name contains an apostrophe (e.g. "Zuna's Choice"): _esc() emits &#039;, the
+  // HTML parser decodes it back to ' before compiling the JS, and the stray quote
+  // terminates the string literal -> "SyntaxError: missing ) after argument list".
+  // A closure needs no string interpolation, so no escaping problem exists.
+  const _mbcBtn = document.getElementById('mbc-send-btn');
+  if(_mbcBtn) _mbcBtn.onclick = async function(){
+    const btn = _mbcBtn;
+    btn.disabled = true; btn.textContent = '\u23f3 Sending\u2026';
+    try{
+      const r = await _callBillingFn('charge_one', bizId);
+      console.log('[mBillingCharge] result:', r);
+      if(r.charged && r.charged.length){
+        closeModal();
+        toast(_L().t_pay_req_sent + _esc(b.owner||b.name) + ' \u2014 ' + (_L().t_saved2 || 'waiting'),'success');
+        addAudit('Subscription charge initiated', bizId + ' \u2014 ' + b.name + ' \u2014 ' + amt + ' XAF');
+      } else if(r.errors && r.errors.length){
+        toast('\u274c ' + (r.errors[0].error || 'Unknown error'),'error');
+        btn.disabled = false; btn.textContent = '\ud83d\udcf1 Send Request';
+      } else if(r.skipped && r.skipped.length){
+        toast(_L().t_skipped + (r.skipped[0].reason || 'Business was skipped'),'error');
+        btn.disabled = false; btn.textContent = '\ud83d\udcf1 Send Request';
+      } else {
+        toast(_L().t_campay_warn,'error');
+        btn.disabled = false; btn.textContent = '\ud83d\udcf1 Send Request';
+      }
+    }catch(e){
+      console.error('[mBillingCharge] error:', e);
+      toast('\u274c ' + e.message,'error');
+      btn.disabled = false; btn.textContent = '\ud83d\udcf1 Send Request';
+    }
+  };
 }
 
 // ── mBillingRemind ───────────────────────────────────────────────────────
