@@ -3714,7 +3714,7 @@ async function _doSubPayNow(currentExpiry, newExpiry, amtXAF){var _s=_L();
     // Call the SA billing proxy using query params to bypass Netlify WAF
     // Pure GET — WAF blocks POST bodies with payment keywords
     const qp = new URLSearchParams({ a: 'charge_one', b: SESSION.bizId, p: phone, e: newExpiry });
-    const resp = await fetch('/.netlify/functions/sub-engine?' + qp.toString()); // GET
+    const resp = await fetch('/.netlify/functions/campay-billing?' + qp.toString()); // GET
     let data;
     try { data = await resp.json(); } catch(e) {
       if(btn){ btn.disabled=false; btn.textContent='📱 Request Payment — '+amtXAF.toLocaleString()+' XAF'; }
@@ -18447,7 +18447,7 @@ async function _callBillingFn(action, bizId, extra){const _s=_L();
   if(extra?.days)      params.set('d', String(extra.days));
   if(extra?.phone)     params.set('p', extra.phone);
   if(extra?.newExpiry) params.set('e', extra.newExpiry);
-  const url = '/.netlify/functions/sub-engine?' + params.toString();
+  const url = '/.netlify/functions/campay-billing?' + params.toString();
   let resp, data;
   try { resp = await fetch(url); } // GET — no body
   catch(netErr){ throw new Error('Network error: ' + netErr.message); }
