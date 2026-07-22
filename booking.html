@@ -226,6 +226,17 @@ textarea.fi{resize:vertical;min-height:70px}
         <div class="badge">✓ Awaiting Confirmation</div>
         <div class="success-sub" id="success-sub">Your appointment request has been received.</div>
         <div id="success-details" style="text-align:left;margin-bottom:20px"></div>
+
+        <!-- ── Add to calendar (client side) ── -->
+        <div id="cal-block" style="margin-bottom:16px;text-align:left">
+          <div style="font-size:13px;font-weight:800;color:var(--ink);margin-bottom:8px">📆 Add this to your calendar</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-s" style="flex:1;font-size:13px" onclick="addBookingToGoogle()">Google Calendar</button>
+            <button class="btn btn-s" style="flex:1;font-size:13px" onclick="downloadBookingIcs()">Apple / Outlook</button>
+          </div>
+          <div style="font-size:11px;color:var(--text2);margin-top:6px">Add it now so you don't forget the appointment.</div>
+          <div id="cal-msg" style="display:none;font-size:12px;color:var(--r);margin-top:6px"></div>
+        </div>
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;margin-bottom:16px;text-align:left;display:flex;gap:10px;align-items:flex-start">
           <div style="font-size:22px">📲</div>
           <div>
@@ -765,6 +776,169 @@ function renderSummary(){
 }
 
 // ── Confirm booking ───────────────────────────────────────────
+// ── Add-to-calendar (client side) ─────────────────────────────────────────
+// Populated by confirmBooking() so the buttons on the confirmation screen
+// have something to export.
+let lastBooking = null;
+
+// RFC 5545 TEXT escaping: backslash, comma and semicolon are escaped;
+// newlines become the literal two-character sequence \n; control chars go.
+function _bkIcsEsc(s){
+  if(s == null) return '';
+  return String(s)
+    .replace(/\\/g, '\\\\')
+    .replace(/\r\n/g, '\\n')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;')
+    .replace(/[\x00-\x08\x0B-\x1F\x7F]/g, '');
+}
+
+// RFC 5545 line folding: no content line may exceed 75 OCTETS (not characters).
+// Accented characters, em-dashes and emoji are multi-byte in UTF-8, so folding
+// on character count silently overruns the limit. We measure encoded bytes and
+// iterate by code point (Array.from) so an emoji's surrogate pair is never
+// split across two lines. Continuation lines begin with a single space, which
+// consumes one of the 75 octets — hence a 74-octet payload limit after the first.
+function _bkIcsFold(line){
+  var enc = new TextEncoder();
+  if(enc.encode(line).length <= 75) return line;
+  var parts = [], cur = '', curBytes = 0, limit = 75;
+  var chars = Array.from(line);
+  for(var i = 0; i < chars.length; i++){
+    var ch = chars[i], n = enc.encode(ch).length;
+    if(curBytes + n > limit){
+      parts.push(cur);
+      cur = ch; curBytes = n; limit = 74;
+    } else {
+      cur += ch; curBytes += n;
+    }
+  }
+  if(cur) parts.push(cur);
+  return parts.join('\r\n ');
+}
+
+// 'YYYY-MM-DD' + 'HH:MM' -> 'YYYYMMDDTHHMM00' (floating local time).
+// Deliberately floating (no Z, no TZID): the appointment happens at that
+// wall-clock time where the business is, and a local client's device is in
+// that same zone. Adding a business timezone field later would let us emit
+// a proper TZID for clients booking from abroad.
+function _bkStamp(date, time){
+  return String(date).replace(/-/g, '') + 'T' + String(time || '09:00').replace(/:/g, '') + '00';
+}
+
+function _bkUtcStamp(){
+  var d = new Date(), p = function(n){ return n < 10 ? '0' + n : '' + n; };
+  return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate())
+       + 'T' + p(d.getUTCHours()) + p(d.getUTCMinutes()) + p(d.getUTCSeconds()) + 'Z';
+}
+
+// Inline feedback — the app deliberately avoids native alert() dialogs.
+function _bkCalMsg(text){
+  var el = document.getElementById('cal-msg');
+  if(!el) return;
+  el.textContent = text;
+  el.style.display = text ? '' : 'none';
+}
+
+function _bkCalFields(){
+  if(!lastBooking) return null;
+  var b = lastBooking;
+  var summary = b.service + ' — ' + b.bizName;
+  var desc = [];
+  desc.push('Service: ' + b.service);
+  if(b.price)  desc.push('Price: ' + b.price);
+  desc.push('Booking ref: ' + b.ref);
+  if(b.notes)  desc.push('Your notes: ' + b.notes);
+  if(b.bizPhone) desc.push('To reschedule, contact ' + b.bizName + ': ' + b.bizPhone);
+  desc.push('Status: awaiting confirmation from the business.');
+  desc.push('Booked via ShopTrack — shoptrack.org');
+  return {
+    summary: summary,
+    location: b.bizName,
+    description: desc.join('\n'),
+    start: _bkStamp(b.date, b.start),
+    end:   _bkStamp(b.date, b.end)
+  };
+}
+
+function _bkBuildIcs(){
+  var f = _bkCalFields();
+  if(!f) return '';
+  var lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//ShopTrack//Booking//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    // Stable UID: re-importing updates the entry instead of duplicating it.
+    'UID:appt-' + lastBooking.ref + '@shoptrack.org',
+    'DTSTAMP:' + _bkUtcStamp(),
+    'DTSTART:' + f.start,
+    'DTEND:' + f.end,
+    'SUMMARY:' + _bkIcsEsc(f.summary),
+    'LOCATION:' + _bkIcsEsc(f.location),
+    'DESCRIPTION:' + _bkIcsEsc(f.description),
+    // The request is not yet confirmed by the business.
+    'STATUS:TENTATIVE',
+    'SEQUENCE:0',
+    'TRANSP:OPAQUE',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT60M',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:' + _bkIcsEsc('Appointment reminder — ' + f.summary),
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ];
+  return lines.map(_bkIcsFold).join('\r\n') + '\r\n';
+}
+
+// Apple Calendar / Outlook / anything that reads .ics
+function downloadBookingIcs(){
+  _bkCalMsg('');
+  var ics = _bkBuildIcs();
+  if(!ics){ _bkCalMsg('Could not build the calendar file — please add the appointment manually.'); return; }
+  var fname = 'appointment-' + (lastBooking.ref || 'booking') + '.ics';
+  try{
+    var supportsDownload = 'download' in document.createElement('a');
+    if(supportsDownload){
+      var blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement('a');
+      a.href = url; a.download = fname; a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+    } else {
+      // Older iOS Safari ignores the download attribute; navigating to a
+      // data URI hands the file straight to the Calendar app instead.
+      window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+    }
+  }catch(e){
+    console.error('[ics] export failed:', e);
+    window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+  }
+}
+
+// Google Calendar — opens a pre-filled event in a new tab. Times are sent
+// without a Z suffix and without ctz, so Google interprets them in the
+// viewer's own calendar timezone (correct for a local client).
+function addBookingToGoogle(){
+  _bkCalMsg('');
+  var f = _bkCalFields();
+  if(!f){ _bkCalMsg('Could not build the calendar entry — please add the appointment manually.'); return; }
+  var url = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + '&text='     + encodeURIComponent(f.summary)
+    + '&dates='    + f.start + '/' + f.end
+    + '&details='  + encodeURIComponent(f.description)
+    + '&location=' + encodeURIComponent(f.location);
+  var w = window.open(url, '_blank', 'noopener');
+  if(!w) window.location.href = url;   // popup blocked → navigate instead
+}
+
 async function confirmBooking(){
   // Client-side rate limit: max 3 bookings per 10 minutes from this browser tab
   const _rl = JSON.parse(sessionStorage.getItem('st_bk_rl') || '[]')
@@ -878,6 +1052,19 @@ async function confirmBooking(){
       <div class="summary-row"><div class="summary-icon">📅</div><div><div class="summary-lbl">Date</div><div class="summary-val">${dateFmt}</div></div></div>
       <div class="summary-row"><div class="summary-icon">🕐</div><div><div class="summary-lbl">Time</div><div class="summary-val">${timeLabel(selTime)} – ${timeLabel(selTimeEnd)}</div></div></div>
       ${confPriceRow}`;
+
+    // Snapshot what the add-to-calendar buttons need.
+    lastBooking = {
+      ref:      apptId,
+      service:  selSvc.name,
+      date:     selDate,
+      start:    selTime,
+      end:      selTimeEnd,
+      price:    fmtSvcPrice(selSvc),
+      notes:    notes || '',
+      bizName:  BIZ.name || 'Appointment',
+      bizPhone: BIZ.whatsapp || BIZ.phone || ''
+    };
 
     goStep(4);
 
