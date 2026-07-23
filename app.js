@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1783963599");
+console.log("ShopTrack v2.7 - build:1784765389");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -36255,6 +36255,169 @@ function _apptCancelNewCust(){
   const form=document.getElementById('na-new-cust-form');
   if(form) form.style.display='none';
 }
+// ── Calendar subscription feed (Tier A) ─────────────────────────────────────
+// Gives the owner a private webcal/https URL that Google Calendar and iPhone
+// can SUBSCRIBE to, so appointments keep syncing without re-importing.
+//
+// The token stored on the business row IS the credential — calendar clients
+// cannot send auth headers, so a secret in the URL is all the protocol allows.
+// Regenerating it instantly kills every previously shared copy of the link.
+
+function _calFeedUrl(token){
+  return location.origin + '/.netlify/functions/calendar-feed?t=' + encodeURIComponent(token);
+}
+
+// 32 chars of crypto-grade randomness. Falls back to Math.random only on
+// ancient browsers — still fine here, since the token is also DB-unique.
+function _calNewToken(){
+  var raw;
+  if(window.crypto && crypto.randomUUID){
+    raw = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g,'');
+  } else if(window.crypto && crypto.getRandomValues){
+    var b = new Uint8Array(24); crypto.getRandomValues(b);
+    raw = Array.from(b).map(function(x){return ('0'+x.toString(16)).slice(-2);}).join('');
+  } else {
+    raw = (Date.now().toString(36) + Math.random().toString(36).slice(2) +
+           Math.random().toString(36).slice(2)).replace(/\./g,'');
+  }
+  return 'cal_' + raw.slice(0, 32);
+}
+
+async function _calGetToken(forceNew){
+  if(!SESSION || !SESSION.bizId) throw new Error('No active business session.');
+  // _sb is the module-level Supabase client created at load time.
+  if(!_sb) throw new Error('Cloud sync is not connected.');
+
+  if(!forceNew){
+    var got = await _sb.from('businesses').select('calendar_token').eq('id', SESSION.bizId).single();
+    if(got.error && /calendar_token/i.test(got.error.message||'')){
+      var e = new Error('SCHEMA'); e.schema = true; throw e;
+    }
+    if(got.data && got.data.calendar_token) return got.data.calendar_token;
+  }
+
+  var token = _calNewToken();
+  var upd = await _sb.from('businesses').update({ calendar_token: token }).eq('id', SESSION.bizId);
+  if(upd.error){
+    if(/calendar_token/i.test(upd.error.message||'')){ var e2 = new Error('SCHEMA'); e2.schema = true; throw e2; }
+    throw new Error(upd.error.message || 'Could not save the calendar link.');
+  }
+  return token;
+}
+
+function _calCopyUrl(){
+  var el = document.getElementById('cal-feed-url');
+  if(!el) return;
+  var url = el.value || el.textContent || '';
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url)
+      .then(function(){ toast('📋 Calendar link copied','success'); })
+      .catch(function(){ _calSelectUrl(); });
+  } else { _calSelectUrl(); }
+}
+
+function _calSelectUrl(){
+  var el = document.getElementById('cal-feed-url');
+  if(el && el.select){ el.select(); toast('Press Ctrl/Cmd + C to copy','info'); }
+}
+
+// In-app confirmation (the app deliberately avoids native confirm() dialogs).
+function _calRegenerate(){
+  modal('🔄 Generate a new calendar link?',
+    '<div style="font-size:14px;line-height:1.6">'
+    + '<p style="margin:0 0 10px">This creates a brand-new link and <b>immediately breaks the old one</b>.</p>'
+    + '<p style="margin:0;color:var(--text2);font-size:13px">Use this if the link was shared with someone who should no longer see your schedule. '
+    + 'Any calendar already subscribed with the old link will stop updating, and each device must subscribe again with the new one.</p>'
+    + '</div>',
+    '<button class="btn btn-s" onclick="mCalendarSync()">Cancel</button>'
+    + '<button class="btn btn-p" onclick="_calRegenerateConfirmed()">Generate new link</button>');
+}
+
+async function _calRegenerateConfirmed(){
+  try{
+    var token = await _calGetToken(true);
+    addAudit('Calendar feed link regenerated', SESSION.bizId);
+    mCalendarSync(token);
+    toast('🔄 New calendar link generated','success');
+  }catch(e){
+    _calShowError(e);
+  }
+}
+
+function _calShowError(e){
+  if(e && e.schema){
+    modal('📲 Calendar sync — setup needed',
+      '<div style="font-size:14px;line-height:1.7">'
+      + '<p style="margin:0 0 12px">One database column is missing. Run this once in <b>Supabase → SQL Editor</b>, then reopen this window:</p>'
+      + '<pre style="background:var(--bg3);padding:12px;border-radius:var(--r8);font-size:12px;overflow-x:auto;white-space:pre-wrap">'
+      + 'alter table businesses add column if not exists calendar_token text;\n'
+      + 'create unique index if not exists businesses_calendar_token_idx\n  on businesses (calendar_token);</pre>'
+      + '</div>',
+      '<button class="btn btn-p" onclick="closeModal()">Close</button>');
+    return;
+  }
+  toast('❌ ' + ((e && e.message) || 'Could not load the calendar link'),'error');
+}
+
+async function mCalendarSync(preToken){
+  var fr = BIZ && BIZ.language === 'fr';
+
+  modal('📲 Sync appointments to your phone',
+    '<div style="padding:20px 0;text-align:center;color:var(--text2)">'
+    + '<span class="spinner" style="width:22px;height:22px;border-width:2px"></span>'
+    + '<div style="margin-top:10px;font-size:13px">Preparing your private calendar link…</div></div>');
+
+  var token;
+  try{
+    token = preToken || await _calGetToken(false);
+  }catch(e){
+    _calShowError(e);
+    return;
+  }
+
+  var url = _calFeedUrl(token);
+  var webcal = url.replace(/^https?:/, 'webcal:');
+
+  modal('📲 Sync appointments to your phone',
+    '<div style="font-size:14px;line-height:1.6">'
+
+    + '<p style="margin:0 0 14px">Subscribe once and every appointment — new, changed or cancelled — appears on your phone automatically.</p>'
+
+    + '<div style="margin-bottom:6px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)">Your private calendar link</div>'
+    + '<input id="cal-feed-url" readonly value="' + _esc(url) + '" onclick="this.select()" '
+    + 'style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r8);'
+    + 'font-family:monospace;font-size:12px;background:var(--bg3);color:var(--text);margin-bottom:8px">'
+    + '<div style="display:flex;gap:8px;margin-bottom:16px">'
+    + '<button class="btn btn-p btn-sm" style="flex:1" onclick="_calCopyUrl()">📋 Copy link</button>'
+    + '<a class="btn btn-s btn-sm" style="flex:1;text-align:center;text-decoration:none" href="' + _esc(webcal) + '">📅 Add on this device</a>'
+    + '</div>'
+
+    + '<div style="background:var(--bg3);border-radius:var(--r12);padding:14px 16px;margin-bottom:12px">'
+    + '<div style="font-weight:800;margin-bottom:6px">📱 iPhone / iPad</div>'
+    + '<div style="font-size:13px;color:var(--text2)">Settings → Apps → Calendar → Accounts → Add Account → Other → <b>Add Subscribed Calendar</b> → paste the link.</div>'
+    + '</div>'
+
+    + '<div style="background:var(--bg3);border-radius:var(--r12);padding:14px 16px;margin-bottom:12px">'
+    + '<div style="font-weight:800;margin-bottom:6px">🟢 Google Calendar (Android + web)</div>'
+    + '<div style="font-size:13px;color:var(--text2)">On a computer, open Google Calendar → Other calendars <b>+</b> → <b>From URL</b> → paste the link. '
+    + 'It then shows in the Google Calendar app on your phone.<br>'
+    + '<b>Note:</b> Google decides how often it refreshes — usually a few hours, sometimes longer. Apple refreshes faster and lets you choose the interval.</div>'
+    + '</div>'
+
+    + '<div style="background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.25);border-radius:var(--r12);padding:14px 16px">'
+    + '<div style="font-weight:800;color:var(--y);margin-bottom:6px">🔒 Treat this link like a password</div>'
+    + '<div style="font-size:13px;color:var(--text2)">It shows client names and phone numbers to anyone who has it. Don\'t post it publicly. '
+    + 'If it leaks, generate a new one below.</div>'
+    + '</div>'
+
+    + '</div>',
+
+    '<button class="btn btn-s" onclick="_calRegenerate()">🔄 Generate new link</button>'
+    + '<button class="btn btn-p" onclick="closeModal()">Done</button>', 'lg');
+
+  addAudit('Calendar feed link viewed', SESSION.bizId);
+}
+
 function pgAppointments(){const _s=_L();
   var today     = localDateStr();
   var appts     = D.appointments || [];
@@ -36338,6 +36501,7 @@ function pgAppointments(){const _s=_L();
     +'<button class="btn btn-s btn-sm" onclick="_apptSendReminders()">💬 Remind Tomorrow</button>'
     +'<button class="btn btn-g btn-sm" onclick="_apptFixDrift()" title="Repair appointment amounts that show the wrong (drifted) value">🔧 Fix Drift</button>'
     +'<button class="btn btn-sm" style="background:var(--r-dim);color:var(--r)" onclick="mBlockTime()">🗓 Availability Manager</button>'
+    +'<button class="btn btn-s btn-sm" onclick="mCalendarSync()" title="Subscribe to this schedule from Google Calendar or your iPhone">📲 Sync to Phone</button>'
     +'<button class="btn btn-g btn-sm" onclick="exportAppointmentsPDF()">⬇ PDF</button>'
     +'<button class="btn btn-p" onclick="mNewAppt()">+ Book</button>'
     +'</div></div></div>'
