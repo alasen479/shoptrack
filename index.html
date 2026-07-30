@@ -836,12 +836,26 @@ body.light .ai-out.has-content{background:#f8faff;border-color:var(--a)}
 #doc-toolbar .doc-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;color:#1e2130}
 #doc-toolbar .doc-actions{display:flex;gap:8px}
 #doc-content{padding:40px 48px;font-family:'Instrument Sans',sans-serif;color:#1e2130;line-height:1.5;min-height:900px}
-@media(max-width:680px){#doc-content{padding:24px 20px}}
+@media(max-width:680px){
+  /* Mobile document fixes: fit-to-screen, no horizontal scroll, no giant empty sheet */
+  #doc-content{padding:20px 16px;min-height:0}
+  /* Any table inside a document wraps instead of forcing the page wide */
+  #doc-content table{width:100%!important;table-layout:fixed;border-collapse:collapse}
+  #doc-content td,#doc-content th{word-break:break-word;overflow-wrap:anywhere}
+  /* Catch any stray fixed-width element (logos, wide divs) so nothing overflows the frame */
+  #doc-content img{max-width:100%;height:auto}
+  #doc-content *{max-width:100%}
+  /* Slightly smaller type so dense receipts fit comfortably */
+  #doc-content{font-size:13px}
+}
 @media print{
   body>*:not(#doc-overlay){display:none!important}
   #doc-overlay{display:block!important;position:static!important;background:none!important;padding:0}
   #doc-frame{box-shadow:none!important;border-radius:0!important;max-height:none!important;overflow:visible!important}
   #doc-toolbar{display:none!important}
+  /* Tables must also wrap on paper / in exported PDFs, not overflow the page */
+  #doc-content table{table-layout:fixed;width:100%}
+  #doc-content td,#doc-content th{word-break:break-word;overflow-wrap:anywhere}
 }
 </style>
 <script>
@@ -850,7 +864,7 @@ body.light .ai-out.has-content{background:#f8faff;border-color:var(--a)}
   var scripts = [
     'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
-    '/app.js?v=1784765389'
+    '/app.js?v=1785437630'
   ];
   var i = 0;
   function loadNext(){
