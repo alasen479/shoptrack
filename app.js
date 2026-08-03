@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1785437630");
+console.log("ShopTrack v2.7 - build:1785777767");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -2811,7 +2811,7 @@ function _arBulkCollect(){const _s=_L();
   if(!debtors.length){ toast(_L().t_no_bal,'success'); return; }
   var today = localDateStr();
   var rows = debtors.map(function(cu){
-    var unpaidSales = D.sales.filter(function(s){return (s.custId===cu.id||s.cust===cu.name)&&s.st!=='Paid';});
+    var unpaidSales = D.sales.filter(function(s){return (_custMatchesSale(s,cu))&&s.st!=='Paid';});
     return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
       +'<input type="checkbox" class="bc-chk" data-id="'+cu.id+'" data-bal="'+cu.bal+'" checked style="width:16px;height:16px;accent-color:var(--a);flex-shrink:0"/>'
       +'<div style="flex:1"><strong style="color:var(--ink)">'+_esc(cu.name)+'</strong>'
@@ -2858,7 +2858,7 @@ function _arBulkCollectSave(dt){var _s=_L();
     var cu = D.cust.find(function(x){return x.id===custId;});
     if(!cu) return;
     // Apply payment to oldest unpaid sales first
-    var unpaid = D.sales.filter(function(s){return (s.custId===cu.id||s.cust===cu.name)&&s.st!=='Paid';})
+    var unpaid = D.sales.filter(function(s){return (_custMatchesSale(s,cu))&&s.st!=='Paid';})
       .sort(function(a,b){return a.dt<b.dt?-1:1;});
     var remaining = amt;
     unpaid.forEach(function(s){
@@ -8030,7 +8030,8 @@ function _invAddNewCust(){
   if(!existing){
     // Generate new customer ID
     var _maxCNum=D.cust.reduce(function(m,c){var n=parseInt((c.id||'').replace(/[^0-9]/g,''),10)||0;return n>m?n:m;},0);
-    var newId='C-'+String(_maxCNum+1).padStart(4,'0');
+    var _rand=(Date.now().toString(36).slice(-4)+Math.random().toString(36).slice(2,5)).toUpperCase();
+    var newId='C-'+String(_maxCNum+1).padStart(3,'0')+'-'+_rand;
     var newCust={id:newId, name:name, phone:phone||'', email:'', type:'Regular', tier:'Bronze', visits:0, totalSpent:0, notes:'Added from invoice'};
     D.cust.push(newCust);
     _dbSaveCust(newCust);
@@ -12231,8 +12232,15 @@ function mAddCustomer(_returnSelectId){const _s=_L();
     var name=document.getElementById('ac-name').value.trim();
     if(!name){toast(_L().t_cust_req,'error');return;}
     var type=document.getElementById('ac-type').value;
+    // Collision-resistant id. The old scheme (max existing number + 1) minted
+    // duplicate ids whenever two customers were created before a sync or from
+    // two sessions, which the (biz_id,id) primary key then rejected on save.
+    // A timestamp+random suffix is unique without depending on what's loaded.
+    // Keep the human-friendly C- prefix and sequence when possible, but append
+    // a short random tail so two "next" values can never collide.
     var _maxCNum=D.cust.reduce(function(m,c){var n=parseInt((c.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
-    var nid='C-'+String(_maxCNum+1).padStart(3,'0');
+    var _rand=(Date.now().toString(36).slice(-4)+Math.random().toString(36).slice(2,5)).toUpperCase();
+    var nid='C-'+String(_maxCNum+1).padStart(3,'0')+'-'+_rand;
     var _ph=document.getElementById('ac-phone').value.trim();
     D.cust.unshift({
       id:nid, name:name,
@@ -12336,8 +12344,8 @@ function mViewCustomer(id){const _s=_L();
   const phone   = c.ph||c.phone||'';
   const type    = c.type||c.tier||'Regular';
   const spend   = c.spend||c.spent||0;
-  const custSales   = D.sales.filter(s=>s.custId===c.id||s.cust===c.name).sort((a,b)=>b.dt.localeCompare(a.dt));
-  const custRentals = D.rentals.filter(r=>r.custId===c.id||r.cust===c.name).sort((a,b)=>b.start.localeCompare(a.start));
+  const custSales   = D.sales.filter(s=>_custMatchesSale(s,c)).sort((a,b)=>b.dt.localeCompare(a.dt));
+  const custRentals = D.rentals.filter(r=>_custMatchesRental(r,c)).sort((a,b)=>b.start.localeCompare(a.start));
   const unpaidCount = custSales.filter(s=>s.st!=='Paid').length;
 
   modal(`👤 ${_esc(c.name)}`,`
@@ -12432,9 +12440,9 @@ function mDeleteCustomer(id){const _s=_L();
 function mCustomerStatement(id){const _s=_L();
   const c=D.cust.find(x=>x.id===id);if(!c)return;
   // Match by both custId and name to catch all records
-  const custSales = D.sales.filter(s=>s.custId===c.id||s.cust===c.name)
+  const custSales = D.sales.filter(s=>_custMatchesSale(s,c))
     .sort((a,b)=>b.dt.localeCompare(a.dt));
-  const custRentals = D.rentals.filter(r=>r.custId===c.id||r.cust===c.name)
+  const custRentals = D.rentals.filter(r=>_custMatchesRental(r,c))
     .sort((a,b)=>b.start.localeCompare(a.start));
   const totalCharged = custSales.reduce((a,s)=>a+(s.total||s.amt||0),0)
                      + custRentals.filter(r=>r.st==='Returned').reduce((a,r)=>a+(r.fee||0),0);
@@ -12499,7 +12507,7 @@ function genCustomerStatementPDF(custId){
   const L = _L();
   const fr = (BIZ.language||'en')==='fr';
   const custSales = D.sales
-    .filter(s=>s.custId===c.id||s.cust===c.name)
+    .filter(s=>_custMatchesSale(s,c))
     .sort((a,b)=>b.dt.localeCompare(a.dt));
   const totalCharged = custSales.reduce((a,s)=>a+(s.total||s.amt||0),0);
   const totalPaid    = custSales.reduce((a,s)=>a+(s.paid||0),0);
@@ -12678,7 +12686,7 @@ function mCollectBalance(custId){const _s=_L();
      cobj.spent=(cobj.spent||0)+amtBase;
      cobj.spend=cobj.spent;
      // Find the oldest unpaid sale and apply payment to it first
-     var unpaid=D.sales.filter(function(s){return (s.custId===cobj.id||s.cust===cobj.name)&&s.st!=='Paid';})
+     var unpaid=D.sales.filter(function(s){return (_custMatchesSale(s,cobj))&&s.st!=='Paid';})
        .sort(function(a,b){return a.dt.localeCompare(b.dt);});
      var remaining=amtBase;
      unpaid.forEach(function(s){
@@ -14272,7 +14280,7 @@ function rptAR(){const _s=_L();
 
   // Age each debtor by their oldest unpaid sale
   function ageDays(c){
-    const unpaid = D.sales.filter(s=>(s.custId===c.id||s.cust===c.name)&&s.st!=='Paid').sort((a,b)=>a.dt.localeCompare(b.dt));
+    const unpaid = D.sales.filter(s=>(_custMatchesSale(s,c))&&s.st!=='Paid').sort((a,b)=>a.dt.localeCompare(b.dt));
     if(!unpaid.length) return 0;
     const oldest = unpaid[0].dt;
     return Math.floor((new Date(today)-new Date(oldest))/(1000*60*60*24));
@@ -14296,7 +14304,7 @@ function rptAR(){const _s=_L();
     <div class="kpi r"><div class="kpi-lbl">60+ Days</div><div class="kpi-val r">${fmtKpi(buckets['60+ days'])}</div></div>
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_customer}</th><th>${_s.rpt_aging}</th><th>Oldest Unpaid</th><th>${_s.rpt_bal_due}</th><th>${_s.cust_col_last}</th></tr></thead><tbody>
-  ${ar.map(c=>{const days=ageDays(c);const bkt=ageBucket(days);const unpaid=D.sales.filter(s=>(s.custId===c.id||s.cust===c.name)&&s.st!=='Paid');const oldest=unpaid.length?unpaid.sort((a,b)=>a.dt.localeCompare(b.dt))[0].dt:'—';return`<tr>
+  ${ar.map(c=>{const days=ageDays(c);const bkt=ageBucket(days);const unpaid=D.sales.filter(s=>(_custMatchesSale(s,c))&&s.st!=='Paid');const oldest=unpaid.length?unpaid.sort((a,b)=>a.dt.localeCompare(b.dt))[0].dt:'—';return`<tr>
     <td><strong style="color:var(--ink)">${_esc(c.name)}</strong>${c.vip?` ${bx('VIP','bx-p')}`:''}
       <div style="font-size:10px;color:var(--text2)">${unpaid.length} unpaid invoice${unpaid.length!==1?'s':''}</div>
     </td>
@@ -14397,9 +14405,9 @@ function rptCustStmt(){const _s=_L();
 }
 function _renderCustStmt(custId){const _s=_L();
   var cust=D.cust.find(c=>c.id===custId); if(!cust) return;
-  var sales=D.sales.filter(s=>s.custId===cust.id||s.cust===cust.name).sort(function(a,b){return b.dt.localeCompare(a.dt);});
-  var rentals=D.rentals.filter(r=>r.custId===cust.id||r.cust===cust.name).sort(function(a,b){return b.start.localeCompare(a.start);});
-  var appts=(D.appointments||[]).filter(a=>(a.custId===cust.id||a.custName===cust.name)&&a.st==='Completed').sort(function(a,b){return b.date.localeCompare(a.date);});
+  var sales=D.sales.filter(s=>_custMatchesSale(s,cust)).sort(function(a,b){return b.dt.localeCompare(a.dt);});
+  var rentals=D.rentals.filter(r=>_custMatchesRental(r,cust)).sort(function(a,b){return b.start.localeCompare(a.start);});
+  var appts=(D.appointments||[]).filter(a=>(_custMatchesAppt(a,cust))&&a.st==='Completed').sort(function(a,b){return b.date.localeCompare(a.date);});
   var totalInvoiced = sales.reduce(function(a,s){return a+(s.total||s.amt||0);},0)
     + rentals.reduce(function(a,r){return a+r.fee;},0)
     + appts.reduce(function(a,a2){return a+(a2.totalAmt||0);},0);
@@ -22294,6 +22302,32 @@ function _dbToCust(r){ return {
   type:r.tier||'Regular',  // ← was missing — type filter never worked for DB customers
   dob:r.dob||r.birthday||'', birthday:r.dob||r.birthday||'',
 }; }
+// ── Customer↔record matching (single source of truth) ───────────────────────
+// BUG FIX: the old inline pattern was `s.custId===c.id || s.cust===c.name`.
+// The name clause is greedy — with repeated names across a business ("Walk-In",
+// "Divine", generic "Passed Sales (Cash)"), a sale would match the WRONG
+// customer, so statements showed sales that belonged to someone else.
+//
+// Correct rule: if the sale HAS a customer id, match strictly on id (never fall
+// back to name — an id mismatch is a real mismatch). Only when the sale has NO
+// id at all (legacy/imported rows) do we fall back to matching by exact name,
+// so those aren't orphaned. This removes false positives without losing data.
+function _custMatchesSale(s, c){
+  if(!s || !c) return false;
+  if(s.custId) return s.custId === c.id;      // has id → id is authoritative
+  return s.cust != null && s.cust === c.name; // no id → legacy name fallback
+}
+function _custMatchesRental(r, c){
+  if(!r || !c) return false;
+  if(r.custId) return r.custId === c.id;
+  return r.cust != null && r.cust === c.name;
+}
+function _custMatchesAppt(a, c){
+  if(!a || !c) return false;
+  if(a.custId) return a.custId === c.id;
+  return a.custName != null && a.custName === c.name;
+}
+
 function _dbToSale(r){ return {
   id:r.id, dt:r.date, cust:r.customer, custId:r.customer_id||'',
   invId:r.inv_id||'__custom__', items:r.items,
@@ -25293,7 +25327,8 @@ function _inlineSaveNewCust(prefix){var _s=_L();
 
   // Generate unique ID
   var _maxC=D.cust.reduce(function(m,cu){var n=parseInt((cu.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
-  const newId='C-'+String(_maxC+1).padStart(3,'0');
+  var _rand=(Date.now().toString(36).slice(-4)+Math.random().toString(36).slice(2,5)).toUpperCase();
+  const newId='C-'+String(_maxC+1).padStart(3,'0')+'-'+_rand;
   const email = (document.getElementById(prefix+'-nc-email')?.value||'').trim();
   const city  = (document.getElementById(prefix+'-nc-city')?.value||'').trim();
 
@@ -31527,7 +31562,7 @@ function mARDetail(){const _s=_L();
   const today = localDateStr();
   function _arAgeDays(cust){var _s=_L();
     // Find oldest unpaid sale for this customer
-    const unpaid = D.sales.filter(s=>(s.custId===cust.id||s.cust===cust.name)&&s.st!=='Paid');
+    const unpaid = D.sales.filter(s=>(_custMatchesSale(s,cust))&&s.st!=='Paid');
     if(!unpaid.length) return 0;
     const oldest = unpaid.sort((a,b)=>a.dt<b.dt?-1:1)[0];
     const diff = Math.floor((new Date(today)-new Date(oldest.dt))/(1000*60*60*24));
@@ -31540,8 +31575,8 @@ function mARDetail(){const _s=_L();
   const rows = debtors.map(c=>{
     const ageDays = _arAgeDays(c);
     const ageLabel = ageDays<=30?'<30d':ageDays<=60?'31-60d':ageDays<=90?'61-90d':'<span style="color:var(--r)">90d+</span>';
-    const unpaidSales = D.sales.filter(s=>(s.custId===c.id||s.cust===c.name)&&s.st!=='Paid');
-    const lastSale    = D.sales.filter(s=>s.custId===c.id||s.cust===c.name).sort((a,b)=>b.dt>a.dt?1:-1)[0];
+    const unpaidSales = D.sales.filter(s=>(_custMatchesSale(s,c))&&s.st!=='Paid');
+    const lastSale    = D.sales.filter(s=>_custMatchesSale(s,c)).sort((a,b)=>b.dt>a.dt?1:-1)[0];
     return `<tr>
       <td><strong style="color:var(--ink)">${_esc(c.name)}</strong>${c.vip?` <span style="font-size:9px;background:var(--p-dim);color:var(--p);padding:1px 5px;border-radius:8px">VIP</span>`:''}</td>
       <td style="font-size:11px;color:var(--text2)">${c.phone||c.whatsapp||'—'}</td>
@@ -31595,8 +31630,8 @@ function _arExportPDF(){var _s=_L();
   const primary = BIZ.primaryColor||'#e8667a';
 
   const rows = debtors.map((c,i)=>{
-    const unpaidSales = D.sales.filter(s=>(s.custId===c.id||s.cust===c.name)&&s.st!=='Paid');
-    const lastSale    = D.sales.filter(s=>s.custId===c.id||s.cust===c.name).sort((a,b)=>b.dt>a.dt?1:-1)[0];
+    const unpaidSales = D.sales.filter(s=>(_custMatchesSale(s,c))&&s.st!=='Paid');
+    const lastSale    = D.sales.filter(s=>_custMatchesSale(s,c)).sort((a,b)=>b.dt>a.dt?1:-1)[0];
     const rowBg       = i%2===0?'#f8fafc':'#ffffff';
     return `<tr style="background:${rowBg}">
       <td style="padding:9px 10px;font-weight:600;color:#0f172a">${_esc(c.name)}${c.vip?' ★':''}</td>
@@ -40100,7 +40135,7 @@ function _rptARPDF(){const _s=_L();
   var debtors=D.cust.filter(function(c){return c.bal>0;});
   var total=debtors.reduce(function(a,c){return a+c.bal;},0);
   var summary='<div class="summary"><div class="sum-box"><div class="sum-lbl">'+_s.acc_total_ar+'</div><div class="sum-val red">'+fmt(total)+'</div></div><div class="sum-box"><div class="sum-lbl">Customers Owing</div><div class="sum-val blue">'+debtors.length+'</div></div></div>';
-  var rows=debtors.sort(function(a,b){return b.bal-a.bal;}).map(function(c){var sales=D.sales.filter(function(s){return (s.custId===c.id||s.cust===c.name)&&s.st!=='Paid';});return '<tr><td>'+_esc(c.name)+'</td><td>'+_esc(c.phone||c.whatsapp||'')+'</td><td>'+sales.length+' unpaid</td><td class="num red">'+fmt(c.bal)+'</td><td>'+_esc(c.last||'—')+'</td></tr>';}).join('');
+  var rows=debtors.sort(function(a,b){return b.bal-a.bal;}).map(function(c){var sales=D.sales.filter(function(s){return (_custMatchesSale(s,c))&&s.st!=='Paid';});return '<tr><td>'+_esc(c.name)+'</td><td>'+_esc(c.phone||c.whatsapp||'')+'</td><td>'+sales.length+' unpaid</td><td class="num red">'+fmt(c.bal)+'</td><td>'+_esc(c.last||'—')+'</td></tr>';}).join('');
   var table='<table><thead><tr><th>'+_s.ui_customer+'</th><th>'+_s.ui_contact+'</th><th>'+_s.rpt_open_inv+'</th><th class="num">Balance</th><th>'+_s.cust_col_last+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
   _rptPDF('Accounts Receivable (AR)', summary, table);
 }
@@ -40135,8 +40170,8 @@ function _rptCustStmtPDF(){const _s=_L();
   var custId=window._stmtCustId;
   var cust=custId?D.cust.find(function(c){return c.id===custId;}):D.cust[0];
   if(!cust){ toast(_L().t_no_cust,'error'); return; }
-  var sales=D.sales.filter(function(s){return s.custId===cust.id||s.cust===cust.name;}).sort(function(a,b){return b.dt.localeCompare(a.dt);});
-  var rentals=D.rentals.filter(function(r){return r.custId===cust.id||r.cust===cust.name;});
+  var sales=D.sales.filter(function(s){return _custMatchesSale(s,cust);}).sort(function(a,b){return b.dt.localeCompare(a.dt);});
+  var rentals=D.rentals.filter(function(r){return _custMatchesRental(r,cust);});
   var totalInvoiced=sales.reduce(function(a,s){return a+(s.total||s.amt||0);},0)+rentals.reduce(function(a,r){return a+r.fee;},0);
   var totalPaid=sales.reduce(function(a,s){return a+(s.paid||0);},0)+rentals.reduce(function(a,r){return a+(r.paid||0);},0);
   var summary='<div class="summary">'
