@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1785777767");
+console.log("ShopTrack v2.7 - build:1785782991");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -9499,6 +9499,101 @@ function _crComputeDuration(){
 // Called when period dropdown changes — adjusts the date input types
 // (datetime-local for hours, date for everything else) and recomputes
 // duration + fee.
+// Extracted from the rental modal's inline onclick (was a 90-line handler with
+// // comments inside an HTML attribute — the same fragility that broke the Add
+// Customer button). Named function = quote-safe, comment-safe, testable.
+function _saveNewRental(){const _s=_L();
+
+    var custId=(document.getElementById('cr-cust-sel')||{}).value||document.getElementById('cr-cust')?.value||(document.getElementById('cr-cust-sel')||{}).value||document.getElementById('cr-cust')?.value||_ssGetVal('cr-cust-wrap')||(document.getElementById('cr-cust-sel')||document.getElementById('cr-cust')||{}).value||'';
+    var start=document.getElementById('cr-start').value;
+    var due=document.getElementById('cr-due').value;
+    if(!custId){toast(_L().t_select_cust,'error');return;}
+    if(!start||!due){toast(_L().t_enter_dates,'error');return;}
+    var period=document.getElementById('cr-period').value||'day';
+    var units=parseFloat(document.getElementById('cr-units').value)||1;
+    if(period==='custom') units=0;
+    var crLines=Array.from(document.querySelectorAll('#cr-line-rows .cr-line-row')).map(function(row){
+      var s=row.querySelector('.cr-item-sel');
+      if(!s||!s.value) return null;
+      var item=D.inv.find(function(i){return i.id===s.value;});
+      if(!item) return null;
+      var avail=(item.qty||0)-(item.rented||0);
+      var q=parseInt(row.querySelector('.cr-line-qty')?.value)||1;
+      if(q<1) q=1;
+      if(q>avail) q=avail;
+      return {item:item, qty:q};
+    }).filter(Boolean);
+    if(!crLines.length){toast(_L().t_select_item,'error');return;}
+    var custObj=D.cust.find(function(x){return x.id===custId;});
+    var cust=custObj?custObj.name:custId;
+    var r2=CUR.rate;
+    // addition to USD-base. This is what immunizes the rental record
+    // from FX rate drift on later edits — same pattern as services.
+    var feeRawDisplay  = parseFloat(document.getElementById('cr-fee').value)||0;
+    var depRawDisplay  = parseFloat(document.getElementById('cr-dep').value)||0;
+    var paidRawDisplay = parseFloat(document.getElementById('cr-paid').value)||0;
+    var fee=feeRawDisplay/r2;
+    var dep=depRawDisplay/r2;
+    var initPaid=paidRawDisplay/r2;
+    var cond=document.getElementById('cr-cond').value;
+    var notes=document.getElementById('cr-notes').value;
+    var method=document.getElementById('cr-method').value;
+    // Plan gate before creating records
+    if(_isFreePlan()){ _showPremiumUpgradePrompt('rentals'); return; }
+    if(_planWriteBlocked('Creating a rental','rentals')) return;
+    // Allocate fee + deposit + initial payment across line totals,
+    // weighted by rp\u00d7qty so a 70k/day\u00d71-qty row and a 30k/day\u00d72-qty
+    // row split fairly.
+    var weights=crLines.map(function(l){return ((l.item.rp||0)*l.qty);});
+    var weightSum=weights.reduce(function(a,b){return a+b;},0)||crLines.length;
+    var maxRNum=D.rentals.reduce(function(m,r){var n=parseInt((r.id||'').replace(/\\D/g,''),10)||0;return n>m?n:m;},0);
+    crLines.forEach(function(line,idx){
+      // Update rented count by FULL qty (was always +1 regardless of qty)
+      line.item.rented=(line.item.rented||0)+line.qty;
+      var newId='R-'+String(maxRNum+1+idx).padStart(4,'0');
+      var w=weights[idx]||1;
+      var itemFee=crLines.length>1?Math.round((fee*w/weightSum)*100)/100:fee;
+      var itemDep=crLines.length>1?Math.round((dep*w/weightSum)*100)/100:dep;
+      var itemPaid=crLines.length>1?Math.round((initPaid*w/weightSum)*100)/100:initPaid;
+      // Native values are also split proportionally for multi-line rentals
+      var itemFeeNative  = crLines.length>1?Math.round((feeRawDisplay  *w/weightSum)*100)/100:feeRawDisplay;
+      var itemDepNative  = crLines.length>1?Math.round((depRawDisplay  *w/weightSum)*100)/100:depRawDisplay;
+      var itemPaidNative = crLines.length>1?Math.round((paidRawDisplay *w/weightSum)*100)/100:paidRawDisplay;
+      // If an initial payment was made, seed the payments[] audit trail
+      // so the View modal and statements can show 'when was this paid'.
+      // The deposit is tracked separately (r.dep) and isn't a payment
+      // toward the rent itself.
+      var initialPayments=itemPaid>0?[{
+        dt:start,
+        amount:itemPaid,
+        method:method,
+        note:(BIZ.language==='fr'?'Paiement initial':'Initial payment')
+      }]:[];
+      D.rentals.unshift({id:newId,cust,custId,item:line.item.name,itemId:line.item.id,
+        qty:line.qty,period:period,units:units,
+        start,due,
+        fee:itemFee,   feeNative:itemFeeNative,   feeCurrency:CUR.code,
+        dep:itemDep,   depNative:itemDepNative,   depCurrency:CUR.code,
+        paid:itemPaid, paidNative:itemPaidNative, paidCurrency:CUR.code,
+        payments:initialPayments,
+        lf:0, lfNative:0, lfCurrency:CUR.code,
+        st:'Checked Out',cb:cond,ca:'',notes,method});
+      _dbSaveRental(D.rentals[0]);
+      addAudit('Rental created',newId+' - '+cust+' - '+line.qty+'\u00d7 '+line.item.name+(itemPaid>0?' (paid '+fmt(itemPaid)+')':''));
+      // Reduce customer balance by initial payment (just like Record Payment)
+      if(custObj && itemPaid>0){
+        custObj.spent=(custObj.spent||0)+itemPaid;
+        custObj.spend=custObj.spent;
+        if(_dbSaveCust) _dbSaveCust(custObj);
+      }
+    });
+    if(custObj){custObj.visits=(custObj.visits||0)+1;custObj.last=start;}
+    refreshLiveKpis();
+    closeModal();
+    toast(crLines.length+' item(s) checked out to '+cust+(initPaid>0?' \u2014 '+fmt(initPaid)+' collected':''),'success');
+    nav('rentals');
+}
+
 function _crPeriodChange(){
   var periodEl = document.getElementById('cr-period');
   var startEl  = document.getElementById('cr-start');
@@ -9614,99 +9709,7 @@ async function mCreateRental(startDate){const _s=_L();
     <select class="fs" id="cr-method"><option>${_s.ui_cash}</option><option>${_s.ui_card}</option><option>${_s.ui_bank_transfer}</option><option>${_s.ui_mobile_mtn}</option><option>${_s.ui_orange}</option></select>
   </div>`,
   `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
-   <button class="btn btn-p" onclick="
-    var custId=(document.getElementById('cr-cust-sel')||{}).value||document.getElementById('cr-cust')?.value||(document.getElementById('cr-cust-sel')||{}).value||document.getElementById('cr-cust')?.value||_ssGetVal('cr-cust-wrap')||(document.getElementById('cr-cust-sel')||document.getElementById('cr-cust')||{}).value||'';
-    var start=document.getElementById('cr-start').value;
-    var due=document.getElementById('cr-due').value;
-    if(!custId){toast(_L().t_select_cust,'error');return;}
-    if(!start||!due){toast(_L().t_enter_dates,'error');return;}
-    var period=document.getElementById('cr-period').value||'day';
-    var units=parseFloat(document.getElementById('cr-units').value)||1;
-    if(period==='custom') units=0; // sentinel: flat fee, no duration math
-    // Collect per-line: item ref + qty. Qty defaults to 1 if blank, capped
-    // to available stock so we don't oversell.
-    var crLines=Array.from(document.querySelectorAll('#cr-line-rows .cr-line-row')).map(function(row){
-      var s=row.querySelector('.cr-item-sel');
-      if(!s||!s.value) return null;
-      var item=D.inv.find(function(i){return i.id===s.value;});
-      if(!item) return null;
-      var avail=(item.qty||0)-(item.rented||0);
-      var q=parseInt(row.querySelector('.cr-line-qty')?.value)||1;
-      if(q<1) q=1;
-      if(q>avail) q=avail;
-      return {item:item, qty:q};
-    }).filter(Boolean);
-    if(!crLines.length){toast(_L().t_select_item,'error');return;}
-    var custObj=D.cust.find(function(x){return x.id===custId;});
-    var cust=custObj?custObj.name:custId;
-    var r2=CUR.rate;
-    // Capture native (display-currency) values for fee/dep/paid in
-    // addition to USD-base. This is what immunizes the rental record
-    // from FX rate drift on later edits — same pattern as services.
-    var feeRawDisplay  = parseFloat(document.getElementById('cr-fee').value)||0;
-    var depRawDisplay  = parseFloat(document.getElementById('cr-dep').value)||0;
-    var paidRawDisplay = parseFloat(document.getElementById('cr-paid').value)||0;
-    var fee=feeRawDisplay/r2;
-    var dep=depRawDisplay/r2;
-    var initPaid=paidRawDisplay/r2;
-    var cond=document.getElementById('cr-cond').value;
-    var notes=document.getElementById('cr-notes').value;
-    var method=document.getElementById('cr-method').value;
-    // Plan gate before creating records
-    if(_isFreePlan()){ _showPremiumUpgradePrompt('rentals'); return; }
-    if(_planWriteBlocked('Creating a rental','rentals')) return;
-    // Allocate fee + deposit + initial payment across line totals,
-    // weighted by rp\u00d7qty so a 70k/day\u00d71-qty row and a 30k/day\u00d72-qty
-    // row split fairly.
-    var weights=crLines.map(function(l){return ((l.item.rp||0)*l.qty);});
-    var weightSum=weights.reduce(function(a,b){return a+b;},0)||crLines.length;
-    var maxRNum=D.rentals.reduce(function(m,r){var n=parseInt((r.id||'').replace(/\\D/g,''),10)||0;return n>m?n:m;},0);
-    crLines.forEach(function(line,idx){
-      // Update rented count by FULL qty (was always +1 regardless of qty)
-      line.item.rented=(line.item.rented||0)+line.qty;
-      var newId='R-'+String(maxRNum+1+idx).padStart(4,'0');
-      var w=weights[idx]||1;
-      var itemFee=crLines.length>1?Math.round((fee*w/weightSum)*100)/100:fee;
-      var itemDep=crLines.length>1?Math.round((dep*w/weightSum)*100)/100:dep;
-      var itemPaid=crLines.length>1?Math.round((initPaid*w/weightSum)*100)/100:initPaid;
-      // Native values are also split proportionally for multi-line rentals
-      var itemFeeNative  = crLines.length>1?Math.round((feeRawDisplay  *w/weightSum)*100)/100:feeRawDisplay;
-      var itemDepNative  = crLines.length>1?Math.round((depRawDisplay  *w/weightSum)*100)/100:depRawDisplay;
-      var itemPaidNative = crLines.length>1?Math.round((paidRawDisplay *w/weightSum)*100)/100:paidRawDisplay;
-      // If an initial payment was made, seed the payments[] audit trail
-      // so the View modal and statements can show 'when was this paid'.
-      // The deposit is tracked separately (r.dep) and isn't a payment
-      // toward the rent itself.
-      var initialPayments=itemPaid>0?[{
-        dt:start,
-        amount:itemPaid,
-        method:method,
-        note:(BIZ.language==='fr'?'Paiement initial':'Initial payment')
-      }]:[];
-      D.rentals.unshift({id:newId,cust,custId,item:line.item.name,itemId:line.item.id,
-        qty:line.qty,period:period,units:units,
-        start,due,
-        fee:itemFee,   feeNative:itemFeeNative,   feeCurrency:CUR.code,
-        dep:itemDep,   depNative:itemDepNative,   depCurrency:CUR.code,
-        paid:itemPaid, paidNative:itemPaidNative, paidCurrency:CUR.code,
-        payments:initialPayments,
-        lf:0, lfNative:0, lfCurrency:CUR.code,
-        st:'Checked Out',cb:cond,ca:'',notes,method});
-      _dbSaveRental(D.rentals[0]);
-      addAudit('Rental created',newId+' - '+cust+' - '+line.qty+'\u00d7 '+line.item.name+(itemPaid>0?' (paid '+fmt(itemPaid)+')':''));
-      // Reduce customer balance by initial payment (just like Record Payment)
-      if(custObj && itemPaid>0){
-        custObj.spent=(custObj.spent||0)+itemPaid;
-        custObj.spend=custObj.spent;
-        if(_dbSaveCust) _dbSaveCust(custObj);
-      }
-    });
-    if(custObj){custObj.visits=(custObj.visits||0)+1;custObj.last=start;}
-    refreshLiveKpis();
-    closeModal();
-    toast(crLines.length+' item(s) checked out to '+cust+(initPaid>0?' \u2014 '+fmt(initPaid)+' collected':''),'success');
-    nav('rentals');
-   ">${_s.rent_btn_create}</button>`);
+   <button class="btn btn-p" onclick="_saveNewRental()">${_s.rent_btn_create}</button>`);
   // Init searchable customer select \u2014 retry to handle modal render delay
   function _initCrCustSelect(){
     var wrap = document.getElementById('cr-cust-wrap');
@@ -12207,26 +12210,12 @@ function filterCustTable(){const _s=_L();
   if(_custKpiCnt) _custKpiCnt.textContent = visible;
 }
 
-function mAddCustomer(_returnSelectId){const _s=_L();
-  const _retSel=_returnSelectId||null;
-  modal(_s.cust_add_title,`
-  <div class="fg-2">
-    <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="ac-name" placeholder="e.g. Jessica Williams"/></div>
-    <div class="fg"><label class="fl">${_s.ui_type}</label>
-      <div style="display:flex;gap:6px;align-items:flex-start">
-        <select class="fs" id="ac-type" style="flex:1">${(D.custTypes||['Regular','VIP','New']).map(function(t){var lbl=t==='Regular'?_s.cust_type_reg:t;return '<option value="'+_esc(t)+'">'+_esc(lbl)+'</option>';}).join('')}</select>
-        <button type="button" class="btn btn-s btn-sm" onclick="_custTypeAddInline('ac-type')" title="Create a new customer type — saves to your list" style="flex-shrink:0;white-space:nowrap">+ New</button>
-      </div>
-    </div>
-    <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" type="email" id="ac-email" placeholder="email@example.com"/></div>
-    <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="ac-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
-    <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="ac-whatsapp" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
-    <div class="fg"><label class="fl">${_s.ui_city}</label><input class="fi" id="ac-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
-  </div>
-  <div class="fg"><label class="fl">Birthday <span style="font-size:10px;color:var(--text2);font-weight:400">Optional — enables reminders</span></label><input class="fi" type="date" id="ac-dob" placeholder=""/></div>
-  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ac-notes" placeholder="Any notes about this customer…" style="min-height:55px"></textarea></div>`,
-  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
-   <button class="btn btn-p" onclick="
+// Extracted from the Add Customer modal's inline onclick. A 50-line handler
+// inside an HTML attribute is fragile: any single quote in a value, or a //
+// comment collapsing the newline, breaks HTML parsing and leaks the code as
+// visible text on the page. As a named function it is quote-safe and testable.
+function _saveNewCustomer(){const _s=_L();
+
     if(_planWriteBlocked('Adding a customer','cust')) return;
     if(!SESSION.isSuperAdmin && _isFreePlan() && D.cust.length>=200){ _showUpsell('customers'); closeModal(); return; }
     var name=document.getElementById('ac-name').value.trim();
@@ -12277,7 +12266,28 @@ function mAddCustomer(_returnSelectId){const _s=_L();
         }
       }, 50);
     } else { closeModal(); nav('customers'); }
-   ">${_s.cust_add}</button>`);
+}
+
+function mAddCustomer(_returnSelectId){const _s=_L();
+  const _retSel=_returnSelectId||null;
+  modal(_s.cust_add_title,`
+  <div class="fg-2">
+    <div class="fg"><label class="fl">${_s.cust_name_ph}</label><input class="fi" id="ac-name" placeholder="e.g. Jessica Williams"/></div>
+    <div class="fg"><label class="fl">${_s.ui_type}</label>
+      <div style="display:flex;gap:6px;align-items:flex-start">
+        <select class="fs" id="ac-type" style="flex:1">${(D.custTypes||['Regular','VIP','New']).map(function(t){var lbl=t==='Regular'?_s.cust_type_reg:t;return '<option value="'+_esc(t)+'">'+_esc(lbl)+'</option>';}).join('')}</select>
+        <button type="button" class="btn btn-s btn-sm" onclick="_custTypeAddInline('ac-type')" title="Create a new customer type — saves to your list" style="flex-shrink:0;white-space:nowrap">+ New</button>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">${_s.ui_email}</label><input class="fi" type="email" id="ac-email" placeholder="email@example.com"/></div>
+    <div class="fg"><label class="fl">${_s.ui_phone}</label><input class="fi" id="ac-phone" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
+    <div class="fg"><label class="fl">${_s.ui_whatsapp}</label><input class="fi" id="ac-whatsapp" placeholder="${_ph('phonePh')}" data-locale="phone"/></div>
+    <div class="fg"><label class="fl">${_s.ui_city}</label><input class="fi" id="ac-city" placeholder="e.g. ${CUR_LOCALE[CUR.code]?.city||'City'}" data-locale="city"/></div>
+  </div>
+  <div class="fg"><label class="fl">Birthday <span style="font-size:10px;color:var(--text2);font-weight:400">Optional — enables reminders</span></label><input class="fi" type="date" id="ac-dob" placeholder=""/></div>
+  <div class="fg"><label class="fl">${_s.ui_notes}</label><textarea class="ft" id="ac-notes" placeholder="Any notes about this customer…" style="min-height:55px"></textarea></div>`,
+  `<button class="btn btn-s" onclick="closeModal()">${_s.ui_cancel}</button>
+   <button class="btn btn-p" onclick="_saveNewCustomer()">${_s.cust_add}</button>`);
   window._retSelAC=_retSel;
 }
 function mEditCustomer(id){const _s=_L();
@@ -34892,7 +34902,6 @@ function mPayVendor(vendorId){const _s=_L();
      if(!vnd){ toast(_L().t_vendor_notfound,'error'); return; }
      const prev = vnd.bal||0;
      vnd.bal = Math.max(0, prev - amtUSD);
-     // Record as an expense entry
      var _mxEN=D.exp.reduce(function(m,e){var n=parseInt((e.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
      const expId = 'EX-' + String(_mxEN+1).padStart(3,'0');
      const newExp = {
@@ -34909,7 +34918,6 @@ function mPayVendor(vendorId){const _s=_L();
      addAudit('Vendor payment recorded', vnd.name + ' — ' + fmt(amtUSD) + ' via ' + mth);
      closeModal();
      toast(_L().t_saved2 + '  + fmt(amtUSD) + ' recorded for ' + vnd.name, 'success');
-     // Refresh current page if on vendors or accounting
      if(curPage==='vendors'||curPage==='accounting'||curPage==='purchases') nav(curPage);
    ">💰 Record Payment</button>`,'sm');
 }
