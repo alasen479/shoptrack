@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1785782991");
+console.log("ShopTrack v2.7 - build:1785786283");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -14418,6 +14418,9 @@ function _renderCustStmt(custId){const _s=_L();
   var sales=D.sales.filter(s=>_custMatchesSale(s,cust)).sort(function(a,b){return b.dt.localeCompare(a.dt);});
   var rentals=D.rentals.filter(r=>_custMatchesRental(r,cust)).sort(function(a,b){return b.start.localeCompare(a.start);});
   var appts=(D.appointments||[]).filter(a=>(_custMatchesAppt(a,cust))&&a.st==='Completed').sort(function(a,b){return b.date.localeCompare(a.date);});
+  // Confirmed/upcoming appointments — shown as SCHEDULED (not counted as revenue
+  // until Completed), so a just-confirmed booking is visible on the statement.
+  var upcomingAppts=(D.appointments||[]).filter(a=>(_custMatchesAppt(a,cust))&&(a.st==='Confirmed'||a.st==='Reserved'||a.st==='In Progress')).sort(function(a,b){return a.date.localeCompare(b.date);});
   var totalInvoiced = sales.reduce(function(a,s){return a+(s.total||s.amt||0);},0)
     + rentals.reduce(function(a,r){return a+r.fee;},0)
     + appts.reduce(function(a,a2){return a+(a2.totalAmt||0);},0);
@@ -14432,12 +14435,13 @@ function _renderCustStmt(custId){const _s=_L();
     <div class="kpi g"><div class="kpi-lbl">Total Invoiced</div><div class="kpi-val g">${fmtKpi(totalInvoiced)}</div></div>
     <div class="kpi b"><div class="kpi-lbl">${_s.cust_total_paid}</div><div class="kpi-val b">${fmtKpi(totalPaid)}</div></div>
     <div class="kpi ${cust.bal>0?'r':'g'}"><div class="kpi-lbl">${_s.cust_outstanding}</div><div class="kpi-val ${cust.bal>0?'r':'g'}">${fmtKpi(cust.bal||0)}</div></div>
-    <div class="kpi p"><div class="kpi-lbl">${_s.rpt_transactions}</div><div class="kpi-val p">${sales.length+rentals.length+appts.length}</div></div>
+    <div class="kpi p"><div class="kpi-lbl">${_s.rpt_transactions}</div><div class="kpi-val p">${sales.length+rentals.length+appts.length+upcomingAppts.length}</div></div>
   </div>
   <div class="tbl-wrap"><table><thead><tr><th>${_s.ui_date}</th><th>${_s.ui_type}</th><th>${_s.ui_description}</th><th>Invoiced</th><th>Paid</th><th>${_s.ui_balance}</th></tr></thead><tbody>
   ${sales.map(s=>{const tot=s.total||s.amt;const bal=tot-(s.paid||0);return`<tr><td>${s.dt}</td><td>${bx('Sale','bx-g')}</td><td style="font-size:12px">${_esc(s.items)}</td><td>${mono(fmt(tot))}</td><td>${mono(fmt(s.paid||0),'g')}</td><td>${mono(fmt(bal),bal>0?'r':'g')}</td></tr>`;}).join('')}
   ${rentals.map(r=>{const paid=r.paid||0;const bal=r.fee-paid;return`<tr><td>${r.start}</td><td>${bx('Rental','bx-c')}</td><td style="font-size:12px">${_esc(r.item)}</td><td>${mono(fmtMoney(r,"fee"))}</td><td>${mono(fmt(paid),'g')}</td><td>${mono(fmt(bal),bal>0?'r':'g')}</td></tr>`;}).join('')}
   ${appts.map(a=>{return`<tr><td>${a.date}</td><td>${bx('Service','bx-p')}</td><td style="font-size:12px">${_esc(a.serviceName||'')}</td><td>${mono(fmt(a.totalAmt||0))}</td><td>${mono(fmt(a.totalAmt||0),'g')}</td><td>${mono('—')}</td></tr>`;}).join('')}
+  ${upcomingAppts.map(a=>{return`<tr style="opacity:.72"><td>${a.date}</td><td>${bx('Scheduled','bx-y')}</td><td style="font-size:12px">${_esc(a.serviceName||'')} <span style="color:var(--text2)">— ${a.st}${a.startTime?' '+a.startTime:''}</span></td><td>${mono('—')}</td><td>${mono('—')}</td><td>${mono('—')}</td></tr>`;}).join('')}
   <tr style="border-top:2px solid var(--border2);font-weight:700"><td colspan="3">Totals</td><td>${mono(fmt(totalInvoiced),'b')}</td><td>${mono(fmt(totalPaid),'g')}</td><td>${mono(fmt(cust.bal||0),cust.bal>0?'r':'g')}</td></tr>
   </tbody></table></div>`;
 }
@@ -30466,8 +30470,10 @@ function mEditSale(id){const _s=_L();
   modal(`\u270f\ufe0f Edit Sale \u2014 ${s.id}`,`
   <div class="fg-2">
     <div class="fg"><label class="fl">${_s.ui_date}</label><input class="fi" type="date" id="es-dt" value="${s.dt}"/></div>
-    <div class="fg"><label class="fl">${_s.ui_customer}</label>
+    <div class="fg">
+      ${_newCustBtnHTML('es')}
       <select class="fs" id="es-cust">${D.cust.map(c=>`<option value="${c.id}"${(c.id===s.custId||c.name===s.cust)?' selected':''}>${_esc(c.name)}</option>`).join('')}</select>
+      ${_inlineCustFormHTML('es')}
     </div>
   </div>
 
@@ -36191,6 +36197,7 @@ function _apptConfirmAndNotify(id){
   if(!a) return;
   a.st = 'Confirmed';
   _dbSaveAppt(a);
+  _apptEnsureCustomer(a);
   refreshLiveKpis(); _updateApptBadge();
   addAudit('Appointment confirmed', id+' (one-click confirm & notify)');
   closeModal();
@@ -37089,6 +37096,69 @@ function _filterSvcs(cat){const _s=_L();
   var allBtn=document.getElementById('svc-cat-all');
   if(allBtn){allBtn.style.borderColor=cat?'':'var(--a)';allBtn.style.color=cat?'':'var(--a)';}
 }
+// ── Ensure a confirmed appointment's customer exists in the customer list ────
+// Public bookings arrive with custName + custPhone but often NO custId (the
+// person isn't in D.cust yet). On confirmation we promote them to a real
+// customer record so they appear in the list and their statement tracks the
+// appointment. Idempotent: if they already exist (by id, or by matching phone,
+// or by exact name) we LINK the appointment to that record instead of making a
+// duplicate. Returns the customer id used (existing or new), or '' if there was
+// nothing to work with.
+function _apptEnsureCustomer(a){
+  if(!a) return '';
+  var name  = (a.custName||'').trim();
+  var phone = (a.custPhone||'').trim();
+  if(!name && !phone) return '';   // walk-in with no details — nothing to add
+
+  // 1. Already linked to a real customer? Use it.
+  if(a.custId){
+    var byId = D.cust.find(function(c){ return c.id===a.custId; });
+    if(byId) return byId.id;
+  }
+  // 2. Match an existing customer by phone (most reliable), else exact name.
+  var digits = phone.replace(/\D/g,'');
+  var match = null;
+  if(digits){
+    match = D.cust.find(function(c){
+      var cp = String(c.phone||c.whatsapp||'').replace(/\D/g,'');
+      return cp && cp===digits;
+    });
+  }
+  if(!match && name){
+    match = D.cust.find(function(c){ return (c.name||'').trim().toLowerCase()===name.toLowerCase(); });
+  }
+  if(match){
+    // Backfill contact details the booking has but the record is missing.
+    var changed=false;
+    if(phone && !match.phone){ match.phone=phone; match.ph=phone; changed=true; }
+    if(phone && !match.whatsapp){ match.whatsapp=phone; changed=true; }
+    if(a.custEmail && !match.email){ match.email=a.custEmail; changed=true; }
+    if(changed) _dbSaveCust(match);
+    // Link the appointment to the resolved customer so future views agree.
+    if(a.custId!==match.id){ a.custId=match.id; _dbSaveAppt(a); }
+    return match.id;
+  }
+
+  // 3. No match — create a new customer from the booking's details.
+  var _maxC=D.cust.reduce(function(m,c){var n=parseInt((c.id||'').replace(/\D/g,''),10)||0;return n>m?n:m;},0);
+  var _rand=(Date.now().toString(36).slice(-4)+Math.random().toString(36).slice(2,5)).toUpperCase();
+  var newId='C-'+String(_maxC+1).padStart(3,'0')+'-'+_rand;
+  var newCust={
+    id:newId, name:name||('Customer '+phone), type:'Regular', tier:'Regular',
+    email:a.custEmail||'', phone:phone, ph:phone, whatsapp:phone,
+    address:'', city:'', notes:'Added from appointment '+(a.id||''),
+    vip:false, st:'Active', spend:0, spent:0, bal:0,
+    visits:0, orders:0, last:localDateStr()
+  };
+  D.cust.unshift(newCust);
+  _dbSaveCust(newCust);
+  addAudit('Customer added', newId+' — '+newCust.name+' (from appointment)');
+  // Link the appointment to the new customer record.
+  a.custId=newId; _dbSaveAppt(a);
+  toast(newCust.name+' added to customers ✓','success');
+  return newId;
+}
+
 function _apptQuickStatus(id, newSt){const _s=_L();
   var a=D.appointments.find(function(x){return x.id===id;}); if(!a) return;
   var prevSt = a.st;
@@ -37097,8 +37167,9 @@ function _apptQuickStatus(id, newSt){const _s=_L();
   toast(a.custName+' \u2014 '+newSt,'success');
   if(newSt==='Completed'&&(a.totalAmt||0)>0&&!a.saleId)
     setTimeout(function(){if(confirm('Checkout & create sale for '+a.custName+'?'))_apptCheckout(id);},300);
-  // Auto-fire customer WhatsApp confirmation on Reserved → Confirmed
-  if(prevSt==='Reserved' && newSt==='Confirmed'){
+  // On confirmation: ensure the customer exists in the list + fire WhatsApp.
+  if(newSt==='Confirmed' && prevSt!=='Confirmed'){
+    _apptEnsureCustomer(a);
     setTimeout(function(){ _apptNotifyCustomerConfirmed(a); }, 200);
   }
   nav('appointments');
