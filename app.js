@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1785786283");
+console.log("ShopTrack v2.7 - build:1785805245");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -30458,8 +30458,9 @@ function mEditSale(id){const _s=_L();
   const _saleLineItems = s.lineItems || [];
   const _hasLines = _saleLineItems.length > 0;
   const _lineItemsHTML = _hasLines ? _saleLineItems.map(function(li,idx){
-    return '<div style="display:grid;grid-template-columns:2fr 60px 80px 80px 28px;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">'
-      +'<input class="fi es-li-name" value="'+_esc(li.name||li.desc||'')+'" style="font-size:12px;padding:6px 8px"/>'
+    return '<div style="display:grid;grid-template-columns:1.4fr 1.4fr 52px 76px 72px 24px;gap:5px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">'
+      +'<select class="fs es-li-sel" style="font-size:12px;padding:6px 4px" onchange="_esLinePick(this)">'+_saleLineOptionsHTML()+'</select>'
+      +'<input class="fi es-li-name" value="'+_esc(li.name||li.desc||'')+'" style="font-size:12px;padding:6px 8px" placeholder="Item name"/>'
       +'<input class="fi es-li-qty" type="number" value="'+(li.qty||1)+'" min="1" style="font-size:12px;padding:6px;text-align:center" oninput="_esRecalcLines()"/>'
       +'<input class="fi es-li-price" type="number" value="'+Math.round((li.price||li.sp||0)*r)+'" style="font-size:12px;padding:6px" oninput="_esRecalcLines()"/>'
       +'<div style="font-family:var(--mono);font-size:12px;font-weight:600;text-align:right;color:var(--ink)" class="es-li-total">'+Math.round((li.qty||1)*(li.price||li.sp||0)*r).toLocaleString()+'</div>'
@@ -30648,8 +30649,9 @@ function _esAddLine(){
   var container=document.getElementById('es-lines');
   if(!container) return;
   var row=document.createElement('div');
-  row.style.cssText='display:grid;grid-template-columns:2fr 60px 80px 80px 28px;gap:6px;align-items:center;padding:5px 10px;border-bottom:1px solid var(--border)';
-  row.innerHTML='<input class="fi es-li-name" placeholder="Item name" style="font-size:12px;padding:6px 8px"/>'
+  row.style.cssText='display:grid;grid-template-columns:1.4fr 1.4fr 52px 76px 72px 24px;gap:5px;align-items:center;padding:5px 10px;border-bottom:1px solid var(--border)';
+  row.innerHTML='<select class="fs es-li-sel" style="font-size:12px;padding:6px 4px" onchange="_esLinePick(this)">'+_saleLineOptionsHTML()+'</select>'
+    +'<input class="fi es-li-name" placeholder="Item name" style="font-size:12px;padding:6px 8px"/>'
     +'<input class="fi es-li-qty" type="number" value="1" min="1" style="font-size:12px;padding:6px;text-align:center" oninput="_esRecalcLines()"/>'
     +'<input class="fi es-li-price" type="number" placeholder="0" style="font-size:12px;padding:6px" oninput="_esRecalcLines()"/>'
     +'<div style="font-family:var(--mono);font-size:12px;font-weight:600;text-align:right;color:var(--ink)" class="es-li-total">0</div>'
@@ -30657,6 +30659,41 @@ function _esAddLine(){
   container.appendChild(row);
   row.querySelector('.es-li-name').focus();
 }
+// Shared product+service <option> list for a sale line picker (used by both
+// the New Sale and Edit Sale modals). Returns the inner HTML of a <select>.
+function _saleLineOptionsHTML(selectedName){
+  var sellable = _sellableInvItems();
+  var sellOpts = _groupOptsByCat(sellable, function(i){
+    var avail = _invAvailable(i);
+    return '<option value="inv:'+i.id+'" data-sp="'+Math.round((i.sp||0)*CUR.rate)+'" data-cost="'+Math.round((i.cost||0)*CUR.rate)+'" data-name="'+_esc(i.name+(i.sku?' ('+i.sku+')':''))+'">'+_esc(i.name)+' ('+_fmtQty(avail)+' avail) \u2014 '+fmt(i.sp)+'</option>';
+  });
+  var svcOpts = (D.services||[]).filter(function(sv){return sv.active!==false;})
+    .map(function(sv){var pt=sv.priceType||'flat';var ptSfx={'per_hour':'/hr','per_min':'/min','per_day':'/day','per_week':'/wk','per_session':'/session'}[pt]||'';return '<option value="svc:'+sv.id+'" data-sp="'+Math.round((sv.price||0)*CUR.rate)+'" data-cost="0" data-name="'+_esc(sv.name)+'">'+_esc(sv.name)+(sv.cat?' \u00B7 '+_esc(sv.cat):'')+' \u2014 '+fmtSvc(sv)+ptSfx+'</option>';}).join('');
+  return '<option value="">-- Select product or service --</option>'
+    + (sellOpts||'')
+    + (svcOpts?'<optgroup label="\u2702 Services">'+svcOpts+'</optgroup>':'')
+    + '<option value="__custom__">\u2500\u2500 Custom item \u2500\u2500</option>';
+}
+
+// When a product/service is picked in an Edit Sale line row, fill that row's
+// name + price inputs from the chosen option, then recalc totals.
+function _esLinePick(sel){
+  var opt = sel.options[sel.selectedIndex];
+  if(!opt || !sel.value) return;
+  var row = sel.closest('div[style]');
+  if(!row) return;
+  var nameEl  = row.querySelector('.es-li-name');
+  var priceEl = row.querySelector('.es-li-price');
+  if(sel.value==='__custom__'){
+    if(nameEl){ nameEl.value=''; nameEl.focus(); }
+    if(priceEl) priceEl.value='';
+  } else {
+    if(nameEl)  nameEl.value  = opt.getAttribute('data-name') || opt.textContent;
+    if(priceEl) priceEl.value = opt.getAttribute('data-sp') || '';
+  }
+  _esRecalcLines();
+}
+
 function _esRecalcLines(){
   var grand=0;
   document.querySelectorAll('#es-lines > div').forEach(function(row){
