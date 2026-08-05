@@ -8,9 +8,11 @@ const TWILIO_FROM = 'whatsapp:' + (process.env.TWILIO_WA_NUMBER || process.env.T
 const TEMPLATES = {
   payment_reminder: 'HX8b7b304ade92c8d278001a2ed7f5998d',
   sale_alert:       'HXe8714706a1f6c0d3553c01158ebfcff8',
-  // Alias — frontend uses 'new_sale_alert' for the owner-alert-on-sale flow.
-  // Points to the same approved template as sale_alert.
-  new_sale_alert:   'HXe8714706a1f6c0d3553c01158ebfcff8',
+  // Frontend uses 'new_sale_alert' for the owner-alert-on-sale flow.
+  // Detailed 9-variable template (biz, invoice, customer, items, total,
+  // paid/balance, staff, method, date) approved 2026-08-04. The old 2-variable
+  // template (HXe8714706...) only showed shop name + invoice id.
+  new_sale_alert:   'HXbd4921586ce0fe607e2282cf033efbc0',
   // Customer-facing appointment confirmation. SID is filled in once the
   // template is approved in the Twilio Console — see TWILIO_TEMPLATE_SETUP
   // section in the appointment confirmation flow. Until then, this falls
