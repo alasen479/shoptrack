@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1785805245");
+console.log("ShopTrack v2.7 - build:1785934931");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -40775,7 +40775,7 @@ function _waOwnerNewSale(sale, staffName) {const _s=_L();
   var biz  = BIZ.name || 'your shop';
   var bal  = total - (sale.paid || 0);
   var paidLine = (sale.paid || 0) >= total
-    ? 'Paid: ' + fmt(sale.paid || 0) + ' OK Fully paid'
+    ? 'Paid: ' + fmt(sale.paid || 0) + ' \u2014 Fully paid \u2705'
     : 'Paid: ' + fmt(sale.paid || 0) + ' Balance due: ' + fmt(bal);
   var raw = (BIZ.whatsapp || BIZ.phone || '').replace(/[^0-9]/g, '');
   if (!raw || raw.length < 7) {
