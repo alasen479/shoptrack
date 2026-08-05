@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1785934931");
+console.log("ShopTrack v2.7 - build:1785936152");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -20321,7 +20321,53 @@ function _affExportCSV(){var _s=_L();
 // ============================================================
 const _SB_URL  = 'https://kjuxnigeexoynmvdzeyl.supabase.co';
 const _SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqdXhuaWdlZXhveW5tdmR6ZXlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODQyNzMsImV4cCI6MjA4OTc2MDI3M30.bQ_KBLcKTgI5qko9m0Rxjt8KLXl89Ow7jS1CH_csbHY';
-const _sb = (typeof supabase !== 'undefined') ? supabase.createClient(_SB_URL, _SB_KEY) : null;
+let _sb = (typeof supabase !== 'undefined') ? supabase.createClient(_SB_URL, _SB_KEY) : null;
+
+// ── Tenant-isolation token (Phase 2) ────────────────────────────────────────
+// After login, issue-token mints a JWT carrying biz_id. We rebuild the Supabase
+// client so every PostgREST request sends it as the Authorization bearer, which
+// lets RLS policies filter by biz_id once they're tightened (Phase 3). Until
+// Phase 3 the policies are permissive, so attaching the token changes NOTHING
+// about behaviour — it just rides along, verifiable in the Network tab.
+async function _attachTenantToken(email, password){
+  try{
+    var r = await fetch('/.netlify/functions/issue-token', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email: email, password: password })
+    });
+    if(!r.ok){ console.warn('[auth] issue-token '+r.status+' — continuing on anon key'); return false; }
+    var d = await r.json();
+    if(!d || !d.token){ console.warn('[auth] issue-token returned no token — anon key'); return false; }
+    if(typeof supabase !== 'undefined'){
+      _sb = supabase.createClient(_SB_URL, _SB_KEY, {
+        global: { headers: { Authorization: 'Bearer ' + d.token } }
+      });
+    }
+    try{ sessionStorage.setItem('st_jwt', d.token); }catch(e){}
+    console.log('[auth] tenant token attached (biz='+(d.biz_id||'')+', exp in '+(d.expires_in||'?')+'s)');
+    return true;
+  }catch(e){
+    console.warn('[auth] issue-token error — continuing on anon key:', e.message);
+    return false;
+  }
+}
+
+// Re-attach a still-valid token after an SPA reload (so queries keep the bearer
+// without forcing re-login). Expired/invalid → silently drop to anon; the app
+// still works because Phase 3 policies aren't in force yet.
+function _reattachTenantTokenFromSession(){
+  try{
+    var t = sessionStorage.getItem('st_jwt');
+    if(!t) return;
+    var payload = JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    if(payload.exp && payload.exp*1000 < Date.now()){ sessionStorage.removeItem('st_jwt'); return; }
+    if(typeof supabase !== 'undefined'){
+      _sb = supabase.createClient(_SB_URL, _SB_KEY, {
+        global: { headers: { Authorization: 'Bearer ' + t } }
+      });
+    }
+  }catch(e){ try{ sessionStorage.removeItem('st_jwt'); }catch(_e){} }
+}
 
 // ── DB helper: silent error logging ──────────────────────────
 function _dbErr(ctx, err){
@@ -24876,6 +24922,16 @@ function doLogin(){const _s=_L();
     SESSION.isSuperAdmin= cred.isSuperAdmin;
     SESSION.name        = cred.name;
     SESSION.bizId       = cred.bizId;
+
+    // Phase 2: attach the tenant-isolation JWT so all subsequent queries carry
+    // it. Awaited so the FIRST data loads below already send the bearer. On any
+    // failure we continue on the anon key — behaviour is identical until the
+    // Phase 3 policies are in force. Not attempted on the offline AUTH_STORE
+    // fallback (no server reachable to mint a token).
+    if(dbUser && dbUser !== 'UNREACHABLE' && pass){
+      await _attachTenantToken(email, pass);
+    }
+
     setTimeout(_loadCustCache, 0); // restore customer cache instantly
 
     // ── Reset D ────────────────────────────────────────────────
@@ -25141,6 +25197,10 @@ function doLogout(){
   if(_queueBadgeEl){ _queueBadgeEl.style.display='none'; }
   _queueDraining = false;
   try{ localStorage.removeItem('st_session'); sessionStorage.removeItem('st_session'); }catch(e){}
+  // Phase 2: drop the tenant token and revert _sb to the plain anon client so the
+  // next user doesn't inherit the previous session's bearer.
+  try{ sessionStorage.removeItem('st_jwt'); }catch(e){}
+  if(typeof supabase !== 'undefined'){ _sb = supabase.createClient(_SB_URL, _SB_KEY); }
   const ls = document.getElementById('login-screen');
   if(ls){ ls.style.opacity='1'; ls.style.transition='none'; ls.style.display='flex'; }
   // Clear form
@@ -26553,6 +26613,7 @@ function bootApp(){
       }
       SESSION.isSuperAdmin = _claimedSA;
       SESSION.name = s.name; SESSION.bizId = s.bizId;
+      _reattachTenantTokenFromSession(); // Phase 2: restore JWT bearer after reload
       updateSidebarForRole();
       setTimeout(_loadCustCache, 0);
       // If bizId is missing but email is stored, fetch fresh from Supabase
