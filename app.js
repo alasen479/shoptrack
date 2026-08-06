@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1785936152");
+console.log("ShopTrack v2.7 - build:1785977405");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -20321,7 +20321,7 @@ function _affExportCSV(){var _s=_L();
 // ============================================================
 const _SB_URL  = 'https://kjuxnigeexoynmvdzeyl.supabase.co';
 const _SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqdXhuaWdlZXhveW5tdmR6ZXlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODQyNzMsImV4cCI6MjA4OTc2MDI3M30.bQ_KBLcKTgI5qko9m0Rxjt8KLXl89Ow7jS1CH_csbHY';
-let _sb = (typeof supabase !== 'undefined') ? supabase.createClient(_SB_URL, _SB_KEY) : null;
+let _sb = (typeof supabase !== 'undefined') ? supabase.createClient(_SB_URL, _SB_KEY, { auth: { persistSession: false, autoRefreshToken: false } }) : null;
 
 // ── Tenant-isolation token (Phase 2) ────────────────────────────────────────
 // After login, issue-token mints a JWT carrying biz_id. We rebuild the Supabase
@@ -20340,7 +20340,8 @@ async function _attachTenantToken(email, password){
     if(!d || !d.token){ console.warn('[auth] issue-token returned no token — anon key'); return false; }
     if(typeof supabase !== 'undefined'){
       _sb = supabase.createClient(_SB_URL, _SB_KEY, {
-        global: { headers: { Authorization: 'Bearer ' + d.token } }
+        global: { headers: { Authorization: 'Bearer ' + d.token } },
+        auth: { persistSession: false, autoRefreshToken: false }
       });
     }
     try{ sessionStorage.setItem('st_jwt', d.token); }catch(e){}
@@ -20363,7 +20364,8 @@ function _reattachTenantTokenFromSession(){
     if(payload.exp && payload.exp*1000 < Date.now()){ sessionStorage.removeItem('st_jwt'); return; }
     if(typeof supabase !== 'undefined'){
       _sb = supabase.createClient(_SB_URL, _SB_KEY, {
-        global: { headers: { Authorization: 'Bearer ' + t } }
+        global: { headers: { Authorization: 'Bearer ' + t } },
+        auth: { persistSession: false, autoRefreshToken: false }
       });
     }
   }catch(e){ try{ sessionStorage.removeItem('st_jwt'); }catch(_e){} }
@@ -24665,10 +24667,17 @@ function updateSidebarForRole(){
       else { billingBadge.style.display = 'none'; }
     }
   }
-  // Update today's appointments badge
-  const todayAppts = (D.appointments||[]).filter(a=>a.date===localDateStr()&&a.st!=='Cancelled').length;
+  // Update appointments alert badge — mirrors the Rentals(overdue) and
+  // Inventory(low-stock) pattern: it flags appointments that NEED ACTION, not a
+  // neutral count. A newly booked appointment lands as 'Reserved' (from the
+  // public booking page and manual creation) and stays that way until the owner
+  // confirms it — so 'Reserved' is the appointment equivalent of 'Overdue'.
+  const newAppts = (D.appointments||[]).filter(a=>a.st==='Reserved').length;
   const aBadge = document.getElementById('sb-appt-badge');
-  if(aBadge){ if(todayAppts>0){aBadge.textContent=todayAppts;aBadge.style.display='';}else{aBadge.style.display='none';} }
+  if(aBadge){ if(newAppts>0){aBadge.textContent=newAppts;aBadge.style.display='';}else{aBadge.style.display='none';} }
+  // Mobile bottom-nav / drawer appointment dot (if present)
+  const aDot = document.getElementById('bn-appt-dot');
+  if(aDot){ if(newAppts>0){aDot.textContent=newAppts;aDot.style.display='';}else{aDot.style.display='none';} }
   // Mobile drawer: hide biz items for SA, hide SA items for biz users
   document.querySelectorAll('.dr-biz-item').forEach(el=>{ el.style.display=isSA?'none':''; });
   document.querySelectorAll('.dr-sa-item').forEach(el=>{ el.style.display=isSA?'':'none'; });
@@ -25200,7 +25209,7 @@ function doLogout(){
   // Phase 2: drop the tenant token and revert _sb to the plain anon client so the
   // next user doesn't inherit the previous session's bearer.
   try{ sessionStorage.removeItem('st_jwt'); }catch(e){}
-  if(typeof supabase !== 'undefined'){ _sb = supabase.createClient(_SB_URL, _SB_KEY); }
+  if(typeof supabase !== 'undefined'){ _sb = supabase.createClient(_SB_URL, _SB_KEY, { auth: { persistSession: false, autoRefreshToken: false } }); }
   const ls = document.getElementById('login-screen');
   if(ls){ ls.style.opacity='1'; ls.style.transition='none'; ls.style.display='flex'; }
   // Clear form
@@ -35363,6 +35372,12 @@ function _updateApptBadge(){
   const n=(D.appointments||[]).filter(a=>a.date===localDateStr()&&!['Completed','Cancelled','No-Show'].includes(a.st)).length;
   const b=document.getElementById('appt-badge');
   if(b){ b.style.display=n>0?'':'none'; b.textContent=n; }
+  // Keep the sidebar Reserved-appointments alert in sync on per-appt changes.
+  const _resv=(D.appointments||[]).filter(a=>a.st==='Reserved').length;
+  const sb=document.getElementById('sb-appt-badge');
+  if(sb){ if(_resv>0){sb.textContent=_resv;sb.style.display='';}else{sb.style.display='none';} }
+  const bd=document.getElementById('bn-appt-dot');
+  if(bd){ if(_resv>0){bd.textContent=_resv;bd.style.display='';}else{bd.style.display='none';} }
 }
 
 // ── Calendar state ───────────────────────────────────────────
