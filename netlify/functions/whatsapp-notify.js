@@ -13,6 +13,10 @@ const TEMPLATES = {
   // paid/balance, staff, method, date) approved 2026-08-04. The old 2-variable
   // template (HXe8714706...) only showed shop name + invoice id.
   new_sale_alert:   'HXbd4921586ce0fe607e2282cf033efbc0',
+  // Owner-facing below-minimum-price alert (blocked OR approved override).
+  // Env-var driven so approving the template = set TWILIO_TPL_MIN_PRICE in
+  // Netlify, no code deploy. Until set, the frontend's freeform fallback runs.
+  min_price_alert:  process.env.TWILIO_TPL_MIN_PRICE || '',
   // Customer-facing appointment confirmation. SID is filled in once the
   // template is approved in the Twilio Console — see TWILIO_TEMPLATE_SETUP
   // section in the appointment confirmation flow. Until then, this falls
