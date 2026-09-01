@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1785977405");
+console.log("ShopTrack v2.7 - build:1788264914");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -7164,7 +7164,10 @@ function _checkMinSp(invId, priceDisplay){const _s=_L();
         canOverride: true,
         msg: softMsg,
         auditMsg: auditMsg + ' Override requested.',
-        item: it
+        item: it,
+        attemptedDisplay: priceDisplay,
+        minUsd: it.minSp,
+        who: who
       };
     }
 
@@ -7174,7 +7177,7 @@ function _checkMinSp(invId, priceDisplay){const _s=_L();
                 +' is below the minimum sell price of '+minNative
                 +'. You do not have permission to sell below minimum. '
                 +'Please ask the owner to approve this sale.';
-    setTimeout(function(){ _waOwnerMinBlock(it.name, priceDisplay, it.minSp, who); }, 200);
+    setTimeout(function(){ _waOwnerMinBlock(it.name, priceDisplay, it.minSp, who, 'blocked'); }, 200);
     return {
       block: true,
       canOverride: false,
@@ -7198,6 +7201,15 @@ function _logMinSpOverride(check, contextLabel){
   var msg = check.auditMsg.replace(' Override requested.', ' OVERRIDE APPROVED.')
                           + (contextLabel ? ' (' + contextLabel + ')' : '');
   addAudit('Min price override', msg);
+  // Notify the owner: a below-minimum sale actually went through. This is the
+  // event owners most want to know about — a real underpriced sale, not a
+  // prevented one. Fires for every override path (sale, quote, catalogue edit).
+  if(check.item && typeof check.attemptedDisplay !== 'undefined'){
+    setTimeout(function(){
+      _waOwnerMinBlock(check.item.name, check.attemptedDisplay, check.minUsd,
+                       check.who || (SESSION.name||SESSION.level||'A user'), 'override');
+    }, 200);
+  }
 }
 
 // Updates the warning hint below cs-amt in the Create Sale modal.
@@ -28317,7 +28329,7 @@ function pgSettings(){
     if(p.key === 'waOwnerNewSale'){
       extraBtn = '<button class="btn btn-p btn-xs" style="margin-left:6px" title="'+_s.set_notif_send_test+'" onclick="_waOwnerNewSale({id:\'TEST\',cust:\'Test Customer\',items:\'Sample Item\',total:99,paid:99,method:\'Cash\'},\'Staff\');_markWATestDone()">\uD83D\uDCF1 Send Test</button>';
     } else if(p.key === 'waOwnerMinBlock'){
-      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerMinBlock(\'Sample Item\',18*CUR.rate,25,\'Staff\')">'+_s.set_notif_test+'</button>';
+      extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerMinBlock(\'Sample Item\',18*CUR.rate,25,\'Staff\',\'blocked\')">'+_s.set_notif_test+'</button>';
     } else if(p.key === 'waOwnerPayment'){
       extraBtn = '<button class="btn btn-s btn-xs" style="margin-left:6px" title="'+_s.set_notif_test+'" onclick="_waOwnerPayment(250,\'Test Customer\',\'TEST-001\',\'Cash\')">'+_s.set_notif_test+'</button>';
     } else if(p.key === 'waOwnerLowStock'){
@@ -40915,19 +40927,57 @@ function _waOwnerNewSale(sale, staffName) {const _s=_L();
   }).catch(function(e){ console.warn('[WA] fetch error:', e.message); });
 }
 
-// 2. Below-minimum price block alert to owner
-function _waOwnerMinBlock(itemName, attemptedPriceDisplay, minPriceUsd, staffName) {
+// 2. Below-minimum price alert to owner.
+//    eventType: 'blocked'  = staff without permission was stopped (no sale went through)
+//               'override' = a permitted user SOLD below minimum (sale DID go through)
+//    Sends via an APPROVED Twilio template (business-initiated messages must be
+//    templated to deliver outside WhatsApp's 24h window — freeform silently
+//    fails, which is why owners previously reported "no alert"). Freeform is
+//    kept only as a last-resort fallback when the template call errors.
+function _waOwnerMinBlock(itemName, attemptedPriceDisplay, minPriceUsd, staffName, eventType) {
   if (!NOTIF_PREFS.waOwnerMinBlock) return;
+  var evt = (eventType === 'override') ? 'override' : 'blocked';
   var biz = BIZ.name || 'your shop';
-  var msg = 'PRICE BLOCKED at ' + biz + '\n\n'
-    + 'Item: ' + itemName + '\n'
-    + 'Attempted price: ' + fmt(attemptedPriceDisplay / CUR.rate) + '\n'
-    + 'Your minimum:    ' + fmt(minPriceUsd) + '\n'
-    + (staffName ? 'Staff: ' + staffName + '\n' : '')
-    + localDateStr() + ' at ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '\n\n'
-    + 'Sale was blocked. No action needed.\n'
-    + '_ShopTrack - ' + biz + '_';
-  _waOwner(msg);
+  var raw = (BIZ.whatsapp || BIZ.phone || '').replace(/[^0-9]/g, '');
+  if (!raw || raw.length < 7) {
+    console.warn('[ShopTrack] min-price alert skipped: no WhatsApp number in Business Profile');
+    return;
+  }
+  var attempted = fmt(attemptedPriceDisplay / CUR.rate);
+  var minimum   = fmt(minPriceUsd);
+  var who       = staffName || 'A staff member';
+  var when      = localDateStr() + ' ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  var statusLine = (evt === 'override')
+    ? 'SOLD below minimum (approved override) \u2014 review recommended'
+    : 'Sale BLOCKED \u2014 no action needed';
+
+  // Template variables (must match the approved 'min_price_alert' template):
+  //   {{1}} shop  {{2}} item  {{3}} attempted  {{4}} minimum  {{5}} who  {{6}} when  {{7}} status line
+  fetch('/.netlify/functions/whatsapp-notify', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      to: raw,
+      template: 'min_price_alert',
+      variables: {
+        '1': biz, '2': itemName, '3': attempted, '4': minimum,
+        '5': who, '6': when, '7': statusLine
+      }
+    })
+  }).then(function(r){ return r.json(); }).then(function(data){
+    if(!data.success){
+      console.warn('[WA] min-price template failed:', data.error, data.code, '\u2014 freeform fallback');
+      _waOwner(
+        (evt==='override' ? 'BELOW-MINIMUM SALE at ' : 'PRICE BLOCKED at ') + biz + '\n\n'
+        + 'Item: ' + itemName + '\n'
+        + 'Attempted price: ' + attempted + '\n'
+        + 'Your minimum:    ' + minimum + '\n'
+        + 'By: ' + who + '\n'
+        + when + '\n\n'
+        + statusLine + '\n'
+        + '_ShopTrack - ' + biz + '_'
+      );
+    }
+  }).catch(function(e){ console.warn('[WA] min-price fetch error:', e.message); });
 }
 
 // 3. Payment received alert to owner
