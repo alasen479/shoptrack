@@ -6,7 +6,7 @@
 //   Everything else → Network-first, cache fallback
 //   Offline → Serve cached app shell + show offline banner inside app
 
-const CACHE_NAME   = 'shoptrack-shell-v253';
+const CACHE_NAME   = 'shoptrack-shell-v255';
 const OFFLINE_URL  = '/offline.html';
 
 // ── App shell — these files make the app load instantly offline ──

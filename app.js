@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1788264914");
+console.log("ShopTrack v2.7 - build:1788350780");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -24684,7 +24684,11 @@ function updateSidebarForRole(){
   // neutral count. A newly booked appointment lands as 'Reserved' (from the
   // public booking page and manual creation) and stays that way until the owner
   // confirms it — so 'Reserved' is the appointment equivalent of 'Overdue'.
-  const newAppts = (D.appointments||[]).filter(a=>a.st==='Reserved').length;
+  // Match the Appointments KPI "Needs confirmation" card exactly: Reserved AND
+  // dated today-or-later. Past-dated Reserved appts are stale (never actioned)
+  // and confirming them is meaningless, so they don't belong in an alert badge.
+  const _apptToday = localDateStr();
+  const newAppts = (D.appointments||[]).filter(a=>a.st==='Reserved' && a.date>=_apptToday).length;
   const aBadge = document.getElementById('sb-appt-badge');
   if(aBadge){ if(newAppts>0){aBadge.textContent=newAppts;aBadge.style.display='';}else{aBadge.style.display='none';} }
   // Mobile bottom-nav / drawer appointment dot (if present)
@@ -35385,7 +35389,8 @@ function _updateApptBadge(){
   const b=document.getElementById('appt-badge');
   if(b){ b.style.display=n>0?'':'none'; b.textContent=n; }
   // Keep the sidebar Reserved-appointments alert in sync on per-appt changes.
-  const _resv=(D.appointments||[]).filter(a=>a.st==='Reserved').length;
+  const _apptTodayB=localDateStr();
+  const _resv=(D.appointments||[]).filter(a=>a.st==='Reserved' && a.date>=_apptTodayB).length;
   const sb=document.getElementById('sb-appt-badge');
   if(sb){ if(_resv>0){sb.textContent=_resv;sb.style.display='';}else{sb.style.display='none';} }
   const bd=document.getElementById('bn-appt-dot');
@@ -41003,14 +41008,36 @@ function _waOwnerLowStock(itemName, available, threshold) {
   if(itemName !== 'Test Item') window._waLowStockSent.add(_lsKey);
   var oos = available <= 0;
   var biz = BIZ.name || 'your shop';
-  var msg = (oos ? 'OUT OF STOCK' : 'Low Stock Alert') + ' at ' + biz + '\n\n'
-    + 'Item: ' + itemName + '\n'
-    + 'Available: ' + available + ' units' + (threshold > 0 ? ' (min: ' + threshold + ')' : '') + '\n'
-    + (oos ? 'Item is completely out of stock.\n' : '')
-    + localDateStr() + '\n\n'
-    + 'Go to Inventory to reorder.\n'
-    + '_ShopTrack - ' + biz + '_';
-  _waOwner(msg);
+  var raw = (BIZ.whatsapp || BIZ.phone || '').replace(/[^0-9]/g, '');
+  if (!raw || raw.length < 7) {
+    console.warn('[ShopTrack] low-stock alert skipped: no WhatsApp number in Business Profile');
+    return;
+  }
+  var statusLine = oos ? 'OUT OF STOCK \u2014 reorder now' : 'Running low \u2014 reorder soon';
+  var availLine  = available + ' unit' + (available===1?'':'s') + (threshold > 0 ? ' left (min: ' + threshold + ')' : ' left');
+  // Send via approved template (business-initiated must be templated to deliver
+  // outside WhatsApp's 24h window). Freeform kept only as last-resort fallback.
+  //   {{1}} shop  {{2}} item  {{3}} availability line  {{4}} status line  {{5}} date
+  fetch('/.netlify/functions/whatsapp-notify', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      to: raw,
+      template: 'low_stock_alert',
+      variables: { '1': biz, '2': itemName, '3': availLine, '4': statusLine, '5': localDateStr() }
+    })
+  }).then(function(r){ return r.json(); }).then(function(data){
+    if(!data.success){
+      console.warn('[WA] low-stock template failed:', data.error, data.code, '\u2014 freeform fallback');
+      _waOwner(
+        (oos ? 'OUT OF STOCK' : 'Low Stock Alert') + ' at ' + biz + '\n\n'
+        + 'Item: ' + itemName + '\n'
+        + 'Available: ' + availLine + '\n'
+        + localDateStr() + '\n\n'
+        + 'Go to Inventory to reorder.\n'
+        + '_ShopTrack - ' + biz + '_'
+      );
+    }
+  }).catch(function(e){ console.warn('[WA] low-stock fetch error:', e.message); });
 }
 
 // 5. New booking alert to owner
