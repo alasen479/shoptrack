@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1788350780");
+console.log("ShopTrack v2.7 - build:1788352794");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -36029,17 +36029,29 @@ function _apptListHTML(){const _s=_L();
       <input class="fi-s" id="al-q" placeholder="Search name, service…" style="width:160px" oninput="_apptFilter()"/>
       <select class="sel" id="al-st" onchange="_apptFilter()" style="font-size:12px">
         <option value="">${_s.adm_all_status2}</option>
-        <option>${_s.rent_st_reserved}</option><option>Confirmed</option><option>In Progress</option>
-        <option>${_s.ui_st_completed}</option><option>No-Show</option><option>${_s.ui_st_cancelled}</option>
+        <option value="Reserved">${_s.rent_st_reserved}</option>
+        <option value="Confirmed">Confirmed</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Completed">${_s.ui_st_completed}</option>
+        <option value="No-Show">No-Show</option>
+        <option value="Cancelled">${_s.ui_st_cancelled}</option>
+      </select>
+      <select class="sel" id="al-svc" onchange="_apptFilter()" style="font-size:12px" title="Filter by service">
+        <option value="">${_s.svc_col_name||'Service'}: All</option>
+        ${Array.from(new Set((D.appointments||[]).map(a=>a.serviceName).filter(Boolean))).sort().map(sv=>`<option value="${_esc(sv)}">${_esc(sv)}</option>`).join('')}
+      </select>
+      <select class="sel" id="al-staff" onchange="_apptFilter()" style="font-size:12px" title="Filter by staff">
+        <option value="">${_s.appt_staff||'Staff'}: All</option>
+        ${Array.from(new Set((D.appointments||[]).map(a=>a.staffName).filter(Boolean))).sort().map(stf=>`<option value="${_esc(stf)}">${_esc(stf)}</option>`).join('')}
       </select>
       <input type="date" class="fi-s" id="al-dt" onchange="_apptFilter()" style="width:135px" title="Filter by date"/>
-      <button class="btn btn-s btn-xs" onclick="document.getElementById('al-dt').value='';document.getElementById('al-st').value='';document.getElementById('al-q').value='';_apptFilter()" title="Clear filters">✕ Clear</button>
+      <button class="btn btn-s btn-xs" onclick="['al-dt','al-st','al-q','al-svc','al-staff'].forEach(function(i){var e=document.getElementById(i);if(e)e.value='';});_apptFilter()" title="Clear filters">✕ Clear</button>
     </div>
   </div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>ID</th><th>Date & Time</th><th>${_s.ui_customer}</th><th>${_s.svc_col_name}</th><th>${_s.appt_staff}</th><th>${_s.ui_status}</th><th>${_s.ui_amount}</th><th>${_s.ui_actions}</th></tr></thead>
     <tbody id="al-tbody">
-    ${appts.map(a=>`<tr data-st="${a.st}" data-dt="${a.date}" data-q="${_esc((a.custName+' '+a.serviceName+' '+(a.staffName||'')).toLowerCase())}" style="cursor:pointer" onclick="mViewAppt('${a.id}')">
+    ${appts.map(a=>`<tr data-st="${a.st}" data-dt="${a.date}" data-svc="${_esc(a.serviceName||'')}" data-staff="${_esc(a.staffName||'')}" data-q="${_esc((a.custName+' '+a.serviceName+' '+(a.staffName||'')).toLowerCase())}" style="cursor:pointer" onclick="mViewAppt('${a.id}')">
       <td>
         <span style="font-family:var(--mono);font-size:11px;color:var(--a)">${a.id}</span>
         ${a.walkIn?` <span style="font-size:9px;color:var(--o);background:rgba(249,115,22,.1);border-radius:4px;padding:1px 4px">walk-in</span>`:''}
@@ -36080,6 +36092,8 @@ function _apptFilter(preset){
   const q=(document.getElementById('al-q')?.value||'').toLowerCase();
   let st=document.getElementById('al-st')?.value||'';
   let dt=document.getElementById('al-dt')?.value||'';
+  const svc=document.getElementById('al-svc')?.value||'';
+  const staff=document.getElementById('al-staff')?.value||'';
   const today=localDateStr();
   if(preset==='today'){
     dt=today;
@@ -36088,6 +36102,8 @@ function _apptFilter(preset){
     dt=''; st='';
     const dtEl=document.getElementById('al-dt'); if(dtEl) dtEl.value='';
     const stEl=document.getElementById('al-st'); if(stEl) stEl.value='';
+    const svcEl=document.getElementById('al-svc'); if(svcEl) svcEl.value='';
+    const staffEl=document.getElementById('al-staff'); if(staffEl) staffEl.value='';
   } else if(preset==='no-show'){
     st='No-Show';
     const stEl=document.getElementById('al-st'); if(stEl) stEl.value='No-Show';
@@ -36096,7 +36112,8 @@ function _apptFilter(preset){
     const stEl=document.getElementById('al-st'); if(stEl) stEl.value='Reserved';
   }
   document.querySelectorAll('#al-tbody tr').forEach(r=>{
-    let show = (!q || r.dataset.q?.includes(q)) && (!st || r.dataset.st===st);
+    let show = (!q || r.dataset.q?.includes(q)) && (!st || r.dataset.st===st)
+             && (!svc || r.dataset.svc===svc) && (!staff || r.dataset.staff===staff);
     if(preset==='upcoming'){
       show = show && r.dataset.dt > today && !['Cancelled','No-Show'].includes(r.dataset.st);
     } else if(dt){
