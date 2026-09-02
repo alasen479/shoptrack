@@ -17,6 +17,11 @@ const TEMPLATES = {
   // Env-var driven so approving the template = set TWILIO_TPL_MIN_PRICE in
   // Netlify, no code deploy. Until set, the frontend's freeform fallback runs.
   min_price_alert:  process.env.TWILIO_TPL_MIN_PRICE || '',
+  // Owner-facing low/out-of-stock alert. Env-driven (set TWILIO_TPL_LOW_STOCK
+  // to the approved template SID). Until set, freeform fallback runs — which is
+  // why owners weren't receiving out-of-stock alerts (freeform is rejected by
+  // WhatsApp outside the 24h window).
+  low_stock_alert:  process.env.TWILIO_TPL_LOW_STOCK || '',
   // Customer-facing appointment confirmation. SID is filled in once the
   // template is approved in the Twilio Console — see TWILIO_TEMPLATE_SETUP
   // section in the appointment confirmation flow. Until then, this falls
