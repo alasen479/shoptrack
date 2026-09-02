@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1788352794");
+console.log("ShopTrack v2.7 - build:1788353520");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -35402,7 +35402,12 @@ let _apptCalY=new Date().getFullYear(), _apptCalM=new Date().getMonth(), _apptCa
 let _apptDayDate = null;  // YYYY-MM-DD for the Day view focus
 let _apptWeekDate = null; // YYYY-MM-DD for the Week view; resolves to its containing week (Sun-Sat)
 
-function initAppointments(){ _updateApptBadge(); }
+function initAppointments(){
+  _updateApptBadge();
+  // Initialise the list filter/scope + badge on render (when list view is shown
+  // and no KPI preset is driving it). Deferred so the DOM exists first.
+  setTimeout(function(){ if(document.getElementById('al-tbody')) _apptApply(); }, 60);
+}
 
 // ── APPOINTMENTS PAGE ────────────────────────────────────────
 
@@ -36026,8 +36031,8 @@ function _apptListHTML(){const _s=_L();
   return `<div class="card">
   <div class="card-hd"><div class="card-ttl">All Appointments</div>
     <div class="btn-row">
-      <input class="fi-s" id="al-q" placeholder="Search name, service…" style="width:160px" oninput="_apptFilter()"/>
-      <select class="sel" id="al-st" onchange="_apptFilter()" style="font-size:12px">
+      <input class="fi-s" id="al-q" placeholder="Search name, service…" style="width:160px" oninput="_apptApply()"/>
+      <select class="sel" id="al-st" onchange="_apptApply()" style="font-size:12px">
         <option value="">${_s.adm_all_status2}</option>
         <option value="Reserved">${_s.rent_st_reserved}</option>
         <option value="Confirmed">Confirmed</option>
@@ -36036,17 +36041,23 @@ function _apptListHTML(){const _s=_L();
         <option value="No-Show">No-Show</option>
         <option value="Cancelled">${_s.ui_st_cancelled}</option>
       </select>
-      <select class="sel" id="al-svc" onchange="_apptFilter()" style="font-size:12px" title="Filter by service">
+      <select class="sel" id="al-svc" onchange="_apptApply()" style="font-size:12px" title="Filter by service">
         <option value="">${_s.svc_col_name||'Service'}: All</option>
         ${Array.from(new Set((D.appointments||[]).map(a=>a.serviceName).filter(Boolean))).sort().map(sv=>`<option value="${_esc(sv)}">${_esc(sv)}</option>`).join('')}
       </select>
-      <select class="sel" id="al-staff" onchange="_apptFilter()" style="font-size:12px" title="Filter by staff">
+      <select class="sel" id="al-staff" onchange="_apptApply()" style="font-size:12px" title="Filter by staff">
         <option value="">${_s.appt_staff||'Staff'}: All</option>
         ${Array.from(new Set((D.appointments||[]).map(a=>a.staffName).filter(Boolean))).sort().map(stf=>`<option value="${_esc(stf)}">${_esc(stf)}</option>`).join('')}
       </select>
-      <input type="date" class="fi-s" id="al-dt" onchange="_apptFilter()" style="width:135px" title="Filter by date"/>
-      <button class="btn btn-s btn-xs" onclick="['al-dt','al-st','al-q','al-svc','al-staff'].forEach(function(i){var e=document.getElementById(i);if(e)e.value='';});_apptFilter()" title="Clear filters">✕ Clear</button>
+      <select class="sel" id="al-scope" onchange="_apptSetScope(this.value)" style="font-size:12px" title="Quick view">
+        <option value="">All dates</option>
+        <option value="today">Today</option>
+        <option value="upcoming">Upcoming</option>
+      </select>
+      <input type="date" class="fi-s" id="al-dt" onchange="document.getElementById('al-scope').value='';_apptScope='';_apptFilter()" style="width:135px" title="Filter by date"/>
+      <button class="btn btn-s btn-xs" onclick="_apptClearFilters()" title="Clear filters">✕ Clear</button>
     </div>
+    <div id="al-scope-badge" style="font-size:12px;color:var(--a);font-weight:700;margin-top:4px;display:none"></div>
   </div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>ID</th><th>Date & Time</th><th>${_s.ui_customer}</th><th>${_s.svc_col_name}</th><th>${_s.appt_staff}</th><th>${_s.ui_status}</th><th>${_s.ui_amount}</th><th>${_s.ui_actions}</th></tr></thead>
@@ -36088,39 +36099,75 @@ function _apptListHTML(){const _s=_L();
   </table></div>
 </div>`;
 }
+// Sticky date-scope for the appointment list: '' | 'today' | 'upcoming'.
+// Held in a module var so it survives re-runs of _apptFilter triggered by
+// changing OTHER filters (status/service/staff/search). Previously the
+// "upcoming" rule lived only in the click-moment call and vanished the next
+// time any dropdown changed — the classic "filter silently stops working" bug.
+var _apptScope = '';
+
+// KPI cards call this. preset: 'today'|'upcoming'|'pending'|'no-show'.
+// today/upcoming are DATE scopes; pending/no-show are STATUS presets.
 function _apptFilter(preset){
+  if(preset==='today' || preset==='upcoming'){
+    _apptScope = preset;
+    var scEl=document.getElementById('al-scope'); if(scEl) scEl.value=preset;
+    // A date scope shouldn't also carry a stale explicit date.
+    var dtEl0=document.getElementById('al-dt'); if(dtEl0) dtEl0.value='';
+  } else if(preset==='pending'){
+    var stElp=document.getElementById('al-st'); if(stElp) stElp.value='Reserved';
+    _apptScope='upcoming'; var scElp=document.getElementById('al-scope'); if(scElp) scElp.value='upcoming';
+  } else if(preset==='no-show'){
+    var stEln=document.getElementById('al-st'); if(stEln) stEln.value='No-Show';
+    _apptScope=''; var scEln=document.getElementById('al-scope'); if(scEln) scEln.value='';
+  }
+  _apptApply();
+}
+
+// Scope dropdown handler.
+function _apptSetScope(v){
+  _apptScope = v || '';
+  var dtEl=document.getElementById('al-dt'); if(dtEl && v) dtEl.value=''; // scope and explicit date are mutually exclusive
+  _apptApply();
+}
+
+function _apptClearFilters(){
+  ['al-dt','al-st','al-q','al-svc','al-staff','al-scope'].forEach(function(i){var e=document.getElementById(i);if(e)e.value='';});
+  _apptScope='';
+  _apptApply();
+}
+
+// The actual row show/hide pass — reads every control + the sticky scope.
+function _apptApply(){
   const q=(document.getElementById('al-q')?.value||'').toLowerCase();
-  let st=document.getElementById('al-st')?.value||'';
-  let dt=document.getElementById('al-dt')?.value||'';
+  const st=document.getElementById('al-st')?.value||'';
+  const dt=document.getElementById('al-dt')?.value||'';
   const svc=document.getElementById('al-svc')?.value||'';
   const staff=document.getElementById('al-staff')?.value||'';
   const today=localDateStr();
-  if(preset==='today'){
-    dt=today;
-    const dtEl=document.getElementById('al-dt'); if(dtEl) dtEl.value=dt;
-  } else if(preset==='upcoming'){
-    dt=''; st='';
-    const dtEl=document.getElementById('al-dt'); if(dtEl) dtEl.value='';
-    const stEl=document.getElementById('al-st'); if(stEl) stEl.value='';
-    const svcEl=document.getElementById('al-svc'); if(svcEl) svcEl.value='';
-    const staffEl=document.getElementById('al-staff'); if(staffEl) staffEl.value='';
-  } else if(preset==='no-show'){
-    st='No-Show';
-    const stEl=document.getElementById('al-st'); if(stEl) stEl.value='No-Show';
-  } else if(preset==='pending'){
-    st='Reserved';
-    const stEl=document.getElementById('al-st'); if(stEl) stEl.value='Reserved';
-  }
+  let shown=0;
   document.querySelectorAll('#al-tbody tr').forEach(r=>{
     let show = (!q || r.dataset.q?.includes(q)) && (!st || r.dataset.st===st)
              && (!svc || r.dataset.svc===svc) && (!staff || r.dataset.staff===staff);
-    if(preset==='upcoming'){
-      show = show && r.dataset.dt > today && !['Cancelled','No-Show'].includes(r.dataset.st);
+    if(_apptScope==='upcoming'){
+      show = show && r.dataset.dt >= today && !['Cancelled','No-Show'].includes(r.dataset.st);
+    } else if(_apptScope==='today'){
+      show = show && r.dataset.dt===today;
     } else if(dt){
       show = show && r.dataset.dt===dt;
     }
     r.style.display=show?'':'none';
+    if(show) shown++;
   });
+  // Visible active-scope indicator so the user always knows what they're seeing.
+  var badge=document.getElementById('al-scope-badge');
+  if(badge){
+    var label = _apptScope==='upcoming' ? 'Showing: Upcoming'
+              : _apptScope==='today'    ? 'Showing: Today'
+              : dt ? 'Showing: '+dt : '';
+    badge.textContent = label ? (label+' · '+shown+' result'+(shown===1?'':'s')) : (shown+' result'+(shown===1?'':'s'));
+    badge.style.display='';
+  }
 }
 
 // ── Missing calendar helpers ──────────────────────────────────
