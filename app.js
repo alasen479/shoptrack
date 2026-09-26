@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1790443351");
+console.log("ShopTrack v2.7 - build:1790444321");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -674,6 +674,8 @@ let BIZ = {
   tiktok: '',
   twitter: '',
   logoDataUrl: null,
+  niu: '',
+  rccm: '',
   stampDataUrl: null,
   signDataUrl: null,
   theme: 'dark',
@@ -21972,6 +21974,8 @@ async function _dbLoadBizProfile(bizId){
     BIZ.taxRate         = data.tax_rate||0;
     BIZ.taxName         = data.tax_name   || COUNTRY_TAX_DEFAULTS[data.country||'Cameroon']?.name || 'VAT';
     BIZ.taxRegNumber    = data.tax_reg_number||'';
+    BIZ.niu             = data.niu||'';
+    BIZ.rccm            = data.rccm||'';
     BIZ.paymentTerms    = data.payment_terms||'Net 7';
     BIZ.bankDetails     = data.bank_details||'';
     BIZ.paymentMethods  = data.payment_methods||'Cash, Bank Transfer, Mobile Money (MTN), Orange Money';
@@ -22214,7 +22218,7 @@ async function _dbSaveBizProfile(bizId){
       stamp_data_url:BIZ.stampDataUrl, sign_data_url:BIZ.signDataUrl,
       primary_color:BIZ.primaryColor, accent_color:BIZ.accentColor,
       invoice_note:BIZ.invoiceNote, tax_rate:BIZ.taxRate,
-      tax_name:BIZ.taxName||'', tax_reg_number:BIZ.taxRegNumber||'',
+      tax_name:BIZ.taxName||'', tax_reg_number:BIZ.taxRegNumber||'', niu:BIZ.niu||'', rccm:BIZ.rccm||'',
       contract_enabled:BIZ.contractEnabled, contract_title:BIZ.contractTitle,
       contract_template:BIZ.contractTemplate,
       payment_terms:BIZ.paymentTerms||'Net 7', bank_details:BIZ.bankDetails||'',
@@ -22236,7 +22240,7 @@ async function _dbSaveBizProfile(bizId){
       stamp_data_url:BIZ.stampDataUrl, sign_data_url:BIZ.signDataUrl,
       primary_color:BIZ.primaryColor, accent_color:BIZ.accentColor,
       invoice_note:BIZ.invoiceNote, tax_rate:BIZ.taxRate,
-      tax_name:BIZ.taxName||'', tax_reg_number:BIZ.taxRegNumber||'',
+      tax_name:BIZ.taxName||'', tax_reg_number:BIZ.taxRegNumber||'', niu:BIZ.niu||'', rccm:BIZ.rccm||'',
       contract_enabled:BIZ.contractEnabled, contract_title:BIZ.contractTitle,
       contract_template:BIZ.contractTemplate
     }).eq('id', bizId);
@@ -27349,6 +27353,20 @@ function docStyles(primary, accent){
   </style>`;
 }
 
+// Legal registration line for document letterheads. Cameroonian invoices must
+// carry the NIU (tax number) and RCCM (commercial registry number). Falls back
+// to the generic taxRegNumber only when neither is set, so older profiles that
+// used the single Tax ID field still print something.
+function _bizRegLine(){
+  var parts = [];
+  if(BIZ.niu && BIZ.niu.trim())   parts.push('NIU: ' + _esc(BIZ.niu.trim()));
+  if(BIZ.rccm && BIZ.rccm.trim()) parts.push('RCCM: ' + _esc(BIZ.rccm.trim()));
+  if(!parts.length && (BIZ.taxId || BIZ.taxRegNumber)){
+    parts.push(_esc(BIZ.taxId || BIZ.taxRegNumber));
+  }
+  return parts.join(' · ');
+}
+
 function genInvoiceDoc(saleId){
   const s = saleId ? D.sales.find(x=>x.id===saleId) : {id:'INV-'+Date.now(),cust:'Customer',items:'Items',amt:0,paid:0,dt:'2026-03-02',st:'Unpaid',profit:0};
   if(!s) return;
@@ -27372,7 +27390,7 @@ function genInvoiceDoc(saleId){
       <div class="doc-biz-contact">
         ${BIZ.address?`${_esc(BIZ.address)}<br>`:''}
         ${[BIZ.phone,BIZ.email,BIZ.website].filter(Boolean).map(x=>_esc(x)).join(' · ')}
-        ${(BIZ.taxId||BIZ.taxRegNumber)?`<br><span class="reg">${_esc(BIZ.taxId||BIZ.taxRegNumber)}</span>`:''}
+        ${_bizRegLine()?`<br><span class="reg">${_bizRegLine()}</span>`:''}
       </div>
     </div>
     <div class="doc-title-block">
@@ -27913,6 +27931,7 @@ function genReceiptDoc(saleId){
       <div class="doc-biz-contact" style="margin-top:4px">
         ${BIZ.address?`${_esc(BIZ.address)}<br>`:''}
         ${[BIZ.phone,BIZ.email].filter(Boolean).map(x=>_esc(x)).join(' · ')}
+        ${_bizRegLine()?`<br><span class="reg">${_bizRegLine()}</span>`:''}
       </div>
     </div>
   </div>
@@ -29008,6 +29027,16 @@ ${tabDocsHtml}
       <div class="fg">
         <label class="fl" id="fin-tax-reg-lbl">${COUNTRY_TAX_DEFAULTS[BIZ.country]?.reg||'Tax Registration Number'} <span style="font-size:10px;color:var(--text2)">(printed on invoices)</span></label>
         <input class="fi" id="fin-tax-num" value="${BIZ.taxRegNumber||''}" placeholder="${_s.set_optional}"/>
+      </div>
+      <div class="fg-2">
+        <div class="fg">
+          <label class="fl">${_s.set_niu||'NIU (Numéro d\'Identifiant Unique)'} <span style="font-size:10px;color:var(--text2)">(${_s.set_printed_on_docs||'printed on invoices'})</span></label>
+          <input class="fi" id="fin-niu" value="${_esc(BIZ.niu||'')}" placeholder="${_s.set_optional}"/>
+        </div>
+        <div class="fg">
+          <label class="fl">${_s.set_rccm||'RCCM (Registre du Commerce)'} <span style="font-size:10px;color:var(--text2)">(${_s.set_printed_on_docs||'printed on invoices'})</span></label>
+          <input class="fi" id="fin-rccm" value="${_esc(BIZ.rccm||'')}" placeholder="${_s.set_optional}"/>
+        </div>
       </div>
       <div class="fg" style="background:var(--bg3);border-radius:var(--r8);padding:10px 12px;font-size:11px;color:var(--text2)">
         <strong style="color:var(--ink)">Preview:</strong>
@@ -38350,6 +38379,9 @@ function _L(){
     receiptNo:        fr ? 'N° Reçu'                   : 'Receipt No.',
     terms:            fr ? 'Conditions de paiement'     : 'Payment Terms',
     taxId:            fr ? 'N° Contribuable'            : 'Tax ID',
+    set_niu:          fr ? "NIU (Numéro d'Identifiant Unique)" : 'NIU (Unique Taxpayer Number)',
+    set_rccm:         fr ? 'RCCM (Registre du Commerce)'      : 'RCCM (Trade Registry Number)',
+    set_printed_on_docs: fr ? 'imprimé sur les factures'      : 'printed on invoices',
     reference:        fr ? 'Référence'                  : 'Reference',
     // ── Table columns ─────────────────────────────────────────
     description:      fr ? 'Désignation'                : 'Description',
@@ -40252,6 +40284,8 @@ function _saveFinancialSettings(){const _s=_L();
   BIZ.taxRate      = taxRate;
   BIZ.taxName      = taxName;
   BIZ.taxRegNumber = taxNum;
+  BIZ.niu          = (document.getElementById('fin-niu')?.value||'').trim();
+  BIZ.rccm         = (document.getElementById('fin-rccm')?.value||'').trim();
   BIZ.currency     = CUR.code;
   _dbSaveBizProfile(SESSION.bizId);
   // Update live preview label
