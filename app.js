@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1790439056");
+console.log("ShopTrack v2.7 - build:1790442449");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -30169,16 +30169,30 @@ function handleImportUpload(input){var _s=_L();
 
 function handleLogoUpload(input){var _s=_L();
   if(!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  // Guard against oversized logos: base64 in a DB row bloats every load and
+  // can exceed row limits. ~1.5MB file → ~2MB base64 is a sane ceiling.
+  if(file.size > 1.5*1024*1024){
+    toast(_L().t_logo_too_big || 'Logo is too large — please use an image under 1.5MB','error');
+    input.value='';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = e => {
     BIZ.logoDataUrl = e.target.result;
     const prev = document.getElementById('logo-preview');
     if(prev) prev.innerHTML = `<img loading="lazy" src="${BIZ.logoDataUrl}" style="width:100%;height:100%;object-fit:cover"/>`;
+    // Persist immediately. Previously the logo lived only in memory until the
+    // user separately hit "Save Profile", so it vanished on refresh even though
+    // the success toast implied it was saved. Now it writes to the DB (and the
+    // offline queue if offline) the moment it's uploaded. _dbSaveBizProfile is
+    // fire-and-forget with its own offline handling, so the logo is preserved
+    // either way.
+    if(SESSION.bizId && !SESSION.isSuperAdmin){ _dbSaveBizProfile(SESSION.bizId); }
     toast(_L().t_logo_uploaded,'success');
-    // Refresh settings page to show remove button
     nav(curPage);
   };
-  reader.readAsDataURL(input.files[0]);
+  reader.readAsDataURL(file);
 }
 
 function saveBizProfile(){var _s=_L();
@@ -39893,6 +39907,7 @@ dash_recent_act:   fr ? '📋 Activité Récente'         : '📋 Recent Activit
     t_sig_saved:        fr ? 'Signature enregistrée — contrat signé ✓' : 'Signature saved — contract is now executed ✓',
     t_sig_cleared:      fr ? 'Signature effacée'                    : 'Signature cleared',
     t_logo_uploaded:    fr ? 'Logo téléversé avec succès'           : 'Logo uploaded successfully',
+    t_logo_too_big:     fr ? 'Logo trop volumineux — utilisez une image de moins de 1,5 Mo' : 'Logo is too large — please use an image under 1.5MB',
     t_photo_removed:    fr ? 'Photo supprimée'                      : 'Photo removed',
     t_photo_saved:      fr ? 'Photo enregistrée pour '              : 'Photo saved for ',
     t_photo_large:      fr ? 'Photo trop grande — max 2 Mo'         : 'Photo too large — max 2MB',
