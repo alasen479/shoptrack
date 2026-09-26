@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1788353520");
+console.log("ShopTrack v2.7 - build:1790439056");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -27103,10 +27103,12 @@ function docSignStamp(){
 
 
 function bizLogo(){
-  if(BIZ.logoDataUrl) return `<img loading="lazy" src="${BIZ.logoDataUrl}" style="height:56px;object-fit:contain;display:block"/>`;
-  return `<div style="width:56px;height:56px;background:linear-gradient(135deg,${BIZ.primaryColor},${BIZ.accentColor});border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-1px">${BIZ.name.substring(0,2).toUpperCase()}</div>`;
+  if(BIZ.logoDataUrl) return `<img loading="lazy" src="${BIZ.logoDataUrl}" style="width:52px;height:52px;object-fit:contain;display:block;border-radius:8px"/>`;
+  // No logo -> initials monogram in a thin brand ring (clean, no colour band)
+  var _p = BIZ.primaryColor || '#c0407a';
+  var _ini = (BIZ.name||'?').trim().split(/\s+/).map(function(w){return w[0]||'';}).join('').substring(0,2).toUpperCase() || (BIZ.name||'?').substring(0,2).toUpperCase();
+  return `<div style="width:52px;height:52px;flex:0 0 52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;letter-spacing:.02em;color:${_p};background:${_p}12;border:1.5px solid ${_p}">${_ini}</div>`;
 }
-
 // ── Doc line-item rendering helpers ──────────────────────────────
 // Used by genInvoiceDoc and genQuoteDoc to render line items with
 // optional dish/product photo thumbnails. The photo column only
@@ -27269,83 +27271,79 @@ function _docLineRowsHtml(s, L){
 }
 
 function docStyles(primary, accent){
-  var p = primary||'#4361ee';
+  var p = primary||'#c0407a';
   var a = accent||'#059669';
-  var pDim = p+'18';
-  var pLight = p+'0d';
-  return `<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  return `<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Plus Jakarta Sans',sans-serif;color:#1e293b;background:#fff;-webkit-font-smoothing:antialiased;font-size:13px;line-height:1.5}
-    /* Header */
-    .doc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0;padding:28px 32px 22px;background:${p};border-radius:0}
-    .doc-header-inner{background:#fff;padding:22px 28px 22px;margin-bottom:0}
-    .doc-biz-name{font-size:20px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;margin-top:10px;line-height:1.1}
-    .doc-biz-sub{font-size:11px;color:#64748b;margin-top:3px}
-    .doc-biz-contact{font-size:10.5px;color:#94a3b8;margin-top:5px;line-height:1.7}
+    body{font-family:'Inter',system-ui,sans-serif;color:#1a1a1a;background:#fff;-webkit-font-smoothing:antialiased;font-size:13px;line-height:1.5;font-feature-settings:"tnum" 1}
+    /* Letterhead — no colour band; hairline rule instead */
+    .doc-header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding:4px 0 18px;border-bottom:1px solid #c9ccd1;margin-bottom:0}
+    .doc-brand{display:flex;gap:13px;align-items:center}
+    .doc-biz-name{font-size:19px;font-weight:700;color:#1a1a1a;letter-spacing:-.01em;line-height:1.15}
+    .doc-biz-sub{font-size:12px;color:#4b5563;margin-top:1px}
+    .doc-biz-contact{font-size:11px;color:#6b7280;margin-top:10px;line-height:1.7}
+    .doc-biz-contact .reg{color:#9aa0a8}
     /* Title block */
-    .doc-title-block{text-align:right}
-    .doc-number{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.7);margin-bottom:6px}
-    .doc-number-val{font-size:30px;font-weight:900;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-1px;line-height:1}
-    .doc-date{font-size:11px;color:rgba(255,255,255,.75);margin-top:8px;line-height:1.8}
-    /* Status badge */
-    .doc-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px}
-    .doc-badge-paid{background:#dcfce7;color:#166534}
-    .doc-badge-unpaid{background:#fee2e2;color:#991b1b}
-    .doc-badge-partial{background:#fef9c3;color:#854d0e}
-    /* Body area */
-    .doc-body{padding:22px 28px}
-    /* Bill To / Meta */
-    .doc-meta{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;background:#f8fafc;border-radius:10px;padding:16px 20px;border:1px solid #f0f4f8}
-    .doc-meta-full{grid-template-columns:1fr;margin-bottom:24px}
-    .doc-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:#94a3b8;margin-bottom:5px}
-    .doc-value{font-size:13px;color:#1e293b;font-weight:600}
-    .doc-value-sub{font-size:11px;color:#64748b;margin-top:2px}
-    /* Items table — table-layout:fixed enforces the column widths set
-       on <th>. Without it, browsers re-flow columns based on content
-       width, which broke the layout when a dish description was long:
-       the description cell expanded and pushed the qty/price/amount
-       columns off the visible area. Combined with word-break on the
-       desc column, no single token can blow up the layout. */
-    .doc-items{width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:20px}
-    .doc-items thead{background:${p}}
-    .doc-items thead th{padding:11px 14px;text-align:left;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .doc-items tbody tr{border-bottom:1px solid #f1f5f9}
-    .doc-items tbody tr:last-child{border-bottom:none}
-    .doc-items td{padding:11px 14px;font-size:12.5px;color:#374151;vertical-align:middle;overflow:hidden}
-    .doc-items td.num{font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right;color:#1e293b;font-weight:500;white-space:nowrap}
-    .doc-items td.desc{font-weight:500;color:#1e293b;word-break:break-word;overflow-wrap:break-word}
-    /* Totals */
-    .doc-totals{display:flex;justify-content:flex-end;margin-bottom:24px}
-    .doc-totals-box{width:280px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;overflow:hidden}
-    .doc-total-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid #e2e8f0;font-size:12.5px;color:#475569}
-    .doc-total-row .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:#374151}
-    .doc-total-final{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;background:${p};font-weight:800;font-size:15px;color:#fff;letter-spacing:-.3px}
-    .doc-total-final .num{font-family:'JetBrains Mono',monospace;font-size:14px;color:#fff}
+    .doc-title-block{text-align:right;flex-shrink:0}
+    .doc-number{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.22em;color:#9aa0a8}
+    .doc-number-val{font-size:24px;font-weight:700;color:#1a1a1a;letter-spacing:-.02em;line-height:1;margin-top:3px}
+    .doc-date{font-size:11.5px;color:#4b5563;margin-top:9px;line-height:1.8}
+    .doc-date b{color:#1a1a1a;font-weight:600}
+    /* Status badge — outline pill, not a fill band */
+    .doc-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid}
+    .doc-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+    .doc-badge-paid{color:#0f7a4d;border-color:#bfe3d0;background:#f0faf5}
+    .doc-badge-unpaid{color:#b4263f;border-color:#f0c2ca;background:#fdf3f5}
+    .doc-badge-partial{color:#9a6a00;border-color:#eddba1;background:#fdf8ec}
+    /* Body */
+    .doc-body{padding:22px 0 0}
+    /* Bill To / Meta — plain two columns, no filled card */
+    .doc-meta{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-bottom:22px}
+    .doc-meta-full{grid-template-columns:1fr;margin-bottom:22px}
+    .doc-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:#9aa0a8;margin-bottom:5px}
+    .doc-value{font-size:14px;color:#1a1a1a;font-weight:600}
+    .doc-value-sub{font-size:12px;color:#4b5563;margin-top:2px}
+    /* Items — hairline rules, header text not a fill band */
+    .doc-items{width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:18px}
+    .doc-items thead th{padding:0 12px 9px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#9aa0a8;border-bottom:1px solid #c9ccd1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .doc-items thead th.num{text-align:right}
+    .doc-items tbody tr{border-bottom:1px solid #eceef1}
+    .doc-items tbody tr:last-child{border-bottom:1px solid #c9ccd1}
+    .doc-items td{padding:12px;font-size:13px;color:#374151;vertical-align:top;overflow:hidden}
+    .doc-items td.num{font-variant-numeric:tabular-nums;text-align:right;color:#1a1a1a;font-weight:500;white-space:nowrap}
+    .doc-items td.desc{font-weight:600;color:#1a1a1a;word-break:break-word;overflow-wrap:break-word}
+    /* Totals — right aligned, balance emphasised by rule not fill */
+    .doc-totals{display:flex;justify-content:flex-end;margin-bottom:22px}
+    .doc-totals-box{width:280px}
+    .doc-total-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;color:#4b5563}
+    .doc-total-row .num{font-variant-numeric:tabular-nums;color:#1a1a1a}
+    .doc-total-final{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 0;margin-top:6px;border-top:2px solid #1a1a1a;font-weight:700;font-size:15px;color:#1a1a1a}
+    .doc-total-final span:first-child{font-size:13px;font-weight:600}
+    .doc-total-final .num{font-variant-numeric:tabular-nums;font-size:21px;font-weight:700;letter-spacing:-.02em}
     /* Payment */
-    .doc-section-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;color:#94a3b8;margin-bottom:10px;margin-top:20px}
-    .doc-pay-methods{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
-    .doc-pay-pill{background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:5px 13px;font-size:10.5px;color:#475569;font-weight:500}
-    /* Footer */
-    .doc-footer{background:${pLight};border-top:3px solid ${p};padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin:0 -28px -0px}
-    .doc-footer-note{font-size:11px;color:#374151;max-width:360px;line-height:1.65}
-    .doc-footer-biz{text-align:right;font-size:11px;color:#64748b;line-height:1.7;flex-shrink:0}
-    .doc-footer-biz strong{color:#374151;font-weight:700}
-    /* Receipt */
-    .receipt-amount{font-size:48px;font-weight:900;color:${p};font-family:'Plus Jakarta Sans',sans-serif;text-align:center;letter-spacing:-2px;margin:20px 0;line-height:1}
+    .doc-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:#9aa0a8;margin-bottom:10px;margin-top:22px}
+    .doc-pay-methods{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}
+    .doc-pay-pill{background:#fff;border:1px solid #e6e8eb;border-radius:999px;padding:5px 13px;font-size:11.5px;color:#4b5563;font-weight:500}
+    /* Footer — hairline top, accent as thin left mark on note */
+    .doc-footer{border-top:1px solid #e6e8eb;padding:16px 0 0;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-top:24px}
+    .doc-footer-note{font-size:11.5px;color:#4b5563;max-width:360px;line-height:1.65;border-left:2.5px solid ${p};padding-left:12px}
+    .doc-footer-biz{text-align:right;font-size:11.5px;color:#6b7280;line-height:1.7;flex-shrink:0}
+    .doc-footer-biz strong{color:#1a1a1a;font-weight:700}
+    /* Receipt amount — ink, not brand fill */
+    .receipt-amount{font-size:44px;font-weight:800;color:#1a1a1a;text-align:center;letter-spacing:-.03em;margin:18px 0;line-height:1;font-variant-numeric:tabular-nums}
     /* Catalog */
     .catalog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px}
-    .cat-card{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
-    .cat-card-img{height:90px;background:linear-gradient(135deg,#f0f0f5,#e8e8f0);display:flex;align-items:center;justify-content:center;font-size:36px}
+    .cat-card{border:1px solid #e6e8eb;border-radius:10px;overflow:hidden}
+    .cat-card-img{height:90px;background:#f5f6f7;display:flex;align-items:center;justify-content:center;font-size:36px}
     .cat-card-body{padding:10px 12px}
-    .cat-card-name{font-size:12px;font-weight:700;color:#1e293b;margin-bottom:2px}
-    .cat-card-price{font-size:13px;font-weight:800;color:${p};margin-top:6px;font-family:'JetBrains Mono',monospace}
+    .cat-card-name{font-size:12px;font-weight:700;color:#1a1a1a;margin-bottom:2px}
+    .cat-card-price{font-size:13px;font-weight:700;color:${p};margin-top:6px;font-variant-numeric:tabular-nums}
     /* Watermark */
-    .doc-watermark{position:fixed;bottom:30px;right:30px;font-size:9px;color:#e2e8f0;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;pointer-events:none}
-    @media print{.no-print,button{display:none!important}.doc-footer{position:relative;margin-top:20px}}
+    .doc-watermark{position:fixed;bottom:26px;right:26px;font-size:9px;color:#d5d8dc;font-weight:600;letter-spacing:.14em;text-transform:uppercase;pointer-events:none}
+    @media print{.no-print,button{display:none!important}.doc-footer{position:relative}}
   </style>`;
 }
-
 
 function genInvoiceDoc(saleId){
   const s = saleId ? D.sales.find(x=>x.id===saleId) : {id:'INV-'+Date.now(),cust:'Customer',items:'Items',amt:0,paid:0,dt:'2026-03-02',st:'Unpaid',profit:0};
@@ -27358,18 +27356,27 @@ function genInvoiceDoc(saleId){
   const L = _L();
   const stLabel = s.st==='Paid'?L.stPaid : s.st==='Partial'?L.stPartial : L.stUnpaid;
   const html = `${docStyles(primary,accent)}
-  <div class="doc-header" style="background:${primary};padding:24px 28px 20px;display:flex;justify-content:space-between;align-items:flex-start">
+  <div class="doc-header">
     <div>
-      ${bizLogo()}
-      <div class="doc-biz-name" style="color:#fff;margin-top:8px">${_esc(BIZ.name)}</div>
-      ${BIZ.tagline?`<div class="doc-biz-sub" style="color:rgba(255,255,255,.75)">${_esc(BIZ.tagline)}</div>`:''}
+      <div class="doc-brand">
+        ${bizLogo()}
+        <div>
+          <div class="doc-biz-name">${_esc(BIZ.name)}</div>
+          ${BIZ.tagline?`<div class="doc-biz-sub">${_esc(BIZ.tagline)}</div>`:''}
+        </div>
+      </div>
+      <div class="doc-biz-contact">
+        ${BIZ.address?`${_esc(BIZ.address)}<br>`:''}
+        ${[BIZ.phone,BIZ.email,BIZ.website].filter(Boolean).map(x=>_esc(x)).join(' · ')}
+        ${(BIZ.taxId||BIZ.taxRegNumber)?`<br><span class="reg">${_esc(BIZ.taxId||BIZ.taxRegNumber)}</span>`:''}
+      </div>
     </div>
     <div class="doc-title-block">
       <div class="doc-number">${L.invoice}</div>
       <div class="doc-number-val">${s.id}</div>
       <div class="doc-date">
-        ${L.date}: ${s.dt}<br>
-        <span class="doc-badge doc-badge-${stBadge}" style="margin-top:8px;display:inline-flex">${stLabel}</span>
+        ${L.date} <b>${s.dt}</b><br>
+        <span class="doc-badge doc-badge-${stBadge}" style="margin-top:8px">${stLabel}</span>
       </div>
     </div>
   </div>
@@ -27894,18 +27901,22 @@ function genReceiptDoc(saleId){
   const accent = BIZ.accentColor;
   const R = _L();
   const html = `${docStyles(primary,accent)}
-  <div style="background:${primary};padding:24px 28px 32px;text-align:center">
-    <div style="display:inline-block;margin-bottom:12px">${bizLogo()}</div>
-    <div style="font-size:18px;font-weight:800;color:#fff;letter-spacing:-.3px">${_esc(BIZ.name)}</div>
-    ${BIZ.tagline?`<div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:3px">${_esc(BIZ.tagline)}</div>`:''}
-    ${BIZ.address?`<div style="font-size:10.5px;color:rgba(255,255,255,.6);margin-top:6px">${_esc(BIZ.address)}</div>`:''}
-    <div style="font-size:10px;color:rgba(255,255,255,.55);margin-top:3px">${BIZ.phone?_esc(BIZ.phone):''} ${BIZ.email?'&nbsp;·&nbsp; '+_esc(BIZ.email):''}</div>
+  <div class="doc-header" style="justify-content:center;text-align:center;flex-direction:column;align-items:center;gap:8px">
+    ${bizLogo()}
+    <div>
+      <div class="doc-biz-name">${_esc(BIZ.name)}</div>
+      ${BIZ.tagline?`<div class="doc-biz-sub">${_esc(BIZ.tagline)}</div>`:''}
+      <div class="doc-biz-contact" style="margin-top:4px">
+        ${BIZ.address?`${_esc(BIZ.address)}<br>`:''}
+        ${[BIZ.phone,BIZ.email].filter(Boolean).map(x=>_esc(x)).join(' · ')}
+      </div>
+    </div>
   </div>
   <div class="doc-body">
     <div style="text-align:center;background:#f0fdf4;border:2px solid #bbf7d0;border-radius:14px;padding:28px 20px;margin-bottom:22px">
       <div style="width:48px;height:48px;background:#22c55e;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:22px;color:#fff">✓</div>
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:#166534;margin-bottom:8px">${R.payReceived}</div>
-      <div class="receipt-amount" style="color:${primary}">${fmtDoc(s.paid||s.total||s.amt)}</div>
+      <div class="receipt-amount">${fmtDoc(s.paid||s.total||s.amt)}</div>
       <span class="doc-badge ${(s.paid||0)>=(s.total||s.amt||0)?'doc-badge-paid':'doc-badge-partial'}" style="margin-top:10px">${(s.paid||0)>=(s.total||s.amt||0)?R.paidFull:R.partial}</span>
     </div>
     <div class="doc-meta" style="grid-template-columns:1fr 1fr 1fr 1fr">
