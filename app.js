@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1790442449");
+console.log("ShopTrack v2.7 - build:1790443351");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -27137,7 +27137,11 @@ function _docLineData(s){
   var lines = (s.lineItems && s.lineItems.length) ? s.lineItems : null;
   if(!lines){
     // Sale records without lineItems (legacy) — fabricate one
-    return [{ li:{ name:s.items, qty:1, price:s.total||s.amt }, match:null, photo:null }];
+    // Legacy sales store items as a single string in s.items. renderRow reads
+    // the top-level r.name (not r.li.name), so expose it there too — otherwise
+    // the description cell renders blank for these older/simple sales.
+    var _legacyName = s.items || s.desc || s.cust || 'Item';
+    return [{ li:{ name:_legacyName, qty:1, price:s.total||s.amt }, name:_legacyName, match:null, photo:null }];
   }
   return lines.map(function(li){
     var name = li.name || li.item || li.desc || 'Item';
