@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1790444321");
+console.log("ShopTrack v2.7 - build:1790531685");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -4051,7 +4051,26 @@ function pgInv(){const _s=_L();const _ui=_s;
             .indexOf(c) >= 0;
   });
   var _migBanner = '';
-  if(_missing.length){
+  // Schema-migration banners are an OPERATOR concern: they contain raw SQL for
+  // the shared Supabase database that only the platform owner (Super Admin) can
+  // run. Business owners must never see the SQL or the alarming "your database
+  // has missing elements" wording — it's meaningless to them and they can't act
+  // on it. Their data is NOT lost: _dbSaveBatch (and peers) save to IndexedDB
+  // and enqueue to the write-queue, which syncs automatically once the operator
+  // runs the migration. So for non-operators we replace the technical banner
+  // with a soft, reassuring one-liner (no SQL, no jargon) and stop.
+  // Non-operators: soft reassurance only, then skip the SQL banner entirely.
+  var _isOperator = !!SESSION.isSuperAdmin;
+  if(_missing.length && !_isOperator){
+    _migBanner = '<div style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:8px;padding:11px 15px;margin-bottom:14px;display:flex;gap:10px;align-items:center">'
+      +'<div style="font-size:16px;line-height:1">\u2139\uFE0F</div>'
+      +'<div style="font-size:12.5px;color:#1e3a5f;line-height:1.5">'
+      +(_fr
+          ? 'Certaines données récentes sont enregistrées sur cet appareil et se synchroniseront automatiquement. Aucune action requise.'
+          : 'Some recent records are saved on this device and will sync automatically. No action needed.')
+      +'</div></div>';
+  }
+  if(_missing.length && _isOperator){
     var _dismissed = false;
     try { _dismissed = localStorage.getItem('st_invmig_dismissed_'+(SESSION.bizId||'')+'_'+_missing.sort().join(',')) === '1'; } catch(_){}
     if(!_dismissed){
