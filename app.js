@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1790531685");
+console.log("ShopTrack v2.7 - build:1790634726");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -13369,6 +13369,13 @@ async function mAddExp(){const _s=_L();
       </div>
     </div>
     <div class="fg"><label class="fl">${_s.exp_payee_ph}</label><input class="fi" id="ae-payee" placeholder="${BIZ.language==='fr'?'Qui a été payé ?':'Who was paid?'}"/></div>
+    <div class="fg"><label class="fl">${BIZ.language==='fr'?'Lier à un événement / commande (optionnel)':'Link to event / order (optional)'}</label>
+      <select class="fs" id="ae-linked-sale">
+        <option value="">${BIZ.language==='fr'?'— Aucun (dépense générale) —':'— None (general expense) —'}</option>
+        ${(D.sales||[]).slice(0,200).map(function(sv){return '<option value="'+_esc(sv.id)+'">'+_esc(sv.id+' · '+(sv.cust||'')+' · '+sv.dt)+'</option>';}).join('')}
+      </select>
+      <div class="fh">${BIZ.language==='fr'?'Rattachez cette dépense à un événement pour voir son bénéfice net.':'Attach this cost to an event to see its true profit.'}</div>
+    </div>
     <div class="fg" style="display:none"><input class="fi" type="number" id="ae-amt" value="0"/></div>
     <div class="fg"><label class="fl">${_s.ui_type}</label>
       <select class="fs" id="ae-type">
@@ -13461,6 +13468,7 @@ async function mAddExp(){const _s=_L();
       type:document.getElementById('ae-type').value,
       method:document.getElementById('ae-method').value,
       notes:document.getElementById('ae-notes').value,
+      linkedSaleId:document.getElementById('ae-linked-sale')?.value||'',
       st:'Paid', docs:[], lineItems:lineItems
     };
     // Collect attached docs from the upload area
@@ -13770,6 +13778,71 @@ function initAccounting(){
 // ============================================================
 // REPORTS
 // ============================================================
+// Event / Order P&L report — lists every sale that has linked expenses (i.e.
+// treated as an "event"), with revenue, food cost, linked expenses, and net
+// profit. This is the Reports-side view of the per-sale P&L (Option A).
+function rptEventPnL(){
+  var fr = BIZ.language==='fr';
+  // An "event" here = any sale that has at least one linked expense.
+  var linkedBySale = {};
+  (D.exp||[]).forEach(function(e){
+    if(e.linkedSaleId){ (linkedBySale[e.linkedSaleId] = linkedBySale[e.linkedSaleId] || []).push(e); }
+  });
+  var saleIds = Object.keys(linkedBySale);
+  var rows = saleIds.map(function(id){ return _eventPnL(id); }).filter(Boolean)
+    .sort(function(a,b){ return (b.sale.dt||'').localeCompare(a.sale.dt||''); });
+
+  if(!rows.length){
+    modal('\uD83D\uDCCA '+(fr?'Bénéfice par événement':'Event / Order P&L'),
+      '<div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">'
+      +(fr?'Aucun événement avec dépenses liées pour l\u2019instant. Enregistrez une dépense et liez-la à une commande pour la voir ici.':'No events with linked expenses yet. Record an expense and link it to an order to see it here.')
+      +'</div>',
+      '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>');
+    return;
+  }
+
+  var head = '<tr>'
+    + '<th style="text-align:left">'+(fr?'Commande':'Order')+'</th>'
+    + '<th style="text-align:left">'+(fr?'Client':'Customer')+'</th>'
+    + '<th style="text-align:left">'+(fr?'Date':'Date')+'</th>'
+    + '<th style="text-align:right">'+(fr?'Revenu':'Revenue')+'</th>'
+    + '<th style="text-align:right">'+(fr?'Coût alim.':'Food cost')+'</th>'
+    + '<th style="text-align:right">'+(fr?'Dépenses':'Expenses')+'</th>'
+    + '<th style="text-align:right">'+(fr?'Bénéfice net':'Net profit')+'</th>'
+    + '<th style="text-align:right">'+(fr?'Marge':'Margin')+'</th></tr>';
+
+  var body = rows.map(function(d){
+    var np = d.netProfit;
+    return '<tr style="cursor:pointer" onclick="mEventPnL(\''+d.sale.id+'\')">'
+      + '<td style="font-family:var(--mono);font-size:12px">'+_esc(d.sale.id)+'</td>'
+      + '<td>'+_esc(d.sale.cust||'')+'</td>'
+      + '<td>'+_esc(d.sale.dt||'')+'</td>'
+      + '<td class="num">'+fmt(d.revenue)+'</td>'
+      + '<td class="num">'+fmt(d.cogs)+'</td>'
+      + '<td class="num">'+fmt(d.expenseTotal)+'</td>'
+      + '<td class="num" style="font-weight:700;color:'+(np>=0?'var(--g)':'var(--r)')+'">'+fmt(np)+'</td>'
+      + '<td class="num">'+d.margin.toFixed(1)+'%</td></tr>';
+  }).join('');
+
+  // Totals
+  var tRev = rows.reduce(function(a,d){return a+d.revenue;},0);
+  var tCogs= rows.reduce(function(a,d){return a+d.cogs;},0);
+  var tExp = rows.reduce(function(a,d){return a+d.expenseTotal;},0);
+  var tNet = rows.reduce(function(a,d){return a+d.netProfit;},0);
+  var foot = '<tr style="border-top:2px solid var(--ink);font-weight:700">'
+    + '<td colspan="3">'+(fr?'Total ('+rows.length+' événements)':'Total ('+rows.length+' events)')+'</td>'
+    + '<td class="num">'+fmt(tRev)+'</td><td class="num">'+fmt(tCogs)+'</td>'
+    + '<td class="num">'+fmt(tExp)+'</td>'
+    + '<td class="num" style="color:'+(tNet>=0?'var(--g)':'var(--r)')+'">'+fmt(tNet)+'</td>'
+    + '<td class="num">'+(tRev>0?(tNet/tRev*100).toFixed(1):'0')+'%</td></tr>';
+
+  modal('\uD83D\uDCCA '+(fr?'Bénéfice par événement':'Event / Order P&L'),
+    '<div style="font-size:12px;color:var(--text2);margin-bottom:10px">'
+    +(fr?'Cliquez sur une ligne pour le détail. Un \u00AB\u00A0événement\u00A0\u00BB est une commande avec des dépenses liées.':'Click a row for detail. An "event" is any order with linked expenses.')+'</div>'
+    +'<div class="tbl-wrap"><table><thead>'+head+'</thead><tbody>'+body+'</tbody><tfoot>'+foot+'</tfoot></table></div>',
+    '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>', 'lg');
+}
+
 function pgReports(){const _s=_L();const _ui=_L();
   // Use same period as Accounting page for consistency
   const _rptRange = PERIOD_RANGES[_acctPeriod] || PERIOD_RANGES.ytd;
@@ -13813,7 +13886,8 @@ function pgReports(){const _s=_L();const _ui=_L();
       {n:'Revenue by Product',fn:"rptRevProduct()"},
       {n:'Revenue by Category',fn:"rptRevCat()"},
       {n:'Revenue by Customer',fn:"rptRevCust()"},
-      {n:'Product Profitability',fn:"rptProfit()"}
+      {n:'Product Profitability',fn:"rptProfit()"},
+      {n:'Event / Order P&L',fn:"rptEventPnL()"}
     ]},
     {t:'Rental Reports',ico:'🕐',reps:[
       {n:'Rentals Report',fn:"rptRentals()"},
@@ -22476,6 +22550,7 @@ function _dbToExp(r){ return {
         ? (function(){ try{return JSON.parse(r.line_items);}catch(_){return null;} })()
         : r.line_items)
     : null,
+  linkedSaleId: r.linked_sale_id || '',
   st:r.status||'Paid', docs:r.docs||[]
 }; }
 function _dbToVendor(r){ return {
@@ -22918,6 +22993,7 @@ function _expToDB(e, bizId){
   amount_currency: e.amtCurrency || null,
   line_items: e.lineItems && e.lineItems.length ? JSON.stringify(e.lineItems) : null,
   method:e.method||'Cash', notes:e.notes||'',
+  linked_sale_id: e.linkedSaleId || null,
   status:e.st||'Paid'
 }; }
 function _vendorToDB(v, bizId){ return {
@@ -30514,6 +30590,74 @@ function previewBrandColors(){const _s=_L();
 // on a sales row except an action button. Mirrors the View Purchase
 // modal structure (line items table + payment summary + action footer)
 // for consistency across the app.
+// ── Event P&L (Option A): net profit of a sale/order after linked expenses ──
+// Revenue = sale total; COGS = sale.cost (from recipe/breakdown); event
+// expenses = all expenses whose linkedSaleId points at this sale. Net event
+// profit = revenue - COGS - linked expenses. This is the number caterers ask
+// for. Returns numbers in base currency; caller formats with fmt().
+function _eventPnL(saleId){
+  var s = (D.sales||[]).find(function(x){return x.id===saleId;});
+  if(!s) return null;
+  var revenue = s.total || s.amt || 0;
+  var cogs    = s.cost || 0;
+  var linked  = (D.exp||[]).filter(function(e){return e.linkedSaleId===saleId;});
+  var expTotal = linked.reduce(function(a,e){return a+(e.amt||0);},0);
+  return {
+    sale: s,
+    revenue: revenue,
+    cogs: cogs,
+    grossProfit: revenue - cogs,
+    expenses: linked,
+    expenseTotal: expTotal,
+    netProfit: revenue - cogs - expTotal,
+    margin: revenue>0 ? ((revenue - cogs - expTotal)/revenue*100) : 0
+  };
+}
+
+function mEventPnL(saleId){
+  var fr = BIZ.language==='fr';
+  var d = _eventPnL(saleId);
+  if(!d){ toast(fr?'Vente introuvable':'Sale not found','error'); return; }
+  var s = d.sale;
+  var expRows = d.expenses.length
+    ? d.expenses.map(function(e){
+        return '<tr><td style="padding:6px 10px;font-size:12px">'+_esc(e.cat||'')+(e.payee?' <span style="color:var(--text2)">— '+_esc(e.payee)+'</span>':'')+'</td>'
+             + '<td style="padding:6px 10px;font-size:12px;text-align:right;font-family:var(--mono)">'+fmt(e.amt||0)+'</td></tr>';
+      }).join('')
+    : '<tr><td colspan="2" style="padding:8px 10px;font-size:12px;color:var(--text2)">'+(fr?'Aucune dépense liée. Liez des dépenses (transport, gaz, main-d\u2019\u0153uvre) à cette commande pour voir le bénéfice net.':'No linked expenses yet. Link costs (transport, gas, labour) to this order to see net profit.')+'</td></tr>';
+
+  var row = function(label, val, opts){
+    opts = opts||{};
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:'+(opts.big?'12px 0 0':'7px 0')+';'
+      +(opts.top?'border-top:2px solid var(--ink);margin-top:6px;':'')+'">'
+      +'<span style="font-size:'+(opts.big?'13px':'12.5px')+';'+(opts.big?'font-weight:700':'color:var(--text2)')+'">'+label+'</span>'
+      +'<span style="font-family:var(--mono);font-size:'+(opts.big?'20px':'13px')+';font-weight:'+(opts.big?'800':'600')+';'
+      +'color:'+(opts.color||'var(--ink)')+'">'+val+'</span></div>';
+  };
+
+  modal((fr?'\uD83D\uDCCA Bénéfice de l\u2019événement':'\uD83D\uDCCA Event Profit & Loss')+' — '+_esc(s.id),
+    '<div style="font-size:12.5px;color:var(--text2);margin-bottom:12px">'
+    + _esc(s.cust||(fr?'Client':'Customer'))+' \u00B7 '+_esc(s.dt)+'</div>'
+    + '<div style="border:1px solid var(--border);border-radius:var(--r10);padding:14px 16px;margin-bottom:14px">'
+    + row(fr?'Revenu (facturé)':'Revenue (charged)', fmt(d.revenue))
+    + row(fr?'Coût des aliments (COGS)':'Food cost (COGS)', '\u2212 '+fmt(d.cogs), {color:'var(--r)'})
+    + row(fr?'Bénéfice brut':'Gross profit', fmt(d.grossProfit), {top:true})
+    + '</div>'
+    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:6px">'
+    + (fr?'Dépenses de l\u2019événement':'Event expenses')+'</div>'
+    + '<table style="width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:var(--r8);overflow:hidden;margin-bottom:14px">'
+    + '<tbody>'+expRows+'</tbody>'
+    + (d.expenses.length?'<tfoot><tr style="border-top:1px solid var(--border);background:var(--bg3)"><td style="padding:6px 10px;font-size:12px;font-weight:700">'+(fr?'Total dépenses':'Total expenses')+'</td><td style="padding:6px 10px;font-size:12px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--r)">\u2212 '+fmt(d.expenseTotal)+'</td></tr></tfoot>':'')
+    + '</table>'
+    + '<div style="border:1px solid var(--border);border-radius:var(--r10);padding:6px 16px 14px;background:var(--bg3)">'
+    + row(fr?'BÉNÉFICE NET DE L\u2019ÉVÉNEMENT':'NET EVENT PROFIT', fmt(d.netProfit), {big:true, top:true, color:d.netProfit>=0?'var(--g)':'var(--r)'})
+    + '<div style="text-align:right;font-size:11px;color:var(--text2);margin-top:2px">'+(fr?'Marge':'Margin')+': '+d.margin.toFixed(1)+'%</div>'
+    + '</div>'
+    + (s.cost>0?'':'<div style="font-size:11px;color:var(--y);margin-top:10px;padding:6px 10px;background:rgba(245,158,11,.08);border-radius:var(--r6);border-left:3px solid var(--y)">\u26A0\uFE0F '+(fr?'Aucun coût alimentaire enregistré sur cette vente \u2014 le bénéfice brut suppose 100%. Ajoutez des recettes/coûts pour une marge exacte.':'No food cost recorded on this sale \u2014 gross profit assumes 100%. Add recipes/costs for an accurate margin.')+'</div>'),
+    '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>'
+    +'<button class="btn btn-g btn-sm" onclick="closeModal();mAddExp()">+ '+(fr?'Lier une dépense':'Link an expense')+'</button>', 'sm');
+}
+
 function mViewSale(id){const _s=_L();
   const s=D.sales.find(x=>x.id===id);if(!s)return;
   const fr = BIZ.language==='fr';
@@ -30609,6 +30753,7 @@ function mViewSale(id){const _s=_L();
     '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>'
     +'<button class="btn btn-g btn-sm" onclick="closeModal();mEditSale(\''+s.id+'\')">\u270F '+(fr?'Modifier':'Edit')+'</button>'
     +'<button class="btn btn-g btn-sm" onclick="genInvoiceDoc(\''+s.id+'\')">\uD83D\uDCC4 '+(fr?'Facture':'Invoice')+'</button>'
+    +'<button class="btn btn-g btn-sm" onclick="mEventPnL(\''+s.id+'\')">\uD83D\uDCCA '+(fr?'Bénéfice':'P&L')+'</button>'
     +'<button class="btn btn-g btn-sm" onclick="genReceiptDoc(\''+s.id+'\')">\uD83E\uDDFE '+(fr?'Reçu':'Receipt')+'</button>'
     +(bal>0.01?'<button class="btn btn-p btn-sm" onclick="closeModal();mRecordPayment(\''+s.id+'\')">\uD83D\uDCB0 '+(fr?'Enregistrer Paiement':'Record Payment')+'</button>':'')
   );
