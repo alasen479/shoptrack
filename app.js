@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1790634726");
+console.log("ShopTrack v2.7 - build:1790686000");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -11361,6 +11361,13 @@ function mNewBatch(prefillProductId){const _s=_L();
     +'<div class="fg"><label class="fl">Date &amp; time</label>'
       +'<input class="fi" id="nb-date" type="datetime-local" value="'+(function(){var d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);})()+'"/>'
     +'</div>'
+    +'<div class="fg"><label class="fl">'+(BIZ.language==='fr'?'Lier à un événement / commande (optionnel)':'Link to event / order (optional)')+'</label>'
+      +'<select class="fs" id="nb-linked-sale">'
+      +'<option value="">'+(BIZ.language==='fr'?'— Aucun (production générale) —':'— None (general production) —')+'</option>'
+      +(D.sales||[]).slice(0,200).map(function(sv){return '<option value="'+_esc(sv.id)+'">'+_esc(sv.id+' \u00B7 '+(sv.cust||'')+' \u00B7 '+sv.dt)+'</option>';}).join('')
+      +'</select>'
+      +'<div class="fh">'+(BIZ.language==='fr'?'Rattachez cette production \u00E0 un \u00E9v\u00E9nement pour un co\u00FBt r\u00E9el dans le P&L.':'Link this cook to an event so its P&L uses the real cost.')+'</div>'
+    +'</div>'
     +'<div id="nb-preview-wrap" style="margin-top:8px"></div>'
     +'<div class="fg"><label class="fl">Notes (optional)</label>'
       +'<textarea class="ft" id="nb-notes" rows="2" placeholder="Variations from the recipe, quality observations, who helped, etc."></textarea>'
@@ -11617,7 +11624,8 @@ async function _saveBatch(){
     ingredients: ingredientsConsumed,
     producedBy: (SESSION.userName || SESSION.email || '').split('@')[0],
     producedAt: producedAtISO,
-    notes: notes
+    notes: notes,
+    linkedSaleId: (document.getElementById('nb-linked-sale')?.value)||''
   };
 
   // Decrement each ingredient and save. Parallel saves are fine now that
@@ -22629,7 +22637,8 @@ function _dbToBatch(r){
     ingredients: ings,
     producedBy: r.produced_by || '',
     producedAt: r.produced_at || r.created_at || '',
-    notes: r.notes || ''
+    notes: r.notes || '',
+    linkedSaleId: r.linked_sale_id || ''
   };
 }
 function _batchToDB(b, bizId){ return {
@@ -22643,7 +22652,8 @@ function _batchToDB(b, bizId){ return {
   ingredients_consumed: b.ingredients ? JSON.stringify(b.ingredients) : '[]',
   produced_by: b.producedBy || '',
   produced_at: b.producedAt || new Date().toISOString(),
-  notes: b.notes || ''
+  notes: b.notes || '',
+  linked_sale_id: b.linkedSaleId || null
 }; }
 
 // Persist a batch to Supabase + IDB. Gracefully degrades if the batches
@@ -30599,13 +30609,24 @@ function _eventPnL(saleId){
   var s = (D.sales||[]).find(function(x){return x.id===saleId;});
   if(!s) return null;
   var revenue = s.total || s.amt || 0;
-  var cogs    = s.cost || 0;
+
+  // Food cost basis (Option X): if production batches are LINKED to this event,
+  // use their ACTUAL cost (real ingredient spend on the cook) and IGNORE the
+  // sale's standard recipe cost — otherwise the food cost would be double
+  // counted. When no batches are linked, fall back to the sale's standard cost.
+  var linkedBatches = (D.batches||[]).filter(function(b){return b.linkedSaleId===saleId;});
+  var batchCostTotal = linkedBatches.reduce(function(a,b){return a+(b.cost||0);},0);
+  var usingBatches = linkedBatches.length > 0;
+  var cogs = usingBatches ? batchCostTotal : (s.cost || 0);
+
   var linked  = (D.exp||[]).filter(function(e){return e.linkedSaleId===saleId;});
   var expTotal = linked.reduce(function(a,e){return a+(e.amt||0);},0);
   return {
     sale: s,
     revenue: revenue,
     cogs: cogs,
+    cogsSource: usingBatches ? 'batches' : 'recipe',   // for the label in the P&L view
+    batches: linkedBatches,
     grossProfit: revenue - cogs,
     expenses: linked,
     expenseTotal: expTotal,
@@ -30640,10 +30661,20 @@ function mEventPnL(saleId){
     + _esc(s.cust||(fr?'Client':'Customer'))+' \u00B7 '+_esc(s.dt)+'</div>'
     + '<div style="border:1px solid var(--border);border-radius:var(--r10);padding:14px 16px;margin-bottom:14px">'
     + row(fr?'Revenu (facturé)':'Revenue (charged)', fmt(d.revenue))
-    + row(fr?'Coût des aliments (COGS)':'Food cost (COGS)', '\u2212 '+fmt(d.cogs), {color:'var(--r)'})
+    + row((d.cogsSource==='batches' ? (fr?'Coût aliments (production réelle)':'Food cost (from production)') : (fr?'Coût aliments (est. recettes)':'Food cost (est. from recipes)')), '\u2212 '+fmt(d.cogs), {color:'var(--r)'})
     + row(fr?'Bénéfice brut':'Gross profit', fmt(d.grossProfit), {top:true})
     + '</div>'
     + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:6px">'
+    + (d.batches.length
+        ? '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:6px">'
+          + (fr?'Production liée (coût réel)':'Linked production (actual cost)')+'</div>'
+          + '<table style="width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:var(--r8);overflow:hidden;margin-bottom:14px"><tbody>'
+          + d.batches.map(function(b){
+              return '<tr><td style="padding:6px 10px;font-size:12px">'+_esc(b.productName||'')+' <span style="color:var(--text2)">\u00D7'+(b.qtyProduced||b.multiplier||1)+'</span></td>'
+                   + '<td style="padding:6px 10px;font-size:12px;text-align:right;font-family:var(--mono)">'+fmt(b.cost||0)+'</td></tr>';
+            }).join('')
+          + '</tbody></table>'
+        : '')
     + (fr?'Dépenses de l\u2019événement':'Event expenses')+'</div>'
     + '<table style="width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:var(--r8);overflow:hidden;margin-bottom:14px">'
     + '<tbody>'+expRows+'</tbody>'
