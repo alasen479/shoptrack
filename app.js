@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1790781069");
+console.log("ShopTrack v2.7 - build:1790781351");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -13803,7 +13803,7 @@ function rptEventPnL(){
   if(!rows.length){
     modal('\uD83D\uDCCA '+(fr?'Bénéfice par événement':'Event / Order P&L'),
       '<div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">'
-      +(fr?'Aucun événement avec dépenses liées pour l\u2019instant. Enregistrez une dépense et liez-la à une commande pour la voir ici.':'No events with linked expenses yet. Record an expense and link it to an order to see it here.')
+      +(fr?('Aucune '+_pnlNoun(false)+' avec dépenses liées pour l\u2019instant. Enregistrez une dépense et liez-la à une commande pour la voir ici.'):('No '+_pnlNoun(false)+'s with linked expenses yet. Record an expense and link it to an order to see it here.'))
       +'</div>',
       '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>');
     return;
@@ -13838,7 +13838,7 @@ function rptEventPnL(){
   var tExp = rows.reduce(function(a,d){return a+d.expenseTotal;},0);
   var tNet = rows.reduce(function(a,d){return a+d.netProfit;},0);
   var foot = '<tr style="border-top:2px solid var(--ink);font-weight:700">'
-    + '<td colspan="3">'+(fr?'Total ('+rows.length+' événements)':'Total ('+rows.length+' events)')+'</td>'
+    + '<td colspan="3">'+(fr?('Total ('+rows.length+' '+_pnlNoun(false)+'s)'):('Total ('+rows.length+' '+_pnlNoun(false)+'s)'))+'</td>'
     + '<td class="num">'+fmt(tRev)+'</td><td class="num">'+fmt(tCogs)+'</td>'
     + '<td class="num">'+fmt(tExp)+'</td>'
     + '<td class="num" style="color:'+(tNet>=0?'var(--g)':'var(--r)')+'">'+fmt(tNet)+'</td>'
@@ -13846,7 +13846,7 @@ function rptEventPnL(){
 
   modal('\uD83D\uDCCA '+(fr?'Bénéfice par événement':'Event / Order P&L'),
     '<div style="font-size:12px;color:var(--text2);margin-bottom:10px">'
-    +(fr?'Cliquez sur une ligne pour le détail. Un \u00AB\u00A0événement\u00A0\u00BB est une commande avec des dépenses liées.':'Click a row for detail. An "event" is any order with linked expenses.')+'</div>'
+    +(fr?('Cliquez sur une ligne pour le détail. Toute commande avec des dépenses liées appara\u00eet ici.'):('Click a row for detail. Any order with linked expenses appears here.'))+'</div>'
     +'<div class="tbl-wrap"><table><thead>'+head+'</thead><tbody>'+body+'</tbody><tfoot>'+foot+'</tfoot></table></div>',
     '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>', 'lg');
 }
@@ -30618,6 +30618,15 @@ function _cogsLabel(suffix){
   return base + (suffix||'');
 }
 
+// The right noun for a P&L: "Event" for food/catering businesses (who run
+// events), "Order" for everyone else. An order/sale is universally correct, so
+// that is the default; "Event" only when it genuinely fits.
+function _pnlNoun(caps){
+  var fr = BIZ.language==='fr';
+  var w = _isFoodBiz() ? (fr?'événement':'event') : (fr?'commande':'order');
+  return caps ? (w.charAt(0).toUpperCase()+w.slice(1)) : w;
+}
+
 function _eventPnL(saleId){
   var s = (D.sales||[]).find(function(x){return x.id===saleId;});
   if(!s) return null;
@@ -30669,7 +30678,7 @@ function mEventPnL(saleId){
       +'color:'+(opts.color||'var(--ink)')+'">'+val+'</span></div>';
   };
 
-  modal((fr?'\uD83D\uDCCA Bénéfice de l\u2019événement':'\uD83D\uDCCA Event Profit & Loss')+' — '+_esc(s.id),
+  modal('\uD83D\uDCCA '+(fr?('Bénéfice — '+_pnlNoun(true)):(_pnlNoun(true)+' Profit & Loss'))+' — '+_esc(s.id),
     '<div style="font-size:12.5px;color:var(--text2);margin-bottom:12px">'
     + _esc(s.cust||(fr?'Client':'Customer'))+' \u00B7 '+_esc(s.dt)+'</div>'
     + '<div style="border:1px solid var(--border);border-radius:var(--r10);padding:14px 16px;margin-bottom:14px">'
@@ -30688,13 +30697,13 @@ function mEventPnL(saleId){
             }).join('')
           + '</tbody></table>'
         : '')
-    + (fr?'Dépenses de l\u2019événement':'Event expenses')+'</div>'
+    + (fr?('Dépenses — '+_pnlNoun(false)):(_pnlNoun(true)+' expenses'))+'</div>'
     + '<table style="width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:var(--r8);overflow:hidden;margin-bottom:14px">'
     + '<tbody>'+expRows+'</tbody>'
     + (d.expenses.length?'<tfoot><tr style="border-top:1px solid var(--border);background:var(--bg3)"><td style="padding:6px 10px;font-size:12px;font-weight:700">'+(fr?'Total dépenses':'Total expenses')+'</td><td style="padding:6px 10px;font-size:12px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--r)">\u2212 '+fmt(d.expenseTotal)+'</td></tr></tfoot>':'')
     + '</table>'
     + '<div style="border:1px solid var(--border);border-radius:var(--r10);padding:6px 16px 14px;background:var(--bg3)">'
-    + row(fr?'BÉNÉFICE NET DE L\u2019ÉVÉNEMENT':'NET EVENT PROFIT', fmt(d.netProfit), {big:true, top:true, color:d.netProfit>=0?'var(--g)':'var(--r)'})
+    + row(fr?('BÉNÉFICE NET — '+_pnlNoun(true).toUpperCase()):('NET '+_pnlNoun(true).toUpperCase()+' PROFIT'), fmt(d.netProfit), {big:true, top:true, color:d.netProfit>=0?'var(--g)':'var(--r)'})
     + '<div style="text-align:right;font-size:11px;color:var(--text2);margin-top:2px">'+(fr?'Marge':'Margin')+': '+d.margin.toFixed(1)+'%</div>'
     + '</div>'
     + (s.cost>0?'':'<div style="font-size:11px;color:var(--y);margin-top:10px;padding:6px 10px;background:rgba(245,158,11,.08);border-radius:var(--r6);border-left:3px solid var(--y)">\u26A0\uFE0F '+(fr?'Aucun coût enregistré sur cette vente \u2014 le bénéfice brut suppose 100%. Ajoutez des recettes/coûts pour une marge exacte.':'No cost recorded on this sale \u2014 gross profit assumes 100%. Add recipes/costs for an accurate margin.')+'</div>'),
