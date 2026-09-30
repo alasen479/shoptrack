@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1790686000");
+console.log("ShopTrack v2.7 - build:1790781069");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -13814,7 +13814,7 @@ function rptEventPnL(){
     + '<th style="text-align:left">'+(fr?'Client':'Customer')+'</th>'
     + '<th style="text-align:left">'+(fr?'Date':'Date')+'</th>'
     + '<th style="text-align:right">'+(fr?'Revenu':'Revenue')+'</th>'
-    + '<th style="text-align:right">'+(fr?'Coût alim.':'Food cost')+'</th>'
+    + '<th style="text-align:right">'+(_isFoodBiz()?(fr?'Coût alim.':'Food cost'):(fr?'Coût':'Cost'))+'</th>'
     + '<th style="text-align:right">'+(fr?'Dépenses':'Expenses')+'</th>'
     + '<th style="text-align:right">'+(fr?'Bénéfice net':'Net profit')+'</th>'
     + '<th style="text-align:right">'+(fr?'Marge':'Margin')+'</th></tr>';
@@ -30605,6 +30605,19 @@ function previewBrandColors(){const _s=_L();
 // expenses = all expenses whose linkedSaleId points at this sale. Net event
 // profit = revenue - COGS - linked expenses. This is the number caterers ask
 // for. Returns numbers in base currency; caller formats with fmt().
+// Is this a food/catering business? Free-text BIZ.type, so we keyword-match.
+// Default is NON-food, so the generic "Cost of goods" label is used unless we are
+// confident it is a food business — non-food shops are never mislabelled.
+function _isFoodBiz(){
+  var t = (BIZ.type||'').toLowerCase();
+  return /food|cater|restaurant|chef|kitchen|meal|bakery|pastry|traiteur|cuisine|resto|snack|eatery|cafe/.test(t);
+}
+function _cogsLabel(suffix){
+  var fr = BIZ.language==='fr';
+  var base = _isFoodBiz() ? (fr?'Co\u00fbt aliments':'Food cost') : (fr?'Co\u00fbt des marchandises':'Cost of goods');
+  return base + (suffix||'');
+}
+
 function _eventPnL(saleId){
   var s = (D.sales||[]).find(function(x){return x.id===saleId;});
   if(!s) return null;
@@ -30661,7 +30674,7 @@ function mEventPnL(saleId){
     + _esc(s.cust||(fr?'Client':'Customer'))+' \u00B7 '+_esc(s.dt)+'</div>'
     + '<div style="border:1px solid var(--border);border-radius:var(--r10);padding:14px 16px;margin-bottom:14px">'
     + row(fr?'Revenu (facturé)':'Revenue (charged)', fmt(d.revenue))
-    + row((d.cogsSource==='batches' ? (fr?'Coût aliments (production réelle)':'Food cost (from production)') : (fr?'Coût aliments (est. recettes)':'Food cost (est. from recipes)')), '\u2212 '+fmt(d.cogs), {color:'var(--r)'})
+    + row((d.cogsSource==='batches' ? _cogsLabel(fr?' (production réelle)':' (from production)') : _cogsLabel(fr?' (est.)':' (est.)')), '\u2212 '+fmt(d.cogs), {color:'var(--r)'})
     + row(fr?'Bénéfice brut':'Gross profit', fmt(d.grossProfit), {top:true})
     + '</div>'
     + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:6px">'
@@ -30684,7 +30697,7 @@ function mEventPnL(saleId){
     + row(fr?'BÉNÉFICE NET DE L\u2019ÉVÉNEMENT':'NET EVENT PROFIT', fmt(d.netProfit), {big:true, top:true, color:d.netProfit>=0?'var(--g)':'var(--r)'})
     + '<div style="text-align:right;font-size:11px;color:var(--text2);margin-top:2px">'+(fr?'Marge':'Margin')+': '+d.margin.toFixed(1)+'%</div>'
     + '</div>'
-    + (s.cost>0?'':'<div style="font-size:11px;color:var(--y);margin-top:10px;padding:6px 10px;background:rgba(245,158,11,.08);border-radius:var(--r6);border-left:3px solid var(--y)">\u26A0\uFE0F '+(fr?'Aucun coût alimentaire enregistré sur cette vente \u2014 le bénéfice brut suppose 100%. Ajoutez des recettes/coûts pour une marge exacte.':'No food cost recorded on this sale \u2014 gross profit assumes 100%. Add recipes/costs for an accurate margin.')+'</div>'),
+    + (s.cost>0?'':'<div style="font-size:11px;color:var(--y);margin-top:10px;padding:6px 10px;background:rgba(245,158,11,.08);border-radius:var(--r6);border-left:3px solid var(--y)">\u26A0\uFE0F '+(fr?'Aucun coût enregistré sur cette vente \u2014 le bénéfice brut suppose 100%. Ajoutez des recettes/coûts pour une marge exacte.':'No cost recorded on this sale \u2014 gross profit assumes 100%. Add recipes/costs for an accurate margin.')+'</div>'),
     '<button class="btn btn-s" onclick="closeModal()">'+(fr?'Fermer':'Close')+'</button>'
     +'<button class="btn btn-g btn-sm" onclick="closeModal();mAddExp()">+ '+(fr?'Lier une dépense':'Link an expense')+'</button>', 'sm');
 }
