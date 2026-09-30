@@ -1,5 +1,5 @@
 
-console.log("ShopTrack v2.7 - build:1790781351");
+console.log("ShopTrack v2.7 - build:1790801421");
 
 
 // ── XSS Sanitization helper ──────────────────────────────────────────────
@@ -28041,12 +28041,21 @@ function genReceiptDoc(saleId){
     </div>
   </div>
   <div class="doc-body">
-    <div style="text-align:center;background:#f0fdf4;border:2px solid #bbf7d0;border-radius:14px;padding:28px 20px;margin-bottom:22px">
-      <div style="width:48px;height:48px;background:#22c55e;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:22px;color:#fff">✓</div>
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:#166534;margin-bottom:8px">${R.payReceived}</div>
-      <div class="receipt-amount">${fmtDoc(s.paid||s.total||s.amt)}</div>
-      <span class="doc-badge ${(s.paid||0)>=(s.total||s.amt||0)?'doc-badge-paid':'doc-badge-partial'}" style="margin-top:10px">${(s.paid||0)>=(s.total||s.amt||0)?R.paidFull:R.partial}</span>
-    </div>
+${(function(){
+      var _tot=(s.total||s.amt||0), _paid=(s.paid||0);
+      var _state = _paid<=0 ? 'unpaid' : (_paid>=_tot ? 'paid' : 'partial');
+      var _cfg = _state==='paid'
+        ? {bg:'#f0fdf4',bd:'#bbf7d0',ic:'#22c55e',icon:'\u2713',hd:'#166534',head:R.payReceived,amt:_paid,badge:'doc-badge-paid',blabel:R.paidFull}
+        : _state==='partial'
+          ? {bg:'#fffbeb',bd:'#fde68a',ic:'#d97706',icon:'\u25CF',hd:'#92400e',head:R.payReceivedPartial,amt:_paid,badge:'doc-badge-partial',blabel:R.partial}
+          : {bg:'#fef2f2',bd:'#fecaca',ic:'#dc2626',icon:'\u2717',hd:'#991b1b',head:R.noPayment,amt:0,badge:'doc-badge-unpaid',blabel:R.unpaid};
+      return '<div style="text-align:center;background:'+_cfg.bg+';border:2px solid '+_cfg.bd+';border-radius:14px;padding:28px 20px;margin-bottom:22px">'
+        +'<div style="width:48px;height:48px;background:'+_cfg.ic+';border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:22px;color:#fff">'+_cfg.icon+'</div>'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:'+_cfg.hd+';margin-bottom:8px">'+_cfg.head+'</div>'
+        +'<div class="receipt-amount">'+fmtDoc(_cfg.amt)+'</div>'
+        +'<span class="doc-badge '+_cfg.badge+'" style="margin-top:10px">'+_cfg.blabel+'</span>'
+        +'</div>';
+    })()}
     <div class="doc-meta" style="grid-template-columns:1fr 1fr 1fr 1fr">
       <div><div class="doc-label">${R.receiptNo}</div><div class="doc-value" style="font-family:monospace">${s.id.replace('S-','RCT-')}</div></div>
       <div><div class="doc-label">${R.date}</div><div class="doc-value">${s.dt}</div></div>
@@ -38640,6 +38649,9 @@ function _L(){
     paidFull:         fr ? '✓ PAYÉ EN TOTALITÉ'         : '✓ PAID IN FULL',
     partial:          fr ? 'PAIEMENT PARTIEL'           : 'PARTIAL PAYMENT',
     payReceived:      fr ? 'Paiement reçu'              : 'Payment Received',
+    payReceivedPartial: fr ? 'Paiement partiel reçu'      : 'Partial Payment Received',
+    noPayment:        fr ? 'Aucun paiement reçu'         : 'No Payment Received',
+    unpaid:           fr ? 'NON PAYÉ'                    : 'UNPAID',
     // ── Sections ──────────────────────────────────────────────
     payMethods:       fr ? 'Modes de paiement acceptés' : 'Payment Methods Accepted',
     bankDetails:      fr ? 'Coordonnées bancaires'      : 'Bank & Payment Details',
