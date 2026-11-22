@@ -528,6 +528,8 @@ function applyBranding(){
   // Logo initials
   const initials = (BIZ.name||'ST').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
   $('biz-logo').textContent = initials;
+    // Lazy-load the logo separately (too large for the main query); initials stay as fallback
+    sb.from('businesses').select('logo_data_url').eq('id', BIZ.id).maybeSingle().then(function(r){var u=r&&r.data&&r.data.logo_data_url;if(u&&/^data:image\//.test(u)){var el=$('biz-logo');el.textContent='';el.style.backgroundImage='url("'+u+'")';el.style.backgroundSize='cover';el.style.backgroundPosition='center';}}).catch(function(){});
   // Apply brand color if set
   if(BIZ.primary_color){
     document.documentElement.style.setProperty('--a', BIZ.primary_color);
