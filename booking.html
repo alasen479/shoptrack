@@ -296,7 +296,7 @@ function fmtPrice(rawPrice){
   const cur  = BIZ.currency || 'XAF';
   const rate = RATES[cur] || 615;
   const sym  = SYMS[cur]  || 'Frs';
-  const amt  = Math.round(rawPrice * rate);
+  const amt  = ((cur==='XAF'||cur==='XOF') ? Math.round(rawPrice * rate / 5) * 5 : Math.round(rawPrice * rate));
   return (cur==='XAF'||cur==='XOF') ? fmt(amt)+' '+sym : sym+fmt(amt);
 }
 function timeLabel(t){
@@ -485,7 +485,7 @@ function fmtSvcPrice(s){
     if(ls && ls.currency === cur){
       dispPrice = ls.native;
     } else {
-      dispPrice = rawPrice * rate;
+      dispPrice = (cur==='XAF'||cur==='XOF') ? Math.round(rawPrice * rate / 5) * 5 : rawPrice * rate; // snap to 5 Frs: hides cent-rounding drift
     }
   }
   if(!dispPrice || dispPrice <= 0){
